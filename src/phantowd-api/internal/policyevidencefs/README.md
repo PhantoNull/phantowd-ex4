@@ -7,7 +7,9 @@ Linux-only private collector over the fixed experimental layout below. It
 supplies the existing pure matcher with actual bounded file reads under retained
 original locks. It is not product boot wiring, a second store, journal writer,
 recovery engine, durable quarantine, consumer lease or service admission.
-No NAS installation path, physical medium or writer protocol is selected.
+The selected product direction is current policy plus per-operation bundles.
+No NAS installation path, physical medium or product writer is selected; the
+experimental layouts below are not a frozen compatibility contract.
 
 The QEMU fixture now obtains intent/base/candidate data from the separate private
 preparer and compares its candidate with an actual temporary Store commit. The
@@ -42,6 +44,43 @@ before **any** current/bundle data read. The portable private bundle comparison
 returns the same six no-action diagnoses and clears temporary decoded bytes.
 
 ## Lifetime contract
+
+### Explicit multi-operation history profile
+
+`OpenHistory(ctx, root, expectedInstallationID, exactCheckpoint)` fixes a third
+experimental profile: `operations/<operation-ID>.json`, with at most16 records
+and optional metadata-only `.history.pending`. Policy names are unchanged.
+Basenames must contain a nonzero128-bit lowercase hexadecimal ID which matches
+the strictly decoded intent. Unknown/mixed names refuse; no autodetection occurs.
+Lexical enumeration is only deterministic IO order, not operation chronology.
+
+The constructor validates and copies an independently trusted exact checkpoint;
+it never derives one from these records. Caller mutation after construction
+cannot change it. Its origin, provisioning and rollback resistance remain
+external prerequisites. Before content reads, the complete metadata census
+enforces the4MiB aggregate wire budget including checkpoint/current/records,
+plus existing individual limits. Pending metadata suppresses all content reads.
+
+The same retained directory locks, confined original files, unique mount
+identities, watches and serialized before/after rechecks feed the private named
+bundle/history matcher. Changed namespace/content or invalid name/content binding
+latches review; restoring the source does not resume observations. Close uses
+the captured variable-length file roster, stopping at the first uncertainty and
+retaining unattempted references. The owned checkpoint is cleared only after
+verified normal closure. This is not an existing-state writer or service lease.
+
+The standard ARM fixture uses two successive nonempty three-protocol operations,
+actual Store exclusion, checkpoint-copy independence, pending zero-read and
+name/object/namespace refusal,16/17 record bounds and aggregate budget refusal.
+Six file/directory close positions for that two-record profile each run controlled
+pre-close and post-close errors with exact recycled-FD protection. These12 cases
+do not qualify all possible larger rosters, constructor/watch-close faults,
+kernel EIO, power loss or physical media. The constructor-only16-record case
+tests the census limit, not validity of its synthetic record contents.
+Two exact history-filesystem receipts across the original API restart are
+mandatory alongside all existing smoke proofs; no additional CI guest is added.
+
+### Shared retained lifetime
 
 `Open(ctx, root, expectedInstallationID)` captures trusted in-process inputs;
 neither HTTP nor an operation supplies role names, ownership, codec or backend.

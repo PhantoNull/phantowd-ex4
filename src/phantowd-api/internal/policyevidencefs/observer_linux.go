@@ -60,6 +60,10 @@ type state struct {
 	names                       [3]map[string]stamp
 	watch                       int
 	bundleProfile               bool // immutable fixed profile, never per-observation input
+	historyProfile              bool
+	checkpoint                  []byte // independent trusted caller checkpoint, owned copy
+	historyRoles                []roleSpec
+	historyFiles                []object
 	review, closed, closeFailed bool
 	uncertain                   []*os.File
 	// Trusted lifetime operations, never per-call/provider/HTTP parameters.
@@ -75,17 +79,17 @@ type state struct {
 // On uncertain cleanup, returns a nonnil reviewed handle WITH error to preserve
 // unattempted originals. It must never be used as a successful observation.
 func Open(ctx context.Context, directory, installation string) (observer *Observer, result error) {
-	return open(ctx, directory, installation, false)
+	return open(ctx, directory, installation, false, nil)
 }
 
 // OpenBundle observes the separate experimental operation.json profile. It
 // never guesses/migrates a layout, opens a writer, or authorizes recovery.
 // All Open lifetime and uncertain-cleanup requirements apply unchanged.
 func OpenBundle(ctx context.Context, directory, installation string) (*Observer, error) {
-	return open(ctx, directory, installation, true)
+	return open(ctx, directory, installation, true, nil)
 }
 
-func open(ctx context.Context, directory, installation string, bundleProfile bool) (observer *Observer, result error) {
+func open(ctx context.Context, directory, installation string, bundleProfile bool, checkpoint []byte) (observer *Observer, result error) {
 	if ctx == nil {
 		return nil, ErrInvalid
 	}
@@ -97,8 +101,16 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if checkpoint != nil {
+		if err := validateHistoryCheckpoint(installation, checkpoint); err != nil {
+			return nil, err
+		}
+	}
 	s := &state{path: directory, installation: installation, watch: -1, bundleProfile: bundleProfile,
 		closeFile: func(f *os.File) error { return f.Close() }, readAt: func(f *os.File, b []byte, off int64) (int, error) { return f.ReadAt(b, off) }}
+	if checkpoint != nil {
+		s.initializeHistoryCheckpoint(checkpoint)
+	}
 	a := &Observer{state: s}
 	s.self = a
 	defer func() {
@@ -157,6 +169,11 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 			return nil, err
 		}
 	}
+	if s.historyProfile {
+		if err := s.prepareHistoryRoles(); err != nil {
+			return nil, err
+		}
+	}
 	for i, spec := range s.roleSpecs() {
 		expected, present := s.names[spec.parent][spec.name]
 		if !present {
@@ -169,7 +186,7 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 		if err != nil {
 			return nil, err
 		}
-		s.files[i].file = f
+		s.fileObjects()[i].file = f
 		st, err := statFD(f)
 		if err != nil {
 			return nil, err
@@ -177,7 +194,7 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 		if st != expected {
 			return nil, ErrReview
 		}
-		s.files[i].initial = st
+		s.fileObjects()[i].initial = st
 		if err := s.watchFile(f, false); err != nil {
 			return nil, err
 		}
@@ -188,6 +205,10 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 	_, s.review = s.names[1][".nas-services.pending"] // metadata only; never read
 	if s.bundleProfile {
 		_, pending := s.names[2][".operation.pending"]
+		s.review = s.review || pending
+	}
+	if s.historyProfile {
+		_, pending := s.names[2][historyPending]
 		s.review = s.review || pending
 	}
 	return a, nil
@@ -208,6 +229,9 @@ var bundleRoles = [...]roleSpec{
 }
 
 func (s *state) roleSpecs() []roleSpec {
+	if s.historyProfile {
+		return s.historyRoles
+	}
 	if s.bundleProfile {
 		return bundleRoles[:]
 	}
@@ -296,8 +320,13 @@ func (s *state) census(ctx context.Context, index int) (found map[string]stamp, 
 	if s.bundleProfile {
 		allowed[2] = map[string]bool{"operation.json": true, ".operation.pending": true}
 	}
-	found = make(map[string]stamp, 2)
-	for len(found) <= 2 {
+	limit := 2
+	if s.historyProfile && index == 2 {
+		limit = policyevidence.MaxHistoryOperations + 1
+	}
+	found = make(map[string]stamp, limit)
+	records := 0
+	for len(found) <= limit {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -309,7 +338,17 @@ func (s *state) census(ctx context.Context, index int) (found map[string]stamp, 
 			return nil, ErrIO
 		}
 		name := names[0]
-		if _, duplicate := found[name]; duplicate || !allowed[index][name] {
+		permitted := allowed[index][name]
+		if s.historyProfile && index == 2 {
+			permitted = name == historyPending || policytransaction.IsHistoryRecordName(name)
+			if name != historyPending {
+				records++
+				if records > policyevidence.MaxHistoryOperations {
+					return nil, ErrUnsafe
+				}
+			}
+		}
+		if _, duplicate := found[name]; duplicate || !permitted || len(found) >= limit {
 			return nil, ErrUnsafe
 		}
 		st, err := statAt(int(parent.file.Fd()), name, unix.AT_SYMLINK_NOFOLLOW)
@@ -366,7 +405,7 @@ func (s *state) verify(ctx context.Context) error {
 			}
 		}
 	}
-	for _, f := range s.files {
+	for _, f := range s.fileObjects() {
 		if f.file != nil {
 			st, err := statFD(f.file)
 			if err != nil || st != f.initial {
@@ -410,13 +449,13 @@ func (a *Observer) Observe(ctx context.Context) (policyevidence.Diagnosis, error
 	if err := s.verify(ctx); err != nil {
 		return fail(err)
 	}
-	var slots [3]policyevidence.Slot
+	slots := make([]policyevidence.Slot, len(s.fileObjects()))
 	defer func() {
 		for i := range slots {
 			clear(slots[i].Data)
 		}
 	}()
-	for i, f := range s.files {
+	for i, f := range s.fileObjects() {
 		slots[i].State = policyevidence.Absent
 		if f.file == nil {
 			continue
@@ -447,7 +486,9 @@ func (a *Observer) Observe(ctx context.Context) (policyevidence.Diagnosis, error
 	}
 	var d policyevidence.Diagnosis
 	var err error
-	if s.bundleProfile {
+	if s.historyProfile {
+		d, err = s.matchHistory(slots)
+	} else if s.bundleProfile {
 		d, err = policytransaction.MatchBundleObservation(s.installation, slots[0], slots[1])
 	} else {
 		d, err = policyevidence.Match(policyevidence.Evidence{InstallationID: s.installation, Current: slots[0], Intent: slots[1], Receipt: slots[2]})
@@ -476,7 +517,7 @@ func (a *Observer) Close() error {
 	if s.closed {
 		return nil
 	}
-	for _, roster := range []*[3]object{&s.files, &s.dirs} {
+	for _, roster := range [][]object{s.fileObjects(), s.dirs[:]} {
 		for i := len(roster) - 1; i >= 0; i-- {
 			if roster[i].file != nil {
 				if s.closeFile(roster[i].file) != nil {
@@ -495,6 +536,7 @@ func (a *Observer) Close() error {
 		s.watch = -1
 	}
 	s.closed = true
+	clear(s.checkpoint)
 	return nil
 }
 func (Observer) Format(s fmt.State, _ rune) {

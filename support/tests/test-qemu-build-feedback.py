@@ -455,6 +455,39 @@ class BuildFeedbackTests(unittest.TestCase):
                     text=True, timeout=3)
                 self.assertEqual(result.returncode, 1)
 
+    def test_policy_history_fs_requires_both_exact_guest_receipts(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        marker = (
+            "PHANTOWD_POLICY_HISTORY_FS_READY records=2 original_locks=true "
+            "name_bound=true checkpoint_owned=true pending_metadata_only=true "
+            "sticky_review=true readonly=true admission=false "
+            "scope=temporary-qemu-only"
+        )
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        fixture = (ROOT / "src/phantowd-api/internal/policyevidencefs/"
+                   "fixture_history_qemu_linux.go").read_text()
+        self.assertIn(marker, fixture)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for newline in ("\n", "\r\n"):
+                for count in (0, 1, 2, 3):
+                    log.write_bytes(((marker + newline) * count).encode())
+                    result = subprocess.run(
+                        ["sh", "-c", 'log_file="$1"\n' + guard,
+                         "history-fs-guard", str(log)], capture_output=True,
+                        text=True, timeout=3)
+                    self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            for bad in (marker + " extra",
+                        marker.replace("name_bound=true", "name_bound=false")):
+                log.write_text(marker + "\n" + bad + "\n")
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "history-fs-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertEqual(result.returncode, 1)
+
     def test_policy_evidence_fs_requires_both_original_guest_receipts(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         marker = (

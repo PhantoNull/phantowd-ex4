@@ -71,7 +71,9 @@ its diagnoses never authorize retry, recovery or activation.
 
 The selected state design keeps the current policy plus per-operation bundles.
 An internal bounded history comparison checks exact checkpoint/operation chains;
-it is not yet a persistent product history, recovery engine or service admission.
+an experimental Linux reader supplies the protected record census under retained
+original locks. Neither is a persistent product history, recovery engine or
+service admission.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

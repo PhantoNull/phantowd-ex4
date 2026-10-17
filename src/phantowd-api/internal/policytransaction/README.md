@@ -39,6 +39,13 @@ records, delete evidence or replace the checkpoint to fit them. Completeness,
 checkpoint origin, pending-file exclusion, protected filesystem enumeration,
 rollback resistance and retention/reconciliation remain trusted-owner work.
 
+The explicit Linux `policyevidencefs.OpenHistory` prerequisite now supplies a
+bounded complete protected census under the original locks and an owned caller
+checkpoint. `MatchNamedBundleHistoryObservation` additionally binds each fixed
+experimental basename to its decoded operation ID without disclosing the tuple.
+This does not establish checkpoint origin, historical completeness, rollback
+resistance, writer admission or a product-compatible on-disk namespace.
+
 Host/race controls cover these boundaries and byte mutations. The existing
 standard ARM smoke requires two exact synthetic history receipts across its
 original intentional API restart; no extra guest or persistent write is added.

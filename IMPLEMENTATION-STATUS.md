@@ -79,7 +79,17 @@ operations; uncertain tails remain diagnostic. Count16/4MiB inspection bounds
 never authorize deleting history or replacing its checkpoint. Host units/race,
 strict runner controls and two actual ARM receipts across the existing API
 restart pass. No extra guest or filesystem mutation is introduced by this
-comparison. Complete retained history collection, serialized publication,
+comparison. An explicit experimental Linux history reader now captures a bounded
+complete record census and original files under the same root/policy/operations
+locks. It copies an independently trusted checkpoint, binds canonical filenames
+to decoded operation IDs, refuses pending metadata before content reads and
+retains review after replacement/restoration. Actual standard ARM tests two
+operations, the actual Store lock,16/17-record and aggregate limits, plus12
+controlled close cases for the six-object two-record profile. Two exact receipts
+across the original API restart and all old smoke assertions pass; no extra
+default guest or enlarged timeout is introduced. Native mount-lifecycle tests
+explicitly skip on the unsupported WSL kernel; those are not positive evidence.
+Host/race, tagged vet and57 runner controls pass. Serialized publication,
 provisioning/retention, recovery and product HTTP/service wiring remain required;
 the latest complete integration gate above is unchanged.
 

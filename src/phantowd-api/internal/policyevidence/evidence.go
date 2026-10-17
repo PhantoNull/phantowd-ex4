@@ -52,6 +52,12 @@ type record struct {
 type Intent struct{ value tuple }
 type Receipt struct{ value tuple }
 
+// MatchesOperationID compares caller-held naming evidence without disclosing
+// the private tuple. Equality is neither provenance nor transaction authority.
+func (i Intent) MatchesOperationID(id string) bool {
+	return i.value.valid() && canonicalHex(id, 32, true) && i.value.OperationID == id
+}
+
 func canonicalHex(value string, length int, nonzero bool) bool {
 	if len(value) != length {
 		return false

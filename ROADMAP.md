@@ -891,6 +891,23 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   its checkpoint. Native units/race and the existing ARM smoke exercise this
   model; original bounds/boot count stay fixed. No filesystem census/provenance,
   multi-operation writer/recovery, HTTP or product service authority follows.
+  **c.2b retained history observation (host/ARM prerequisite):** an explicit
+  experimental `OpenHistory` fixes canonical operation-ID filenames, binds them
+  to strict decoded intents and owns an independently trusted exact checkpoint.
+  Reuse original root/policy/operations locks, complete bounded census, confined
+  original files, unique mount identities and serialized rechecks/watches.
+  Enforce16 records and4MiB wire aggregate before data reads; metadata-only pending
+  means review before any content. Refuse mixed profiles and restored drift.
+  Standard ARM tests two coherent operations, actual Store exclusion, pending,
+  naming/substitution and count/byte limits plus six close boundaries in both
+  controlled modes. This does not qualify every larger roster/constructor fault,
+  checkpoint origin, historical completeness, physical state or writer admission.
+  Next: design the separate root Owner retaining original locks into a bounded
+  multi-operation writer in disposable fixtures. A read-only Observer is never
+  upgraded implicitly into write authority; define its diagnostic epochs around
+  owned mutations without suppressing external drift. Do not close/reopen across
+  admission, prune/rebase the checkpoint, retry uncertain effects or activate
+  product services implicitly.
   A separate [strict anchored Store prerequisite](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
   now retains the actual child lock under a borrowed parent, does not sync on
   open, returns exact bounded readback and fences pending/unknown entries plus

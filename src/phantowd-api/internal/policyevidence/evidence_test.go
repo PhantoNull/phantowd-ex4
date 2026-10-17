@@ -361,3 +361,15 @@ func FuzzMatchEvidence(f *testing.F) {
 		}
 	})
 }
+
+func TestIntentMatchesOnlyItsValidatedOperationID(t *testing.T) {
+	_, intent, _ := fixture(t)
+	for _, id := range []string{operation, strings.Repeat("b", 32), strings.ToUpper(operation), "", strings.Repeat("0", 32), operation + "extra"} {
+		if got := intent.MatchesOperationID(id); got != (id == operation) {
+			t.Fatal("operation binding predicate")
+		}
+		if (Intent{}).MatchesOperationID(id) {
+			t.Fatal("zero intent matched an operation")
+		}
+	}
+}

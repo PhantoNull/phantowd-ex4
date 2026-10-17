@@ -209,6 +209,13 @@ autodetection. Actual ARMv5 tests inspect all28 declared process-loss gates usin
 the runtime reader; pending metadata suppresses all data reads and matching.
 This is diagnosis only, not product save/recovery, restart or power-loss proof.
 
+An explicit experimental history collector now reads canonical operation-ID
+bundles against its owned independent checkpoint, under the same retained locks
+and original file identities. Complete bounded census, filename/content binding,
+pending zero-read and sticky review feed the existing anchored history matcher.
+Actual ARM smoke covers two operations and controlled closure faults, not product
+publication/recovery, checkpoint provenance or a qualified physical state medium.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

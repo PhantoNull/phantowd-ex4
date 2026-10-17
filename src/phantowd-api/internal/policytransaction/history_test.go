@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -113,5 +114,46 @@ func TestBundleHistoryRefusesIncompleteMalformedAndForeignEvidence(t *testing.T)
 				t.Fatal("bundle history refusal", d, err, want)
 			}
 		})
+	}
+}
+
+func bundleHistoryName(t testing.TB, wire []byte) string {
+	t.Helper()
+	b, err := decodeBundle(bytes.NewReader(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.clear()
+	var fields map[string]json.RawMessage
+	var id string
+	if json.Unmarshal(b.intent, &fields) != nil || json.Unmarshal(fields["operation_id"], &id) != nil {
+		t.Fatal("fixture operation ID")
+	}
+	return id + ".json"
+}
+
+func TestNamedBundleHistoryBindsFilenameToOriginalOperation(t *testing.T) {
+	anchor, current, operations, _ := bundleHistoryFixture(t)
+	entries := []NamedBundleObservation{{bundleHistoryName(t, operations[0].Data), operations[0]}, {bundleHistoryName(t, operations[1].Data), operations[1]}}
+	if d, err := MatchNamedBundleHistoryObservation(testInstallation, anchor, current, entries); err != nil || d.Kind() != policyevidence.LocalConfirmationObserved {
+		t.Fatal("named chain", d, err)
+	}
+	entries[0].Name = strings.Repeat("a", 32) + ".json"
+	if d, err := MatchNamedBundleHistoryObservation(testInstallation, anchor, current, entries); !errors.Is(err, ErrInvalid) || d != (policyevidence.Diagnosis{}) {
+		t.Fatal("foreign filename adopted", d, err)
+	}
+	for _, name := range []string{"../bad.json", strings.Repeat("0", 32) + ".json", strings.Repeat("A", 32) + ".json", strings.Repeat("a", 32) + ".json/child", "operation.json"} {
+		if IsHistoryRecordName(name) {
+			t.Fatal("unsafe history name", name)
+		}
+	}
+	if !IsHistoryRecordName(strings.Repeat("a", 32) + ".json") {
+		t.Fatal("valid name refused")
+	}
+	if _, err := json.Marshal(entries[0]); !errors.Is(err, ErrPrivate) {
+		t.Fatal("named history serialized")
+	}
+	if strings.Contains(fmt.Sprintf("%#v", entries[0]), entries[0].Name) {
+		t.Fatal("private name formatted")
 	}
 }

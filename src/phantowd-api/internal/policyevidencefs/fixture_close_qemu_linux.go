@@ -54,7 +54,7 @@ func exerciseOneCloseFaultQEMU(ctx context.Context, a *Observer, count, boundary
 	s := a.state
 	var slots []*object
 	var originals []*os.File
-	for _, roster := range []*[3]object{&s.files, &s.dirs} {
+	for _, roster := range [][]object{s.fileObjects(), s.dirs[:]} {
 		for i := len(roster) - 1; i >= 0; i-- {
 			if roster[i].file != nil {
 				slots = append(slots, &roster[i])

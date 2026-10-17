@@ -236,6 +236,18 @@ new image/volume, clean build, ARM, speedup or product activation is qualified.
 
 ## Policy-store interruption and media faults — optional ARMv5 ext4 guest
 
+The existing standard smoke also runs an experimental retained history reader
+over fresh tmpfs files, with two successive nonempty SMB/NFS/iSCSI policy bundles.
+It requires two exact `PHANTOWD_POLICY_HISTORY_FS_READY` rows across the original
+API restart. Tests cover original Store-lock exclusion, owned checkpoint bytes,
+canonical-name/content binding, pending zero-read, sticky substituted/restored
+state,16/17-record and aggregate byte bounds, and six captured close positions
+in both controlled error modes. FD baseline and recycled descriptors remain
+checked. The constructor-only16-record case does not admit its dummy contents.
+No new guest/stage, timeout increase, product writer/HTTP, EX4 state medium or
+power-loss claim follows. Native WSL explicitly skips unsupported mount admission;
+synthetic native close/race tests are not positive filesystem-open qualification.
+
 Retained read-only bootstrap lifetime is now also mandatory: SAME original
 directory/codec/flock/watch, fresh confined cursor per serialized read, sticky
 review on drift/cancel/uncertainty and copy/serialization refusal. Writer lock
