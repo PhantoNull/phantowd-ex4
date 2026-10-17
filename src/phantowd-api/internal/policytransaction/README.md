@@ -54,6 +54,32 @@ This does not turn the one-operation disposable writer into a product store.
 
 ## Bounded successive-operation prototype
 
+A typed protocol-view bridge now keeps the same writer mutex from expected-base
+comparison and candidate construction through the existing history transaction.
+`executeFileServicesHistory` and `executeISCSIHistory` use the coherent model
+editors; neither accepts a path, backend, operation ID or alternate authority.
+They remain private `qemu && linux` methods over newly generated disposable state,
+not a product store or existing-state opener. Whole-document operations still
+use the same locked transaction and retain their original checks.
+
+The new standard-guest fixture alternates nonempty file-service and iSCSI edits,
+checks complete persisted whole-policy readback, then races different protocol
+edits against one expected revision: exactly one third commit must win. Stale
+requests, referenced-volume rebinding and pre-admission cancellation leave the
+complete policy/record census unchanged. Cancellation after an actual intent
+publication retains review/evidence; switching protocol or context cannot retry.
+Original root/history references, first confirmed record, actual lock exclusions
+and verified FD-balanced close/disposal remain required. The smoke log must have
+exactly two complete view-writer receipts across the existing API restart, in
+addition to the unchanged model/history/transaction assertions and budgets.
+Native positive lifecycle tests explicitly skip when unique mount IDs are absent;
+that skip is not lifecycle qualification. No new default guest is introduced.
+Pinned native vet/units/race-count3 and the actual standard ARMv5 smoke pass this
+slice; both exact model/writer receipt pairs are mandatory. A first guest's
+invalid fixture capacity increment is locked down by native512/4096-byte maximum
+capacity draft controls; the final fixture changes a reference path, not capacity
+or model validation. This is not a rerun of every historical media/loss campaign.
+
 A separate private QEMU/Linux mode creates fresh tmpfs state with the same
 original root/policy locks and a retained history-directory lock. It never opens
 existing state or upgrades a read-only Observer. The old one-operation mode and

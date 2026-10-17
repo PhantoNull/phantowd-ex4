@@ -910,9 +910,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   bounded2000fuzz pass; existing ARM fixture reuses the real preparer/Store and
   requires unconfirmed without receipt, twice across restart. Production entropy
   follows pinned Go's fatal-source policy, not fake-reader recoverability.
-  **c.2 retained writer authority/namespace** must select an explicit bounded
-  operation-bundle or generation/manifest protocol and preserve the original
-  lock into effect ownership, not close/reopen the observer. The selected product
+  **c.2 retained writer authority/namespace** must qualify the explicit bounded
+  operation-bundle protocol and preserve the original lock into effect ownership,
+  not close/reopen the observer. The selected product
   direction is current policy plus per-operation bundles, not immutable policy
   generations/manifest. The experimental bytes are not a frozen compatibility
   contract; physical placement/provisioning and product publication remain open.
@@ -965,6 +965,25 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   Only then admit explicitly provisioned product state, diagnostic epochs,
   durable review/reconciliation and HTTP/service ownership; no observer upgrade
   or NAS writes are authorized by this prototype.
+  **c.2c.1 typed protocol-view transaction bridge (QEMU-only):** reuse the same
+  writer mutex across expected revision, coherent view editing and the original
+  intent/policy/receipt transaction. No alternate store, backend or caller ID.
+  Exercise nonempty SMB/NFS then iSCSI changes, persisted whole-policy readback,
+  different-protocol concurrent proposals with one winner, unchanged bytes/census
+  on stale/rebound/pre-canceled input, and sticky review after actual intent
+  publication. Switching protocols/contexts must not retry uncertain work.
+  Retain first-record identity/bytes, original locks, FD-balanced close/disposal
+  and all existing scenarios/caps. Require two complete writer receipts plus the
+  existing model receipts across standard API restart; missing/changed/extra
+  rows cannot qualify. Native positive skips on unsupported mount identity must
+  not count as lifecycle evidence. No product constructor, existing-state opener,
+  HTTP, backing/credential access, activation or physical operation follows.
+  **Local acceptance:** pinned native vet/units/race3, exact-pair refusal controls
+  and actual ARMv5 standard overlay pass. Both model/writer pairs bracket API
+  restart, with all old checks/budgets. A failed fixture capacity increment was
+  reproduced in native512/4096-byte maximum-value drafts and corrected without
+  changing model limits. Separate historical media/loss, two-boot/full-image,
+  product bootstrap/recovery, physical and release gates remain unqualified here.
   **c.2d qualify history publication before product admission:** keep the new
   writer behind its QEMU-only fresh-state constructor until its own fault corpus
   passes. Start with native real-file fault controls, then the pinned ARM media

@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Single-writer protocol-view transactions — QEMU-only
+
+The coherent editors now feed the existing disposable history writer under one
+mutex, from expected revision through intent/policy/local receipt. The actual
+standard ARMv5 smoke passes alternating file-service/iSCSI edits, complete
+persisted readback, different-view concurrent proposals with one winner, stale/
+rebound refusal and sticky review after intent cancellation. Switching protocols
+cannot retry uncertain work. Original record/locks and verified close/disposal
+remain checked; both complete writer receipts bracket the existing API restart.
+
+Pinned native vet/units/race-count3 and log refusal controls pass. Positive native
+lifecycle tests explicitly skip without unique mount IDs, not a lifecycle pass.
+A first guest failed on a fixture's invalid capacity increment; native boundary
+regression now covers512/4096-byte maximum capacities without changing validation.
+No product constructor, existing-state opener, HTTP, recovery or service activation
+is added. This is not the separate media/two-boot/full-image or EX4 qualification.
+See the [writer contract](src/phantowd-api/internal/policytransaction/README.md).
+
 ## Coherent SMB/NFS/iSCSI edit preparation
 
 The internal NAS-policy model now supports editing either the file-service view

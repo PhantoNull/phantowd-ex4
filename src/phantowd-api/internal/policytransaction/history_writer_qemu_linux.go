@@ -45,13 +45,24 @@ func (w *writer) executeHistory(ctx context.Context, next naspolicy.Config) (loc
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	return w.executeHistoryLocked(ctx, next)
+}
+
+// Caller holds the original writer mutex across candidate construction and all
+// journal/policy/receipt effects. Neither views nor whole documents can create
+// another authority or bypass this same lifetime's uncertainty fence.
+func (w *writer) historyReadyLocked(ctx context.Context) error {
 	if w.history == nil {
-		return localOutcome{}, ErrInvalid
+		return ErrInvalid
 	}
 	if w.closed || w.closeFailed || w.review || w.attempted {
-		return localOutcome{}, ErrReview
+		return ErrReview
 	}
-	if err := ctx.Err(); err != nil {
+	return ctx.Err()
+}
+
+func (w *writer) executeHistoryLocked(ctx context.Context, next naspolicy.Config) (localOutcome, error) {
+	if err := w.historyReadyLocked(ctx); err != nil {
 		return localOutcome{}, err
 	}
 	guard := func() bool { return w.guard(ctx) == nil && w.history.check() == nil }

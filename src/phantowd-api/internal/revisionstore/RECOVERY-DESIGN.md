@@ -112,8 +112,12 @@ The namespace-independent [preparation helper](../policyevidence/README.md#priva
 now retains exact base/candidate bytes and a generated private intent; it performs
 no journal write and generates no receipt. It is not proof of confirmed base,
 consumer exclusion or retained filesystem origin. Preparation cannot select or
-replace the durable state namespace. Separate bundle versus generation/manifest
-publication remains a product/prototype design choice, not silently decided here.
+replace the durable state namespace. The selected protocol family is current
+coherent policy plus per-operation bundles, not immutable generations selected
+by a manifest. Exact product namespace/schema, physical placement and writable
+recovery remain unqualified; the experimental codec is not a frozen compatibility
+format. The disposable history writer now also composes typed file-service and
+iSCSI edits under its original lock, not through independent protocol stores.
 
 Do not bolt receipt writes onto the existing two-name policy directory: its
 bootstrap census intentionally treats unknown entries as evidence. Define a
@@ -201,8 +205,9 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 
 - The record/matcher-only schema is approved; this does not approve a collector,
   state namespace, writer, reconciliation protocol or product admission.
-- Choose the state-root/bundle namespace and atomic publication strategy; a
-  generation/manifest design is an option, not a silently selected format.
+- The current-policy/per-operation-bundle family is selected. Specify and qualify
+  its product state-root/namespace/schema and publication/recovery protocol;
+  do not reopen the resolved family choice or treat its prototype as deployment.
 - Specify what can authorize reconciliation after receipt-publication uncertainty,
   and how durable review survives inability to persist another record.
 - Decide retention limits and low-space behavior without erasing useful evidence.

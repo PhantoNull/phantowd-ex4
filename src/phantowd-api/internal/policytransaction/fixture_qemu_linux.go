@@ -102,6 +102,9 @@ func ExerciseTemporaryQEMU(ctx context.Context, provided naspolicy.Config) error
 	if err := exerciseHistoryWriterQEMU(ctx, initial); err != nil {
 		return err
 	}
+	if err := exerciseHistoryViewEdits(ctx, initial); err != nil {
+		return fmt.Errorf("history protocol views: %w", err)
+	}
 	return ctx.Err()
 }
 func exerciseScenario(parent context.Context, scenario string, initial, next naspolicy.Config, base, candidate []byte) (result error) {
