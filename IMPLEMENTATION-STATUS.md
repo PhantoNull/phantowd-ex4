@@ -187,6 +187,40 @@ retention/review, writable boot/reconciliation and product composition remain
 open. The earlier1800s full integration failure, audit/hosted and release gates
 are unchanged; no physical NAS or disks were touched.
 
+### M1 history process losses on synthetic ext4
+
+A separate explicit `history-ext4` media profile now qualifies all21 second-
+operation intent/policy/receipt syscall-success-boundary SIGKILLs on the sealed
+32MiB virtual ext4 disk. Original confirmed first-record bytes/full statx/atime,
+live lock exclusion, two same-child/root/challenge gates, verified death/reaping,
+actual history-reader diagnosis on a read-only remount, pending/no-kind and
+known-loss review remain mandatory. Observation locks are never writer admission.
+
+The initial profile failed after policy rename because a temporary old mutable
+policy capture was still open after unlink. A direct guest control verifies
+EBUSY for an unlinked O_RDONLY pin, then successful RO remount after verified
+close. Only that already-checked temporary capture is released before second
+effects; original confirmed record/directory/lock references remain held.
+No forced unmount, automatic remount retry or weakened identity check is added.
+
+Corrected ARM qualification passes28 ordered rows: remount control0.05s, existing
+four ext4 cases3.30s,21-loss group14.60s. The default148-row campaign independently
+passes on the same1542-input/1139-API frozen source, retaining all77 tmpfs/14 old
+ext4 losses and prior normal/full/RO cases. Both keep45s Go/60s guest/180s outer,
+normal unmount and unchanged base. Closed parser controls pass2+89 for the new
+profile and2+341 for default; pinned tagged units/vet/race3, Windows and mocked
+wrapper controls pass. Native positive ext4/root paths skip/refuse as before.
+Wrapper profiles are closed, require8GiB Docker-data-drive headroom, disable
+cgroup swap and retain bounded disposable scratch/read-only persistent inputs.
+No default CI stage, image, persistent volume or physical operation was added.
+
+This changes only test/harness/tooling inputs, not production Go behavior.
+Same-kernel process loss and clean RO remount are not system reboot, power cut,
+writable boot admission, replay or product recovery. Worst-case16-record/4MiB
+resources, complete real EIO/constructor/watch/close, persistent checkpoint/review/
+retention, physical state medium and full/audit/hosted/release gates remain open.
+The earlier default-lane load/timing failure is not declared universally repaired.
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

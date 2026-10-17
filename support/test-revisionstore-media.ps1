@@ -1,9 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
-param([string]$BaseArtifactDir)
+param(
+    [string]$BaseArtifactDir,
+    [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx'),
+    [ValidateSet('baseline','history-ext4')][string]$Profile = 'baseline'
+)
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not (Test-Path -LiteralPath $DockerDataVhdxPath -PathType Leaf)) {
+    throw 'Cannot verify Docker data-drive headroom: provide its actual VHDX path.'
+}
+$dataDrive = (Get-Item -LiteralPath $DockerDataVhdxPath).PSDrive.Name
+if ((Get-PSDrive -Name $dataDrive).Free -lt 8GB) {
+    throw 'Disposable media qualification requires at least 8 GiB free on the Docker data drive.'
+}
 if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
 foreach ($name in @('rootfs.ext2', 'zImage', 'versatile-pb.dtb', 'SHA256SUMS')) {
@@ -23,14 +34,16 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
-shellcheck /src/support/tests/test-revisionstore-media-qemu.sh /src/support/tests/revisionstore-media-init.sh /src/support/tests/test-revisionstore-media-log.sh
+shellcheck /src/support/tests/test-revisionstore-media-qemu.sh /src/support/tests/revisionstore-media-init.sh /src/support/tests/test-revisionstore-media-log.sh /src/support/tests/history-ext4-init.sh /src/support/tests/test-history-ext4-log.sh
 bash /src/support/tests/test-revisionstore-media-log.sh /src
-bash /src/support/tests/test-revisionstore-media-qemu.sh /base "$output" /src
+bash /src/support/tests/test-history-ext4-log.sh /src
+bash /src/support/tests/test-revisionstore-media-qemu.sh /base "$output" /src @PROFILE@
 '@
+$linux = $linux.Replace('@PROFILE@', $Profile)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linux.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
-    --cpus 4 --memory 2g --pids-limit 256 `
+    --cpus 4 --memory 2g --memory-swap 2g --pids-limit 256 `
     --tmpfs '/tmp:rw,exec,nosuid,nodev,size=1024m,uid=1000,gid=1000' `
     --entrypoint /usr/bin/timeout `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `

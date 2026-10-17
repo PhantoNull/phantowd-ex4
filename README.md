@@ -66,6 +66,8 @@ They cannot open existing state, recover or activate product services.
 The successive-operation prototype also tests normal, full and read-only writes
 on a sealed synthetic ext4 disk, followed by read-only observation in a new
 process. This is not writable restart admission, system reboot or power loss.
+An additional opt-in synthetic ext4 campaign covers the history writer's own21
+syscall-boundary process losses without replacing the existing tmpfs tests.
 Dedicated process-loss and syscall-boundary tests for both prototypes inspect
 preserved evidence and pending metadata without recovery or retry; they do not
 qualify power loss or an EX4 state medium.

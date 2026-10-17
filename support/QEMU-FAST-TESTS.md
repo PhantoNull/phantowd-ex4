@@ -323,6 +323,43 @@ review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate
 
 ### Current media-lane addition: operation process loss
 
+The existing no-argument wrapper selects the full `baseline` profile. A separate
+opt-in ext4 history matrix uses the same bounded snapshot-only preparation:
+
+```powershell
+.\support\tests\test-revisionstore-media-wrapper.ps1
+.\support\test-revisionstore-media.ps1 -Profile history-ext4
+.\support\test-revisionstore-media.ps1
+```
+
+The first command is a mocked command-boundary check; it never starts Docker or
+QEMU. The second requires28 exact ordered rows: the unlinked-read-pin remount
+control, four media cases plus parent and21 ext4 history SIGKILLs plus parent.
+The last independently requires all148 existing baseline rows. Neither substitutes
+for the other, and neither is a new default CI stage. Each profile keeps45s Go/
+60s guest/180s outer,4CPU/2GiB/256PIDs/1GiB temporary host scratch and256MiB guest.
+The wrapper now refuses unknown profiles, missing data-drive evidence or less
+than8GiB free before Docker; `-DockerDataVhdxPath` selects the actual data-drive
+witness where the Windows default differs. Persistent inputs remain read-only,
+containers auto-remove and cgroup swap is disabled; no new image/volume is made.
+
+The corrected new profile passes on actual ARM:28 rows, one PASS,21-loss group
+14.60s, four-case group3.30s and negative control0.05s. The baseline148 rows/two
+PASS rows also pass on the same frozen source. New parser controls require2valid/
+89refused traces, while default2+341 remain. All SIGKILL cases observe through
+the actual history reader after RO remount, preserve original first-record bytes/
+full statx/atime and require review even for matching receipt. No product writer
+is reopened. First post-policy-rename failures are preserved in evidence: the
+temporary old policy capture became an open unlinked inode. The dedicated control
+requires actual EBUSY for an unlinked O_RDONLY pin and successful remount only
+after its verified close. The fixture releases only that already-checked mutable
+capture before second effects; original confirmed-record and directory/lock pins
+are unchanged. No remount retry/force or weaker identity checks are used.
+
+These are same-kernel process losses/clean remounts, not OS reboot, power loss,
+writable restart admission or physical-medium durability. The earlier baseline
+load sensitivity and full/audit/hosted/release gates are not declared repaired.
+
 The existing media guest now also runs56 actual policy-operation SIGKILL
 boundaries in a second test binary, after the original ext4 tests:7 method gates
 and21 intent/policy/receipt syscall-success gates, plus the same28 gates with

@@ -952,7 +952,17 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   all new cases but timed out in an older loss case; worst-case timing remains
   open. Serialize heavy native qualification before timed guests; do not mask
   this conflict by dropping proof, widening budgets or claiming hosted repair.
-  **c.2d.2 outstanding:** history losses on the supported persistent filesystem,
+  **c.2d.2 synthetic ext4 losses now fixture-qualified:** explicit optional
+  `history-ext4` profile covers all21 syscall-boundary SIGKILLs, original first
+  record/locks/full statx/atime and actual runtime reader after RO remount. Pending
+  has no diagnosis; matching confirmation never erases known-loss review. Its28
+  receipts/2positive89negative controls and unchanged default148 receipts/2+341
+  pass separately on the same frozen source at existing45s/60s/180s limits. No
+  default guest or replacement of tmpfs proof. An actual EBUSY control explains
+  initial post-policy-rename remount failures: release only the checked temporary
+  mutable-policy capture before second effects; confirmed-history and directory/
+  lock pins remain retained. Do not force/retry remount or relax identity checks.
+  **c.2d.2 outstanding:** selected product state-medium qualification,
   writable process/system restart, real constructor/temporary-close/watch/EIO
   faults, worst-case16-record/4MiB resources, and product checkpoint provenance/
   retention/review/reconciliation. The EX4 state medium remains unselected.
@@ -986,6 +996,29 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
     worst-case16-record/4MiB memory and time, persistent checkpoint provenance,
     bounded retention/review and explicit reconciliation. Product capacities and
     compaction require a designed protocol, not silent deletion at record16.
+  **c.2d.3 next restart prerequisite, not product recovery:** build an explicit
+  disposable two-boot ext4 observation fixture before designing writable adoption.
+  - Keep the manifest-verified base and seed disk read-only; put the one writable
+    virtual overlay, caches and all receipts in bounded private host tmpfs. No
+    physical device passthrough, host ports/NIC, product init or persistent volume.
+  - Boot1 creates only a fresh generated namespace, publishes two nonempty
+    three-protocol revisions, verifies close and normally unmounts. Emit a bounded
+    PID/challenge/root-bound proof; require normal guest exit before boot2.
+  - Bind boot2 to the same actual virtual overlay and exact first-boot namespace;
+    its known synthetic checkpoint is an independent test input, not inferred
+    from the records or advertised as product checkpoint provenance. Observe with
+    the real history reader after a verified read-only mount; never open a writer.
+  - Independently compare complete original file bytes and captured stable
+    filesystem metadata across boots. Do not compare kernel mount IDs or process
+    descriptors across kernel lifetimes as though they were stable identities.
+  - Require both complete boot receipts, original seed/base hashes unchanged,
+    normal unmounts and complete temporary teardown. Fail closed on absent,
+    duplicate, foreign, stale, out-of-order or partial boot evidence; never compose
+    partial successes. Specify and measure bounded per-boot/whole-run resources
+    before enrollment; never silently expand an existing lane or default CI.
+  - A clean two-boot pass proves only that synthetic observation scenario. Abrupt
+    power/cache loss, real EIO, writable admission/reconciliation, trusted product
+    checkpoint, durable review and physical EX4 recovery remain independent gates.
   A separate [strict anchored Store prerequisite](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
   now retains the actual child lock under a borrowed parent, does not sync on
   open, returns exact bounded readback and fences pending/unknown entries plus

@@ -187,6 +187,45 @@ Native tagged units/vet/race3 and Windows checks pass their separate scopes;
 ordinary native positive ext4/root admission is explicitly skipped or refused.
 The standard ARM smoke also passes with its original two writer receipts.
 
+### Own history process losses on synthetic ext4
+
+Run `support/test-revisionstore-media.ps1 -Profile history-ext4` explicitly.
+This separate optional profile has28 exact ordered receipts: one unlinked-read-pin
+remount control, the four existing ext4 cases plus parent, and the21 history-loss
+cases plus parent. It does not replace the default148-receipt campaign, alter its
+mandatory catalogue, increase its45s/60s/180s limits or add a default CI guest.
+Its subprocess helpers exist only in the Go test executable, never the API.
+
+The same first-success/second-boundary PID/root/challenge gates now construct
+fresh state on the closed synthetic ext4 medium. Every real SIGKILL verifies
+original first-record bytes/full captured statx including atime, live original
+flocks, planned death/reaping and exact second-operation phase. The actual runtime
+history reader observes after a verified read-only remount. Pending still has no
+diagnosis; the independent known-loss context requires review even for matching
+confirmation. Reacquired observation locks never authorize writer/retry/recovery.
+Original record/directory references bracket observation, then mount restoration,
+verified closure and known-name FD-balanced disposal remain mandatory.
+
+The first extended profile failed after policy rename: the parent's temporary
+capture of the old mutable policy became an open unlinked inode, preventing RO
+remount. A dedicated real-kernel negative control verifies EBUSY with an unlinked
+O_RDONLY pin and successful remount only after that pin's verified close. The
+fixture now releases only its already-checked **mutable policy capture before
+authorizing second effects**. It retains every original confirmed-history pin,
+directory/lock and current-phase witness; it never weakens the remount check,
+forces an unmount, retries a failed mount or releases reviewed product authority.
+The original tmpfs profile retains its previous capture behavior.
+
+The corrected actual ARM profile passes all28 receipts (21-loss group14.60s,
+four-case media group3.30s, negative control0.05s) and2positive/89negative parser
+controls. The unchanged default148-receipt campaign also passes on the same frozen
+source. Both normal unmounts and unchanged base hashes are checked. Native tagged
+units/vet/race3, Windows and mocked wrapper controls pass their separate scopes;
+ordinary native positive media paths skip, not physical or ARM race qualification.
+No production Go source, HTTP, service startup, physical medium, OS reboot,
+power-cut, complete constructor/watch/close/EIO or writable restart is qualified.
+Prior default-lane load sensitivity and full/audit/hosted/release gates stay open.
+
 ## One-operation namespace and ownership
 
 ```text

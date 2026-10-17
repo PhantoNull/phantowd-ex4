@@ -44,7 +44,16 @@ func TestHistoryOperationCrashChild(t *testing.T) {
 		return
 	}
 	stage, nonce := os.Getenv(crashStage), os.Getenv(crashChallenge)
-	if os.Getenv(historyChildMode) != "1" || !validChallenge(nonce) {
+	medium := disposableTmpfs
+	switch os.Getenv(historyChildMode) {
+	case "1":
+	case "ext4":
+		medium = disposableFixedExt4
+		requireObserverMedia(t, false)
+	default:
+		t.Fatal("invalid history child medium")
+	}
+	if !validChallenge(nonce) {
 		t.Fatal("invalid history child")
 	}
 	role, point, ok := strings.Cut(stage, "/")
@@ -67,7 +76,7 @@ func TestHistoryOperationCrashChild(t *testing.T) {
 		_, _ = io.ReadFull(os.Stdin, b[:])
 		t.Fatal("history crash gate resumed")
 	}
-	w, err = newDisposableHistoryWithCrash(context.Background(), testInstallation, c, &disposableCrash{role, point, gate})
+	w, err = newDisposableOnMedium(context.Background(), testInstallation, c, nil, true, &disposableCrash{role, point, gate}, medium)
 	if err != nil {
 		t.Fatal("history writer construction")
 	}
@@ -155,15 +164,28 @@ func (r *crashRefs) observeHistoryLoss(checkpoint []byte) (lossDiagnosis, error)
 // original-child death, and never treated as uninterrupted writer authority.
 func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context.Context, string, []byte, bool, policyevidence.Kind) error) {
 	t.Helper()
+	runRuntimeHistoryLossFixture(t, stage, probe, disposableTmpfs)
+}
+
+// Separate opt-in parent; it never replaces the existing tmpfs loss matrix.
+func RunRuntimeHistoryExt4LossFixture(t *testing.T, stage string, probe func(context.Context, string, []byte, bool, policyevidence.Kind) error) {
+	t.Helper()
+	requireObserverMedia(t, false)
+	runRuntimeHistoryLossFixture(t, stage, probe, disposableFixedExt4)
+}
+
+func runRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context.Context, string, []byte, bool, policyevidence.Kind) error, medium disposableMedium) {
+	t.Helper()
+	parent, filesystem, mediumErr := medium.location()
 	valid := false
 	for _, s := range RuntimeHistoryLossStages() {
 		valid = valid || s == stage
 	}
-	if !valid || probe == nil {
+	if !valid || probe == nil || mediumErr != nil {
 		t.Fatal("invalid history loss profile")
 	}
 	var x unix.Statx_t
-	if unix.Statx(unix.AT_FDCWD, "/tmp", unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &x) != nil || x.Mask&unix.STATX_MNT_ID_UNIQUE == 0 {
+	if unix.Statx(unix.AT_FDCWD, parent, unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &x) != nil || x.Mask&unix.STATX_MNT_ID_UNIQUE == 0 {
 		t.Skip("unique mount IDs unavailable; no history process-loss qualification")
 	}
 	r, w, err := os.Pipe()
@@ -187,6 +209,9 @@ func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context
 	}
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestHistoryOperationCrashChild$", "-test.timeout=9s")
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "GOTRACEBACK=none", historyChildMode + "=1", crashStage + "=" + stage, crashChallenge + "=" + challenge}
+	if medium == disposableFixedExt4 {
+		cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "GOTRACEBACK=none", "TMPDIR=" + historyExt4Root, historyChildMode + "=ext4", crashStage + "=" + stage, crashChallenge + "=" + challenge}
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	stderr := &boundedCrashErrors{}
 	cmd.Stderr = stderr
@@ -245,14 +270,14 @@ func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context
 		if err != nil {
 			t.Fatal("history gate unavailable")
 		}
-		g, err := decodeCrashGate(line, expected, challenge, cmd.Process.Pid)
+		g, err := decodeHistoryLossGate(line, expected, challenge, cmd.Process.Pid, medium)
 		if err != nil {
 			t.Fatal("history gate identity/challenge/stage")
 		}
 		return g
 	}
 	g := readGate("after-receipt")
-	first, err = captureRefsProfile(g.Root, unix.TMPFS_MAGIC, true)
+	first, err = captureRefsProfile(g.Root, filesystem, true)
 	if err != nil {
 		t.Fatal("history first capture")
 	}
@@ -280,6 +305,19 @@ func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context
 	if err != nil || d.Kind() != policyevidence.LocalConfirmationObserved {
 		t.Fatal("history first operation coherence")
 	}
+	if medium == disposableFixedExt4 {
+		// This is the known mutable policy slot, NOT the confirmed first history
+		// record or any directory/lock. Its exact revision2 bytes were verified
+		// above. Keeping an obsolete unlinked policy read pin after revision3's
+		// rename makes Linux refuse RO remount (even though the pin is O_RDONLY).
+		// Release only this temporary capture BEFORE authorizing second effects;
+		// all original confirmed-record and directory references remain held.
+		policyPin := first.files[0].f
+		first.files[0].f = nil // Never retry Close on this capture after uncertainty.
+		if policyPin == nil || policyPin.Close() != nil {
+			t.Fatal("history mutable-policy capture close")
+		}
+	}
 	if n, err := in.Write([]byte{'N'}); n != 1 || err != nil {
 		t.Fatal("history first gate acknowledgement")
 	}
@@ -287,7 +325,7 @@ func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context
 	if g2.Root != g.Root {
 		t.Fatal("history target root switched")
 	}
-	latest, err = captureRefsProfile(g.Root, unix.TMPFS_MAGIC, true)
+	latest, err = captureRefsProfile(g.Root, filesystem, true)
 	if err != nil || !firstHistoryStillOriginal(first, latest, before) {
 		t.Fatal("history first original lost before kill")
 	}
@@ -362,6 +400,19 @@ func RunRuntimeHistoryLossFixture(t *testing.T, stage string, probe func(context
 	}
 	if latest.verify() != nil || !firstHistoryStillOriginal(first, latest, before) {
 		t.Fatal("history original evidence changed after loss")
+	}
+	if medium == disposableFixedExt4 {
+		// Clean same-kernel remount after verified process death, NOT power loss
+		// or reboot. Actual runtime observation must work without write access.
+		if err := unix.Mount("", historyExt4Root, "", unix.MS_REMOUNT|unix.MS_RDONLY|observerMediaRestrictions, ""); err != nil {
+			t.Fatal("history loss read-only remount", err)
+		}
+		defer func() {
+			if unix.Mount("", historyExt4Root, "", unix.MS_REMOUNT|observerMediaRestrictions, "") != nil {
+				t.Error("history loss media restoration")
+			}
+		}()
+		requireObserverMedia(t, true)
 	}
 	if err := probe(ctx, g.Root, bytes.Clone(checkpoint), pending, wantKind); err != nil {
 		t.Fatal("history actual runtime observer", err)
