@@ -102,6 +102,21 @@ func ownerFixture() error {
 	if pid <= 1 {
 		return errors.New("missing owned child")
 	}
+	// Value copies must never acquire independent lifecycle/review flags over
+	// the original shared process set and code references.
+	copied := *owner
+	if _, err := copied.Start(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("copied Owner gained start authority")
+	}
+	if _, err := copied.Observe(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("copied Owner gained observation authority")
+	}
+	if _, err := copied.Supervise(context.Background(), time.Second); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("copied Owner gained supervision authority")
+	}
+	if err := copied.Close(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("copied Owner gained teardown authority")
+	}
 	started.Processes.Members[0].Process.PID = 1
 	if _, err := owner.Start(context.Background()); !errors.Is(err, processowner.ErrAlreadyRunning) {
 		return errors.New("duplicate start changed lifecycle authority")
@@ -123,7 +138,7 @@ func ownerFixture() error {
 	if _, err := owner.Start(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
 		return errors.New("closed Owner restarted")
 	}
-	fmt.Println("PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true stop_reaped=true scope=qemu-only")
+	fmt.Println("PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true copied_lifecycle_refused=true stop_reaped=true scope=qemu-only")
 	if err := ownerSupervisionFixtures(plan); err != nil {
 		return err
 	}
@@ -133,7 +148,7 @@ func ownerFixture() error {
 	if err := ownerReviewFixtures(plan, data); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_CODE_OWNER_REVIEW_READY same_bytes_replacement=true before_child=true live_root_drift=true group_reaped=true restoration_not_retried=true scope=qemu-only")
+	fmt.Println("PHANTOWD_CODE_OWNER_REVIEW_READY same_bytes_replacement=true before_child=true live_root_drift=true group_reaped=true restoration_not_retried=true copied_review_refused=true scope=qemu-only")
 	fmt.Println("PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY forced=true pins_retained=true explicit_reap=true released_after_verification=true review_not_cleared=true scope=qemu-only")
 	return nil
 }
@@ -164,6 +179,7 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 		return err
 	}
 	defer before.Close(context.Background())
+	preReviewCopy := *before
 	const original = ownerFixtureBase + "/source/bin/fixture"
 	const prior = ownerFixtureBase + "/prior-fixture"
 	if err := os.Rename(original, prior); err != nil {
@@ -192,6 +208,9 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 	}
 	if err := os.Rename(prior, original); err != nil {
 		return err
+	}
+	if _, err := preReviewCopy.Start(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("pre-review copy bypassed original quarantine")
 	}
 	if _, err := before.Start(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("restored executable cleared review")

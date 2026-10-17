@@ -37,6 +37,7 @@ func (p *Plan) newSambaCodeLifetimeQEMU(ctx context.Context, root *os.File) (own
 		return nil, err
 	}
 	o := &Owner{gate: make(chan struct{}, 1)}
+	o.self = o
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, o.release())

@@ -94,6 +94,7 @@ func TestOwnerCloseRetainsReviewAfterInputCloseFailure(t *testing.T) {
 			fault := releaseFaultFile(t, true)
 			code := &retainedCode{root: root, files: map[string]*os.File{"fault": fault}}
 			owner := &Owner{gate: make(chan struct{}, 1), processes: processes}
+			owner.self = owner // Controlled release bookkeeping, not bundle admission.
 			switch role {
 			case "code":
 				owner.retainedCode = code

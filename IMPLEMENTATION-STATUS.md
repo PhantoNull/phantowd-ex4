@@ -4463,6 +4463,41 @@ fixed them. Do not substitute the older 926-source audit for this new proof. The
 separate native-wrapper cleanup draft remains excluded; no product service,
 new privilege, physical-device or migration qualification is added.
 
+## Runtime Owner value-copy lifecycle fence — host/ARMv5
+
+The Linux runtime Owner now binds its constructor-created pointer identity.
+Value copies/uninitialized lifetimes refuse Start/Observe/valid-interval Supervise
+and Close before the original gate, process set or retained inputs are touched.
+Pointer aliases remain the same valid lifetime. Both ordinary static/non-root and
+separate guarded Samba constructors initialize identity, without broadening their
+code, credential, namespace or process profiles.
+
+A native RED reproduced actual reference closure through a value copy; the
+original still reported open lifecycle flags while its shared process set was
+closed. A real-constructor ARM diagnostic independently reached a ready Owner:
+copied Start entered its process set and returned already-running, not unavailable.
+The corrected native tests cover original alias closure, pre-review copies, busy
+gates and canceled/nil contexts. The actual static Owner guest now requires
+`copied_lifecycle_refused=true` and `copied_review_refused=true`, preserving healthy
+original PID, verified stop/reap, drift, exclusive supervision and forced review.
+
+Pinned tagged units/vet/three-package race3, Windows preflight/ARM cross-compile,
+58 host runner controls and actual static ARM guest pass on the frozen source.
+A separate actual Samba service campaign and independent replay of its complete
+decoded guest log also pass, confirming the guarded constructor's normal code/
+configuration/state/identity lifecycle. This is not direct injected-close-fault
+or all-Samba-campaign qualification. Static guest120s and all worker/service
+budgets, existing proof catalogues and default CI enrollment remain unchanged.
+Temporary diagnostic logging was removed. One initial custom-harness snapshot
+setup failed before boot; a private TMPDIR correction enabled the actual RED,
+not retroactive qualification of that failed setup.
+
+No product service/listener, privilege, restart, recovery or device authority was
+added. Constructor rollback still discards cleanup errors/partial lifetimes in
+several paths: explicit ownership/error propagation and real fault coverage remain
+open. Other authority types' copy semantics are not certified by this fix. The
+full1800s integration/audit/hosted/release and physical EX4 gates remain open.
+
 ## Retained descriptor release uncertainty — local full qualification
 
 Linux retained code/configuration/state and pinned-process cleanup now preserve

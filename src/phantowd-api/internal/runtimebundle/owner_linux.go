@@ -21,6 +21,7 @@ import (
 // set. It grants no isolation, mount/storage authority or new privilege profile.
 // The initial execution adapter accepts only static ELF/non-root children.
 type Owner struct {
+	self *Owner // Constructor-bound identity; value copies must never gain authority.
 	*retainedCode
 	// Fixed only by the separate disposable Samba constructor. NewOwner's
 	// static/non-root contract and its inputs remain unchanged.
@@ -48,6 +49,7 @@ func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner
 		return nil, err
 	}
 	o := &Owner{gate: make(chan struct{}, 1)}
+	o.self = o
 	keep := false
 	defer func() {
 		if !keep {
@@ -123,7 +125,7 @@ func staticExecutable(pin *os.File) error {
 }
 
 func (o *Owner) enter(ctx context.Context) error {
-	if o == nil || o.gate == nil || ctx == nil {
+	if o == nil || o.self != o || o.gate == nil || ctx == nil {
 		return ErrUnavailable
 	}
 	if err := ctx.Err(); err != nil {
@@ -262,7 +264,7 @@ func (o *Owner) observation() OwnerSnapshot {
 // is canceled. Unconfirmed process ownership blocks ALL retained-input release.
 // A later explicit Close can verify cleanup but never retry signals or restart.
 func (o *Owner) Close(ctx context.Context) error {
-	if o == nil || o.gate == nil || ctx == nil {
+	if o == nil || o.self != o || o.gate == nil || ctx == nil {
 		return ErrUnavailable
 	}
 	select {

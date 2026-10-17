@@ -683,6 +683,27 @@ clear review or restart. A duplicate Start reports already-running without
 stopping healthy processes. Snapshot member slices are independent and JSON
 serialization is refused.
 
+An Owner is a constructor-bound **pointer lifetime**, not a copyable value.
+Value copies and uninitialized handles refuse `Start`, `Observe`, valid-interval
+`Supervise` and `Close` with `ErrUnavailable` before acquiring the original gate
+or touching processes/references. Pointer aliases to the same original remain
+valid. The ordinary constructor and separate guarded Samba constructor both bind
+this identity; executable/credential/namespace/storage profiles are unchanged.
+This fixes a reproduced defect where a value copy could close the original's
+retained references while retaining separate lifecycle/review flags. A copy taken
+before review cannot later enter lifecycle operations after source restoration.
+
+Native real-file/process-set bookkeeping tests cover copied teardown, original
+alias closure, pre-review copies, busy gates and canceled/nil contexts; they do
+not qualify a runtime bundle or launch a child. The actual ARM static Owner
+fixture separately exercises the real constructor, healthy original process,
+all copied lifecycle refusals and copied-review refusal, preserving previous
+stop/drift/supervision proofs. Tagged units/vet/race3, Windows, the58 host runner
+controls and a separate actual Samba service campaign pass. No extra guest,
+timeout increase, launcher privilege, HTTP or product service activation follows.
+Constructor rollback/close-uncertainty ownership remains a separate open gap;
+this identity fence does not solve it or certify every adjacent authority type.
+
 `Close(ctx)` explicitly stops and waits for all owned groups before releasing
 any code/root pin, even if that accepted teardown context is canceled. Unknown
 process ownership blocks all pin release. A later explicit close may verify

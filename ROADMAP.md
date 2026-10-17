@@ -2206,6 +2206,39 @@ storage. No production roster provider or activation path exists.
   stop, kernel group absence, pin retention and blocked restart. This is not
   production source-loss wiring or a dynamic Samba/NFS supervisor. Kernel stalls
   are not proven interruptible and physical polling budgets remain unqualified.
+  **Original-instance lifecycle fence now host/ARM-qualified:** both static and
+  guarded Samba Owner constructors bind pointer identity. A native real-reference
+  RED reproduced copied Close releasing original pins; real-constructor ARM RED
+  admitted copied Start to the shared process set. Copies now refuse every
+  lifecycle operation before gate/process/reference effects, even copies predating
+  original review; pointer aliases remain valid. Existing static guest requires
+  both copy-refusal flags and preserves all earlier proofs, without another guest
+  or timer increase. Tagged unit/vet/race3, Windows,58 runner controls and separate
+  Samba service normal-path/replay pass; no product activation or complete-image
+  qualification. Adjacent handle types need their own copy/ownership audit.
+  **Remaining constructor rollback ownership packet:**
+  - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
+    retention, pending-input composition and pinned-process construction. Record
+    exactly which original/temporary/independent references exist at each failure;
+    do not infer whole-lifetime safety from release-helper unit tests alone.
+  - Specify the no-child rollback versus retained-review contract before changing
+    return semantics. Preserve original construction and first cleanup causes;
+    never return a healthy handle, silently drop partial ownership, retry uncertain
+    descriptor closes or use garbage collection as the recovery protocol. Any
+    returned partial handle requires explicit caller retention; no unbounded global
+    orphan registry or implicit service restart.
+  - Update every affected caller, including configuration/Samba wrappers and QEMU
+    commands, to honor that contract. Partial preparation must not be revalidated
+    into execution authority. Normal refusals and verified cleanup remain bounded
+    and descriptor-balanced; caller-owned references are never consumed.
+  - Add deterministic real-file fault controls at actual constructor rollback
+    boundaries, then guarded RAM-only ARM tests with original-reference/cause
+    checks. Retain unattempted originals where the contract requires review, verify
+    reachability across collection, and prove no launch/retry or substituted-object
+    close. Already-closed-file fixtures are not actual kernel EIO qualification.
+  - Keep all existing healthy static/Samba proofs, profiles and worker/guest bounds.
+    Do not open listeners, adopt product storage or enable web activation to make
+    constructor tests pass; durable recovery and product composition stay separate.
   A measurement around the existing Samba code scan produces redacted file/byte/
   monotonic-time evidence, without adding work. Treat QEMU time as emulation
   evidence only, never an EX4 throughput or resource-saving claim.

@@ -33,7 +33,9 @@ func nativeReleaseFixture(t *testing.T) *NativeSambaRuntimeQEMU {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = processes.Close() })
-	return &NativeSambaRuntimeQEMU{owner: &Owner{gate: make(chan struct{}, 1), processes: processes}, gate: make(chan struct{}, 1)}
+	owner := &Owner{gate: make(chan struct{}, 1), processes: processes}
+	owner.self = owner // Controlled release bookkeeping, not bundle admission.
+	return &NativeSambaRuntimeQEMU{owner: owner, gate: make(chan struct{}, 1)}
 }
 
 func TestNativeRuntimeClosePreservesTerminalReleaseFailure(t *testing.T) {

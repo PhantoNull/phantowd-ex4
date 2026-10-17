@@ -1418,6 +1418,17 @@ library is neither sufficient acceptance nor sufficient rejection.
 
 ## Retained static-code Owner
 
+The current static Owner guest additionally requires
+`copied_lifecycle_refused=true` and `copied_review_refused=true`. It creates a real
+Owner, rejects copies of its value across Start/Observe/Supervise/Close, then
+checks that the original PID/lifecycle and references remain authoritative. A
+copy made before real source drift is also refused after restoration; original
+review remains sticky. Ordinary pointer aliases are still valid. No extra guest,
+process profile, timeout or weaker original proof is introduced. The native
+bookkeeping controls do not themselves qualify code admission or child execution;
+the guarded ARM constructor supplies that separate evidence. The constructor
+rollback/close-uncertainty gap and other handle types remain unqualified.
+
 `support/test-runtime-owner.ps1` uses the existing pinned image/workspace and
 hash-verified QEMU base, with read-only mounts and no network/host-device
 attachment. It never builds/pulls an image or creates a volume. Its rootfs copy,
