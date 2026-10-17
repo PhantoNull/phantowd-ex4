@@ -1,5 +1,47 @@
 # Fast API and file-service integration checks
 
+## Optional Samba status-source refusal probe
+
+With the existing compatible base and pinned workspace available, run:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign native -StatusSourceDiagnostic
+```
+
+This explicit opt-in uses one disposable ARMv5 guest, not another default CI
+campaign. It creates a new directory at the still-missing session TDB path in
+fresh guest tmpfs before starting a daemon or enrolling accounts. No existing
+file is overwritten, restored or retried. Samba 4.22.11 can report exit zero and
+parseable empty sessions after this source-open failure. The STATUS worker must
+now refuse any stderr beyond the exact fixed helper handoff, retain the original
+typed review failure and refuse another invocation without launching a worker.
+
+The fault probe uses the dedicated fixed session-only worker (`smbstatus -j -p`),
+not the separate complete-status worker needed by tree/open-file evidence.
+Both enforce exact handoff-only stderr. Avoiding unrelated database traversal
+does not prove that the selected session traversal itself is complete.
+The fixed bootstrap initializes only loopback in a verified fresh network
+namespace and checks it again before the existing capability drop. The kernel's
+optional `sit0` fallback must be the fixed SIT type, down and without IPv4;
+all other/active/addressed links refuse. This corrects the observed benign
+no-interface warning without accepting it or adding child network capability.
+The explicit source probe also emits a guarded private-network preflight's
+fixed counts/error codes; those diagnostic rows are not qualification receipts.
+
+The dedicated receipt additionally requires verified retirement with review,
+equal actual FD counts and unchanged base inputs. It explicitly states
+`producer_complete=false`; a zero guest exit or diagnostic row is insufficient.
+Its log cannot qualify ordinary native, and ordinary-native logs cannot qualify
+this fault probe. The source probe has a separate 90-second host guest cap;
+preparation20, individual worker4 and ordinary-native phase/guest limits remain
+unchanged. The normal native campaign must still be tested independently.
+
+This is not a complete producer repair. Cached source analysis also finds
+discarded traversal status and callback-stop behavior: JSON parsing and outer
+NTSTATUS alone cannot prove complete traversal. Silent/partial/malformed-record,
+callback and serialization failures remain separate acceptance gates. No Samba
+binary, product startup, persistent NAS data or physical device is modified.
+
 ## Interrupted cached-run diagnostics
 
 The cached full wrapper declares its existing whole-process-group timeout to

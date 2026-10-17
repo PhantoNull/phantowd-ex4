@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-16**. This is the product specification and work breakdown,
+Reviewed: **2026-10-17**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -11,11 +11,11 @@ The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
 
-Current M0 gate: the complete corrected `0beb01e` qualifier passes seven Samba
-campaigns, then `held` fails its data/runtime `escape` execution deadline. One
-unchanged focused held guest passes, not a reliable reproduction or repair.
-The preceding SMART staging exhaustion is corrected with real-allocation and
-focused ARM evidence; the new full run does not reach SMART or the audit.
+Current M0 gate: the complete `dedafa6` qualifier passes eight Samba campaigns,
+then reaches its unchanged 1,800-second outer limit. File/file-source, the union,
+later SMART lanes and the audit remain unqualified. This supersedes the earlier
+`0beb01e` seven-campaign/held failure without repairing its intermittent cause.
+Focused passing components cannot qualify that failed complete run.
 Require causal diagnosis/calibrated fixture decisions, complete qualification
 and audit; never replace failed results with selected passes or relax proofs.
 See [implementation status](IMPLEMENTATION-STATUS.md) and the
@@ -1763,6 +1763,28 @@ must map to exactly one object in complete sysfs inventory; an unmapped nonzero
 device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
+
+**Session-observation producer gate:** real disposable ARMv5 evidence shows
+Samba 4.22.11 can return exit zero and decodable empty sessions after a source
+database open failure. The QEMU STATUS boundary now refuses unexpected stderr
+without diagnostic-text matching; this does not qualify producer completeness.
+Before product absence/revocation admission, reproduce init/open, traversal,
+partial/malformed-record, callback and JSON failures and establish a strict
+all-or-error producer result. Checking only outer traversal NTSTATUS is not
+sufficient: a record callback can stop traversal while the backend returns a
+nonnegative count. Preserve original complete-inventory, identity, process,
+closure, descriptor and fixed-budget proofs. See the
+[optional refusal probe](support/QEMU-FAST-TESTS.md#optional-samba-status-source-refusal-probe).
+
+Session-only revocation/continuity now selects `-j -p`; the native helper has a
+separate fixed verb, while tree/open-file consumers retain full status. This
+does not repair discarded session traversal status. The next producer slice
+must first reproduce malformed-record/callback-stop and serializer failure on
+synthetic state, then make those failures explicit and all-or-error. Do not
+treat normal empty JSON, source-path existence, a clean stderr or successful
+outer traversal status as a completion certificate. Qualify both healthy and
+faulted actual ARM producer paths before product absence authority; retain
+source-scoped native/race, bounded guest, closure/FD and old-negative replays.
 
 Runtime prerequisite evidence now includes a disposable actual libatomic
 ARM926 dispatch fixture: versioned exported calls, four widths, sequential

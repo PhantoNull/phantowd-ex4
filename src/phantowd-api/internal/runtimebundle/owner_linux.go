@@ -264,20 +264,28 @@ func (o *Owner) observation() OwnerSnapshot {
 // is canceled. Unconfirmed process ownership blocks ALL retained-input release.
 // A later explicit Close can verify cleanup but never retry signals or restart.
 func (o *Owner) Close(ctx context.Context) error {
+	_, err := o.closeVerified(ctx)
+	return err
+}
+
+// Private same-lock outcome for containing owners. Review remains an error;
+// only confirmed process-set closure AND complete input release return true.
+// This is not execution authority or a caller-supplied retirement assertion.
+func (o *Owner) closeVerified(ctx context.Context) (bool, error) {
 	if o == nil || o.self != o || o.gate == nil || ctx == nil {
-		return ErrUnavailable
+		return false, ErrUnavailable
 	}
 	select {
 	case o.gate <- struct{}{}:
 	default:
-		return processowner.ErrBusy
+		return false, processowner.ErrBusy
 	}
 	defer func() { <-o.gate }()
 	if o.releaseErr != nil {
-		return errors.Join(ErrReviewRequired, o.releaseErr)
+		return false, errors.Join(ErrReviewRequired, o.releaseErr)
 	}
 	if o.closed {
-		return nil
+		return true, nil
 	}
 	processes, stopErr := o.processes.Stop(context.Background())
 	o.snapshot.Processes = processes
@@ -287,7 +295,7 @@ func (o *Owner) Close(ctx context.Context) error {
 	if err := o.processes.Close(); err != nil {
 		o.review = true
 		o.snapshot.State = processowner.StateReviewRequired
-		return errors.Join(ErrReviewRequired, stopErr, err)
+		return false, errors.Join(ErrReviewRequired, stopErr, err)
 	}
 	o.closed = true
 	releaseErr := o.release()
@@ -296,10 +304,10 @@ func (o *Owner) Close(ctx context.Context) error {
 	}
 	if o.review {
 		o.snapshot.State = processowner.StateReviewRequired
-		return errors.Join(ErrReviewRequired, stopErr, releaseErr)
+		return releaseErr == nil, errors.Join(ErrReviewRequired, stopErr, releaseErr)
 	}
 	o.snapshot.State = processowner.StateStopped
-	return nil
+	return true, nil
 }
 
 func (o *Owner) release() error {

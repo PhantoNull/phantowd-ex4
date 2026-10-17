@@ -72,6 +72,73 @@ direct children reaped. These passing samples cannot explain the older1.929s
 capture. Linux wait accounting can include descendants the original child reaped,
 not unrelated server/host work; wall-minus-CPU is not I/O wait.
 
+### Session database failure: strict STATUS refusal, not producer completeness
+
+An explicit disposable ARMv5 probe reproduces a real Samba 4.22.11 behavior:
+an unusable session database path yields zero exit and decodable empty sessions.
+The unguarded publication path accepts that observation. The native QEMU STATUS
+boundary now clears output and preserves typed review if stderr contains any
+byte beyond the exact fixed credential handoff; no English diagnostic matching
+or whitelist is used. Other commands and original execution limits are unchanged.
+
+The first guarded ARM probe correctly refuses the worker but fails cleanup:
+lifecycle review was mistaken for unconfirmed release, stranding the outer
+helper. A real host regression reproduces this independently. `Owner.Close`
+keeps its public error behavior; a private same-lock result now distinguishes
+confirmed process/input retirement from lifecycle review. The native wrapper
+then closes its remaining inputs only after positive retirement. Actual release
+failure remains terminal, retains unattempted inputs and cannot retry. Review
+is still returned after all resources are released. Three selected native
+packages pass units/vet/race-count3, with 82 Samba and 58 feedback controls.
+
+An initial ordinary-native follow-up also fails at STATUS publication during
+idle Disable, despite successful settlement/post-admission inside the original
+4-second worker cap. Cached source shows that full status can emit normal
+missing-lock-database diagnostics; the exact bytes in that failed run were not
+captured, so this is not an established text-level cause. Session revocation
+and continuity now explicitly select `smbstatus -j -p`, with a distinct fixed
+QEMU `sessions` verb. Independent tree/open-file consumers retain full `status`.
+Both enforce exact diagnostic refusal: no warning whitelist or timing relaxation.
+The ordinary Linux backend also uses the explicit sessions-only arguments; no
+product service is activated. A root-owned, zero-capability/no-new-privileges
+container passes the three complete selected package units/vet/race-count3 and
+focused process-owner controls. Unlike the earlier UID1000 checks, this includes
+root-gated Samba adapter cases. The fixed-arguments regression fails before
+the change and passes after it; all 82/58 driver controls and lint pass.
+
+The first ordinary ARM test of this split still refuses at idle Disable despite
+654 ms remaining in the successful status worker. Thus session-only selection
+does not establish the earlier lock-warning hypothesis or a healthy native pass.
+Failure-only size/SHA-256 diagnostics identify the exact 37-byte
+`WARNING: no network interfaces found` message without retaining its text.
+Those failed candidates remain failed; session-only selection alone was not
+a repair. The fixed native bootstrap now verifies a fresh private network,
+initializes and rechecks only 127.0.0.1/8 loopback, then closes the setup socket
+before the unchanged child capability drop/exec. The kernel-created inactive
+SIT fallback is allowed only with its fixed type, down state and no IPv4 address;
+unknown/active/addressed links refuse. No parent network or child network-admin
+capability is added. Actual negative kernel permutations remain unqualified.
+
+Final focused ordinary-native ARM and its independent complete-log replay pass:
+coherent revocation at 42.924s of the original45s, fresh-login proof3.551s of15s,
+all earlier identity/login/data/closure/FD/base proof retained. The separate
+source-fault guest and replay also pass with correct networking, demonstrating
+that refusal does not depend on the benign interface warning. No warning
+whitelist or timeout increase is introduced. This is not a performance gain,
+causal repair of older slow captures or complete-image/hosted qualification.
+Final Go inputs byte-match the selected native-tested source; only C launcher,
+init and Python controls differ, with83Linux controls/lint/static ARM Werror
+and those final ARM guests. No raw final-source native/full claim is made.
+
+The optional source-refusal profile is not ordinary-native qualification or a
+new default CI stage. Its receipt requires original refusal, sticky review,
+verified cleanup, FD equality and unchanged base, explicitly retaining
+`producer_complete=false`. Cached source analysis finds that checking only
+outer traversal NTSTATUS cannot establish completeness: callback stop may
+return a successful count. Silent partial/invalid-record, callback and JSON
+failure handling remain unqualified. No product activation or physical NAS
+operation follows; see the [probe contract](support/QEMU-FAST-TESTS.md#optional-samba-status-source-refusal-probe).
+
 ### Interrupted-test log retention: host-only correction
 
 The cached wrapper now declares its existing bounded group timeout; that caller's

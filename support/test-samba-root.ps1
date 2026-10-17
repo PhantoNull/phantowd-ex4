@@ -5,9 +5,13 @@ param(
     [string]$BaseArtifactDir,
     [ValidateSet('all', 'service', 'native', 'native-data', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending', 'pending-peer-exit', 'pending-handle')]
     [string]$Campaign = 'all',
-    [switch]$DiagnosticLogs
+    [switch]$DiagnosticLogs,
+    [switch]$StatusSourceDiagnostic
 )
 $ErrorActionPreference = 'Stop'
+if ($StatusSourceDiagnostic -and $Campaign -ne 'native') {
+    throw 'Status-source diagnostic requires the explicit native campaign.'
+}
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
@@ -45,7 +49,7 @@ exec sh /src/support/tests/test-qemu-samba-root.sh /base "$output/target" \
     "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" /src '' '__PHANTOWD_CAMPAIGN__'__PHANTOWD_DIAGNOSTIC__
 '@
 $linuxScript = $linuxScript.Replace('__PHANTOWD_CAMPAIGN__', $Campaign)
-$diagnosticArgument = if ($DiagnosticLogs) { " 'diagnostic'" } else { '' }
+$diagnosticArgument = if ($StatusSourceDiagnostic) { " 'status-source'" } elseif ($DiagnosticLogs) { " 'diagnostic'" } else { '' }
 $linuxScript = $linuxScript.Replace('__PHANTOWD_DIAGNOSTIC__', $diagnosticArgument)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 $scratchLimit = if ($Campaign -in @('pending', 'pending-peer-exit', 'pending-handle')) { '1536m' } else { '512m' }

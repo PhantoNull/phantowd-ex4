@@ -51,6 +51,10 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		unix.Statfs("/etc", &fs) != nil || fs.Type != unix.TMPFS_MAGIC {
 		return errors.New("native credential fixture guard")
 	}
+	statusDiagnostic, err := nativeStatusSourceDiagnosticFlagQEMU(commandLine)
+	if err != nil || (statusDiagnostic && campaign != nativeCredentialsCampaignQEMU) {
+		return errors.New("status-source diagnostic campaign refused")
+	}
 	workParent := runtimebundle.WithNativeWorkerTimingQEMU(context.Background())
 	settlementContext := context.Background()
 	settle := func(operation func(context.Context) error) error { return operation(settlementContext) }
@@ -176,8 +180,28 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, settle(runtime.Close)) }()
+	statusDiagnosticRetired := false
+	defer func() {
+		if !statusDiagnosticRetired {
+			result = errors.Join(result, settle(runtime.Close))
+		}
+	}()
 	defer func() { reportNativeWorkerFailureContextQEMU(settlementContext, runtime, result) }()
+	if statusDiagnostic {
+		if err := nativeLivePhaseErrorQEMU(ctx); err != nil {
+			return err
+		}
+		if err := nativeStatusSourceDiagnosticQEMU(workParent, runtime); err != nil {
+			return err
+		}
+		statusDiagnosticRetired = true // Helper already verified Close once; never retry it.
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("status-source diagnostic descriptor leak")
+		}
+		fmt.Println(nativeStatusSourceRefusalMarkerQEMU)
+		return nil
+	}
 	backend, err := smbexec.NewNativeBackendQEMU(ctx, runtime)
 	if err != nil {
 		return fmt.Errorf("native backend admission: %w", err)
@@ -640,6 +664,9 @@ func reportNativeWorkerFailureContextQEMU(ctx context.Context, runtime *runtimeb
 	fault, err := runtime.ObserveNativeWorkerFailureQEMU(ctx)
 	if err == nil && fault.Present {
 		fmt.Fprintf(os.Stderr, "PHANTOWD_QEMU_NATIVE_WORKER_FAILURE phase=%s reason=%s scope=diagnostic-only\n", fault.Phase, fault.Reason)
+		if fault.StatusDiagnostic {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_DIAG_NATIVE_STATUS_STREAM bytes=%d sha256=%x qualifying=false scope=qemu-only\n", fault.StatusDiagnosticBytes, fault.StatusDiagnosticSHA256)
+		}
 	}
 }
 

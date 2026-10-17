@@ -17,7 +17,7 @@ import (
 // Milliseconds are individually rounded down; use the underlying nanoseconds
 // for exact partition accounting. Child CPU is not host or peer/server CPU.
 func nativeCaptureCostQEMU(op processowner.NativeSambaOperationQEMU, cost processowner.NativeCaptureCostQEMU) string {
-	labels := [...]string{"", "check", "list", "create", "password", "enable", "disable", "status", "revoke"}
+	labels := [...]string{"", "check", "list", "create", "password", "enable", "disable", "status", "revoke", "sessions"}
 	if op == 0 || int(op) >= len(labels) || !cost.Present ||
 		(cost.Started && !cost.InputChecked) || (cost.WaitReturned && !cost.Started) || (cost.ChildReaped && !cost.WaitReturned) ||
 		(!cost.InputChecked && (cost.LaunchNS != 0 || cost.WaitNS != 0 || cost.PostNS != 0)) ||

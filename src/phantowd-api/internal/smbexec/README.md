@@ -58,7 +58,9 @@ observation, journal transition, and mutation.
   enabled before recording success. It is never called implicitly by create or
   password assignment.
 - `Disable` first invokes `smbpasswd -d`, then parses the complete pinned
-  Samba `smbstatus -j` session inventory. If the target Unix account still has
+  Samba `smbstatus -j -p` session inventory. This reads sessions without unrelated
+  share/locking database traversal; full open-file observations retain the
+  separate complete-status command. If the target Unix account still has
   sessions, one account-scoped `smbcontrol smbd logoff-user <name>` is sent;
   no PID-only or client-IP-wide termination is used. Success requires two
   consecutive complete inventories with no target sessions, at least 100 ms

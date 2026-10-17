@@ -79,7 +79,7 @@ func TestNativeSessionPairContinuityRequiresCompleteOriginalInventory(t *testing
 	original := strings.NewReplacer("alice", "qpmanaged", "bob", "qpsecond").Replace(string(testSMBStatusJSON(true)))
 	fixture := original
 	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, executable string, args []string, _ *os.File, input []byte, capture bool) ([]byte, error) {
-		if executable != smbstatusPath || len(args) != 3 || args[0] != "-j" || args[1] != "-s" || args[2] != configArgument || len(input) != 0 || !capture {
+		if executable != smbstatusPath || len(args) != 4 || args[0] != "-j" || args[1] != "-p" || args[2] != "-s" || args[3] != configArgument || len(input) != 0 || !capture {
 			t.Fatal("continuity escaped the fixed read-only status command")
 		}
 		return []byte(fixture), nil

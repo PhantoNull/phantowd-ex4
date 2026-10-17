@@ -81,8 +81,11 @@ func (r *NativeSambaRuntimeQEMU) nativeWorkerFailureQEMU(stage nativeWorkerStage
 }
 
 type NativeWorkerFailureObservationQEMU struct {
-	Present       bool
-	Phase, Reason string
+	Present                bool
+	Phase, Reason          string
+	StatusDiagnostic       bool
+	StatusDiagnosticBytes  int
+	StatusDiagnosticSHA256 [32]byte
 }
 
 // Read-only fixed-label fixture telemetry, not a recovery or admission witness.
@@ -98,5 +101,12 @@ func (r *NativeSambaRuntimeQEMU) ObserveNativeWorkerFailureQEMU(ctx context.Cont
 		return NativeWorkerFailureObservationQEMU{}, nil
 	}
 	phase, reason := r.workerFailure.labels()
-	return NativeWorkerFailureObservationQEMU{Present: true, Phase: phase, Reason: reason}, nil
+	observation := NativeWorkerFailureObservationQEMU{Present: true, Phase: phase, Reason: reason}
+	var diagnostic *nativeStatusDiagnosticRefusalQEMU
+	if r.workerFailure.stage == nativeWorkerResultQEMU && errors.As(r.workerFailure.cause, &diagnostic) && diagnostic != nil && diagnostic.diagnosticBytes > 0 {
+		observation.StatusDiagnostic = true
+		observation.StatusDiagnosticBytes = diagnostic.diagnosticBytes
+		observation.StatusDiagnosticSHA256 = diagnostic.diagnosticSHA256
+	}
+	return observation, nil
 }

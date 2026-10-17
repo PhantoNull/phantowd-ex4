@@ -20,7 +20,7 @@ func TestNativePlannedSessionRequiresOriginalAuthorizedGeneration(t *testing.T) 
 	}
 	fixture := strings.ReplaceAll(string(testSMBStatusJSON(false)), "bob", "qpsecond")
 	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, executable string, args []string, _ *os.File, input []byte, capture bool) ([]byte, error) {
-		if executable != smbstatusPath || len(args) != 3 || args[0] != "-j" || args[1] != "-s" || args[2] != configArgument || len(input) != 0 || !capture {
+		if executable != smbstatusPath || len(args) != 4 || args[0] != "-j" || args[1] != "-p" || args[2] != "-s" || args[3] != configArgument || len(input) != 0 || !capture {
 			t.Fatal("planned session observation escaped fixed read-only status")
 		}
 		return []byte(fixture), nil

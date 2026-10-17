@@ -293,7 +293,7 @@ func (b *Backend) revokeUserSessions(ctx context.Context, username string, limit
 		}
 		statusCtx, cancel := context.WithTimeout(ctx, statusTimeout)
 		output, err := b.runner.Run(statusCtx, smbstatusPath,
-			[]string{"-j", "-s", configArgument}, b.config, []byte{}, true)
+			[]string{"-j", "-p", "-s", configArgument}, b.config, []byte{}, true)
 		statusCtxErr := statusCtx.Err()
 		cancel()
 		if err != nil || statusCtxErr != nil || ctx.Err() != nil {

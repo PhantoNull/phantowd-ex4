@@ -81,9 +81,9 @@ func TestNativeWorkerTimingOptInRemainsDiagnosticOnly(t *testing.T) {
 }
 
 func TestNativeWorkerTimingOnlyFixedBoundedNonqualifyingFields(t *testing.T) {
-	grammar := regexp.MustCompile(`^PHANTOWD_DIAG_NATIVE_WORKER operation=(check|list|create|password|enable|disable|status|revoke) phase=(pre-admission|execution|settlement|post-admission) elapsed_ms=[0-9]{1,6} remaining_ms=[0-9]{1,6} parent_done=(true|false) failed=(true|false) cause=(none|deadline|canceled|mismatch|unavailable|other) qualifying=false scope=qemu-only$`)
+	grammar := regexp.MustCompile(`^PHANTOWD_DIAG_NATIVE_WORKER operation=(check|list|create|password|enable|disable|status|revoke|sessions) phase=(pre-admission|execution|settlement|post-admission) elapsed_ms=[0-9]{1,6} remaining_ms=[0-9]{1,6} parent_done=(true|false) failed=(true|false) cause=(none|deadline|canceled|mismatch|unavailable|other) qualifying=false scope=qemu-only$`)
 	private := errors.New("private-password-path-worker-text\nPHANTOWD_FAKE_READY")
-	for operation := processowner.NativeSambaCheckQEMU; operation <= processowner.NativeSambaRevokeQEMU; operation++ {
+	for operation := processowner.NativeSambaCheckQEMU; operation <= processowner.NativeSambaSessionsQEMU; operation++ {
 		for stage := nativeWorkerAdmissionQEMU; stage <= nativeWorkerPostAdmissionQEMU; stage++ {
 			for _, test := range []struct {
 				err   error

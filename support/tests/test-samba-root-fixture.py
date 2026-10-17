@@ -2150,5 +2150,67 @@ class SambaRootFixture(unittest.TestCase):
                       driver)
 
 
+class StatusSourceRefusalFixture(unittest.TestCase):
+    def test_status_loopback_is_fresh_private_and_not_a_child_capability(self):
+        root = Path(__file__).resolve().parents[2]
+        launcher = (root / "support/tests/samba-root-launcher-fixture.c")
+        launcher = launcher.read_text()
+        self.assertTrue("native_status_private_loopback()" in launcher,
+                        "missing private status loopback setup")
+        self.assertTrue("original_network.st_ino == private_network.st_ino"
+                        in launcher, "missing new namespace verification")
+        self.assertTrue('i >= 2' in launcher and 'ARPHRD_SIT' in launcher,
+                        "missing bounded fixed fallback classification")
+        self.assertTrue('IFF_UP | IFF_RUNNING | IFF_LOOPBACK' in launcher,
+                        "active fallback not refused")
+        self.assertTrue('errno != EADDRNOTAVAIL' in launcher,
+                        "addressed fallback not refused")
+        self.assertTrue('SIOCGIFNETMASK' in launcher,
+                        "missing verified loopback netmask")
+        allowed = launcher.split("static const uint32_t allowed =", 1)[1]
+        allowed = allowed.split(";", 1)[0]
+        self.assertNotIn("CAP_NET_ADMIN", allowed)
+        self.assertTrue('"status") || !strcmp(operation, "sessions")'
+                        in launcher, "status scope changed")
+
+    def good(self):
+        return "\n".join((*fixture.MARKERS[:3], fixture.CENSUS_MARKER,
+                          fixture.STATUS_SOURCE_REFUSAL,
+                          "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST))
+
+    def test_exact_refusal_is_not_healthy_native_campaign(self):
+        good = self.good()
+        fixture.check_status_source_refusal(good)
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "native")
+        with self.assertRaises(ValueError):
+            fixture.check_status_source_refusal(
+                "\n".join(campaign_rows()["native"]))
+
+    def test_refusal_requires_every_field_census_and_final_receipt(self):
+        good = self.good()
+        marker = fixture.STATUS_SOURCE_REFUSAL
+        for field in ("source_open_obstructed", "zero_exit", "one_handoff",
+                      "unexpected_stderr_refused", "review_retained",
+                      "retry_refused", "stopped_reaped", "no_fd_leak"):
+            for replacement in ("", field + "=false"):
+                with self.subTest(field=field, replacement=replacement):
+                    with self.assertRaises(ValueError):
+                        fixture.check_status_source_refusal(good.replace(
+                            marker, marker.replace(field + "=true",
+                                                   replacement)))
+        for replacement in ("", marker + "\n" + marker,
+                            marker.replace("producer_complete=false",
+                                           "producer_complete=true"),
+                            marker.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_status_source_refusal(
+                    good.replace(marker, replacement))
+        for required in (fixture.CENSUS_MARKER,
+                         "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST):
+            with self.assertRaises(ValueError):
+                fixture.check_status_source_refusal(good.replace(required, ""))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -90,6 +90,9 @@ func TestNativeRuntimeClosePreservesTerminalReleaseFailure(t *testing.T) {
 			if next := runtime.Close(context.Background()); !errors.Is(next, ErrReviewRequired) || !errors.Is(next, cause) {
 				t.Error("repeated native Close forgot terminal uncertainty", next)
 			}
+			if retired, err := runtime.ObserveNativeRetirementQEMU(context.Background()); retired || err != nil {
+				t.Error("uncertain release was published as verified retirement", retired, err)
+			}
 			if _, err := helper.Stat(); err != nil {
 				t.Error("repeated native Close touched a retained or replacement helper", err)
 			}
@@ -114,6 +117,53 @@ func TestNativeRuntimeCloseNormalRepeatHasNoReview(t *testing.T) {
 	}
 	if err := runtime.Close(context.Background()); err != nil {
 		t.Fatal("normal repeated Close was not idempotent", err)
+	}
+	if retired, err := runtime.ObserveNativeRetirementQEMU(context.Background()); !retired || err != nil {
+		t.Fatal("normal closure lost positive retirement observation", retired, err)
+	}
+}
+
+func TestNativeRuntimeVerifiedReviewCloseDoesNotStrandHelper(t *testing.T) {
+	r := nativeReleaseFixture(t)
+	helper := releaseFaultFile(t, false)
+	r.helper = helper
+	r.owner.review = true // Lifecycle review, NOT an injected close failure.
+	if err := r.Close(context.Background()); !errors.Is(err, ErrReviewRequired) || !r.closed || !r.owner.review {
+		t.Fatal("verified retirement lost its review outcome", err)
+	}
+	if _, err := helper.Stat(); !errors.Is(err, os.ErrClosed) || r.helper != nil {
+		t.Fatal("successful underlying release was mistaken for uncertain close", err)
+	}
+	if err := r.Close(context.Background()); !errors.Is(err, ErrReviewRequired) {
+		t.Fatal("repeated close erased review", err)
+	}
+	if retired, err := r.ObserveNativeRetirementQEMU(context.Background()); !retired || err != nil {
+		t.Fatal("review erased independently verified retirement", retired, err)
+	}
+}
+
+func TestNativeRuntimeRetirementObservationCannotCloseOrBypassGate(t *testing.T) {
+	r := nativeReleaseFixture(t)
+	r.helper = releaseFaultFile(t, false)
+	defer r.Close(context.Background())
+	if retired, err := r.ObserveNativeRetirementQEMU(context.Background()); retired || err != nil {
+		t.Fatal("observation manufactured retirement", retired, err)
+	}
+	if _, err := r.helper.Stat(); err != nil {
+		t.Fatal("observation closed a retained helper", err)
+	}
+	r.gate <- struct{}{}
+	if retired, err := r.ObserveNativeRetirementQEMU(context.Background()); retired || !errors.Is(err, processowner.ErrBusy) {
+		t.Error("observation bypassed exclusive lifecycle gate", retired, err)
+	}
+	<-r.gate
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if retired, err := r.ObserveNativeRetirementQEMU(ctx); retired || !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled observation was accepted", retired, err)
+	}
+	if retired, err := r.ObserveNativeRetirementQEMU(nil); retired || !errors.Is(err, ErrInvalid) {
+		t.Fatal("nil context observation was accepted", retired, err)
 	}
 }
 

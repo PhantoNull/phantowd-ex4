@@ -25,7 +25,7 @@ func TestNativeRevokedPairUsesOneFreshCompleteInventory(t *testing.T) {
 	var pinned *os.File
 	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, executable string, args []string, config *os.File, input []byte, capture bool) ([]byte, error) {
 		calls++
-		if executable != smbstatusPath || !slices.Equal(args, []string{"-j", "-s", configArgument}) || config != pinned || len(input) != 0 || !capture {
+		if executable != smbstatusPath || !slices.Equal(args, []string{"-j", "-p", "-s", configArgument}) || config != pinned || len(input) != 0 || !capture {
 			t.Fatal("revoked-pair observation escaped original read-only status authority")
 		}
 		return []byte(fixture), nil

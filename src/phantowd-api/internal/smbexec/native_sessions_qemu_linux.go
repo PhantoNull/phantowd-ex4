@@ -65,7 +65,7 @@ func (b *NativeBackendQEMU) readNativeSessionsQEMU(ctx context.Context) (map[str
 	statusCtx, cancel := context.WithTimeout(ctx, 2*sessionStatusTimeout)
 	defer cancel()
 	output, err := b.inner.runner.Run(statusCtx, smbstatusPath,
-		[]string{"-j", "-s", configArgument}, b.inner.config, nil, true)
+		[]string{"-j", "-p", "-s", configArgument}, b.inner.config, nil, true)
 	defer clear(output)
 	if err != nil || statusCtx.Err() != nil {
 		return nil, errors.Join(ErrUnavailable, statusCtx.Err())

@@ -11,6 +11,20 @@ import (
 	"testing"
 )
 
+func TestNativeStatusScopesAreDistinctFixedReadOperations(t *testing.T) {
+	for _, test := range []struct {
+		op    NativeSambaOperationQEMU
+		label string
+	}{{NativeSambaStatusQEMU, "status"}, {NativeSambaSessionsQEMU, "sessions"}} {
+		if !test.op.valid("") || test.op.valid("qpmanaged") || test.op.valid("qpsecond") || test.op.argument() != test.label {
+			t.Fatal("status scope admitted a caller-selected identity or verb", test.op)
+		}
+	}
+	if NativeSambaOperationQEMU(255).valid("") || NativeSambaOperationQEMU(255).argument() != "" {
+		t.Fatal("unknown read operation admitted")
+	}
+}
+
 func TestNativeCredentialCaptureRefusesHostAndPreservesCallers(t *testing.T) {
 	if model, _ := os.ReadFile("/sys/firmware/devicetree/base/model"); string(model) == "ARM Versatile PB\x00" {
 		t.Skip("host refusal only; fixed ARMv5 fixture executes credential workers")

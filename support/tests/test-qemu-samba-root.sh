@@ -13,7 +13,12 @@ failure_log=${7:-}
 selection=${8:-all}
 [ "$#" -le 9 ] || exit 1
 diagnostics=${9:-none}
-case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
+case "$diagnostics" in none|diagnostic|status-source) ;; *) exit 1 ;; esac
+status_source_argument=
+if [ "$diagnostics" = status-source ]; then
+    [ "$selection" = native ] || exit 1
+    status_source_argument=' phantowd_samba_status_source_diagnostic=1'
+fi
 case "$selection" in
     all|service|native|native-data|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
     *) exit 1 ;;
@@ -185,12 +190,13 @@ sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
 # has the reviewed common-clock/reserve cap; every other guest keeps180s.
 for campaign in $campaigns; do
     guest_seconds=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" guest-timeout "$campaign")
+    if [ "$diagnostics" = status-source ]; then guest_seconds=90; fi
     timeout --signal=TERM --kill-after=5 "$guest_seconds" qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
     -device virtio-rng-pci,rng=samba-rng \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
-    -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 phantowd_samba_campaign=$campaign init=/usr/sbin/phantowd-samba-root-init" \
+    -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 phantowd_samba_campaign=$campaign init=/usr/sbin/phantowd-samba-root-init$status_source_argument" \
     -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" \
     -drive "file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on" \
     >"$scratch/$campaign.log" 2>&1 &
@@ -198,7 +204,7 @@ child_pid=$!
 status=0
 wait "$child_pid" || status=$?
 child_pid=
-if [ "$diagnostics" = diagnostic ]; then
+if [ "$diagnostics" = diagnostic ] || [ "$diagnostics" = status-source ]; then
     # Escaped, bounded telemetry only. Emitted before verification even for a
     # timeout; never a success marker or substitute for original acceptance.
     if [ "$pending_profile" -eq 1 ]; then
@@ -210,7 +216,9 @@ if [ "$diagnostics" = diagnostic ]; then
 fi
 verified=0
 if [ "$status" -eq 0 ]; then
-    if [ "$selection" = pending-handle ]; then
+    if [ "$diagnostics" = status-source ]; then
+        python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-status-source "$scratch/$campaign.log" && verified=1
+    elif [ "$selection" = pending-handle ]; then
         python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" handle && verified=1
     elif [ "$selection" = pending-peer-exit ]; then
         python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" peer-exit && verified=1
@@ -265,7 +273,9 @@ if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
-if [ "$selection" = all ]; then
+if [ "$diagnostics" = status-source ]; then
+    echo 'PHANTOWD_SAMBA_STATUS_SOURCE_COMPLETE base_unchanged=true complete_image=false producer_complete=false scope=qemu-only'
+elif [ "$selection" = all ]; then
     echo PHANTOWD_SAMBA_ROOT_BASE_UNCHANGED
 else
     printf 'PHANTOWD_SAMBA_FOCUSED_COMPLETE campaign=%s base_unchanged=true complete_image=false scope=qemu-only\n' "$selection"

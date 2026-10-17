@@ -407,7 +407,7 @@ func TestDisableWithoutSessionsUsesFixedCommandsAndVerifiesStableAbsence(t *test
 			return commandOutput, nil
 		case smbstatusPath:
 			statusReads++
-			if !slices.Equal(args, []string{"-j", "-s", configArgument}) || len(stdin) != 0 || !capture {
+			if !slices.Equal(args, []string{"-j", "-p", "-s", configArgument}) || len(stdin) != 0 || !capture {
 				t.Fatal("empty-session verification escaped the fixed read-only command contract")
 			}
 			return testSMBStatusJSON(false), nil
@@ -449,7 +449,7 @@ func TestDisableRevokesOnlyTheTargetUsersSessionsAndVerifiesAbsence(t *testing.T
 			}
 			return []byte("discarded passdb output"), nil
 		case smbstatusPath:
-			if !slices.Equal(args, []string{"-j", "-s", configArgument}) || len(stdin) != 0 || !capture {
+			if !slices.Equal(args, []string{"-j", "-p", "-s", configArgument}) || len(stdin) != 0 || !capture {
 				t.Fatal("session inventory escaped the fixed read-only command contract")
 			}
 			statusReads++

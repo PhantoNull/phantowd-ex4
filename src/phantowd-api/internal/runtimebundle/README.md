@@ -3,6 +3,27 @@
 
 # Internal code-only runtime bundle inspection
 
+The QEMU-only native Samba STATUS/session publication boundary accepts only the exact
+fixed credential-handoff stderr protocol. Any additional byte, even with exit
+zero and decodable JSON, clears the output and retains review; other commands
+keep their existing protocol. Sessions use a distinct fixed `sessions` verb
+(`smbstatus -j -p`); existing full `status` remains available for independent
+tree/open-file evidence. Both reject extra stderr; neither has an error-text
+whitelist. This refuses a reproduced source-open failure,
+not silent partial traversal, callback or serialization faults. A complete
+producer contract is still required before product session-absence authority.
+Failure-only QEMU diagnostics retain only the size and SHA-256 of unexpected
+stderr after removing the single fixed handoff. The first private failure is
+immutable; no producer text, identity, path or byte buffer is retained or logged.
+The digest is diagnostic comparison data, never an acceptance whitelist.
+
+Containing cleanup now receives a private, same-lock verified-retirement result
+from `Owner`, separately from its unchanged public review error. Lifecycle
+review alone does not strand the native helper after confirmed process/input
+release. Actual release uncertainty still retains unattempted resources and
+forbids retry. The tagged read-only retirement observation conveys no health,
+restart, recovery or execution authority; review remains an error after release.
+
 The QEMU-only data capture-return clock observes the parent context around the
 existing fixed 4-second `Capture`, before external settlement/closure. It is
 failure-only, preserves the first typed data error and never supplies an input

@@ -52,7 +52,7 @@ func TestNativeWorkerCompletionRejectsLateCancellationAndExpiry(t *testing.T) {
 			defer cancel()
 			r := nativeCompletionStateFixtureQEMU()
 			candidate := nativeCompletedResultFixtureQEMU()
-			output, err := r.completeNativeWorkerQEMU(ctx, candidate, nil, nil)
+			output, err := r.completeNativeWorkerQEMU(ctx, processowner.NativeSambaListQEMU, candidate, nil, nil)
 			if output != nil || !errors.Is(err, ErrReviewRequired) || !errors.Is(err, want) ||
 				!r.owner.review || r.workerFailure == nil || !bytes.Equal(candidate.Stdout, make([]byte, len(candidate.Stdout))) {
 				t.Fatal("late cancellation published output or lost quarantine", err)
@@ -68,12 +68,12 @@ func TestNativeWorkerCompletionRejectsLateCancellationAndExpiry(t *testing.T) {
 
 func TestNativeWorkerCompletionPreservesHealthyAndExistingRefusals(t *testing.T) {
 	nilRuntime := nativeCompletionStateFixtureQEMU()
-	if output, err := nilRuntime.completeNativeWorkerQEMU(nil, nativeCompletedResultFixtureQEMU(), nil, nil); output != nil || !errors.Is(err, ErrInvalid) || !nilRuntime.owner.review {
+	if output, err := nilRuntime.completeNativeWorkerQEMU(nil, processowner.NativeSambaListQEMU, nativeCompletedResultFixtureQEMU(), nil, nil); output != nil || !errors.Is(err, ErrInvalid) || !nilRuntime.owner.review {
 		t.Fatal("nil completion context accepted", err)
 	}
 	r := nativeCompletionStateFixtureQEMU()
 	candidate := nativeCompletedResultFixtureQEMU()
-	output, err := r.completeNativeWorkerQEMU(context.Background(), candidate, nil, nil)
+	output, err := r.completeNativeWorkerQEMU(context.Background(), processowner.NativeSambaListQEMU, candidate, nil, nil)
 	if err != nil || !bytes.Equal(output, candidate.Stdout) || r.owner.review || r.workerFailure != nil {
 		t.Fatal("healthy completed result changed", err)
 	}
@@ -96,7 +96,7 @@ func TestNativeWorkerCompletionPreservesHealthyAndExistingRefusals(t *testing.T)
 			if test.change != nil {
 				test.change(&candidate)
 			}
-			output, err := r.completeNativeWorkerQEMU(context.Background(), candidate, test.runErr, test.checkErr)
+			output, err := r.completeNativeWorkerQEMU(context.Background(), processowner.NativeSambaListQEMU, candidate, test.runErr, test.checkErr)
 			if output != nil || !errors.Is(err, ErrReviewRequired) || !r.owner.review || r.workerFailure == nil ||
 				!bytes.Equal(candidate.Stdout, make([]byte, len(candidate.Stdout))) {
 				t.Fatal("existing refusal exposed output or lost review", err)
@@ -115,13 +115,13 @@ func TestNativeWorkerCompletionKeepsFirstFailureAndOriginalReferences(t *testing
 	owner := r.owner
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if output, err := r.completeNativeWorkerQEMU(ctx, nativeCompletedResultFixtureQEMU(), nil, nil); output != nil ||
+	if output, err := r.completeNativeWorkerQEMU(ctx, processowner.NativeSambaListQEMU, nativeCompletedResultFixtureQEMU(), nil, nil); output != nil ||
 		!errors.Is(err, context.Canceled) || r.workerFailure != first || r.owner != owner || !owner.review || r.closed {
 		t.Fatal("late result erased first failure or released original state", err)
 	}
 	private := errors.New("private-late-admission-error")
 	candidate := nativeCompletedResultFixtureQEMU()
-	output, err := r.completeNativeWorkerQEMU(ctx, candidate, ErrMismatch, private)
+	output, err := r.completeNativeWorkerQEMU(ctx, processowner.NativeSambaListQEMU, candidate, ErrMismatch, private)
 	if output != nil || !errors.Is(err, ErrMismatch) || r.workerFailure != first ||
 		strings.Contains(err.Error(), private.Error()) {
 		t.Fatal("existing execution precedence or first fault changed", err)

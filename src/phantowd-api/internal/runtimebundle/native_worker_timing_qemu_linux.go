@@ -30,7 +30,7 @@ func WithNativeWorkerTimingQEMU(ctx context.Context) context.Context {
 // evidence. No caller-selected sink, command, identity or replacement context.
 func nativeWorkerTimingQEMU(operation processowner.NativeSambaOperationQEMU, stage nativeWorkerStageQEMU,
 	elapsed, remaining time.Duration, parentDone bool, operationErr error) string {
-	operations := [...]string{"", "check", "list", "create", "password", "enable", "disable", "status", "revoke"}
+	operations := [...]string{"", "check", "list", "create", "password", "enable", "disable", "status", "revoke", "sessions"}
 	if operation == 0 || int(operation) >= len(operations) || stage > nativeWorkerPostAdmissionQEMU ||
 		elapsed < 0 || elapsed > 10*time.Minute || remaining < 0 || remaining > 10*time.Minute {
 		return ""

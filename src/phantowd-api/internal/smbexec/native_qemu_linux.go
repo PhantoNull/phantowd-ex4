@@ -70,6 +70,8 @@ func (r *nativeRunnerQEMU) Run(ctx context.Context, executable string, args []st
 		operation = processowner.NativeSambaListQEMU
 	case executable == smbstatusPath && slices.Equal(args, []string{"-j", "-s", configArgument}):
 		operation = processowner.NativeSambaStatusQEMU
+	case executable == smbstatusPath && slices.Equal(args, []string{"-j", "-p", "-s", configArgument}):
+		operation = processowner.NativeSambaSessionsQEMU
 	case executable == smbcontrolPath && len(args) == 5 && slices.Equal(args[:4], []string{"-s", configArgument, "smbd", "logoff-user"}):
 		operation, name = processowner.NativeSambaRevokeQEMU, args[4]
 	case executable == smbpasswdPath && len(args) == 5 && slices.Equal(args[:4], []string{"-a", "-d", "-c", configArgument}):

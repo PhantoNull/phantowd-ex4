@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
 /* Disposable VersatilePB fixture only. Not a product privilege helper. */
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -10,11 +11,15 @@
 #include <linux/magic.h>
 #include <linux/mount.h>
 #include <linux/posix_acl_xattr.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -846,6 +851,123 @@ static int native_data_view(const char *native_root, int clones[2], struct stat 
  * Admission receives five original immutable config objects followed
  * by seven original mutable state directories; no pathname fallback is used.
  * Only the distinct data-server verb accepts the two additional data objects. */
+/* Only after successful CLONE_NEWNET and a different kernel namespace inode.
+ * Configure the sole private loopback before dropping existing bootstrap
+ * privileges. No veth/physical link, inherited network or child NET_ADMIN. */
+static void native_status_network_diagnostic(void)
+{
+    struct if_nameindex *interfaces = if_nameindex();
+    int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    unsigned int loopbacks = 0, fallback = 0, other = 0;
+    int type = 0, flags = 0, address_error = 0, failure = 0;
+    if (!interfaces || fd < 0) failure = errno;
+    if (!failure) {
+        for (unsigned int i = 0; interfaces[i].if_index; ++i) {
+            if (i >= 8) { failure = EOVERFLOW; break; }
+            if (!strcmp(interfaces[i].if_name, "lo")) ++loopbacks;
+            else if (!strcmp(interfaces[i].if_name, "sit0")) {
+                ++fallback;
+                struct ifreq observation = {0};
+                strcpy(observation.ifr_name, "sit0");
+                if (ioctl(fd, SIOCGIFFLAGS, &observation)) { failure = errno; break; }
+                flags = observation.ifr_flags;
+                if (ioctl(fd, SIOCGIFHWADDR, &observation)) { failure = errno; break; }
+                type = observation.ifr_hwaddr.sa_family;
+                if (ioctl(fd, SIOCGIFADDR, &observation)) address_error = errno;
+            } else ++other;
+        }
+    }
+    if (interfaces) if_freenameindex(interfaces);
+    if (fd >= 0 && close(fd)) failure = errno;
+    printf("PHANTOWD_DIAG_NATIVE_LINKS loopbacks=%u fallback=%u other=%u fallback_type=%d fallback_flags=%d fallback_address_errno=%d failure=%d qualifying=false scope=qemu-only\n",
+        loopbacks, fallback, other, type, flags, address_error, failure);
+}
+
+/* A fresh namespace may include the kernel's inactive SIT fallback device.
+ * Accept no other link, active fallback or configured fallback address. */
+static int native_status_private_inventory(int fd)
+{
+    struct if_nameindex *interfaces = if_nameindex();
+    if (!interfaces)
+        return -2;
+    unsigned int loopbacks = 0, fallback = 0;
+    int invalid = 0;
+    for (unsigned int i = 0; interfaces[i].if_index; ++i) {
+        if (i >= 2 || !interfaces[i].if_name) { invalid = 1; break; }
+        if (!strcmp(interfaces[i].if_name, "lo")) ++loopbacks;
+        else if (!strcmp(interfaces[i].if_name, "sit0")) {
+            ++fallback;
+            struct ifreq observation = {0};
+            strcpy(observation.ifr_name, "sit0");
+            if (ioctl(fd, SIOCGIFFLAGS, &observation) ||
+                (observation.ifr_flags & (IFF_UP | IFF_RUNNING | IFF_LOOPBACK)) ||
+                ioctl(fd, SIOCGIFHWADDR, &observation) || observation.ifr_hwaddr.sa_family != ARPHRD_SIT ||
+                ioctl(fd, SIOCGIFADDR, &observation) != -1 || errno != EADDRNOTAVAIL) {
+                invalid = 1;
+                break;
+            }
+        } else { invalid = 1; break; }
+    }
+    if_freenameindex(interfaces);
+    if (invalid || loopbacks != 1 || fallback > 1) {
+        errno = EPROTO;
+        return -3;
+    }
+    return 0;
+}
+
+static int native_status_private_loopback(void)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    if (fd < 0)
+        return -4;
+    if (native_status_private_inventory(fd)) {
+        int saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -3;
+    }
+    struct ifreq flags = {0}, address = {0}, mask = {0};
+    strcpy(flags.ifr_name, "lo");
+    strcpy(address.ifr_name, "lo");
+    strcpy(mask.ifr_name, "lo");
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)&address.ifr_addr;
+    struct sockaddr_in *netmask = (struct sockaddr_in *)&mask.ifr_netmask;
+    ipv4->sin_family = AF_INET;
+    ipv4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    netmask->sin_family = AF_INET;
+    netmask->sin_addr.s_addr = htonl(0xff000000U);
+    int stage = 5;
+    if (ioctl(fd, SIOCGIFFLAGS, &flags)) goto finished;
+    stage = 6;
+    if (!(flags.ifr_flags & IFF_LOOPBACK)) { errno = EPROTO; goto finished; }
+    stage = 7;
+    if (ioctl(fd, SIOCSIFADDR, &address)) goto finished;
+    stage = 8;
+    if (ioctl(fd, SIOCSIFNETMASK, &mask)) goto finished;
+    flags.ifr_flags |= IFF_UP;
+    stage = 9;
+    if (ioctl(fd, SIOCSIFFLAGS, &flags)) goto finished;
+    stage = 10;
+    if (ioctl(fd, SIOCGIFFLAGS, &flags) || ioctl(fd, SIOCGIFADDR, &address) ||
+        ioctl(fd, SIOCGIFNETMASK, &mask)) goto finished;
+    stage = 11;
+    if ((flags.ifr_flags & (IFF_UP | IFF_LOOPBACK)) != (IFF_UP | IFF_LOOPBACK) ||
+        ipv4->sin_family != AF_INET || ipv4->sin_addr.s_addr != htonl(INADDR_LOOPBACK) ||
+        netmask->sin_family != AF_INET || netmask->sin_addr.s_addr != htonl(0xff000000U)) {
+        errno = EPROTO;
+        goto finished;
+    }
+    stage = 13;
+    if (native_status_private_inventory(fd)) goto finished;
+    stage = 0;
+finished:;
+    int saved_errno = errno;
+    int close_error = close(fd);
+    if (stage) { errno = saved_errno; return -stage; }
+    return close_error ? -12 : 0;
+}
+
 static int native_credential_fixture(const char *operation, const char *name)
 {
     const char native_root[] = "/run/phantowd-native-samba-root";
@@ -854,11 +976,13 @@ static int native_credential_fixture(const char *operation, const char *name)
     const char *config_roles[] = {"", "/passwd", "/group", "/nsswitch.conf", "/samba/smb.conf"};
     const char *state_roles[] = {"", "/private", "/lock", "/state", "/cache", "/pid", "/rpc"};
     const char *attributes[] = {"system.posix_acl_access", "system.posix_acl_default", "security.capability"};
-    int read_operation = !strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status");
+    int read_operation = !strcmp(operation, "check") || !strcmp(operation, "list") ||
+        !strcmp(operation, "status") || !strcmp(operation, "sessions");
     int write_operation = !strcmp(operation, "create") || !strcmp(operation, "password") ||
         !strcmp(operation, "enable") || !strcmp(operation, "disable") || !strcmp(operation, "revoke");
     int data = !strcmp(operation, "data-server");
     int server = data || !strcmp(operation, "server");
+    int status_operation = !strcmp(operation, "status") || !strcmp(operation, "sessions");
     if (owned_group_context() || (!read_operation && !write_operation && !server) ||
         ((read_operation || server) ? *name != '\0' : (strcmp(name, "qpmanaged") && strcmp(name, "qpsecond"))))
         return fail();
@@ -907,9 +1031,16 @@ static int native_credential_fixture(const char *operation, const char *name)
     }
     struct stat info;
     struct statfs fs;
+    struct stat original_network, private_network;
+    if (status_operation && stat("/proc/self/ns/net", &original_network))
+        return fail();
     if (lstat(native_root, &info) || info.st_mode != (S_IFDIR | 0755) || info.st_uid || info.st_gid ||
         statfs(native_root, &fs) || fs.f_type != TMPFS_MAGIC || unshare(CLONE_NEWNS | (server ? 0 : CLONE_NEWNET)) ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) || mount(native_root, native_root, NULL, MS_BIND, NULL))
+        return fail();
+    if (status_operation && (stat("/proc/self/ns/net", &private_network) ||
+        (original_network.st_dev == private_network.st_dev && original_network.st_ino == private_network.st_ino) ||
+        native_status_private_loopback()))
         return fail();
     for (int index = 0; index < 2; ++index) {
         char source[96], destination[96];
@@ -965,7 +1096,7 @@ static int native_credential_fixture(const char *operation, const char *name)
         arguments[3] = "-s"; arguments[4] = "/etc/samba/smb.conf";
         arguments[5] = "-l"; arguments[6] = "/state";
         arguments[7] = "--debug-stdout";
-    } else if (!strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status")) {
+    } else if (read_operation) {
         executable = !strcmp(operation, "check") ? "/usr/bin/testparm" :
             (!strcmp(operation, "list") ? "/usr/bin/pdbedit" : "/usr/bin/smbstatus");
         arguments[0] = !strcmp(operation, "check") ? "testparm" : (!strcmp(operation, "list") ? "pdbedit" : "smbstatus");
@@ -973,6 +1104,8 @@ static int native_credential_fixture(const char *operation, const char *name)
         int index = 2;
         if (!strcmp(operation, "list"))
             arguments[index++] = "-v";
+        if (!strcmp(operation, "sessions"))
+            arguments[index++] = "-p";
         if (strcmp(operation, "check"))
             arguments[index++] = "-s";
         arguments[index] = "/etc/samba/smb.conf";
@@ -1119,6 +1252,28 @@ int main(int argc, char **argv)
 {
     if (guard())
         return fail();
+    if (argc == 2 && !strcmp(argv[1], "private-loopback-check")) {
+        struct stat before, after;
+        int stage = 20;
+        if (stat("/proc/self/ns/net", &before)) goto loopback_report;
+        stage = 21;
+        if (unshare(CLONE_NEWNET)) goto loopback_report;
+        stage = 22;
+        if (stat("/proc/self/ns/net", &after)) goto loopback_report;
+        stage = 23;
+        if (before.st_dev == after.st_dev && before.st_ino == after.st_ino) {
+            errno = EPROTO;
+            goto loopback_report;
+        }
+        native_status_network_diagnostic();
+        int result = native_status_private_loopback();
+        stage = -result;
+        if (!result) errno = 0;
+loopback_report:
+        printf("PHANTOWD_DIAG_NATIVE_LOOPBACK stage=%d errno=%d qualifying=false scope=qemu-only\n",
+            stage, errno);
+        return stage ? 1 : 0;
+    }
     if (argc == 2 && !strcmp(argv[1], "guard"))
         return 0;
     if (argc == 2 && !strcmp(argv[1], "native-lookup"))

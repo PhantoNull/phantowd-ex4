@@ -72,6 +72,7 @@ try {
             $linux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
             Assert-True ($linux.Contains("/src '' '$campaign'")) 'Exact selected campaign not passed.'
             Assert-True (-not $linux.Contains("'diagnostic'")) 'Diagnostics must remain opt-in.'
+            Assert-True (-not $linux.Contains("'status-source'")) 'Source fault must remain opt-in.'
         }
     }
     $state.Calls.Clear()
@@ -81,6 +82,20 @@ try {
     Assert-True ($diagnosticRun[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Diagnostic command missing.'
     $diagnosticLinux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
     Assert-True ($diagnosticLinux.Contains("/src '' 'data' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
+    $state.Calls.Clear()
+    & $wrapper -Campaign native -StatusSourceDiagnostic
+    Assert-True ($state.Calls.Count -eq 3) 'Source diagnostic added a Docker operation.'
+    $sourceRun = $state.Calls[2]
+    Assert-True ($sourceRun[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Source diagnostic command missing.'
+    $sourceLinux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
+    Assert-True ($sourceLinux.Contains("/src '' 'native' 'status-source'")) 'Source diagnostic selection changed.'
+    foreach ($otherCampaign in @('all', 'service', 'data', 'native-data')) {
+        $state.Calls.Clear()
+        $state.Files.Clear()
+        $refused = $false
+        try { & $wrapper -Campaign $otherCampaign -StatusSourceDiagnostic } catch { $refused = $true }
+        Assert-True ($refused -and $state.Calls.Count -eq 0 -and $state.Files.Count -eq 0) 'Invalid source diagnostic reached artifacts/Docker.'
+    }
     foreach ($failure in @('image inspect', 'volume inspect', 'run', 'directory', 'symlink')) {
         $state.Calls.Clear()
         $state.Failure = $failure
@@ -117,7 +132,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=10 focused_campaigns=13 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=10 focused_campaigns=13 refusals=10 status_source_opt_in=true scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

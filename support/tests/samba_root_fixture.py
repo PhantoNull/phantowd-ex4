@@ -305,6 +305,27 @@ def check_guest(log):
     scan_cost(log)
 
 
+STATUS_SOURCE_REFUSAL = (
+    "PHANTOWD_SAMBA_OWNER_NATIVE_STATUS_SOURCE_REFUSAL_READY "
+    "source_open_obstructed=true zero_exit=true one_handoff=true "
+    "unexpected_stderr_refused=true review_retained=true retry_refused=true "
+    "stopped_reaped=true no_fd_leak=true producer_complete=false "
+    "scope=qemu-only")
+
+
+def check_status_source_refusal(log):
+    """Optional refusal test, never the healthy native campaign."""
+    if not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG:
+        raise ValueError("invalid status-source proof")
+    markers = tuple(line for line in log.splitlines() if line.startswith(
+        ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")))
+    expected = (*MARKERS[:3], CENSUS_MARKER, STATUS_SOURCE_REFUSAL,
+                "PHANTOWD_SAMBA_ROOT_NATIVE_DONE")
+    if markers != expected:
+        raise ValueError("incomplete, mixed or repeated status-source proof")
+    return scan_cost(log)
+
+
 def check_campaign(log, phase):
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
             or phase not in FOCUSED_CAMPAIGNS):
@@ -388,7 +409,8 @@ def diagnostic_record(log, phase, status):
 WORKER_TIMING_PREFIX = "PHANTOWD_DIAG_NATIVE_WORKER"
 WORKER_TIMING = re.compile(
     re.escape(WORKER_TIMING_PREFIX)
-    + r" operation=(check|list|create|password|enable|disable|status|revoke)"
+    + r" operation=(check|list|create|password|enable|disable|status|revoke"
+    r"|sessions)"
     r" phase=(pre-admission|execution|settlement|post-admission)"
     r" elapsed_ms=(0|[1-9][0-9]{0,5}) remaining_ms=(0|[1-9][0-9]{0,5})"
     r" parent_done=(true|false) failed=(true|false)"
@@ -525,6 +547,8 @@ def main():
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
+    source = sub.add_parser("verify-status-source")
+    source.add_argument("log")
     selection = sub.add_parser("select-campaigns")
     selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
     budget = sub.add_parser("guest-timeout")
@@ -547,6 +571,10 @@ def main():
             raise ValueError("regular fixed conversion catalog required")
         catalog = read_bounded(args.catalog, 4096)
         Path(args.manifest).write_text(merge(reports, catalog))
+    elif args.command == "verify-status-source":
+        check_status_source_refusal(read_bounded(args.log, MAX_LOG))
+        print("Samba status-source refusal verified; "
+              "producer completeness unqualified")
     elif args.command == "verify-campaign":
         check_campaign(read_bounded(args.log, MAX_LOG), args.phase)
         print(f"Samba {args.phase} campaign verified")

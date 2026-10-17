@@ -75,6 +75,10 @@ run_native_fixture() {
     setup_native_fixture || return 1
     # OWN real Unix accounts in each guest. Independent libc/config/handoff
     # experiments run once after the service guest's other groups close.
+    case " $(cat /proc/cmdline) " in
+        *' phantowd_samba_status_source_diagnostic=1 '*)
+            /usr/sbin/phantowd-samba-root-launcher private-loopback-check || return 1 ;;
+    esac
     /usr/sbin/phantowd-runtime-bundle-probe native-lookup-bootstrap || return 1
     if [ "$campaign" = pending ] || [ "$campaign" = pending-peer-exit ] || [ "$campaign" = pending-handle ]; then
         mkdir -m 0700 /run/phantowd-pending-client-input /run/phantowd-pending-client-bootstrap /run/phantowd-pending-client-root || return 1

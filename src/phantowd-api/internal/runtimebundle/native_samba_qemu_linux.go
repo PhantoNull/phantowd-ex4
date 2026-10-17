@@ -48,6 +48,7 @@ type NativeSambaRuntimeQEMU struct {
 	pending                    *processowner.CaptureOwner
 	gate                       chan struct{}
 	closed                     bool
+	retired                    bool // All original owned releases positively confirmed, even with review.
 	daemonAttempted            bool
 	daemonPID                  int
 	authPaths                  []string
@@ -254,19 +255,29 @@ func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation proc
 	stageStarted = time.Now()
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
 	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerPostAdmissionQEMU, stageStarted, checkErr)
-	return r.completeNativeWorkerQEMU(ctx, observed, runErr, checkErr)
+	return r.completeNativeWorkerQEMU(ctx, operation, observed, runErr, checkErr)
 }
 
 // Private publication decision, called only after original capture settlement,
 // closure and post-admission. It cannot launch a worker or establish those
 // prerequisites; keep it separate so the actual return/quarantine seam is tested.
-func (r *NativeSambaRuntimeQEMU) completeNativeWorkerQEMU(ctx context.Context, observed processowner.CaptureResult, runErr, checkErr error) ([]byte, error) {
+func (r *NativeSambaRuntimeQEMU) completeNativeWorkerQEMU(ctx context.Context, operation processowner.NativeSambaOperationQEMU, observed processowner.CaptureResult, runErr, checkErr error) ([]byte, error) {
 	// Admission/capture may have completed before cancellation. Observability
 	// work and the final return are still inside the original operation budget.
 	if ctx == nil {
 		checkErr = errors.Join(checkErr, ErrInvalid)
 	} else {
 		checkErr = errors.Join(checkErr, ctx.Err())
+	}
+	// Status is an absence-sensitive observation. Its only permitted stderr is
+	// the exact fixed helper handoff; never interpret arbitrary warning/error
+	// text, a zero exit or valid JSON as proof of a complete source traversal.
+	if (operation == processowner.NativeSambaStatusQEMU || operation == processowner.NativeSambaSessionsQEMU) && runErr == nil && checkErr == nil &&
+		observed.Kind == processowner.CaptureExited && observed.ExitCode == 0 &&
+		strings.Count(string(observed.Stderr), nativeCredentialHandoff) == 1 && string(observed.Stderr) != nativeCredentialHandoff {
+		clear(observed.Stdout)
+		r.owner.review = true
+		return nil, r.nativeWorkerFailureQEMU(nativeWorkerResultQEMU, newNativeStatusDiagnosticRefusalQEMU(observed.Stderr))
 	}
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
@@ -330,7 +341,8 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		}
 		r.clients = nil // all client groups settled before any original release
 	}
-	err := errors.Join(clientErr, r.owner.Close(context.Background()))
+	ownerRetired, ownerErr := r.owner.closeVerified(context.Background())
+	err := errors.Join(clientErr, ownerErr)
 	if !r.owner.closed {
 		return errors.Join(ErrReviewRequired, err)
 	}
@@ -338,7 +350,7 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 	// Closed fences every service operation, but terminal cleanup uncertainty
 	// must remain observable. Never continue to unrelated resources or retry
 	// release after the first error; an errored descriptor may already be closed.
-	if err != nil {
+	if !ownerRetired || clientErr != nil {
 		r.owner.review = true
 		r.releaseErr = err
 		r.owner.snapshot.State = processowner.StateReviewRequired
@@ -346,20 +358,41 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 	}
 	if err := r.removeNativeAuthQEMU(); err != nil {
 		r.owner.review = true
-		r.releaseErr = err
+		r.releaseErr = errors.Join(ownerErr, err)
 		r.owner.snapshot.State = processowner.StateReviewRequired
-		return errors.Join(ErrReviewRequired, err)
+		return errors.Join(ErrReviewRequired, r.releaseErr)
 	}
 	if r.helper != nil {
 		if err := r.helper.Close(); err != nil {
 			r.owner.review = true
-			r.releaseErr = err
+			r.releaseErr = errors.Join(ownerErr, err)
 			r.owner.snapshot.State = processowner.StateReviewRequired
-			return errors.Join(ErrReviewRequired, err)
+			return errors.Join(ErrReviewRequired, r.releaseErr)
 		}
 		r.helper = nil
 	}
+	r.retired = true
+	if ownerErr != nil {
+		// Cleanup completed, but lifecycle review is permanent and never a
+		// healthy close/restart result. Repeated calls cannot retry releases.
+		r.releaseErr = ownerErr
+		return errors.Join(ErrReviewRequired, ownerErr)
+	}
 	return nil
+}
+
+// ObserveNativeRetirementQEMU reports only positive release completion under
+// this runtime's gate. True is not health, recovery or activation authority;
+// Close may still require review. It neither retries cleanup nor signals.
+func (r *NativeSambaRuntimeQEMU) ObserveNativeRetirementQEMU(ctx context.Context) (bool, error) {
+	if err := r.enter(ctx); err != nil {
+		return false, err
+	}
+	defer func() { <-r.gate }()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	return r.retired, nil
 }
 
 func sealedNativeCredentialInputQEMU(data []byte) (reader *os.File, result error) {

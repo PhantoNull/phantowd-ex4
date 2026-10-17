@@ -28,10 +28,11 @@ const (
 	NativeSambaDisableQEMU
 	NativeSambaStatusQEMU
 	NativeSambaRevokeQEMU
+	NativeSambaSessionsQEMU // Session inventory only; full STATUS retains file/tree evidence.
 )
 
 func (op NativeSambaOperationQEMU) valid(name string) bool {
-	if op == NativeSambaCheckQEMU || op == NativeSambaListQEMU || op == NativeSambaStatusQEMU {
+	if op == NativeSambaCheckQEMU || op == NativeSambaListQEMU || op == NativeSambaStatusQEMU || op == NativeSambaSessionsQEMU {
 		return name == ""
 	}
 	return op >= NativeSambaCreateQEMU && op <= NativeSambaRevokeQEMU &&
@@ -56,6 +57,8 @@ func (op NativeSambaOperationQEMU) argument() string {
 		return "status"
 	case NativeSambaRevokeQEMU:
 		return "revoke"
+	case NativeSambaSessionsQEMU:
+		return "sessions"
 	}
 	return ""
 }
