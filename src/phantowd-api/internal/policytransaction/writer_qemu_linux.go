@@ -65,7 +65,8 @@ func operationCodec() revisionstore.Codec[bundle] {
 }
 
 // No product constructor exists. This private lifetime can only be created over
-// a newly generated tmpfs namespace by this QEMU-only package. No caller path,
+// a newly generated tmpfs or sealed synthetic-ext4 namespace by this QEMU-only
+// package. No caller path,
 // existing state, consumer, HTTP parameter or per-operation backend is accepted.
 type writer struct {
 	mu                                                *sync.Mutex
@@ -78,6 +79,7 @@ type writer struct {
 	journal                                           *revisionstore.Store[bundle]
 	history                                           *historyJournal
 	checkpoint                                        []byte
+	medium                                            disposableMedium
 	base                                              []byte
 	attempted, review, confirmed, closed, closeFailed bool
 	uncertain                                         []*os.File
@@ -123,6 +125,14 @@ func newDisposableHistoryWithCrash(ctx context.Context, id string, initial naspo
 }
 
 func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool, historyPlan *disposableCrash) (*writer, error) {
+	return newDisposableOnMedium(ctx, id, initial, crash, history, historyPlan, disposableTmpfs)
+}
+
+func newDisposableOnMedium(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool, historyPlan *disposableCrash, medium disposableMedium) (*writer, error) {
+	parentRoot, filesystem, mediumErr := medium.location()
+	if mediumErr != nil || medium == disposableFixedExt4 && !history {
+		return nil, ErrInvalid
+	}
 	if history && crash != nil {
 		return nil, ErrInvalid
 	}
@@ -171,16 +181,19 @@ func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config,
 		return nil, ErrInvalid
 	}
 	var fs, proc unix.Statfs_t
-	if unix.Statfs("/tmp", &fs) != nil || fs.Type != unix.TMPFS_MAGIC || unix.Statfs("/proc/self/fd", &proc) != nil || proc.Type != unix.PROC_SUPER_MAGIC {
+	if medium == disposableFixedExt4 && validateHistoryExt4(false) != nil {
+		return nil, ErrUnsupported
+	}
+	if unix.Statfs(parentRoot, &fs) != nil || int64(fs.Type) != filesystem || unix.Statfs("/proc/self/fd", &proc) != nil || proc.Type != unix.PROC_SUPER_MAGIC {
 		return nil, ErrUnsupported
 	}
 	// Probe mandatory unique-ID support BEFORE creating any namespace. /tmp is
 	// not private, so use the raw support bit here, not owned-directory admission.
 	var probe unix.Statx_t
-	if unix.Statx(unix.AT_FDCWD, "/tmp", unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &probe) != nil || probe.Mask&unix.STATX_MNT_ID_UNIQUE == 0 || probe.Mnt_id == 0 {
+	if unix.Statx(unix.AT_FDCWD, parentRoot, unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &probe) != nil || probe.Mask&unix.STATX_MNT_ID_UNIQUE == 0 || probe.Mnt_id == 0 {
 		return nil, ErrUnsupported
 	}
-	dir, err := os.MkdirTemp("/tmp", "phantowd-transaction-")
+	dir, err := os.MkdirTemp(parentRoot, "phantowd-transaction-")
 	if err != nil {
 		return nil, ErrReview
 	}
@@ -200,14 +213,14 @@ func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config,
 		_ = os.Remove(dir)
 		return nil, ErrReview
 	}
-	w := &writer{mu: &sync.Mutex{}, root: f, path: dir, installation: id, watch: -1}
+	w := &writer{mu: &sync.Mutex{}, root: f, path: dir, installation: id, watch: -1, medium: medium}
 	w.self = w
 	fail := func() (*writer, error) { w.review = true; return w, ErrReview }
 	w.initial, err = rootIdentity(f)
 	if err != nil {
 		return fail()
 	}
-	if unix.Fstatfs(int(f.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB) != nil {
+	if unix.Fstatfs(int(f.Fd()), &fs) != nil || int64(fs.Type) != filesystem || unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB) != nil {
 		return fail()
 	}
 	if crash != nil && crash.role == "policy" || historyCrash != nil && historyCrash.role == "policy" {
@@ -485,7 +498,8 @@ func (w *writer) discard() error {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if !w.closed || w.closeFailed || filepath.Dir(w.path) != "/tmp" || !strings.HasPrefix(filepath.Base(w.path), "phantowd-transaction-") {
+	parentRoot, _, err := w.medium.location()
+	if err != nil || !w.closed || w.closeFailed || filepath.Dir(w.path) != parentRoot || !strings.HasPrefix(filepath.Base(w.path), "phantowd-transaction-") {
 		return ErrReview
 	}
 	f, err := rootOpen(unix.AT_FDCWD, w.path, unix.RESOLVE_NO_SYMLINKS|unix.RESOLVE_NO_MAGICLINKS)

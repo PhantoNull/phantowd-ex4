@@ -6,7 +6,8 @@
 This package tests an actual **base/intent → policy → local receipt** sequence,
 not a deployable state store. Its private writer is compiled only with `qemu &&
 linux`. Its fixture writer entry accepts invented policy data and creates
-a new owned tmpfs directory; there is no existing-state writer opener, HTTP route,
+a new owned tmpfs directory (or the sealed synthetic ext4 fixture below);
+there is no existing-state writer opener, HTTP route,
 service consumer, NAS operation or product installation path.
 
 The portable codec is an internal experimental format, **not** an approved
@@ -132,19 +133,59 @@ locks acquired after death are not uninterrupted writer locks or retry authority
 Known-name cleanup follows verified death/reader closure and restores FD baseline;
 unknown or incomplete captures never authorize unlinking.
 
-The existing optional guest now requires143 ordered receipts:53 original store/
-bootstrap/media and90 operation/reader receipts. It preserves all56 old tmpfs
+The existing optional guest now requires148 ordered receipts:53 original store/
+bootstrap/media and95 operation/reader receipts. It preserves all56 old tmpfs
 SIGKILLs plus21 history SIGKILLs, the14 original ext4 losses and read-only/full
 ext4 controls. Two Go PASS rows, closed selectors, normal unmounts and unchanged
-base remain mandatory. Parser controls require2 valid/329 refused traces. The
-new21-case group passes in14.13s inside unchanged shared Go45s/guest60s/outer180s
-limits; no extra default CI stage, timeout increase or dropped old proof.
+base remain mandatory. Parser controls require2 valid/341 refused traces. The
+isolated complete run fits unchanged shared Go45s/guest60s/outer180s limits;
+the timing qualification below is deliberately narrower than a reliability fix.
+No extra default CI stage, timeout increase or dropped old proof is introduced.
 
-The new writer still creates tmpfs state only. These are syscall-success-boundary
+These history SIGKILLs still create tmpfs state only. They are syscall-success-boundary
 process losses with the kernel alive, **not** in-flight kernel-I/O interruption,
 power loss, persistent restart, physical-media durability or complete EIO/close/
-watcher/constructor faults. New history writes on a supported persistent filesystem,
-ENOSPC/read-only behavior, worst-case resources and product recovery remain open.
+watcher/constructor faults. The separate synthetic ext4 evidence below does not
+qualify physical storage, writable restart, worst-case resources or product recovery.
+
+## Sealed synthetic ext4 history writer prerequisite
+
+A closed internal medium enum admits only the ordinary `/tmp` tmpfs profile or
+the literal `/run/phantowd-revisionstore-media` fixture. The ext4 constructor
+requires the marked root ARM VersatilePB guest, restricted mount flags, bounded
+8–32MiB ext4 and the fixed `/dev/sdb` device identity before namespace creation.
+It creates fresh generated state only. The old one-operation constructor remains
+tmpfs-only; unknown profiles and ordinary native hosts refuse without effects.
+This is not a product medium selector or an existing-state writer opener.
+
+`TestRuntimeHistoryWriterOnExt4` enrolls four ordered cases: `normal`, `readonly`,
+`full`, `process-boundary`. Two successive publications preserve the original
+first record, original locks and exact policy/record evidence. Read-only testing
+observes a real exclusive-create EROFS while retained guards still admit the
+lifetime. Bounded sibling fillers establish actual ENOSPC and zero available
+blocks. Failed publication retains the last confirmed policy and fences the
+original writer; restoring space or write access never permits a retry/new ID.
+Actual runtime history observation after verified close remains diagnosis only,
+even when it finds a matching old local confirmation. Known-name disposal and
+descriptor baseline checks remain mandatory.
+
+The process-boundary case requires a separate producer's verified clean exit
+after two publications, then a fresh reader subprocess on a read-only remount.
+Bounded proofs bind the original PID, random challenge and generated root; parent
+observations bracket the actual history reader and preserve exact bytes/full
+captured statx including atime. This is **clean process-boundary observation**,
+not an OS reboot, interrupted I/O, power cut, replay or writable Owner recovery.
+
+The first extended run passed all four new cases in3.69s, but the complete lane
+failed its conservatively remaining39s Go deadline during an older history-loss
+case. A controlled same-source run without competing native/race work passed
+all148 receipts; the new ext4 group took4.02s and the21-loss group15.10s. Limits
+and mandatory proofs were unchanged. This supports load/budget sensitivity, not
+a proven universal cause or repaired hosted CI. Run CPU-heavy native validators
+before timed guests; worst-case timing margin remains an open engineering gate.
+Native tagged units/vet/race3 and Windows checks pass their separate scopes;
+ordinary native positive ext4/root admission is explicitly skipped or refused.
+The standard ARM smoke also passes with its original two writer receipts.
 
 ## One-operation namespace and ownership
 
@@ -301,14 +342,15 @@ guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds28 tmpfs
 process losses plus28 runtime-reader loss cases in a second test binary, now also
 the21 history-reader losses described above, not a second boot. The45s Go allowance is
 conservatively shared using remaining uptime seconds; hard60s guest/180s outer
-and resource caps stay unchanged. Normal tmpfs/ext4 unmount,143 exact ordered
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,148 exact ordered
 receipts and two Go PASS lines are mandatory. The closed original test selection
 is checked against the verifier catalogue before compilation/boot: helper-only
 SKIP or unregistered tests never become acceptable noise. Host parser controls
-require2 valid and329 refused traces. Both binary selectors are closed and
+require2 valid and341 refused traces. Both binary selectors are closed and
 checked against the mandatory verifier catalogue before boot.
 
-Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive
+An isolated actual ARMv5 run passes this complete lane, with the timing limitation
+documented above. Native WSL explicitly skips the positive
 process-loss profile without unique mount IDs; final native gate/stream controls,
 tagged vet and scoped package race3 pass, not positive writer/process-loss race.
 Initial fixture double-close and stale broad helper selection failures are

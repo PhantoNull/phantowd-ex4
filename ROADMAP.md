@@ -942,9 +942,20 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   loss review survive. Complete143-receipt media lane and2positive/329negative
   controls pass, retaining all previous proof. New group14.13s fits existing
   Go45s/guest60s/outer180s; no stage/timer increase.
-  **c.2d.2 outstanding:** supported persistent filesystem writes and restart,
-  ENOSPC/read-only behavior, full real constructor/temporary-close/watch/EIO faults,
-  worst-case resources and product checkpoint/retention/review/reconciliation.
+  **c.2d.2 partially implemented, synthetic ext4 only:** closed marked guest/
+  fixed-device fresh-state construction, normal successive writes, real EROFS,
+  ENOSPC/zero available blocks and sticky review after restoration pass. A clean
+  producer exit followed by a new read-only reader verifies exact original
+  evidence; this is not writable restart admission or an OS reboot. The full
+  optional lane passes148 ordered receipts/2positive341negative controls only
+  in an isolated run at unchanged45s/60s/180s limits. Its first extended run passed
+  all new cases but timed out in an older loss case; worst-case timing remains
+  open. Serialize heavy native qualification before timed guests; do not mask
+  this conflict by dropping proof, widening budgets or claiming hosted repair.
+  **c.2d.2 outstanding:** history losses on the supported persistent filesystem,
+  writable process/system restart, real constructor/temporary-close/watch/EIO
+  faults, worst-case16-record/4MiB resources, and product checkpoint provenance/
+  retention/review/reconciliation. The EX4 state medium remains unselected.
   Success-boundary SIGKILL is not interruption inside a blocked syscall or power
   loss; the complete contract below is not wholly qualified by c.2d.1.
   - Fix syscall/fault plans at construction, never per-operation or from HTTP.

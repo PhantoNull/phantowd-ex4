@@ -331,9 +331,9 @@ their own16MiB tmpfs mount, not physical storage. One boot still has the origina
 hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
 remaining-second accounting. The original catalogue is closed and checked before
 boot, excluding subprocess-only helpers while enrolling their actual parent
-lock test. Current proof is53 original plus90 operation top-level/subcase receipts,
+lock test. Current proof is53 original plus95 operation top-level/subcase receipts,
 two Go PASS lines, both phase markers, normal unmounts and unchanged base.
-Two positive/329 malformed parser controls pass; both binary selectors match
+Two positive/341 malformed parser controls pass; both binary selectors match
 their exact mandatory catalogue before boot. No SKIP/no-tests/foreign marker
 waiver or extra default guest is added.
 
@@ -351,6 +351,26 @@ observation locks only, never writer admission. Known-name cleanup/FD baseline,
 all77 tmpfs losses and the14 original ext4 losses remain mandatory. The new group
 takes14.13s inside the unchanged shared45s/60s/180s budgets. No new default guest,
 physical medium, product writer, in-flight kernel-I/O or power-loss proof follows.
+
+The same binary now also enrolls `TestRuntimeHistoryWriterOnExt4` and exactly four
+subcases, in order: `normal`, `readonly`, `full`, `process-boundary`. It creates
+fresh history only on the closed marked-guest fixed-device ext4 profile. Real
+EROFS/ENOSPC preserve confirmed policy and original first-record/lock evidence;
+restoring the medium does not permit a retry. A verified clean producer exit and
+fresh read-only reader subprocess preserve exact bytes/statx/atime; this is not
+an OS reboot, writable restart or recovery. Subprocess-only helpers remain outside
+the closed parent selector. All148 receipts, two PASS rows,77 tmpfs/14 original
+ext4 kills, normal unmounts and unchanged base remain mandatory.
+
+Finish CPU-heavy native/race qualification **before** starting timed QEMU lanes.
+Read-only cache sharing does not guarantee CPU headroom. The first extended run
+passed all four new cases in3.69s but hit its conservatively remaining39s Go limit
+in an older history-loss case. A controlled same-source isolated run passed the
+whole lane (ext4 group4.02s/history-loss group15.10s), without changing shared45s/
+guest60s/outer180s limits or removing tests. This supports budget/load sensitivity,
+not universal cause, robust worst-case margin or hosted-CI repair. Keep both
+outcomes in qualification evidence; report timing conflicts, never retry them
+silently or increase budgets to make a result green.
 
 The same test binary also runs eight retained-reader cases on the fixed synthetic
 ext4 mount after verifying its read-only remount: six diagnostic kinds and both

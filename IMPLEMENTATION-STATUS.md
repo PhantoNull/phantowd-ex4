@@ -146,11 +146,46 @@ closed selectors and2positive/329malformed parser controls remain. New cases tak
 units/vet and two-package race-count3 pass; native positive root/loss admission
 explicitly skips on the unsupported WSL kernel. No extra default CI stage is added.
 
-This is same-kernel tmpfs process loss at successful syscall boundaries. New
-history writes on persistent filesystems, process/system restart, ENOSPC/read-only
-handling, complete real EIO/constructor/watch/close faults, worst-case resource
+This is same-kernel tmpfs process loss at successful syscall boundaries. The
+separate synthetic ext4 qualification follows below. Writable process/system
+restart, complete real EIO/constructor/watch/close faults, worst-case resource
 bounds, durable checkpoint/review/retention and product recovery remain open.
 No power-cut, physical EX4, boot-admission or deployable-release claim follows.
+
+### M1 history writer synthetic ext4 and clean process boundary
+
+The QEMU-only fresh-state writer now has a closed fixed-ext4 fixture profile;
+ordinary construction and the legacy writer remain tmpfs-only. Admission checks
+the marked root ARM VersatilePB guest, literal bounded restricted ext4 mount and
+fixed synthetic device identity before creating state. No arbitrary path/device,
+product provisioning or existing-state writer opener is introduced.
+
+Four ordered ARM cases pass: normal successive writes, actual EROFS after a
+read-only remount, actual ENOSPC/zero available blocks and a clean producer exit
+followed by a fresh read-only reader subprocess. Original first-record bytes/full
+captured statx including atime, original lock exclusion, last confirmed policy,
+sticky review after restoring the medium, actual history-reader diagnosis and
+FD-balanced known-name disposal remain mandatory. A matching old confirmation
+does not revive the failed writer. Process-boundary observation is not OS reboot,
+writable restart admission, replay, interrupted I/O or power-loss recovery.
+
+The extended optional lane requires148 ordered receipts (53 original plus95
+operation), two Go PASS rows, all77 tmpfs/14 original ext4 SIGKILLs, normal unmounts
+and unchanged base. Two positive/341 malformed parser controls pass. The first
+run passed all four new cases in3.69s but failed its remaining39s Go allowance
+during an older loss case. A controlled same-source isolated run passed the whole
+lane (new ext4 group4.02s/history-loss group15.10s), with unchanged shared45s,
+guest60s and outer180s limits. This is isolated qualification with tight margin,
+not a repaired CI or universal contention-cause claim. Native/race validators
+must precede timed guests; no old proof, default guest or timeout was changed.
+
+Pinned tagged units/vet, scoped race3, Windows preflight and the standard ARM
+smoke pass. Native positive ext4/root paths are skipped/refused on ordinary WSL,
+not ARM race qualification. Worst-case capacity/timing, real EIO and complete
+constructor/watch/close faults, supported physical state, persistent checkpoint/
+retention/review, writable boot/reconciliation and product composition remain
+open. The earlier1800s full integration failure, audit/hosted and release gates
+are unchanged; no physical NAS or disks were touched.
 
 ## Earlier integration failure: `0beb01e` held/data deadline
 

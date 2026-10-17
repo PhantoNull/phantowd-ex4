@@ -22,11 +22,11 @@ run_tests() {
     remaining=$((44 + started - now))
     [ "$remaining" -gt 0 ] && [ "$remaining" -le 45 ] || return 1
     mount -t tmpfs -o nosuid,nodev,noexec,size=16m,mode=1777 tmpfs /tmp || return 1
-    operation_selected='^(TestPolicyOperationSIGKILLObservation|TestPolicyOperationSyscallSIGKILLObservation|TestRuntimeBundleObserverAfterProcessLoss|TestRuntimeBundleObserverOnReadOnlyExt4|TestRuntimeHistoryObserverAfterProcessLoss)$'
-    echo 'PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=77 runtime_reader=true history_reader=true readonly_ext4=true admission=false scope=qemu-only'
+    operation_selected='^(TestPolicyOperationSIGKILLObservation|TestPolicyOperationSyscallSIGKILLObservation|TestRuntimeBundleObserverAfterProcessLoss|TestRuntimeBundleObserverOnReadOnlyExt4|TestRuntimeHistoryWriterOnExt4|TestRuntimeHistoryObserverAfterProcessLoss)$'
+    echo 'PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=77 runtime_reader=true history_reader=true history_ext4=true readonly_ext4=true admission=false scope=qemu-only'
     /usr/sbin/phantowd-policy-operation-tests -test.run "$operation_selected" -test.timeout "${remaining}s" -test.count 1 -test.v || return 1
     umount /tmp || return 1
-    echo 'PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=77 runtime_reader=true history_reader=true readonly_ext4=true original_refs=true first_record_preserved=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only'
+    echo 'PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=77 runtime_reader=true history_reader=true history_ext4=true process_boundary=true readonly_ext4=true original_refs=true first_record_preserved=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only'
     umount /run/phantowd-revisionstore-media || return 1
 }
 if run_tests; then

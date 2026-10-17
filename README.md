@@ -63,6 +63,9 @@ diagnostic-only: product state placement, publication and recovery are not wired
 Separate QEMU-only prototypes test preserved exact base/intent, policy publication
 and local receipt, including bounded successive operations under original locks.
 They cannot open existing state, recover or activate product services.
+The successive-operation prototype also tests normal, full and read-only writes
+on a sealed synthetic ext4 disk, followed by read-only observation in a new
+process. This is not writable restart admission, system reboot or power loss.
 Dedicated process-loss and syscall-boundary tests for both prototypes inspect
 preserved evidence and pending metadata without recovery or retry; they do not
 qualify power loss or an EX4 state medium.

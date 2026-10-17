@@ -18,6 +18,11 @@ volumes; inspect their usage and use the project-scoped cleanup helper only
 when discarding its cached workspace is acceptable. Never run broad Docker
 prune operations as routine cleanup.
 
+Complete native/race qualification checks before starting time-bounded QEMU
+lanes. Read-only caches permit safe storage sharing, not a guarantee that CPU
+contention will fit a fixed guest deadline. Do not run competing CPU-heavy
+validators during those lanes or silently increase budgets after a timeout.
+
 For every durable discovery or decision, update the nearest canonical wiki
 page, `doc/index.md`, and append a dated entry to `doc/log.md`. Run both normal
 and strict checks with the `maintain-llm-wiki` checker before handing off.
