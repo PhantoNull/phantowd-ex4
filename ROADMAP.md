@@ -934,6 +934,19 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   writer behind its QEMU-only fresh-state constructor until its own fault corpus
   passes. Start with native real-file fault controls, then the pinned ARM media
   lane; older one-operation receipts cannot count for the new journal.
+  **c.2d.1 implemented/ARM fixture-qualified:** copied second-operation-only
+  profiles,14 native returning journal boundaries and seven native third-policy
+  boundaries;21 real SIGKILLs with the actual runtime history reader pass.
+  First-original capture precedes second effects via two PID/root/challenge gates;
+  full first-record metadata/atime, original refs, no pending diagnosis and known-
+  loss review survive. Complete143-receipt media lane and2positive/329negative
+  controls pass, retaining all previous proof. New group14.13s fits existing
+  Go45s/guest60s/outer180s; no stage/timer increase.
+  **c.2d.2 outstanding:** supported persistent filesystem writes and restart,
+  ENOSPC/read-only behavior, full real constructor/temporary-close/watch/EIO faults,
+  worst-case resources and product checkpoint/retention/review/reconciliation.
+  Success-boundary SIGKILL is not interruption inside a blocked syscall or power
+  loss; the complete contract below is not wholly qualified by c.2d.1.
   - Fix syscall/fault plans at construction, never per-operation or from HTTP.
     Cover short/partial and full write, file sync, file close, before/after rename
     and directory sync for second intent, policy and confirmation. Preserve first

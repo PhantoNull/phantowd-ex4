@@ -29,6 +29,41 @@ func TestQEMUCommitCrashProfileRequiresClosedValidConstruction(t *testing.T) {
 		t.Fatal("zero profile admitted")
 	}
 }
+
+func TestQEMUThirdRevisionCrashDoesNotAffectTwoConfirmedPolicies(t *testing.T) {
+	for _, point := range []string{"partial-write", "full-write", "file-sync", "file-close", "before-rename", "after-rename", "directory-sync"} {
+		t.Run(point, func(t *testing.T) {
+			parent, dir := anchoredFixture(t)
+			calls := 0
+			profile, err := NewQEMUThirdRevisionCrash(point, func() { calls++ })
+			if err != nil {
+				t.Fatal(err)
+			}
+			s, err := OpenAnchoredQEMUCrashWithCodec(parent, "policy", shareCodec(), profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			if s.Commit(0, policy(1)) != nil || s.Commit(1, policy(2)) != nil || calls != 0 {
+				t.Fatal("earlier policy intercepted")
+			}
+			if s.Commit(2, policy(3)) == nil || calls != 1 {
+				t.Fatal("returning third-revision gate admitted")
+			}
+			if s.Commit(2, policy(3)) != ErrUncertain || calls != 1 {
+				t.Fatal("third-revision retry")
+			}
+			want, _ := json.Marshal(policy(2))
+			if point == "after-rename" || point == "directory-sync" {
+				want, _ = json.Marshal(policy(3))
+			}
+			actual, err := os.ReadFile(filepath.Join(dir, currentName))
+			if err != nil || !bytes.Equal(actual, want) {
+				t.Fatal("wrong third-revision publication", err)
+			}
+		})
+	}
+}
 func TestQEMUCommitCrashProfileBindsRevisionAndActualBoundary(t *testing.T) {
 	for _, point := range []string{"partial-write", "full-write", "file-sync", "file-close", "before-rename", "after-rename", "directory-sync"} {
 		t.Run(point, func(t *testing.T) {

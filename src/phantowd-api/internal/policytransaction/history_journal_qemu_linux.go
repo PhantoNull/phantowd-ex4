@@ -66,9 +66,19 @@ type historyJournal struct {
 	retired                     []journalObject // metadata retained on ambiguous replacement close
 	closeFile                   func(*os.File) error
 	watchFile                   func(*os.File) error // captured fixture-only boundary, never per-call
+	crash                       *disposableCrash
+	crashFired                  bool
 }
 
 func newHistoryJournal(parent *os.File) (*historyJournal, error) {
+	return newHistoryJournalWithCrash(parent, nil)
+}
+
+func newHistoryJournalWithCrash(parent *os.File, plan *disposableCrash) (*historyJournal, error) {
+	crash, err := copyHistoryCrash(plan, false)
+	if err != nil {
+		return nil, err
+	}
 	if parent == nil {
 		return nil, ErrInvalid
 	}
@@ -82,6 +92,7 @@ func newHistoryJournal(parent *os.File) (*historyJournal, error) {
 	}
 	j := &historyJournal{parent: parent, dir: dir, parentID: p, watch: -1, records: make(map[string]journalObject), attemptedNames: make(map[string]bool), closeFile: func(f *os.File) error { return f.Close() }}
 	j.self = j
+	j.crash = crash
 	j.watchFile = func(f *os.File) error {
 		_, err := unix.InotifyAddWatch(j.watch, "/proc/self/fd/"+strconv.Itoa(int(f.Fd())), rootEvents&^unix.IN_ONLYDIR)
 		return err
@@ -316,27 +327,59 @@ func (j *historyJournal) publish(name string, b bundle, replacing bool) error {
 	}
 	// Every effect attempt is fenced by the enclosing Owner, including failure
 	// of this first open. No failed publication removes pending evidence.
+	ordinal := len(j.records)
+	if !replacing {
+		ordinal++
+	}
+	active := j.crash != nil && ordinal == 2 && (j.crash.role == "intent" && b.revision == 1 || j.crash.role == "receipt" && b.revision == 2)
+	fire := func(point string) bool {
+		if !active || j.crashFired || j.crash.point != point {
+			return false
+		}
+		j.crashFired = true
+		j.crash.gate()
+		return true // A returning gate is NEVER successful publication.
+	}
 	j.attemptedNames[name] = true
 	fd, err := unix.Openat2(int(j.dir.Fd()), journalPending, &unix.OpenHow{Flags: unix.O_WRONLY | unix.O_CREAT | unix.O_EXCL | unix.O_NOFOLLOW | unix.O_CLOEXEC, Mode: 0600, Resolve: below})
 	if err != nil {
 		return j.fail()
 	}
 	f := os.NewFile(uintptr(fd), "experimental-history-pending")
-	n, writeErr := f.Write(wire)
+	input := wire
+	partial := active && j.crash.point == "partial-write"
+	if partial {
+		input = wire[:8]
+	}
+	n, writeErr := f.Write(input)
+	if writeErr == nil && n == len(input) {
+		if partial {
+			fire("partial-write")
+			writeErr = ErrReview
+		} else if fire("full-write") {
+			writeErr = ErrReview
+		}
+	}
 	var syncErr error
 	if writeErr == nil && n == len(wire) {
 		syncErr = f.Sync()
+		if syncErr == nil && fire("file-sync") {
+			syncErr = ErrReview
+		}
 	}
 	written, statErr := journalStat(f)
 	closeErr := j.closeTemporary(f)
 	if writeErr != nil || n != len(wire) || syncErr != nil || statErr != nil || closeErr != nil {
 		return j.fail()
 	}
+	if fire("file-close") || fire("before-rename") {
+		return j.fail()
+	}
 	flags := uint(unix.RENAME_NOREPLACE)
 	if replacing {
 		flags = 0
 	}
-	if unix.Renameat2(int(j.dir.Fd()), journalPending, int(j.dir.Fd()), name, flags) != nil || j.dir.Sync() != nil || !j.publicationEvents(name) {
+	if unix.Renameat2(int(j.dir.Fd()), journalPending, int(j.dir.Fd()), name, flags) != nil || fire("after-rename") || j.dir.Sync() != nil || fire("directory-sync") || !j.publicationEvents(name) {
 		return j.fail()
 	}
 	readFD, err := unix.Openat2(int(j.dir.Fd()), name, &unix.OpenHow{Flags: unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_NOATIME | unix.O_NONBLOCK | unix.O_CLOEXEC, Resolve: below})

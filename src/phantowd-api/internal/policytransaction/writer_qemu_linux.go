@@ -111,18 +111,33 @@ type disposableCrash struct {
 }
 
 func newDisposableWithCrash(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash) (*writer, error) {
-	return newDisposableMode(ctx, id, initial, crash, false)
+	return newDisposableMode(ctx, id, initial, crash, false, nil)
 }
 
 func newDisposableHistory(ctx context.Context, id string, initial naspolicy.Config) (*writer, error) {
-	return newDisposableMode(ctx, id, initial, nil, true)
+	return newDisposableMode(ctx, id, initial, nil, true, nil)
 }
 
-func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool) (*writer, error) {
+func newDisposableHistoryWithCrash(ctx context.Context, id string, initial naspolicy.Config, plan *disposableCrash) (*writer, error) {
+	return newDisposableMode(ctx, id, initial, nil, true, plan)
+}
+
+func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool, historyPlan *disposableCrash) (*writer, error) {
 	if history && crash != nil {
 		return nil, ErrInvalid
 	}
+	historyCrash, historyErr := copyHistoryCrash(historyPlan, true)
+	if historyErr != nil || !history && historyCrash != nil {
+		return nil, ErrInvalid
+	}
 	var profile revisionstore.QEMUCommitCrash
+	if historyCrash != nil && historyCrash.role == "policy" {
+		var e error
+		profile, e = revisionstore.NewQEMUThirdRevisionCrash(historyCrash.point, historyCrash.gate)
+		if e != nil {
+			return nil, ErrInvalid
+		}
+	}
 	if crash != nil {
 		target := uint64(2)
 		if crash.role == "intent" {
@@ -195,7 +210,7 @@ func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config,
 	if unix.Fstatfs(int(f.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB) != nil {
 		return fail()
 	}
-	if crash != nil && crash.role == "policy" {
+	if crash != nil && crash.role == "policy" || historyCrash != nil && historyCrash.role == "policy" {
 		w.policy, err = revisionstore.OpenAnchoredQEMUCrashWithCodec(f, "policy", policyCodec(), profile)
 	} else {
 		w.policy, err = revisionstore.OpenAnchoredWithCodec(f, "policy", policyCodec())
@@ -204,7 +219,11 @@ func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config,
 		return fail()
 	}
 	if history {
-		w.history, err = newHistoryJournal(f)
+		journalPlan := historyCrash
+		if journalPlan != nil && journalPlan.role == "policy" {
+			journalPlan = nil
+		}
+		w.history, err = newHistoryJournalWithCrash(f, journalPlan)
 	} else if crash != nil && crash.role != "policy" {
 		w.journal, err = revisionstore.OpenAnchoredQEMUCrashWithCodec(f, "operations", operationCodec(), profile)
 	} else {

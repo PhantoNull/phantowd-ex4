@@ -98,11 +98,53 @@ enrolling the new pin before retiring the old one fixes that path. Controlled
 errors are not kernel EIO, complete close-fault coverage or power loss.
 
 This prototype is **not covered automatically** by the older one-operation
-SIGKILL/syscall/ext4 campaigns below. Still required: history publication faults
-at every declared boundary, interruption/restart on supported media, constructor/
+SIGKILL/syscall/ext4 campaigns below. Its separate process-loss qualification is
+described next. Still required: interruption/restart on supported media, constructor/
 temporary-close/watcher races, worst-case memory/time bounds, independent product
 checkpoint provenance, durable review and authorized reconciliation. There is no
 product constructor, consumer lease, HTTP save or persistent EX4 placement.
+
+### History process-loss qualification — M1.3c.2d
+
+A constructor-bound, copied closed profile can stop only the **second** operation
+at seven actual success boundaries for intent/policy/confirmation: an actual
+eight-byte write, complete write, file sync, file close, before/after rename and
+directory sync. No operation/HTTP selector exists. A returning gate poisons the
+affected lifetime, never successful publication. The policy profile is separately
+sealed to revision3; the older factory still accepts only revisions1/2.
+
+Native actual-file controls cover14 returning journal gates and seven third-policy
+gates, first-operation preservation, copied profiles and no retry. The actual ARM
+media lane additionally executes21 real SIGKILL cases through the runtime history
+reader, not a simulated error or a clean process return. A first bounded gate
+follows locally successful operation1; the parent captures original directories
+and the confirmed first record before acknowledging any second effect. A second
+gate binds the same root/PID/challenge and selected syscall boundary. One bounded
+buffered reader preserves both frames and any prefetched duplicate/trailing bytes.
+
+Parent independently verifies actual child flocks, planned SIGKILL/reaping and
+unchanged first-record original bytes plus full captured statx including atime.
+Original references bracket the actual read-only history reader after death.
+Pending yields review without a kind; published intent/base, unconfirmed policy
+and matching confirmation retain their diagnostic kinds. A test-only loss context
+still requires review in **every** case, including matching receipt. Observation
+locks acquired after death are not uninterrupted writer locks or retry authority.
+Known-name cleanup follows verified death/reader closure and restores FD baseline;
+unknown or incomplete captures never authorize unlinking.
+
+The existing optional guest now requires143 ordered receipts:53 original store/
+bootstrap/media and90 operation/reader receipts. It preserves all56 old tmpfs
+SIGKILLs plus21 history SIGKILLs, the14 original ext4 losses and read-only/full
+ext4 controls. Two Go PASS rows, closed selectors, normal unmounts and unchanged
+base remain mandatory. Parser controls require2 valid/329 refused traces. The
+new21-case group passes in14.13s inside unchanged shared Go45s/guest60s/outer180s
+limits; no extra default CI stage, timeout increase or dropped old proof.
+
+The new writer still creates tmpfs state only. These are syscall-success-boundary
+process losses with the kernel alive, **not** in-flight kernel-I/O interruption,
+power loss, persistent restart, physical-media durability or complete EIO/close/
+watcher/constructor faults. New history writes on a supported persistent filesystem,
+ENOSPC/read-only behavior, worst-case resources and product recovery remain open.
 
 ## One-operation namespace and ownership
 
@@ -256,14 +298,14 @@ observation and child reaping; it is not product retention or recovery.
 
 Run `support/test-revisionstore-media.ps1`. Its existing snapshot-only, NIC-less
 guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds28 tmpfs
-process losses plus28 runtime-reader loss cases in a second test binary, not a
-second boot. The45s Go allowance is
+process losses plus28 runtime-reader loss cases in a second test binary, now also
+the21 history-reader losses described above, not a second boot. The45s Go allowance is
 conservatively shared using remaining uptime seconds; hard60s guest/180s outer
-and resource caps stay unchanged. Normal tmpfs/ext4 unmount,121 exact ordered
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,143 exact ordered
 receipts and two Go PASS lines are mandatory. The closed original test selection
 is checked against the verifier catalogue before compilation/boot: helper-only
 SKIP or unregistered tests never become acceptable noise. Host parser controls
-require2 valid and283 refused traces. Both binary selectors are closed and
+require2 valid and329 refused traces. Both binary selectors are closed and
 checked against the mandatory verifier catalogue before boot.
 
 Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive

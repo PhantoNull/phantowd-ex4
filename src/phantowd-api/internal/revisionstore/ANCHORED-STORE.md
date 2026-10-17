@@ -61,6 +61,13 @@ revision advances and pre-effect revision refusal. Deterministic callbacks injec
 partial/short writes, file sync, close, rename and directory-sync errors and
 verify no retry. These are synthetic failures, not physical I/O/close guarantees.
 
+The QEMU-only crash factory for revisions1/2 remains closed to those revisions.
+A separate sealed `NewQEMUThirdRevisionCrash` factory targets only revision3,
+so a second history operation cannot interrupt initialization or its first
+confirmed policy. Native seven-boundary controls verify both earlier policies
+and returning-gate uncertainty/no retry. It is not an arbitrary-revision selector,
+product backend or proof of persistent restart/power-loss recovery.
+
 The QEMU-only evidence fixture additionally uses this constructor on fresh tmpfs
 files: real coherent NAS-policy commit/readback parity, actual legacy Store Busy,
 late pending preservation and sticky refusal after fixture-only restoration.

@@ -18,8 +18,8 @@ if [ -z "$expected_operation_selection" ] || [ "$declared_operation_selection" !
 fi
 stage='PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only'
 done='PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only'
-op_stage='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=56 runtime_reader=true readonly_ext4=true admission=false scope=qemu-only'
-op_done='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=56 runtime_reader=true readonly_ext4=true original_refs=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only'
+op_stage='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=77 runtime_reader=true history_reader=true readonly_ext4=true admission=false scope=qemu-only'
+op_done='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=77 runtime_reader=true history_reader=true readonly_ext4=true original_refs=true first_record_preserved=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only'
 proof="$stage"
 for name in TestBootstrapAuthorityRetainsOneLockAcrossFreshReadOnlyObservations \
     TestBootstrapAuthorityWritableLifetimeDriftKeepsReviewAndLockWithUnchangedMetadata \
@@ -82,6 +82,12 @@ proof+=$'\n--- PASS: TestRuntimeBundleObserverOnReadOnlyExt4 (0.02s)'
 for value in no-operation base published confirmed inconsistent missing-current policy-pending operation-pending; do
     proof+=$'\n'"    --- PASS: TestRuntimeBundleObserverOnReadOnlyExt4/$value (0.01s)"
 done
+proof+=$'\n--- PASS: TestRuntimeHistoryObserverAfterProcessLoss (0.02s)'
+for role in intent policy receipt; do
+    for point in partial-write full-write file-sync file-close before-rename after-rename directory-sync; do
+        proof+=$'\n'"    --- PASS: TestRuntimeHistoryObserverAfterProcessLoss/$role/$point (0.01s)"
+    done
+done
 proof+=$'\nPASS\n'"$op_done"$'\n'"$done"
 verify() { awk -f "$source/support/tests/verify-revisionstore-media-log.awk"; }
 printf '%s\n' "$proof" | verify
@@ -122,10 +128,12 @@ refused "${proof/"$op_stage"/"$op_stage"$'\n'"$op_stage"}"
 refused "${proof/original_refs=true/original_refs=false}"
 refused "${proof/review=true/review=false}"
 refused "${proof/admission=false/admission=true}"
-refused "${proof/sigkill=56/sigkill=55}"
+refused "${proof/sigkill=77/sigkill=56}"
 refused "${proof/normal_cleanup=true/normal_cleanup=false}"
-refused "${proof/stages=56/stages=28}"
+refused "${proof/stages=77/stages=56}"
 refused "${proof/pending_review=true/pending_review=false}"
 refused "${proof/runtime_reader=true/runtime_reader=false}"
+refused "${proof/history_reader=true/history_reader=false}"
+refused "${proof/first_record_preserved=true/first_record_preserved=false}"
 refused "${proof/readonly_ext4=true/readonly_ext4=false}"
 printf 'PHANTOWD_REVISIONSTORE_MEDIA_LOG_CONTROLS_DONE positive=2 negative=%s scope=host-parser-only guest=false\n' "$negative"

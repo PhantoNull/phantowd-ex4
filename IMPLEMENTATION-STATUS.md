@@ -114,11 +114,43 @@ immutable write-open. Original first record/locks, no-effect refusal and balance
 closure remain mandatory at unchanged15s/240s/360s bounds and all old smoke proofs.
 
 Only fresh temporary namespaces are admitted. The old one-operation crash/media
-tests do not qualify this new journal's failure boundaries. Its own partial write,
-sync/close/rename/directory-sync and process-loss campaigns, supported filesystem
-restart, worst-case resources, persistent checkpoint/review and authorized
-reconciliation/product HTTP/service composition remain required. No installable
-firmware, product state medium or physical device qualification is implied.
+tests do not qualify this new journal's failure boundaries. Its own controlled
+return and syscall-success-boundary process-loss qualification follows below.
+Supported filesystem restart, worst-case resources, persistent checkpoint/review
+and authorized reconciliation/product HTTP/service composition remain required.
+No installable firmware, product state medium or physical device qualification
+is implied.
+
+### M1 history writer process-loss matrix
+
+Constructor-fixed copied profiles now stop only the second operation at seven
+actual boundaries for intent, policy and confirmation. The third-policy factory
+is separately sealed to revision3; the old generic fixture factory still refuses
+anything outside1/2. Native real-file tests cover14 returning journal gates and
+seven third-policy gates, preserving earlier confirmation and fencing every retry.
+
+The actual optional ARM media guest passes21 new real SIGKILLs through the actual
+runtime history reader. A first gate captures original directories and the first
+confirmed record before any second effect; a second gate binds the same original
+PID/root/challenge and boundary. Verified SIGKILL/reaping, full captured metadata
+including first-record atime, repeated read-only diagnoses, actual flock exclusion
+and FD-balanced known-name cleanup are mandatory. Pending has no matched kind;
+a test-only known-loss context still requires review for matching confirmation.
+Observation locks acquired after death are not uninterrupted writer authority.
+
+All143 ordered receipts pass:53 original store/bootstrap/media plus90 operation/
+reader receipts, including all56 old and21 new tmpfs losses,14 old ext4 losses and
+read-only/full ext4 controls. Two Go PASS rows, normal unmounts, unchanged base,
+closed selectors and2positive/329malformed parser controls remain. New cases take
+14.13s within unchanged shared Go45s/guest60s/outer180s. Whole Windows, pinned tagged
+units/vet and two-package race-count3 pass; native positive root/loss admission
+explicitly skips on the unsupported WSL kernel. No extra default CI stage is added.
+
+This is same-kernel tmpfs process loss at successful syscall boundaries. New
+history writes on persistent filesystems, process/system restart, ENOSPC/read-only
+handling, complete real EIO/constructor/watch/close faults, worst-case resource
+bounds, durable checkpoint/review/retention and product recovery remain open.
+No power-cut, physical EX4, boot-admission or deployable-release claim follows.
 
 ## Earlier integration failure: `0beb01e` held/data deadline
 

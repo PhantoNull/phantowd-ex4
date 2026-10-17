@@ -63,9 +63,9 @@ diagnostic-only: product state placement, publication and recovery are not wired
 Separate QEMU-only prototypes test preserved exact base/intent, policy publication
 and local receipt, including bounded successive operations under original locks.
 They cannot open existing state, recover or activate product services.
-Dedicated process-loss and syscall-boundary tests now inspect preserved evidence
-and pending metadata without recovery or retry; they do not qualify power loss
-or an EX4 state medium.
+Dedicated process-loss and syscall-boundary tests for both prototypes inspect
+preserved evidence and pending metadata without recovery or retry; they do not
+qualify power loss or an EX4 state medium.
 The explicit bundle reader is also tested against those process-loss boundaries;
 its diagnoses never authorize retry, recovery or activation.
 

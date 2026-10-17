@@ -17,6 +17,7 @@ type QEMUCommitCrash struct {
 	revision uint64
 	point    string
 	gate     func()
+	third    bool // separate sealed history profile; legacy constructor stays1/2
 }
 
 func NewQEMUCommitCrash(revision uint64, point string, gate func()) (QEMUCommitCrash, error) {
@@ -25,10 +26,22 @@ func NewQEMUCommitCrash(revision uint64, point string, gate func()) (QEMUCommitC
 	}
 	switch point {
 	case "partial-write", "full-write", "file-sync", "file-close", "before-rename", "after-rename", "directory-sync":
-		return QEMUCommitCrash{revision, point, gate}, nil
+		return QEMUCommitCrash{revision: revision, point: point, gate: gate}, nil
 	default:
 		return QEMUCommitCrash{}, ErrUnsafe
 	}
+}
+
+// NewQEMUThirdRevisionCrash selects ONLY revision3, for a second operation after
+// independently confirmed revisions1/2. It does not widen the legacy1/2 factory
+// or accept arbitrary target revisions from callers/HTTP.
+func NewQEMUThirdRevisionCrash(point string, gate func()) (QEMUCommitCrash, error) {
+	p, err := NewQEMUCommitCrash(2, point, gate)
+	if err != nil {
+		return QEMUCommitCrash{}, err
+	}
+	p.revision, p.third = 3, true
+	return p, nil
 }
 
 // OpenAnchoredQEMUCrashWithCodec uses the SAME strict constructor, lock and real
@@ -37,7 +50,11 @@ func NewQEMUCommitCrash(revision uint64, point string, gate func()) (QEMUCommitC
 // fabricated, and an unexpectedly returning gate fails/poisons the Store rather
 // than reporting success. Ordinary Store constructors are unchanged.
 func OpenAnchoredQEMUCrashWithCodec[T any](parent *os.File, name string, codec Codec[T], profile QEMUCommitCrash) (*Store[T], error) {
-	if _, e := NewQEMUCommitCrash(profile.revision, profile.point, profile.gate); e != nil {
+	validRevision := profile.revision == 1 || profile.revision == 2
+	if profile.third {
+		validRevision = profile.revision == 3
+	}
+	if _, e := NewQEMUCommitCrash(1, profile.point, profile.gate); e != nil || !validRevision {
 		return nil, e
 	}
 	s, e := OpenAnchoredWithCodec(parent, name, codec)

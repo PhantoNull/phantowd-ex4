@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -156,14 +157,16 @@ type crashFile struct {
 	meta unix.Statx_t
 }
 type crashRefs struct {
-	path     string
-	dirs     [3]*os.File
-	ids      [3]rootStamp
-	dirMeta  [3]unix.Statx_t
-	files    [2]crashFile
-	names    [2]map[string]unix.Statx_t
-	closed   bool
-	postLoss bool
+	path       string
+	dirs       [3]*os.File
+	ids        [3]rootStamp
+	dirMeta    [3]unix.Statx_t
+	files      [2]crashFile
+	names      [2]map[string]unix.Statx_t
+	closed     bool
+	postLoss   bool
+	history    bool
+	extraFiles map[string]crashFile
 }
 
 func crashFileStat(fd int, name string, flags int) (unix.Statx_t, error) {
@@ -181,23 +184,34 @@ var crashRoles = [2]struct {
 }{{"nas-services.json", ".nas-services.pending", naspolicy.MaxInputBytes}, {"operation.json", ".operation.pending", maxBundleBytes}}
 
 func crashCensus(dir *os.File, role int) (map[string]unix.Statx_t, error) {
+	return crashCensusProfile(dir, role, false)
+}
+func crashCensusProfile(dir *os.File, role int, history bool) (map[string]unix.Statx_t, error) {
 	cursor, e := rootOpen(int(dir.Fd()), ".", below)
 	if e != nil {
 		return nil, ErrReview
 	}
-	names, e := cursor.Readdirnames(3)
+	limit := 3
+	if history && role == 1 {
+		limit = 4
+	} // first, second and optional pending only
+	names, e := cursor.Readdirnames(limit)
 	complete := errors.Is(e, io.EOF)
-	if e == nil && len(names) < 3 {
+	if e == nil && len(names) < limit {
 		more, err := cursor.Readdirnames(1)
 		names = append(names, more...)
 		complete = errors.Is(err, io.EOF) && len(more) == 0
 	}
-	if cursor.Close() != nil || !complete || len(names) > 2 {
+	if cursor.Close() != nil || !complete || len(names) >= limit {
 		return nil, ErrReview
 	}
 	out := map[string]unix.Statx_t{}
 	for _, name := range names {
-		if name != crashRoles[role].current && name != crashRoles[role].pending {
+		allowed := name == crashRoles[role].current || name == crashRoles[role].pending
+		if history && role == 1 {
+			allowed = IsHistoryRecordName(name) || name == journalPending
+		}
+		if !allowed {
 			return nil, ErrReview
 		}
 		x, e := crashFileStat(int(dir.Fd()), name, unix.AT_SYMLINK_NOFOLLOW)
@@ -218,7 +232,10 @@ func captureCrashRefs(path string) (*crashRefs, error) {
 // Test-only shared capture; the separate media fixture validates its fixed
 // bounded synthetic ext4 device before requesting that explicit profile.
 func captureRefsForFilesystem(path string, filesystem int64) (*crashRefs, error) {
-	r := &crashRefs{path: path}
+	return captureRefsProfile(path, filesystem, false)
+}
+func captureRefsProfile(path string, filesystem int64, history bool) (*crashRefs, error) {
+	r := &crashRefs{path: path, history: history}
 	fail := func() (*crashRefs, error) { return r, ErrReview }
 	var e error
 	r.dirs[0], e = rootOpen(unix.AT_FDCWD, path, unix.RESOLVE_NO_SYMLINKS|unix.RESOLVE_NO_MAGICLINKS)
@@ -249,9 +266,28 @@ func captureRefsForFilesystem(path string, filesystem int64) (*crashRefs, error)
 		}
 	}
 	for i, role := range crashRoles {
-		r.names[i], e = crashCensus(r.dirs[i+1], i)
+		r.names[i], e = crashCensusProfile(r.dirs[i+1], i, history)
 		if e != nil {
 			return fail()
+		}
+		if history && i == 1 {
+			r.extraFiles = make(map[string]crashFile)
+			for name, meta := range r.names[i] {
+				if name == journalPending {
+					continue
+				} // metadata only
+				fd, err := unix.Openat2(int(r.dirs[2].Fd()), name, &unix.OpenHow{Flags: unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_NOATIME | unix.O_NONBLOCK | unix.O_CLOEXEC, Resolve: below})
+				if err != nil {
+					return fail()
+				}
+				file := os.NewFile(uintptr(fd), "crash-original-history-file")
+				r.extraFiles[name] = crashFile{f: file, meta: meta}
+				actual, err := crashFileStat(fd, "", unix.AT_EMPTY_PATH)
+				if err != nil || actual != meta {
+					return fail()
+				}
+			}
+			continue
 		}
 		// Pending entries are retained as metadata ONLY, never opened here.
 		x, present := r.names[i][role.current]
@@ -306,7 +342,7 @@ func (r *crashRefs) verify() error {
 		if witness.Close() != nil || e != nil || id != r.ids[i] {
 			return ErrReview
 		}
-		names, e := crashCensus(dir, i-1)
+		names, e := crashCensusProfile(dir, i-1, r.history)
 		if e != nil || !reflect.DeepEqual(names, r.names[i-1]) {
 			return ErrReview
 		}
@@ -319,6 +355,59 @@ func (r *crashRefs) verify() error {
 			}
 		}
 	}
+	for _, file := range r.extraFiles {
+		x, e := crashFileStat(int(file.f.Fd()), "", unix.AT_EMPTY_PATH)
+		if e != nil || x != file.meta {
+			return ErrReview
+		}
+	}
+	return nil
+}
+
+func (r *crashRefs) historySnapshot() (map[string][]byte, error) {
+	current, err := r.snapshot()
+	if err != nil || !r.history {
+		return nil, ErrReview
+	}
+	out := map[string][]byte{"policy": current[0]}
+	for name, file := range r.extraFiles {
+		data, err := io.ReadAll(io.NewSectionReader(file.f, 0, int64(maxBundleBytes)+1))
+		if err != nil || len(data) > maxBundleBytes || uint64(len(data)) != file.meta.Size {
+			return nil, ErrReview
+		}
+		out[name] = data
+	}
+	if r.verify() != nil {
+		return nil, ErrReview
+	}
+	return out, nil
+}
+
+// Close known references only, never unlink through stale/incomplete captures.
+func (r *crashRefs) releaseReferences() error {
+	if r == nil || r.closed {
+		return ErrReview
+	}
+	for name, file := range r.extraFiles {
+		if file.f != nil && file.f.Close() != nil {
+			return ErrReview
+		}
+		file.f = nil
+		r.extraFiles[name] = file
+	}
+	for i, file := range r.files {
+		if file.f != nil && file.f.Close() != nil {
+			return ErrReview
+		}
+		r.files[i].f = nil
+	}
+	for i := len(r.dirs) - 1; i >= 0; i-- {
+		if r.dirs[i] != nil && r.dirs[i].Close() != nil {
+			return ErrReview
+		}
+		r.dirs[i] = nil
+	}
+	r.closed = true
 	return nil
 }
 func (r *crashRefs) snapshot() ([2][]byte, error) {
@@ -404,13 +493,26 @@ func (r *crashRefs) dispose() error {
 	if r.verify() != nil {
 		return ErrReview
 	}
+	for _, file := range r.extraFiles {
+		if file.f.Close() != nil {
+			return ErrReview
+		}
+	}
 	for _, file := range r.files {
 		if file.f != nil && file.f.Close() != nil {
 			return ErrReview
 		}
 	}
 	for i, role := range crashRoles {
-		for _, name := range []string{role.current, role.pending} {
+		names := []string{role.current, role.pending}
+		if r.history && i == 1 {
+			names = nil
+			for name := range r.names[i] {
+				names = append(names, name)
+			}
+			slices.Sort(names)
+		}
+		for _, name := range names {
 			if _, exists := r.names[i][name]; exists && unix.Unlinkat(int(r.dirs[i+1].Fd()), name, 0) != nil {
 				return ErrReview
 			}

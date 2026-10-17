@@ -331,11 +331,26 @@ their own16MiB tmpfs mount, not physical storage. One boot still has the origina
 hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
 remaining-second accounting. The original catalogue is closed and checked before
 boot, excluding subprocess-only helpers while enrolling their actual parent
-lock test. Current proof is53 original plus68 operation top-level/subcase receipts,
+lock test. Current proof is53 original plus90 operation top-level/subcase receipts,
 two Go PASS lines, both phase markers, normal unmounts and unchanged base.
-Two positive/283 malformed parser controls pass; both binary selectors match
+Two positive/329 malformed parser controls pass; both binary selectors match
 their exact mandatory catalogue before boot. No SKIP/no-tests/foreign marker
 waiver or extra default guest is added.
+
+The same operation binary additionally executes21 actual history-writer SIGKILLs:
+second intent/policy/receipt at partial/full write, file sync/close, before/after
+rename and directory sync. Before acknowledging any second effect, the parent
+captures original directories and first confirmed record at a separately bound
+first-success gate. A second same-PID/root/challenge gate precedes planned kill.
+One bounded buffered stream preserves both frames and any duplicate/trailing
+proof. Original first-record bytes/full statx including atime and actual locks
+are independently checked before/after death and the actual runtime history reader.
+Pending produces no diagnosis; all known process losses retain review, including
+matching local receipt. After verified reader closure the parent reacquires
+observation locks only, never writer admission. Known-name cleanup/FD baseline,
+all77 tmpfs losses and the14 original ext4 losses remain mandatory. The new group
+takes14.13s inside the unchanged shared45s/60s/180s budgets. No new default guest,
+physical medium, product writer, in-flight kernel-I/O or power-loss proof follows.
 
 The same test binary also runs eight retained-reader cases on the fixed synthetic
 ext4 mount after verifying its read-only remount: six diagnostic kinds and both
