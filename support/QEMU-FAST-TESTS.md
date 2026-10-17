@@ -2666,6 +2666,20 @@ QEMU can exit zero after the guest reports a fixture failure and reboots. The
 wrapper and complete required-proof verifier must also pass; `guest_exit=0` in
 a non-qualifying diagnostic record is not a successful campaign receipt.
 
+The trusted worker-timing context opt-in also emits fixed-label
+`PHANTOWD_DIAG_NATIVE_CAPTURE` observations from the guarded native capture.
+Input validation, launch, wait-select and post-processing partition its wall
+duration; the direct-child reaped flag requires the original Wait notification,
+not merely return from a canceled select. Kernel wait accounting may include
+descendants that child reaped on Linux, not unrelated peer/server or host work.
+Individually rounded
+milliseconds need not sum exactly; wall-minus-CPU is not I/O wait. Neither
+metric rows nor child-reaped flags qualify group settlement or admission.
+Generic captures/default runtime output stay unchanged. Current selected
+native/race and focused native ARM/replay pass, with48actual rows and all old
+proof/caps retained; the previous failed log still refuses. This is not proof
+that intermittent timeout causes are repaired or a complete-image qualification.
+
 The QEMU-only native driver gives preparation20 and enrollment60 separate
 single-use phases instead of their former shared60 context. This raises the
 combined contextual allowance to80 seconds, not hashing throughput. A shorter

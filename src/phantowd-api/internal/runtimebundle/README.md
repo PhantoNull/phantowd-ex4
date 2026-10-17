@@ -257,6 +257,23 @@ RED/GREEN and tagged vet/tests/race-count3 pass, followed by the actual ARMv5
 identity-state/planned-source fault campaign. This fixes fixture output pollution,
 not the independent hosted live-session deadline or product service startup.
 
+The same bounded context opt-in now emits `PHANTOWD_DIAG_NATIVE_CAPTURE` rows
+from the guarded capture's fixed-size observation. These split input validation,
+launch, wait-select and post-processing; original direct-child Wait completion
+and its kernel CPU accounting are independent flags/data. Capture's former
+execution envelope was not a Samba-only duration. No raw output, process/account
+IDs or arbitrary labels enter diagnostics. Nanosecond partitions are exact;
+displayed milliseconds are individually rounded down. The original-child wait
+record can include descendants it reaped on Linux, not unrelated peer/server or
+host-emulator work; subtraction does not measure I/O wait.
+Missing/invalid metrics are omitted, never treated as successful admission.
+The original execution context is still checked after diagnostics; no worker,
+settlement, privilege or proof limit changes. Selected native units/vet/race3,
+58/80driver controls and actual focused ARMv5 native/replay pass, with48cost rows
+and coherent revocation followed by all existing login/data/disposal proofs.
+This passing sample does not explain or repair the earlier intermittent worker
+expiry, qualify a complete image or authorize product services.
+
 Only fixed phase/reason labels are exposed; cause text, stdin, stderr, account
 identities and secrets are not. The error retains review and its private cause
 for internal `errors.Is` checks. Observation serializes with runtime operations,

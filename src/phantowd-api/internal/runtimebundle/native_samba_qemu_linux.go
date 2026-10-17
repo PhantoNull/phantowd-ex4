@@ -239,6 +239,7 @@ func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation proc
 	stageStarted = time.Now()
 	observed, runErr := capture.Capture(ctx)
 	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerExecutionQEMU, stageStarted, runErr)
+	reportNativeCaptureCostQEMU(ctx, operation, capture)
 	defer clear(observed.Stderr)
 	stageStarted = time.Now()
 	settled, settleErr := capture.Settled(context.Background())

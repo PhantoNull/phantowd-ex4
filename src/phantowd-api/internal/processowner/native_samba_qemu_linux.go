@@ -190,5 +190,6 @@ func NewNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, s
 	if !c.fixtureInputsValid() {
 		return nil, ErrInvalid
 	}
+	c.fixtureTiming = &captureFixtureTiming{}
 	return c, nil
 }

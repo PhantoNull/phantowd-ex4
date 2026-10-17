@@ -509,11 +509,16 @@ button to an unqualified backend simply because the screen exists.
   **Approved coherent revocation packet, host/QEMU only:** one fresh complete
   original-backend session inventory now proves simultaneous original-peer
   continuity and original-target absence instead of adjacent status workers.
-  Native units/vet/race3/80controls pass; current ARM native fails earlier in
+  Native units/vet/race3/80controls pass; earlier ARM native fails earlier in
   Disable's4s status post-admission, with25.94s still left in the live phase.
-  New coherent observer is not reached or ARM-qualified. Preserve complete log;
-  distinguish Samba execution wait, emulation scheduling and admission cost
-  before another attempt. No unchanged retry or wider worker/parent allowance.
+  That observer is not reached in the failed checkpoint. The subsequent source
+  adds guarded QEMU-only capture partition/direct-child CPU diagnostics; four
+  selected package units/vet/race3 and58/80controls pass, then focused native ARM
+  and independent replay pass with all original proof/caps. Coherent observation
+  finishes32223ms of45000;48cost rows include8status captures377--528ms.
+  No causal repair of historical intermittency is established. Keep earlier
+  failure, CPU scope and individually rounded metrics explicit; no unchanged
+  retry, wider worker/parent allowance or complete-image qualification follows.
   Earlier ordinary-native45019ms failure and full-image timeout remain
   failed historical evidence. No cache/lease, retry, continuous guarantee, HTTP,
   privileges or timer changes implied.
@@ -2274,11 +2279,23 @@ storage. No production roster provider or activation path exists.
   RED, full selected native/race3 and static ARM pass after explicit same-Wait
   observation; product process code unchanged, exact historical cause unproven.
   Approved coherent peer/absence inventory replaces only ordinary-native's
-  adjacent post-revocation captures. Native tests pass; actual ARM campaign now
-  fails BEFORE that path in an unchanged4s Disable-status worker, with25.94s
-  remaining in its parent phase. Do not claim new observer ARM qualification or
-  full/hosted repair. Preserve original IDs, complete/late-result refusal and all
-  bounds; next separate execution, scheduling and admission costs from full log.
+  adjacent post-revocation captures. The earlier ARM attempt fails BEFORE that
+  path in a4s Disable-status worker, with25.94s parent remaining. Subsequent
+  QEMU-only capture cost instrumentation and four-package native/race3 pass;
+  actual focused native ARM plus independent replay now passes the coherent
+  observation/fresh-login/data/closure proofs under original limits. This is not
+  a historical timing repair or full/hosted/product qualification.
+  **Required producer-completeness gate:** cached Samba4.22.11 source review
+  finds discarded `sessionid_traverse_read` NTSTATUS in
+  `source3/utils/status.c`. Successfully decoded JSON is not proof that every
+  source record was traversed. Reproduce initialization, traversal/record decode,
+  callback/serialization and partial-result faults using disposable state;
+  require explicit failure with no accepted partial/empty absence result.
+  Trace propagation through `sessionid_tdb.c`, `smbXsrv_session.c` and dbwrap;
+  checking only the top status may miss callback-stop semantics. This is a
+  static finding, not a reproduced binary failure. Qualify a bounded producer
+  before any product revocation/absence authority. Do not adopt processes-only
+  flags as a timing fix without equivalent complete-session/error coverage.
   - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
     retention, pending-input composition and pinned-process construction. Record
     exactly which original/temporary/independent references exist at each failure;

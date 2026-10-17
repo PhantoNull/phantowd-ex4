@@ -24,6 +24,21 @@ ARMv5 static-owner guest, with no additional boot or wider guest budget.
 This reproduces an invalid test assumption, not the exact scheduling cause of
 every earlier intermittent host failure or product-service recovery.
 
+## QEMU-only capture cost observation
+
+Only the guarded native Samba constructor enables fixed-size diagnostic storage.
+Ordinary CaptureSpec has no timing option, callback or replacement input; default
+captures keep a nil pointer and never sample clocks/CPU. The tagged read-only
+observer separates input checks, launch, wait-select and post-processing.
+Wait-select return is NOT original Wait completion: a separate direct-child
+reaped flag requires that exact notification before reading kernel CPU counters.
+No process reference, descriptor, identity or output bytes enter the snapshot.
+Post includes verification and any internal cancellation/stop work. Metrics do
+not establish group absence, server/host CPU or I/O wait; Linux's original-child
+wait record can include descendants that child reaped. They never
+change execution/settlement, review, retry, result publication or timeouts.
+Completed evidence survives Close; copied/canceled/concurrent observers refuse.
+
 ## Failed construction ownership
 
 `NewPinnedSet`, executable/read-only input duplication and `NewCapture` preserve

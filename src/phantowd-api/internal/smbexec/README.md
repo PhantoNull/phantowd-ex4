@@ -156,9 +156,16 @@ as that observed change. No raw inventory or new session witness is returned.
 
 The earlier pair-observation checkpoint passed Linux race-count3 and a focused
 ARMv5 campaign. The current coherent-revocation change passes root-isolated
-native units/vet/race3 and 80 verifier controls, but its ARM native attempt fails
-earlier during Disable's unchanged4s status worker; the new observer is not
-reached or ARM-qualified. Its parent live phase still has25.94s remaining.
+native units/vet/race3 and 80 verifier controls, but an earlier ARM attempt fails
+earlier during Disable's unchanged4s status worker; that attempt does not reach
+or qualify the new observer. Its parent live phase still has25.94s remaining.
+The subsequent capture-instrumented source passes the complete focused native
+ARM campaign and independent replay, including coherent revocation at32.223s,
+fresh-login denial/peer success, temporary-data access, disposal and FD/base
+checks. Original limits/proofs remain. This does not repair the earlier failure
+causally or qualify complete-image/hosted/product behavior. Producer traversal
+error/completeness qualification is also required before product absence claims:
+valid complete JSON coverage is not proof of successful source-database traversal.
 The guest requires original-pair continuity before revocation and coherent
 original-peer/target-absence observation afterward, preserving target-denial,
 owned-stop, final-FD and unchanged-base proofs. New proof fields are mandatory;

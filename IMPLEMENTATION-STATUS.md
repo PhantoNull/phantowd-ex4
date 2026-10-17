@@ -43,14 +43,34 @@ refuse. Typed cancellation and invalid-authority causes are preserved. Standalon
 pair/peer readers remain available; no cache, lease or continuous guarantee is
 introduced. The proof verifier requires `coherent_revocation=true`; old failed
 evidence still refuses. Root-isolated native units/vet/race-count3 and all 80
-Samba controls pass. The current ARMv5 native campaign FAILS earlier, inside
+Samba controls pass. An earlier ARMv5 native campaign FAILS earlier, inside
 Disable: a status worker exhausts its unchanged4s cap at post-admission while
 the live phase still has25.94s left. Execution1.929s plus pre-admission1.525s and
 post-admission0.515s consume that worker allowance. The new coherent observer
 and fresh-login phase are NOT reached. Complete captured guest proof refuses;
 guest reboot/exit0 is not success. No unchanged retry or timer increase follows.
-This does not qualify the new path on ARM, repair the failed complete-image gate
-above, enable a product service or qualify hardware.
+That failed source checkpoint does not qualify the new path on ARM.
+
+The subsequent instrumented source passes the complete focused native ARMv5
+campaign and independent full-log replay: coherent revocation completes at
+32.223s of its original45s phase, followed by fresh-login denial/peer success,
+temporary-data access/denials, verified disposal/FD equality and unchanged base.
+All earlier proof fields and caps remain. Old failed-log replay still refuses.
+Four selected native packages pass units/vet/race-count3 plus58/80driver controls.
+This is current focused evidence, not a causal repair of intermittent timing,
+the failed complete-image gate, hosted checks, product activation or hardware.
+The ARM run precedes only two CPU-accounting comment corrections and a host-only
+waited-descendant regression; executable runtime logic is unchanged. The final
+native qualification includes that regression. No second ARM retry is claimed.
+
+New QEMU-only capture diagnostics separate input checking, launch, wait and
+post-processing, with original direct-child Wait completion and kernel CPU
+accounting. Normal captures keep no timing storage; no callback or public
+CaptureSpec option is added. Default runtime output stays silent. The48real
+guest observations include eight status captures at377--528ms, with all original
+direct children reaped. These passing samples cannot explain the older1.929s
+capture. Linux wait accounting can include descendants the original child reaped,
+not unrelated server/host work; wall-minus-CPU is not I/O wait.
 
 ### Interrupted-test log retention: host-only correction
 

@@ -39,6 +39,7 @@ type CaptureOwner struct {
 	// Generic CaptureSpec has no descriptor-injection option.
 	fixtureInputs      []*os.File
 	fixtureInputsValid func() bool
+	fixtureTiming      *captureFixtureTiming // Nil outside the guarded native QEMU constructor.
 }
 
 func NewCapture(spec CaptureSpec, executable, input *os.File) (_ *CaptureOwner, result error) {
@@ -219,6 +220,8 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	if err := operation.Err(); err != nil {
 		return CaptureResult{}, err
 	}
+	c.fixtureTiming.begin()
+	defer c.fixtureTiming.finish()
 	if err := c.inputsUnchanged(operation); err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return CaptureResult{}, err
@@ -234,6 +237,7 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	if err := operation.Err(); err != nil {
 		return CaptureResult{}, err
 	}
+	c.fixtureTiming.mark(1)
 	c.consumed = true
 	stdout, stderr := newCaptureBuffer(MaxCaptureStdout), newCaptureBuffer(MaxCaptureStderr)
 	command := exec.Command("/proc/self/fd/3")
@@ -253,14 +257,17 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	if command.Start() != nil {
 		return CaptureResult{}, ErrUnavailable
 	}
+	c.fixtureTiming.mark(2)
 	process := &managedProcess{command: command, pid: command.Process.Pid,
 		done: make(chan struct{}), stopTimeout: c.spec.StopTimeout}
 	c.current = process
 	go process.wait()
+	defer c.fixtureTiming.observeChild(process)
 	select {
 	case <-process.done:
 	case <-operation.Done():
 	}
+	c.fixtureTiming.mark(3)
 	if err := operation.Err(); err != nil {
 		c.review = true
 		// Reuse the existing owned-group cleanup. Forced/uncertain cleanup never
