@@ -66,6 +66,23 @@ adapter work. Host regression/race checks and the real constructor-backed ARM
 input-loss proof pass with mandatory `cause_preserved=true`. This changes only
 the QEMU-only Owner, not product service activation or the full integration gate.
 
+### M1 selected configuration protocol and anchored history
+
+The selected direction is current coherent policy plus per-operation bundles,
+not immutable generations/manifest. The experimental codec is not thereby a
+frozen product format or an approved physical state layout.
+
+An internal read-only comparison now joins multiple operation bundles to an
+independently trusted exact checkpoint and current policy. It refuses duplicate
+IDs, forks, gaps, changed bytes, foreign evidence and unconfirmed interior
+operations; uncertain tails remain diagnostic. Count16/4MiB inspection bounds
+never authorize deleting history or replacing its checkpoint. Host units/race,
+strict runner controls and two actual ARM receipts across the existing API
+restart pass. No extra guest or filesystem mutation is introduced by this
+comparison. Complete retained history collection, serialized publication,
+provisioning/retention, recovery and product HTTP/service wiring remain required;
+the latest complete integration gate above is unchanged.
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

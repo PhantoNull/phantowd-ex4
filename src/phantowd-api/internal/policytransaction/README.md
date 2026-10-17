@@ -10,10 +10,39 @@ a new owned tmpfs directory; there is no existing-state writer opener, HTTP rout
 service consumer, NAS operation or product installation path.
 
 The portable codec is an internal experimental format, **not** an approved
-product compatibility contract. Product bundle-versus-generation choice remains
-open. Existing policy adapters remain unchanged. A separate fixed-profile
+product compatibility contract. The selected product direction is current policy
+plus per-operation bundles, not immutable generations/manifest. This selects the
+protocol family, not physical placement/provisioning or a frozen on-disk schema.
+Existing policy adapters remain unchanged. A separate fixed-profile
 read-only collector can inspect this experimental bundle; it cannot adopt it
 into a writer or authorize recovery.
+
+## Anchored multi-operation history prerequisite
+
+`MatchBundleHistoryObservation` reuses the strict experimental bundle decoder
+and `policyevidence.MatchHistory` to compare a complete supplied set with an
+independently trusted exact policy checkpoint and the observed current policy.
+Enumeration order is irrelevant. Duplicate operation IDs, forks, gaps, foreign
+installation, altered exact bytes and unconfirmed interior operations refuse a
+coherent-chain result. An uncertain tail retains its existing diagnostic kind;
+matching local declarations never prove past sync return or browser delivery.
+
+Validate every present record before diagnosis: missing evidence must not hide
+malformed later input. Invalid inputs return no partial diagnosis; known
+contradictions take precedence over missing evidence. Generic JSON and formatting
+remain private. No caller buffers are mutated or retained in a returned result.
+
+The complete inspection is bounded to16 operations and4MiB, including checkpoint,
+current and supplied records. Both wire and decoded inputs are bounded. These
+are memory/processing bounds, **not** a product retention policy: never drop
+records, delete evidence or replace the checkpoint to fit them. Completeness,
+checkpoint origin, pending-file exclusion, protected filesystem enumeration,
+rollback resistance and retention/reconciliation remain trusted-owner work.
+
+Host/race controls cover these boundaries and byte mutations. The existing
+standard ARM smoke requires two exact synthetic history receipts across its
+original intentional API restart; no extra guest or persistent write is added.
+This does not turn the one-operation disposable writer into a product store.
 
 ## Namespace and ownership
 

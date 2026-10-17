@@ -17,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policytransaction"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
@@ -120,5 +121,5 @@ func exercisePolicyEvidencePair(base []byte, next naspolicy.Config) error {
 			return errors.New("policy evidence malformed input admitted")
 		}
 	}
-	return nil
+	return policytransaction.ExerciseBundleHistoryQEMU(installation, base, next)
 }

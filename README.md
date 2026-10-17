@@ -69,6 +69,10 @@ or an EX4 state medium.
 The explicit bundle reader is also tested against those process-loss boundaries;
 its diagnoses never authorize retry, recovery or activation.
 
+The selected state design keeps the current policy plus per-operation bundles.
+An internal bounded history comparison checks exact checkpoint/operation chains;
+it is not yet a persistent product history, recovery engine or service admission.
+
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.
 Its independent server-side snapshots now match the same worker generation,

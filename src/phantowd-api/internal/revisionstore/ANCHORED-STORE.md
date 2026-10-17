@@ -48,7 +48,9 @@ Uncertainty is in-memory, not durable quarantine. Reopening cannot prove earlier
 fsync results, browser receipt or permission to retry/reconcile. Constructor and
 Close fault coverage remains incomplete; no retention of a kernel lock after an
 uncertain close is promised. Generic error wording is not a recovery instruction.
-No product operation-bundle/generation format or physical state medium is chosen.
+The selected product direction is current policy plus per-operation bundles.
+This primitive does not freeze that format, select a physical state medium or
+provide the complete product transaction/recovery Owner.
 
 ## Verification scope
 

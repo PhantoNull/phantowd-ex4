@@ -8,7 +8,26 @@ SMB/NFS/iSCSI policy. This is **not** a journal writer, retained filesystem
 collector, recovery engine, boot permission or HTTP API. Existing Store/Owner/
 BootstrapAuthority behavior is unchanged. The approved first slice implements
 the [operation-evidence design](../revisionstore/RECOVERY-DESIGN.md); later writer,
-namespace/publication, retention, reconciliation and provisioning decisions remain.
+publication, retention, reconciliation and provisioning work remains. The chosen
+product protocol family is current policy plus per-operation bundles; that does
+not freeze the experimental bytes or choose a physical state medium.
+
+## Checkpoint-anchored operation history
+
+`MatchHistory` compares a complete supplied history with a trusted exact policy
+checkpoint and current bytes. It orders validated operations by base revision,
+rejects repeated operation IDs and requires contiguous exact revision/hash links
+with local declarations for all interior records. The final operation retains
+the original six no-action diagnoses, including unconfirmed publication and
+incomplete evidence. All present records are validated before diagnosis, even
+when another record is unavailable; invalid data yields no partial result.
+
+The16-operation/4MiB bounds are inclusive inspection limits, not filesystem
+quotas or permission to prune/rebase a history. Completeness, checkpoint origin,
+pending-file exclusion, durable confirmation and rollback/cloned-state protection
+are not established by this pure function. It opens nothing and performs no
+write/replay/recovery, HTTP or service action. Input buffers must remain immutable
+during the call; private results retain no references to them.
 
 ## Private operation preparation — M1.3c.1
 

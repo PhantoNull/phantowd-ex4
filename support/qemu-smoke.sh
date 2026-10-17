@@ -155,6 +155,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         # S99 runs the API self-test before AND after its intentional restart.
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_HISTORY_READY records=2 anchored=true gap_refused=true duplicate_refused=true uncertain_tail=true private=true readonly=true admission=false scope=synthetic-memory-only')" -eq 2; then
+            echo 'Expected two anchored multi-operation history assertions across API restart' >&2
+            exit 1
+        fi
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_EVIDENCE_READY schema=1 all_protocols=true exact_bytes=true private=true readonly=true admission=false scope=synthetic-memory-only')" -eq 2; then
             echo 'Expected two synthetic read-only policy evidence assertions across API restart' >&2
             exit 1

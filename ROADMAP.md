@@ -877,7 +877,20 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   follows pinned Go's fatal-source policy, not fake-reader recoverability.
   **c.2 retained writer authority/namespace** must select an explicit bounded
   operation-bundle or generation/manifest protocol and preserve the original
-  lock into effect ownership, not close/reopen the observer. Product choice open.
+  lock into effect ownership, not close/reopen the observer. The selected product
+  direction is current policy plus per-operation bundles, not immutable policy
+  generations/manifest. The experimental bytes are not a frozen compatibility
+  contract; physical placement/provisioning and product publication remain open.
+  **c.2a anchored history comparison (host/ARM prerequisite):** inspect a complete
+  supplied operation set against an independently trusted exact checkpoint and
+  current policy. Reuse strict record/bundle codecs; require unique operation IDs,
+  contiguous exact revision/hash links and locally confirmed interior records.
+  Preserve unconfirmed/incomplete tail diagnoses, refuse forks/gaps/byte changes,
+  and validate all present records before a redacted result. Bounds16 operations/
+  4MiB are inspection limits, never permission to truncate/delete history or move
+  its checkpoint. Native units/race and the existing ARM smoke exercise this
+  model; original bounds/boot count stay fixed. No filesystem census/provenance,
+  multi-operation writer/recovery, HTTP or product service authority follows.
   A separate [strict anchored Store prerequisite](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
   now retains the actual child lock under a borrowed parent, does not sync on
   open, returns exact bounded readback and fences pending/unknown entries plus

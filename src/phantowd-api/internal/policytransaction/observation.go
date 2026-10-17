@@ -19,8 +19,7 @@ const MaxObservedBundleBytes = maxBundleBytes
 // Every diagnosis grants no action, including a matching local declaration:
 // it proves neither earlier sync returns nor delivery of a browser response.
 func MatchBundleObservation(installation string, current, operation policyevidence.Slot) (policyevidence.Diagnosis, error) {
-	if (operation.State != policyevidence.Present && operation.State != policyevidence.Absent && operation.State != policyevidence.Unavailable) ||
-		(operation.State == policyevidence.Present) != (len(operation.Data) > 0) || len(operation.Data) > MaxObservedBundleBytes {
+	if !validObservedBundleSlot(operation) {
 		return policyevidence.Diagnosis{}, ErrInvalid
 	}
 	e := policyevidence.Evidence{InstallationID: installation, Current: current,
