@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Fresh policy-session journal — internal file component
+
+A fixed pre-provisioned `policy-session` role now records opening/closure
+declarations using the existing anchored transaction engine and actual child
+flock. Constructor never creates, syncs, deletes or adopts existing evidence.
+Publications have exact readback and sticky review on uncertainty; Close releases
+references only, never manufactures closure or clears records. The opaque handle
+keeps pointer/value formatting and JSON private, and copied handles invalid.
+
+Portable Windows codec tests, pinned native actual-I/O/vet/race3, concurrent
+formatting and the same three-scenario tmpfs fixture pass without native skips.
+Final actual ARMv5 standard smoke passes two journal receipts with private-copy
+proof plus every previous check and unchanged budgets. A real value-formatting
+metadata disclosure was caught and corrected before publication; the final source
+was requalified, not inferred from the earlier I/O-only guest.
+
+This is not the complete root Owner or a product startup/HTTP/recovery path.
+Absolute-parent/mount/ABA/watch coverage, full constructor/temporary-close faults,
+durable review, complete consumer/role/history ownership and physical state remain
+gates. See the [component contract](src/phantowd-api/internal/policyepochjournal/README.md).
+
 ## Policy-session declarations — not clean-boot authority
 
 Private experimental opening/closure codecs now bind installation/epoch IDs,

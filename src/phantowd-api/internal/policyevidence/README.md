@@ -46,6 +46,11 @@ release unclean-restart operator policy is a separate product decision; both
 manual and automatic recovery require qualified retained state and medium behavior.
 The existing standard ARM self-test exercises eight synthetic comparisons plus
 malformed/private controls, before/after its API restart; no extra boot or I/O.
+A separate [fresh-role journal component](../policyepochjournal/README.md) now
+records those declarations through the existing anchored transaction engine.
+It does not change these pure comparisons into boot/recovery authority or add
+a role to existing policy/history namespaces. Product root/consumer composition,
+medium qualification and recovery remain separate gates.
 
 ## Checkpoint-anchored operation history
 

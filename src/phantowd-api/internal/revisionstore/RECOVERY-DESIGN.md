@@ -175,6 +175,12 @@ receipts alone cannot establish that distinction. The private experimental
 [epoch declaration codec/matcher](../policyevidence/README.md#policy-session-declarations--experimental-m12c1-prerequisite)
 now binds opening/current/closure bytes without adding filesystem behavior.
 It cannot certify actual opening, consumer drain, synchronization or Close.
+A separate internal [fresh-role declaration journal](../policyepochjournal/README.md)
+uses this anchored engine for fixed `policy-session/epoch.json` publications,
+while refusing existing/pending evidence. It records data in a separately
+provisioned role; it is not the retained complete product root or a writable
+bootstrap/reopen path. Neither this role nor its caller is wired into product
+startup, and existing policy/history directory schemas remain unchanged.
 
 Before a product session gate can use those declarations, specify a separate
 bounded role namespace and retain original root/actual child locks across

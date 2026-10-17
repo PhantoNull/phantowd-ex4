@@ -876,6 +876,34 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   bounded fuzz executions and actual standard ARMv5 smoke pass. Exact epoch,
   model and writer pairs bracket API restart; all old checks/caps retained.
   This qualifies declaration data only, not a persisted epoch or clean boot.
+  **M1.2c.2 — fresh policy-session declaration journal (internal component):**
+  fix one pre-provisioned owned0700 `policy-session` child of a borrowed original
+  trusted parent. Reuse strict anchored Store/flock and fixed `epoch.json` /
+  `.epoch.pending`, no constructor init/sync/deletion or existing-state adoption.
+  One opening and one explicit closure publication, canonical exact-record
+  envelope bounded12KiB; transaction1/2 differs from epoch/policy counters.
+  Generate the epoch ID internally; capture trusted installation/sequence and
+  backend once, never per-call paths/IDs/implementations. Any admitted uncertain
+  publication/read/cancellation fences all further writes/observations. Close
+  only releases references; it never invents a closure or deletes evidence.
+  Require actual native lock/readback/concurrency and before/after mutation/Close
+  controls plus the same disposable three-scenario fixture natively on tmpfs and
+  in ARM. Preserve original opening, refuse matching existing evidence, verify
+  closure/disposal/FD balance. Value/pointer formatting/JSON must remain private,
+  copied handles invalid, and concurrent formatting must not copy mutable state.
+  Keep old smoke proofs/budgets and require two exact journal receipts across
+  API restart; this is not a new CI lane or a physical state-medium choice.
+  **Next:** retained complete product root/role/consumer/history composition,
+  absolute-parent/unique-mount and ABA/watcher coverage, complete constructor/
+  temporary-close faults, durable review, successor/retention and writable-restart
+  qualification. Empty role never proves pristine or permits erasing known errors.
+  No product startup/HTTP, boot/recovery policy, service activation or EX4 writes.
+  **Local acceptance:** portable Windows codecs and pinned native actual-I/O,
+  fixture/vet/race3 pass without positive skips; final ARM standard smoke passes
+  two exact journal receipts including private-copy refusal and all old checks.
+  A real value-formatting metadata leak led to an opaque immutable handle/private
+  state split, concurrent-formatting race controls and final-source ARM retest.
+  This is not physical durability, full/media/two-boot or product root admission.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:
