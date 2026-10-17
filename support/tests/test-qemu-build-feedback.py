@@ -923,7 +923,17 @@ class BuildFeedbackTests(unittest.TestCase):
                              'OriginalCauseAndBalancesDescriptors (0.00s)')
         constructor_nested = ('--- PASS: TestConstructorNestedReviewPreserves'
                               'UnattemptedContainingReferences (0.00s)')
-        lines += [constructor_close, constructor_clean, constructor_nested] * 3
+        constructor_cross = ('--- PASS: TestConstructorCrossDomainReviewRetains'
+                             'ContainingReferences (0.00s)')
+        lines += [constructor_close, constructor_clean, constructor_nested,
+                  constructor_cross] * 3
+        pinned_main = ('--- PASS: TestPinnedConstructorRollbackRetains'
+                       'CloseFailure (0.00s)')
+        pinned_cases = [
+            '    --- PASS: TestPinnedConstructorRollbackRetainsCloseFailure/'
+            f'{role} (0.00s)' for role in
+            ('outer', 'readonly', 'trusted', 'capture')]
+        lines += [pinned_main] * 3 + pinned_cases * 3
         main = '--- PASS: TestReadinessCannotCommitAfterContextEnds (0.00s)'
         clock = ('--- PASS: TestReadinessContextChecksOriginalAndDerived'
                  'MonotonicDeadlines (0.00s)')
@@ -973,6 +983,21 @@ class BuildFeedbackTests(unittest.TestCase):
                     ('missing-constructor-nested',
                      [line for line in lines if line != constructor_nested],
                      0, '\n', False),
+                    ('missing-constructor-cross',
+                     [line for line in lines if line != constructor_cross],
+                     0, '\n', False),
+                    ('missing-pinned-main',
+                     [line for line in lines if line != pinned_main],
+                     0, '\n', False),
+                    ('missing-pinned-case',
+                     [line for line in lines if line != pinned_cases[0]],
+                     0, '\n', False),
+                    ('extra-pinned-case', lines + [pinned_cases[0]],
+                     0, '\n', False),
+                    ('changed-cross-domain-proof',
+                     [line.replace('cross_domain_review=true',
+                                   'cross_domain_review=false')
+                      for line in lines], 0, '\n', False),
                     ('changed-constructor-proof',
                      [line.replace('constructor_close_eio=true',
                                    'constructor_close_eio=false')

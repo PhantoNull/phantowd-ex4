@@ -7,7 +7,6 @@ package processowner
 
 import (
 	"context"
-	"errors"
 	"os"
 	"strings"
 
@@ -50,7 +49,7 @@ func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, s.release())
+			result = s.constructionRollback(result)
 		}
 	}()
 	var identities [12]unix.Stat_t

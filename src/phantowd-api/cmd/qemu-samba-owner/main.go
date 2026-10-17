@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ const launcher = "/usr/sbin/phantowd-samba-root-launcher"
 
 func main() {
 	if err := run(); err != nil {
+		defer func() { runtime.KeepAlive(err) }() // Retain failed-construction handles until terminal disposal.
 		fmt.Fprintln(os.Stderr, "PHANTOWD_SAMBA_OWNER_FAILED", err)
 		os.Exit(1)
 	}

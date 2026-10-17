@@ -8,7 +8,6 @@ package processowner
 import (
 	"bytes"
 	"crypto/sha256"
-	"errors"
 	"os"
 	"time"
 
@@ -80,7 +79,7 @@ func NewNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, s
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, c.release())
+			result = c.constructionRollback(result)
 		}
 	}()
 	seals, err := unix.FcntlInt(c.input.Fd(), unix.F_GET_SEALS, 0)

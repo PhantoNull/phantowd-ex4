@@ -394,9 +394,14 @@ caller survival and independent subsequent construction. Separate controlled
 bookkeeping checks preserve unattempted containing references; verified rollback
 stays descriptor-balanced and returns the original cause without a review handle.
 These tests use the existing static ARM guest without another stage or larger
-deadline. Pinned-process/state constructors, temporary-close paths, other caller
-families and product composition still need their own audit/fault qualification;
-this is not a complete constructor-lifetime certification.
+deadline. Pinned-process and capture construction now use the same acyclic
+`constructionreview` classification: an actual lower-factory close-EIO plus the
+actual containing rollback boundary verifies that foreign review cannot release
+original parent references. That containing fixture bypasses bundle admission;
+it does not certify a valid full upper constructor or service grant. The marker
+is classification only, never authority. State/directory/temporary-close families,
+live teardown, all composition faults and product failed-service ownership still
+require qualification; this is not complete constructor-lifetime certification.
 
 The package-private `prepareRetainedCode` helper captures independent read-only
 root/file references and original file/directory/alias metadata for the complete

@@ -8,6 +8,7 @@ package runtimebundle
 import (
 	"errors"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
@@ -17,6 +18,7 @@ import (
 // logging/replacing the error is not ownership. There is no global quarantine.
 // A future product composer must explicitly retain these failed-service errors.
 type constructionReview struct {
+	constructionreview.Marker
 	retained any
 	cause    error
 }
@@ -26,24 +28,18 @@ func (r *constructionReview) Unwrap() error      { return r.cause }
 func (*constructionReview) Is(target error) bool { return target == ErrReviewRequired }
 
 func hasConstructionReview(err error) bool {
-	var retained *constructionReview
-	return errors.As(err, &retained)
+	return constructionreview.Contains(err)
 }
 
 // Only no-child constructors may use this boundary. A nested retained failure
 // prohibits further release; otherwise attempt verified rollback exactly once.
 // The original cause and first cleanup failure survive normal error wrapping.
 func constructionRollback(cause error, retained any, release func() error) error {
-	if cause == nil {
-		return nil
+	result, hold := constructionreview.Rollback(cause, release)
+	if hold {
+		return &constructionReview{retained: retained, cause: result}
 	}
-	if hasConstructionReview(cause) {
-		return &constructionReview{retained: retained, cause: cause}
-	}
-	if closeErr := release(); closeErr != nil {
-		return &constructionReview{retained: retained, cause: errors.Join(cause, closeErr)}
-	}
-	return cause
+	return result
 }
 
 func (o *Owner) constructionRollback(cause error) error {

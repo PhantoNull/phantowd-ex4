@@ -59,6 +59,12 @@ func newPendingClientOwnerRoleQEMU(ctx context.Context, client, bootstrap *Plan,
 	// reviewed object alongside the error; never discard its remaining pins.
 	defer func() {
 		if result != nil {
+			if hasConstructionReview(result) {
+				o.review, o.releaseErr, o.reviewCause = true, result, result
+				owner = o
+				result = &constructionReview{retained: o, cause: result}
+				return
+			}
 			if o.review {
 				if o.reviewCause == nil {
 					o.reviewCause = result

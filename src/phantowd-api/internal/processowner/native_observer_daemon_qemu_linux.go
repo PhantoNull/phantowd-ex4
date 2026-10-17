@@ -180,13 +180,9 @@ func NewNativeObserverDaemonQEMU(spec MemberSpec, executable *os.File,
 	}
 	defer func() {
 		if result != nil {
-			if closeErr := set.release(); closeErr != nil {
-				// release keeps its terminal error. Never retry an uncertain
-				// close or lose the remaining retained input references.
-				set.set.reviewRequired = true
-				set.set.state = StateReviewRequired
+			result = set.constructionRollback(result)
+			if _, retained := result.(*constructionFailure); retained {
 				owned = &NativeObserverDaemonQEMU{owned: set}
-				result = errors.Join(ErrReviewRequired, result, closeErr)
 			} else {
 				owned = nil
 			}

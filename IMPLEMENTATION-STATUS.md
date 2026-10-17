@@ -4491,6 +4491,43 @@ constructor PASS rows within the same 120-second guest. Separate Samba service
 and independent complete-log replay pass its normal-path scope, not the other
 constructor fault families or complete-image/hosted qualification.
 
+### Cross-package constructor ownership
+
+The next constructor slice now uses an acyclic shared classification contract
+between runtime and process owners. Actual pinned-set and capture factories retain
+single-descriptor close-EIO through outer rollback and regular/executable/input
+validation, with original causes, unattempted pins, GC reachability, no retry/
+launch and independent construction. A real lower factory plus the actual
+containing rollback boundary reproduces and corrects foreign-review parent-pin
+release; the parent bookkeeping fixture is not valid full runtime admission.
+Fixed no-child Samba/capture/pending constructors preserve the same error chain;
+the pending constructor clears its unusable copied secret. No descriptor getters,
+global latch, product activation or change to live Capture teardown is added.
+The existing static guest requires twelve new pinned-case and three cross-domain
+receipts in addition to every earlier proof, without a guest/budget increase.
+Complete directory/state/temporary-close faults, active-service ownership,
+all constructor compositions and release qualification remain separate.
+
+Construction-focused native units/vet/race3 and all 58 driver controls pass on
+the final fixture source. A broader process-owner race run still fails the
+unchanged failed-start/forced-cleanup test: review is preserved but the original
+PID has not yet been cleared. Its isolated three-repeat pass is not a causal
+repair or a green complete suite. Whole Windows/API checks and ARM cross-build
+also pass before the last Linux test-only fixture correction. The first ARM
+attempt correctly rejects guest setuid BusyBox before fault injection; the
+guarded test now uses the existing verified0755 static probe, without relaxing
+executable admission. Final ARM verifies the added cases and every prior static
+proof within the same 120-second guest. No full integration or hosted pass follows.
+
+The separate ordinary-native Samba campaign remains **failed**, not qualified:
+the revoked-pair observation enters with2,371ms left and its worker's final
+code/authority check reaches the original45s phase deadline at45,019ms. The
+second fresh-login phase is not reached. Complete diagnostic-log replay also
+rejects the missing campaign proof, even though the guest reboots normally.
+No unchanged retry, larger budget or acceptance of an incomplete observation
+is used. Investigate the adjacent complete peer/pair inventories as a possible
+coherent single-observation prerequisite; no cache or weaker proof is assumed.
+
 ### Earlier copy-only qualification
 
 The Linux runtime Owner now binds its constructor-created pointer identity.

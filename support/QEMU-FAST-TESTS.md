@@ -1429,19 +1429,35 @@ bookkeeping controls do not themselves qualify code admission or child execution
 the guarded ARM constructor supplies that separate evidence. Other handle types
 still require their own audit.
 
-The same metadata phase also runs three constructor groups three times: actual
+The same metadata phase also runs the original three constructor groups three times: actual
 static construction with one precise `close -> EIO` seccomp fault in a terminal
 subprocess; verified cancellation rollback/descriptor balance; and controlled
 nested-review preservation of unattempted references. Both construction/cleanup
 causes and strong error-chain ownership across garbage collection are checked,
 with no retry, substituted-object closure, caller-root loss or global admission
-block. The driver requires all nine top-level PASS rows, no SKIP/FAIL and both
+block. The driver requires those nine top-level PASS rows plus the cross-domain
+group below, no SKIP/FAIL and both
 `constructor_close_eio=true` / `retained_error_chain=true`. Actual guard controls
 reject missing/extra constructor receipts and changed proof fields. This keeps
 one guest and its 120-second budget. Injected EIO is not physical-device failure,
 successful bundle admission, post-launch teardown or all-constructor coverage.
 The new contract requires retained original errors, not merely logged strings;
 product composition, other constructors and temporary-close faults remain open.
+
+The existing process-test binary additionally runs four actual pinned/capture
+constructor close-EIO cases three times under a fixed 15-second test watch.
+The driver requires three top-level PASS rows and all twelve case receipts, plus
+`pinned_constructor_review=true`. Metadata additionally requires three actual
+cross-domain containing-rollback PASS rows and `cross_domain_review=true`.
+Foreign review must preserve original parent references and both domains' causes
+without string matching, retry or launch. The parent fixture is controlled
+no-child bookkeeping, not valid full bundle admission; lower factories are real.
+The shared test-only syscall helper is never imported by non-test product code.
+No new guest/binary, weaker earlier receipt or larger guest/worker budget is added.
+The ARM executable fixture uses the existing staged root-owned0755 static probe,
+guarded by exact model/root/fixture flag. Guest BusyBox is04755 and is correctly
+refused; using it as a valid pin would weaken executable admission. Native
+fixtures retain the fixed system shell and never execute either input.
 
 `support/test-runtime-owner.ps1` uses the existing pinned image/workspace and
 hash-verified QEMU base, with read-only mounts and no network/host-device

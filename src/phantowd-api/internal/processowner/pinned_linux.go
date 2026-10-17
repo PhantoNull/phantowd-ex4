@@ -27,16 +27,17 @@ type PinnedSet struct {
 // NewPinnedSet copies specs and duplicates corresponding read-only executable
 // descriptors. Executable is a fixed argv[0] label, never opened by Start.
 // Neither the private Set nor its descriptors are returned to consumers.
-func NewPinnedSet(specs []MemberSpec, executables []*os.File) (*PinnedSet, error) {
+// An uncertain no-child rollback returns an opaque retained review error, not
+// a partial usable set. The original error must remain owned by the caller.
+func NewPinnedSet(specs []MemberSpec, executables []*os.File) (_ *PinnedSet, result error) {
 	set, err := NewSet(specs)
 	if err != nil || len(specs) != len(executables) {
 		return nil, ErrInvalid
 	}
 	s := &PinnedSet{gate: make(chan struct{}, 1), set: set}
-	keep := false
 	defer func() {
-		if !keep {
-			_ = s.release()
+		if result != nil {
+			result = s.constructionRollback(result)
 		}
 	}()
 	for index, source := range executables {
@@ -49,7 +50,6 @@ func NewPinnedSet(specs []MemberSpec, executables []*os.File) (*PinnedSet, error
 			return startPinnedProcess(spec, pin)
 		}
 	}
-	keep = true
 	return s, nil
 }
 
@@ -59,8 +59,7 @@ func duplicateExecutable(source *os.File) (*os.File, error) {
 		return nil, err
 	}
 	if trustedExecutable(pin) != nil {
-		_ = pin.Close()
-		return nil, ErrInvalid
+		return nil, constructionRollback(ErrInvalid, pin, pin.Close)
 	}
 	return pin, nil
 }
@@ -86,8 +85,7 @@ func duplicateReadOnlyRegular(source *os.File) (*os.File, error) {
 	var stat unix.Stat_t
 	if err != nil || flags&unix.O_ACCMODE != unix.O_RDONLY || flags&unix.O_PATH != 0 ||
 		unix.Fstat(fd, &stat) != nil || stat.Mode&unix.S_IFMT != unix.S_IFREG {
-		_ = pin.Close()
-		return nil, ErrInvalid
+		return nil, constructionRollback(ErrInvalid, pin, pin.Close)
 	}
 	return pin, nil
 }

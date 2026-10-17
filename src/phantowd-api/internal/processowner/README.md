@@ -4,6 +4,29 @@
 fixed, ordered set of such processes. It is not a product service manager and
 is not reachable over HTTP or RPC.
 
+## Failed construction ownership
+
+`NewPinnedSet`, executable/read-only input duplication and `NewCapture` preserve
+uncertain no-child rollback in package-private opaque error handles. Original
+construction/cleanup causes remain reachable through ordinary wrapping. The
+caller must retain the original error, not merely its string. No usable partial
+set/capture, descriptors, retry/recovery methods or global admission latch are
+published. Failed objects are permanently unusable; unattempted inputs stay held.
+
+The acyclic `constructionreview` package classifies these errors across owner
+boundaries; its marker is not an execution token or proof of ownership. A nested
+retained failure stops unrelated containing cleanup. Fixed QEMU constructors use
+the same no-child contract without changing their launcher profiles. A failed
+pending-client constructor also clears its unused copied secret.
+
+Actual factory tests inject one specific duplicate's `close -> EIO` in terminal
+subprocesses, covering set rollback, regular/executable admission and capture
+input admission. They verify the selected duplicate's identity, original causes,
+GC retention, no launch/retry, unattempted references and independent construction.
+The same tests and a cross-package containing-rollback test run in the existing
+static ARM guest. This is controlled syscall failure, not physical EIO, a complete
+valid runtime grant, live Capture teardown or all directory/temporary-close faults.
+
 The separate `qemu && linux` `PendingClientQEMU` adapter fixes a single-use
 dedicated launcher, read-only root and client descriptors at construction.
 It uses distinct stdout/stderr pipes, a copied bounded secret through a fresh

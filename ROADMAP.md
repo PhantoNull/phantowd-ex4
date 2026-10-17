@@ -498,7 +498,29 @@ button to an unqualified backend simply because the screen exists.
   cleanup; no timer or proof is relaxed. Actual-driver host controls and a real
   Docker PID1 timeout with stub guest commands pass. This is not an ARM/full-run
   qualification, repair of intermittency or guaranteed SIGKILL/durable logging.
-  **Current native timing gate:** coordinated fixture-only budget design is
+  **Latest constructor-checkpoint integration gates:** the unchanged host
+  forced-start-settlement race test retains review but has not yet cleared its
+  original PID. Isolated passes are not a causal repair. Ordinary-native Samba
+  also fails changed-pair post-admission at45,019ms under the original45s phase;
+  fresh-login15s is not reached. Keep both failed logs and reject their incomplete
+  proof. Construction-focused host/ARM passes do not qualify the complete suite.
+  **Proposed next bounded packet, contract confirmation pending:** investigate
+  one fresh complete original-backend session inventory for simultaneous original
+  peer continuity and original target absence, replacing adjacent full status
+  reads only after the proof contract is approved and tested. No cache/lease,
+  retry, stronger continuity claim, HTTP, privileges or timer changes implied.
+  - Keep the original opaque pair/backend binding and current decoder/limits.
+    Refuse missing/extra/ambiguous sessions, changed peer/generation, wrong backend,
+    incomplete/invalid output, expired/canceled or late-nil completion. Do not turn
+    an incomplete observation into the exact changed-pair sentinel.
+  - Test both properties on the SAME complete point-in-time inventory. An
+    observation is not a retained session, continuous guarantee or activation
+    authority. Preserve standalone readers until their consumers are audited.
+  - First host tests, then the existing native guest at original45+15, work/worker/
+    settlement/guest bounds and exact campaign proof. Replay the original failed
+    guest as a mandatory negative. Full host race, full image/audit and hosted
+    qualification remain separate gates; do not select retries as proof.
+  **Earlier completed native timing contract:** coordinated fixture-only budget design is
   approved and implemented: ordinary-native work300s, one fixed settlement
   deadline at original work deadline+30s, host360s including30s boot/final
   margin. Other guests retain180s. Nine sequential phase caps still total255s;
@@ -2232,6 +2254,21 @@ storage. No production roster provider or activation path exists.
   Separate normal Samba service/complete-log replay passes. One preceding
   parallel native run missed an unchanged one-second process probe wait; no
   intermittent-timing, complete-image or hosted repair is inferred.
+  Cross-package slice: shared acyclic `constructionreview` classification now
+  propagates opaque pinned/capture construction failures into containing owners.
+  Actual lower-factory close-EIO tests cover outer rollback, read-only/executable
+  validation and capture input failure; a real lower factory plus containing
+  rollback boundary verifies retained parent references and both domain causes.
+  That parent fixture is not successful bundle admission. No global latch,
+  backend/descriptor injection, product startup or new live-service authority follows.
+  Integration gates remain: full process-owner race still has an unchanged
+  forced-start-settlement failure, and ordinary-native Samba reaches45,019ms in
+  changed-pair post-admission with the original45s cap. Do not mark either repaired
+  from isolated passes. Next inspect whether one complete backend-bound inventory
+  can prove original-peer continuity AND target absence coherently, instead of
+  adjacent full status captures; derive/test the contract before changing it.
+  Preserve complete observation, original identities, late-result refusal and
+  all existing fixture/product bounds. No cache, retry or broader budget implied.
   - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
     retention, pending-input composition and pinned-process construction. Record
     exactly which original/temporary/independent references exist at each failure;
@@ -2242,11 +2279,10 @@ storage. No production roster provider or activation path exists.
     descriptor closes or use garbage collection as the recovery protocol. Any
     opaque error handle requires explicit caller retention; no unbounded global
     orphan registry or implicit service restart.
-    Before adapting `processowner` construction, define an acyclic internal
-    retention contract: `runtimebundle` already imports `processowner`; do not
-    reverse that dependency, inspect error strings or silently miss a nested
-    foreign review handle. Test complete error-chain/remaining-reference retention
-    across that package boundary, not just two unrelated release helpers.
+    Extend the now-shared acyclic retention contract to remaining directory/state
+    and temporary-close families. Never reverse `runtimebundle` -> `processowner`,
+    inspect error strings, treat classification as execution authority or lose
+    foreign review. Preserve both domains' causes and original error ownership.
   - Update every affected caller, including configuration/Samba wrappers and QEMU
     commands, to honor that contract. Partial preparation must not be revalidated
     into execution authority. Normal refusals and verified cleanup remain bounded

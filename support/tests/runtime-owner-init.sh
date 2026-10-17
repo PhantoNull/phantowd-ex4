@@ -11,12 +11,13 @@ prepare() {
     export TMPDIR=/run
 }
 readiness() {
+    /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestPinnedConstructorRollbackRetainsCloseFailure$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
     /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestReadiness(CannotCommitAfterContextEnds|ContextChecksOriginalAndDerivedMonotonicDeadlines)$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
-    echo 'PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true scope=qemu-only'
+    echo 'PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true pinned_constructor_review=true scope=qemu-only'
 }
 metadata() {
     /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^Test(RetainedMetadata|Constructor)' -test.count=3 -test.cpu=1 || return 1
-    echo 'PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true constructor_close_eio=true retained_error_chain=true scope=qemu-only'
+    echo 'PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true constructor_close_eio=true retained_error_chain=true cross_domain_review=true scope=qemu-only'
 }
 identity_context() {
     /usr/sbin/phantowd-identity-context-tests -test.v -test.run '^TestFileServiceLeaseAdmittedContextFailureKeepsCauseAndReview$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1

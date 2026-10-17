@@ -34,13 +34,14 @@ type CaptureOwner struct {
 	current                       *managedProcess
 	consumed, review, closed      bool
 	closeFailed                   bool
+	constructionErr               error // Failed no-child construction; never retried.
 	// Only a fixed guarded QEMU constructor populates these private inputs.
 	// Generic CaptureSpec has no descriptor-injection option.
 	fixtureInputs      []*os.File
 	fixtureInputsValid func() bool
 }
 
-func NewCapture(spec CaptureSpec, executable, input *os.File) (*CaptureOwner, error) {
+func NewCapture(spec CaptureSpec, executable, input *os.File) (_ *CaptureOwner, result error) {
 	if !filepath.IsAbs(spec.ExecutableLabel) || filepath.Clean(spec.ExecutableLabel) != spec.ExecutableLabel ||
 		strings.ContainsRune(spec.ExecutableLabel, '\x00') || len(spec.ExecutableLabel) > 4096 ||
 		len(spec.Args) > 64 || spec.Timeout < time.Second || spec.Timeout > 30*time.Second ||
@@ -60,19 +61,21 @@ func NewCapture(spec CaptureSpec, executable, input *os.File) (*CaptureOwner, er
 		credentials.SupplementaryGIDs = slices.Clone(spec.RunAs.SupplementaryGIDs)
 		c.spec.RunAs = &credentials
 	}
-	keep := false
 	defer func() {
-		if !keep {
-			_ = c.release()
+		if result != nil {
+			result = c.constructionRollback(result)
 		}
 	}()
 	var err error
 	c.executable, err = duplicateExecutable(executable)
 	if err != nil {
-		return nil, ErrInvalid
+		return nil, errors.Join(ErrInvalid, err)
 	}
 	c.input, err = duplicateReadOnlyRegular(input)
-	if err != nil || unix.Fstat(int(c.executable.Fd()), &c.executableStat) != nil ||
+	if err != nil {
+		return nil, errors.Join(ErrInvalid, err)
+	}
+	if unix.Fstat(int(c.executable.Fd()), &c.executableStat) != nil ||
 		unix.Fstat(int(c.input.Fd()), &c.inputStat) != nil || c.inputStat.Size < 0 ||
 		c.inputStat.Size > MaxCaptureInput {
 		return nil, ErrInvalid
@@ -89,7 +92,6 @@ func NewCapture(spec CaptureSpec, executable, input *os.File) (*CaptureOwner, er
 	if err != nil {
 		return nil, ErrInvalid
 	}
-	keep = true
 	return c, nil
 }
 
@@ -343,6 +345,9 @@ func (c *CaptureOwner) Close(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-c.gate }()
+	if c.constructionErr != nil {
+		return errors.Join(ErrReviewRequired, c.constructionErr)
+	}
 	if c.closed {
 		if c.closeFailed {
 			return ErrReviewRequired
@@ -365,6 +370,9 @@ func (c *CaptureOwner) Close(ctx context.Context) error {
 }
 
 func (c *CaptureOwner) release() error {
+	if c.constructionErr != nil {
+		return c.constructionErr
+	}
 	var err error
 	for _, file := range append([]*os.File{c.executable, c.input}, c.fixtureInputs...) {
 		if file != nil {

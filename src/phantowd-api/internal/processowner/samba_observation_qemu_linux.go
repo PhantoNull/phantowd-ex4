@@ -6,7 +6,6 @@
 package processowner
 
 import (
-	"errors"
 	"os"
 	"time"
 
@@ -31,7 +30,7 @@ func NewSambaStateObservationCaptureQEMU(executable, input *os.File, directories
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, c.release())
+			result = c.constructionRollback(result)
 		}
 	}()
 	if c.inputStat.Size != 0 {

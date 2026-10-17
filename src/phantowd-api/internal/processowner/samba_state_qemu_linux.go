@@ -35,7 +35,7 @@ func NewSambaStatePinnedSetQEMU(spec MemberSpec, executable *os.File, directorie
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, s.release())
+			result = s.constructionRollback(result)
 		}
 	}()
 	var identities [7]unix.Stat_t

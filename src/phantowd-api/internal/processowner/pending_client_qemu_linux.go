@@ -88,7 +88,12 @@ func newPendingClientQEMU(helper, root, client *os.File, secret []byte, handleMo
 	c.self = c
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, c.release())
+			clear(c.secret) // Never retain an unusable constructor's credential.
+			c.secret = nil
+			result = constructionRollback(result, c, c.release)
+			if review, ok := result.(*constructionFailure); ok {
+				c.review, c.closed, c.releaseErr = true, true, review.cause
+			}
 		}
 	}()
 	for index, source := range []*os.File{helper, root, client} {
@@ -464,6 +469,9 @@ func (c *PendingClientQEMU) Close() error {
 }
 
 func (c *PendingClientQEMU) release() error {
+	if c.releaseErr != nil {
+		return c.releaseErr
+	}
 	clear(c.secret)
 	c.secret = nil
 	if c.connection != nil {

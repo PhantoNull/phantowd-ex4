@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"testing"
 	"time"
-	"unsafe"
 	"weak"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/testclosefault"
 	"golang.org/x/sys/unix"
 )
 
@@ -256,40 +256,7 @@ func (c *constructorCloseContext) Err() error {
 
 func denyConstructorClose(t *testing.T, fd int) {
 	t.Helper()
-	var arch uint32
-	switch runtime.GOARCH {
-	case "amd64":
-		arch = unix.AUDIT_ARCH_X86_64
-	case "arm":
-		arch = unix.AUDIT_ARCH_ARM
-	case "arm64":
-		arch = unix.AUDIT_ARCH_AARCH64
-	default:
-		t.Fatal("unqualified syscall-fault architecture")
-	}
-	filter := []unix.SockFilter{
-		{Code: unix.BPF_LD | unix.BPF_W | unix.BPF_ABS, K: 4}, // seccomp_data.arch
-		{Code: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: arch, Jt: 1},
-		{Code: unix.BPF_RET | unix.BPF_K, K: unix.SECCOMP_RET_KILL_PROCESS},
-		{Code: unix.BPF_LD | unix.BPF_W | unix.BPF_ABS, K: 0}, // syscall number
-		{Code: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: uint32(unix.SYS_CLOSE), Jf: 3},
-		{Code: unix.BPF_LD | unix.BPF_W | unix.BPF_ABS, K: 16}, // args[0], LE low word
-		{Code: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: uint32(fd), Jf: 1},
-		{Code: unix.BPF_RET | unix.BPF_K, K: unix.SECCOMP_RET_ERRNO | uint32(unix.EIO)},
-		{Code: unix.BPF_RET | unix.BPF_K, K: unix.SECCOMP_RET_ALLOW},
-	}
-	program := unix.SockFprog{Len: uint16(len(filter)), Filter: &filter[0]}
-	// Prctl accepts uintptr, not a typed pointer: keep both objects pinned
-	// across its Go wrapper as well as alive through the actual syscall.
-	var pinned runtime.Pinner
-	pinned.Pin(&program)
-	pinned.Pin(&filter[0])
-	defer pinned.Unpin()
-	if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
-		t.Fatal("no-new-privileges fault guard", err)
-	}
-	if err := unix.Prctl(unix.PR_SET_SECCOMP, unix.SECCOMP_MODE_FILTER, uintptr(unsafe.Pointer(&program)), 0, 0); err != nil {
+	if err := testclosefault.Install(fd); err != nil {
 		t.Fatal("thread-local close fault installation", err)
 	}
-	runtime.KeepAlive(filter)
 }
