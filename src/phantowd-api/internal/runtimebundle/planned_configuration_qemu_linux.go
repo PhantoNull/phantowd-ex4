@@ -8,11 +8,13 @@ package runtimebundle
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"maps"
 	"os"
 	"slices"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
 // RetainPlannedConfigurationQEMU adds ONE inert, separately protected daemon
@@ -51,7 +53,14 @@ func (r *NativeSambaRuntimeQEMU) RetainPlannedConfigurationQEMU(ctx context.Cont
 	}
 	retained, err := expected.retain(ctx, configuration)
 	if err != nil {
-		return err // Failed construction owns its partial cleanup; caller survives.
+		if hasConstructionReview(err) {
+			// This operation admits no children. The existing lifetime must keep
+			// the failed additional role, not rely on the caller to log an error.
+			r.releaseErr = errors.Join(r.releaseErr, err)
+			r.owner.review = true
+			r.owner.snapshot.State = processowner.StateReviewRequired
+		}
+		return err
 	}
 	r.owner.serviceConfiguration = retained
 	// Complete late fence includes original management/code/state and the new

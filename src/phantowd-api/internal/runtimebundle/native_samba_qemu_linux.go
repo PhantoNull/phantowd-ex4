@@ -106,7 +106,13 @@ func (p *Plan) newNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 	r := &NativeSambaRuntimeQEMU{owner: o, gate: make(chan struct{}, 1)}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, r.Close(context.Background()))
+			result = constructionRollback(result, r, func() error { return r.Close(context.Background()) })
+			var review *constructionReview
+			if errors.As(result, &review) {
+				r.releaseErr = review.cause
+				r.owner.review = true
+				r.owner.snapshot.State = processowner.StateReviewRequired
+			}
 		}
 	}()
 	o.configuration, err = expected.retain(ctx, configuration)

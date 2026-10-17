@@ -7,6 +7,7 @@ package runtimebundle
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -28,7 +29,7 @@ type retainedCode struct {
 // The containing constructor must revalidate AFTER its other inputs are fixed
 // and before publication/launch. Keep that late identity fence; preparation's
 // point-in-time census alone is insufficient. No extra scan or weaker census.
-func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retainedCode, error) {
+func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (_ *retainedCode, result error) {
 	if p == nil || len(p.files) == 0 || ctx == nil || root == nil {
 		return nil, ErrInvalid
 	}
@@ -36,10 +37,9 @@ func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retaine
 		return nil, err
 	}
 	c := &retainedCode{plan: p, files: make(map[string]*os.File, len(p.files))}
-	keep := false
 	defer func() {
-		if !keep {
-			_ = c.release()
+		if result != nil {
+			result = constructionRollback(result, c, c.release)
 		}
 	}()
 	var err error
@@ -68,7 +68,6 @@ func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retaine
 			return nil, err
 		}
 	}
-	keep = true
 	return c, nil
 }
 
@@ -146,6 +145,9 @@ func (c *retainedCode) verifyNodeMetadata(ctx context.Context) error {
 }
 
 func (c *retainedCode) revalidate(ctx context.Context) error {
+	if c != nil && c.releaseErr != nil {
+		return errors.Join(ErrReviewRequired, c.releaseErr)
+	}
 	if c == nil || c.root == nil || c.plan == nil || len(c.files) != len(c.plan.files) ||
 		len(c.metadata) != len(c.plan.nodes) {
 		return ErrUnavailable

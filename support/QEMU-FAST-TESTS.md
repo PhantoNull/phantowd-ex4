@@ -1426,8 +1426,22 @@ copy made before real source drift is also refused after restoration; original
 review remains sticky. Ordinary pointer aliases are still valid. No extra guest,
 process profile, timeout or weaker original proof is introduced. The native
 bookkeeping controls do not themselves qualify code admission or child execution;
-the guarded ARM constructor supplies that separate evidence. The constructor
-rollback/close-uncertainty gap and other handle types remain unqualified.
+the guarded ARM constructor supplies that separate evidence. Other handle types
+still require their own audit.
+
+The same metadata phase also runs three constructor groups three times: actual
+static construction with one precise `close -> EIO` seccomp fault in a terminal
+subprocess; verified cancellation rollback/descriptor balance; and controlled
+nested-review preservation of unattempted references. Both construction/cleanup
+causes and strong error-chain ownership across garbage collection are checked,
+with no retry, substituted-object closure, caller-root loss or global admission
+block. The driver requires all nine top-level PASS rows, no SKIP/FAIL and both
+`constructor_close_eio=true` / `retained_error_chain=true`. Actual guard controls
+reject missing/extra constructor receipts and changed proof fields. This keeps
+one guest and its 120-second budget. Injected EIO is not physical-device failure,
+successful bundle admission, post-launch teardown or all-constructor coverage.
+The new contract requires retained original errors, not merely logged strings;
+product composition, other constructors and temporary-close faults remain open.
 
 `support/test-runtime-owner.ps1` uses the existing pinned image/workspace and
 hash-verified QEMU base, with read-only mounts and no network/host-device

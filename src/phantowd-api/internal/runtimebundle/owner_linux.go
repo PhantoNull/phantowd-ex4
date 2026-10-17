@@ -41,7 +41,9 @@ type Owner struct {
 // NewOwner fixes trusted inputs and copies every process specification. Paths
 // name declared executable objects inside the code tree, not the host's paths.
 // No descriptors are exposed; callers can close their own root after return.
-func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner.MemberSpec) (*Owner, error) {
+// On uncertain construction cleanup, the returned error is an opaque retained
+// review handle. Keep that original error alive; no partial Owner is published.
+func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner.MemberSpec) (_ *Owner, result error) {
 	if p == nil || len(p.files) == 0 || ctx == nil || root == nil || len(specs) == 0 || len(specs) > 8 {
 		return nil, ErrInvalid
 	}
@@ -50,10 +52,9 @@ func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner
 	}
 	o := &Owner{gate: make(chan struct{}, 1)}
 	o.self = o
-	keep := false
 	defer func() {
-		if !keep {
-			_ = o.release()
+		if result != nil {
+			result = o.constructionRollback(result)
 		}
 	}()
 	var err error
@@ -80,13 +81,12 @@ func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner
 	}
 	o.processes, err = processowner.NewPinnedSet(specs, executables)
 	if err != nil {
-		return nil, ErrInvalid
+		return nil, errors.Join(ErrInvalid, err)
 	}
 	if err := o.revalidate(ctx); err != nil {
 		return nil, err
 	}
 	o.snapshot.State = processowner.StateStopped
-	keep = true
 	return o, nil
 }
 

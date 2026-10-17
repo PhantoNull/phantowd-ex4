@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -23,6 +24,9 @@ import (
 
 func main() {
 	if err := run(); err != nil {
+		// Keep opaque failed-construction handles in the original error chain
+		// reachable until this terminal fixture process exits, not just logging.
+		defer func() { runtime.KeepAlive(err) }()
 		fmt.Fprintln(os.Stderr, "PHANTOWD_RUNTIME_BUNDLE_FAILED")
 		os.Exit(1)
 	}

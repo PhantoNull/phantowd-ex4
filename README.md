@@ -45,6 +45,9 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Release tooling | Host-only deterministic unsigned manifest producer, bounded GitHub reader with redacted request/body errors, and exact-byte signature/payload verification | Trusted provenance/staging, key provisioning/signing, target transaction, recovery and release qualification |
 
 The API/dashboard are development-only and guest-loopback-only by default.
+Shared runtime-code preparation preserves uncertain rollback through local review
+errors; callers must retain the original error chain. This does not yet qualify
+all constructor faults or wire product service ownership/startup.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.

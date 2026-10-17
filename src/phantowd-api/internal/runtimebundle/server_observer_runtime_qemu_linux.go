@@ -81,10 +81,12 @@ func newServerObserverProfileRuntimeQEMU(ctx context.Context, plan *Plan, code, 
 	r.self = r
 	defer func() {
 		if result != nil {
-			if closeErr := r.Close(); closeErr != nil {
+			result = constructionRollback(result, r, r.Close)
+			var review *constructionReview
+			if errors.As(result, &review) {
 				r.review = true
+				r.releaseErr = review.cause
 				retained = r
-				result = errors.Join(ErrReviewRequired, result, closeErr)
 			}
 		}
 	}()

@@ -375,6 +375,29 @@ of the QEMU lifecycle deadline.
 
 ## Shared prepared code references
 
+Failed preparation carries an opaque local review handle in its **original error
+chain** when rollback closure is uncertain. Containing no-child constructors retain
+that chain and their own unattempted references instead of continuing cleanup.
+No partial static Owner is published, no global admission latch exists, and no
+handle exposes descriptors, execution, recovery or retry methods. Callers must
+retain the error for the failed service's remaining lifetime; formatting/logging
+and discarding it is not retention. `%w` and `errors.Join` preserve ownership.
+The terminal QEMU command retains its original failure until process exit.
+Product composition must implement explicit failed-service ownership before use.
+
+The regression exercises actual `Plan.NewOwner` cancellation after independent
+root retention and injects `EIO` into precisely that root's `close` syscall in a
+terminal, thread-filtered test subprocess. This is a controlled syscall fault,
+not a physical storage error, completed bundle admission or launched-child fault.
+It checks both causes, strong lifetime across garbage collection, refusal/no retry,
+caller survival and independent subsequent construction. Separate controlled
+bookkeeping checks preserve unattempted containing references; verified rollback
+stays descriptor-balanced and returns the original cause without a review handle.
+These tests use the existing static ARM guest without another stage or larger
+deadline. Pinned-process/state constructors, temporary-close paths, other caller
+families and product composition still need their own audit/fault qualification;
+this is not a complete constructor-lifetime certification.
+
 The package-private `prepareRetainedCode` helper captures independent read-only
 root/file references and original file/directory/alias metadata for the complete
 declared code tree. Static `Owner` now reuses it without changing its static ELF

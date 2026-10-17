@@ -114,7 +114,7 @@ func newPendingClientInputsQEMU(ctx context.Context, clientPlan, bootstrapPlan *
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, i.release())
+			result = constructionRollback(result, i, i.release)
 		}
 	}()
 	var err error
@@ -299,8 +299,8 @@ func (p *Plan) ProbePendingClientInputsQEMU(ctx context.Context, bootstrap *Plan
 			helperPlan = wrong
 		}
 		value, err := newPendingClientInputsQEMU(ctx, clientPlan, helperPlan, clientRoot, bootstrapRoot)
-		if value != nil || !errors.Is(err, ErrMismatch) {
-			return ErrMismatch
+		if value != nil || !errors.Is(err, ErrMismatch) || hasConstructionReview(err) {
+			return errors.Join(ErrMismatch, err)
 		}
 	}
 	caller, err := duplicateRoot(clientRoot)

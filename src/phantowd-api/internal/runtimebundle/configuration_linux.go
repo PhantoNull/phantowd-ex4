@@ -7,7 +7,6 @@ package runtimebundle
 
 import (
 	"context"
-	"errors"
 	"os"
 	"slices"
 	"strings"
@@ -54,13 +53,19 @@ func (p *configurationPlan) retain(ctx context.Context, root *os.File) (retained
 	if err := configurationMount(root); err != nil {
 		return nil, err
 	}
-	contents, err := p.plan.prepareRetainedCode(ctx, root)
+	c := &retainedConfiguration{}
+	defer func() {
+		if result != nil {
+			result = constructionRollback(result, c, c.release)
+		}
+	}()
+	var err error
+	c.contents, err = p.plan.prepareRetainedCode(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	c := &retainedConfiguration{contents: contents}
 	if err := c.revalidate(ctx); err != nil {
-		return nil, errors.Join(err, c.release())
+		return nil, err
 	}
 	return c, nil
 }

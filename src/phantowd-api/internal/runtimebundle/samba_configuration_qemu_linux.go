@@ -92,7 +92,7 @@ func (p *Plan) newSambaConfigurationQEMU(ctx context.Context, code, configuratio
 		err = owner.revalidate(ctx) // Late combined fence after all fixed inputs.
 	}
 	if err != nil {
-		return nil, errors.Join(err, owner.release())
+		return nil, owner.constructionRollback(err)
 	}
 	return owner, nil
 }

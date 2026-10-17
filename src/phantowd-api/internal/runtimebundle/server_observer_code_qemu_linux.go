@@ -73,10 +73,12 @@ func retainServerObserverCodeQEMU(ctx context.Context, plan *Plan, root *os.File
 	o := &serverObserverCodeQEMU{}
 	defer func() {
 		if result != nil {
-			if closeErr := o.release(); closeErr != nil {
+			result = constructionRollback(result, o, o.release)
+			var review *constructionReview
+			if errors.As(result, &review) {
 				o.review = true
+				o.releaseErr = review.cause
 				retained = o
-				result = errors.Join(ErrReviewRequired, result, closeErr)
 			}
 		}
 	}()

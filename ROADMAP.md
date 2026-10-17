@@ -2217,16 +2217,36 @@ storage. No production roster provider or activation path exists.
   Samba service normal-path/replay pass; no product activation or complete-image
   qualification. Adjacent handle types need their own copy/ownership audit.
   **Remaining constructor rollback ownership packet:**
+  First slice implemented: local opaque review handles travel in original error
+  chains, not a global latch or a healthy partial Owner. Code preparation and its
+  static/configuration/Samba/pending/observer composition preserve nested review
+  before unrelated cleanup. Actual static construction has a terminal single-FD
+  seccomp `close -> EIO` regression; GC reachability, no retry, original causes/
+  caller, independent subsequent rollback and bounded normal cleanup are checked.
+  This is a pre-scan/no-child fault, not physical EIO or complete qualification.
+  Retain the original error explicitly; string conversion loses ownership. The
+  terminal test command retains it until exit. Product composition and remaining
+  acquisition/temporary-close families are still prerequisites.
+  Final serial native/tagged race3 and58 driver controls pass; unchanged120s ARM
+  static guest requires nine constructor PASS rows in addition to all old proof.
+  Separate normal Samba service/complete-log replay passes. One preceding
+  parallel native run missed an unchanged one-second process probe wait; no
+  intermittent-timing, complete-image or hosted repair is inferred.
   - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
     retention, pending-input composition and pinned-process construction. Record
     exactly which original/temporary/independent references exist at each failure;
     do not infer whole-lifetime safety from release-helper unit tests alone.
-  - Specify the no-child rollback versus retained-review contract before changing
-    return semantics. Preserve original construction and first cleanup causes;
+  - Apply the selected local no-child rollback versus retained-review contract
+    to remaining families. Preserve original construction and cleanup causes;
     never return a healthy handle, silently drop partial ownership, retry uncertain
     descriptor closes or use garbage collection as the recovery protocol. Any
-    returned partial handle requires explicit caller retention; no unbounded global
+    opaque error handle requires explicit caller retention; no unbounded global
     orphan registry or implicit service restart.
+    Before adapting `processowner` construction, define an acyclic internal
+    retention contract: `runtimebundle` already imports `processowner`; do not
+    reverse that dependency, inspect error strings or silently miss a nested
+    foreign review handle. Test complete error-chain/remaining-reference retention
+    across that package boundary, not just two unrelated release helpers.
   - Update every affected caller, including configuration/Samba wrappers and QEMU
     commands, to honor that contract. Partial preparation must not be revalidated
     into execution authority. Normal refusals and verified cleanup remain bounded

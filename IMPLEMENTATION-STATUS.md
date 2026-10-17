@@ -4465,6 +4465,34 @@ new privilege, physical-device or migration qualification is added.
 
 ## Runtime Owner value-copy lifecycle fence — host/ARMv5
 
+Subsequent constructor work adds a local opaque review handle carried by the
+original error chain. Shared preparation and containing static/configuration/
+Samba/pending/observer constructors keep nested failed ownership rather than
+continuing unrelated cleanup. Ordinary refusals still return their exact cause
+after verified rollback; no partial static Owner is published. The original
+error must remain retained: logging alone is not ownership. No global latch or
+new execution/retry/recovery interface is introduced. The terminal fixture keeps
+failed-construction errors alive until exit; product composition is not wired.
+
+The new fault regression reaches actual `Plan.NewOwner` and deliberately makes
+one duplicated root's `close` return EIO through a thread-local seccomp filter
+inside a terminal subprocess. It tests original cancellation/cleanup causes,
+GC reachability, refusal/no retry, caller preservation and independent subsequent
+rollback. Separate tests cover balanced normal rollback and controlled nested
+unattempted-reference retention. This is pre-scan/no-child syscall-fault coverage,
+not physical EIO, full roster admission, all constructors or product activation.
+
+Final pinned tagged units/vet/race3 pass with packages serialized inside the
+unchanged two-CPU cap. A preceding default-parallel run failed an unchanged
+process-owner test's one-second readiness wait; that failure is preserved and no
+causal repair is claimed. All 58 host guard tests pass, including missing/extra
+constructor receipts. Actual static ARM passes all old proofs plus nine required
+constructor PASS rows within the same 120-second guest. Separate Samba service
+and independent complete-log replay pass its normal-path scope, not the other
+constructor fault families or complete-image/hosted qualification.
+
+### Earlier copy-only qualification
+
 The Linux runtime Owner now binds its constructor-created pointer identity.
 Value copies/uninitialized lifetimes refuse Start/Observe/valid-interval Supervise
 and Close before the original gate, process set or retained inputs are touched.
@@ -4493,9 +4521,10 @@ setup failed before boot; a private TMPDIR correction enabled the actual RED,
 not retroactive qualification of that failed setup.
 
 No product service/listener, privilege, restart, recovery or device authority was
-added. Constructor rollback still discards cleanup errors/partial lifetimes in
-several paths: explicit ownership/error propagation and real fault coverage remain
-open. Other authority types' copy semantics are not certified by this fix. The
+added. The earlier copy-only checkpoint left constructor rollback open; the local
+error-chain slice above does not qualify pinned-process/state constructors,
+temporary close paths or every composition fault. Other authority types' copy
+semantics are not certified by this fix. The
 full1800s integration/audit/hosted/release and physical EX4 gates remain open.
 
 ## Retained descriptor release uncertainty — local full qualification

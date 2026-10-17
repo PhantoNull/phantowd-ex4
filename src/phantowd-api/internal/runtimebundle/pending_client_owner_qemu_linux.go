@@ -49,6 +49,10 @@ func newPendingClientOwnerRoleQEMU(ctx context.Context, client, bootstrap *Plan,
 	var err error
 	o.inputs, err = newPendingClientInputsQEMU(ctx, client, bootstrap, clientRoot, bootstrapRoot)
 	if err != nil {
+		if hasConstructionReview(err) {
+			o.review, o.releaseErr, o.reviewCause = true, err, err
+			return o, &constructionReview{retained: o, cause: err}
+		}
 		return nil, err
 	}
 	// Construction has no child. If cleanup is uncertain, return the retained

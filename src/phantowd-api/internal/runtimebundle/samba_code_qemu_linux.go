@@ -40,7 +40,7 @@ func (p *Plan) newSambaCodeLifetimeQEMU(ctx context.Context, root *os.File) (own
 	o.self = o
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, o.release())
+			result = o.constructionRollback(result)
 		}
 	}()
 	var err error

@@ -79,8 +79,8 @@ func (p *Plan) ProbeRetainedCodeQEMU(ctx context.Context, root *os.File) (observ
 		if owner != nil {
 			return Observation{}, errors.Join(errors.New("generic adapter accepted Samba code"), owner.Close(context.Background()))
 		}
-		if !errors.Is(err, ErrInvalid) || callbackCalled {
-			return Observation{}, errors.New("generic execution refusal changed")
+		if !errors.Is(err, ErrInvalid) || callbackCalled || hasConstructionReview(err) {
+			return Observation{}, errors.Join(errors.New("generic execution refusal changed"), err)
 		}
 	}
 	// Keep the trailing pathname/identity pass after all constructor inputs,

@@ -848,6 +848,7 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertLess(init.index('export TMPDIR=/run'),
                         init.index('-test.run'))
         self.assertIn('-test.count=3 -test.cpu=1', init)
+        self.assertIn('^Test(RetainedMetadata|Constructor)', init)
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         self.assertIn('support/tests/test-qemu-runtime-owner.sh', script)
         self.assertIn('qemu-runtime-owner-failure.log', script)
@@ -915,6 +916,14 @@ class BuildFeedbackTests(unittest.TestCase):
                   'supervised', 'scan', 'review', 'forced')]
         lines += ['PHANTOWD_CODE_OWNER_DONE']
         lines += ['--- PASS: TestRetainedMetadataSynthetic (0.00s)'] * 12
+        constructor_close = ('--- PASS: '
+                             'TestConstructorRollbackRetainsRealCloseFailure '
+                             '(0.00s)')
+        constructor_clean = ('--- PASS: TestConstructorVerifiedRollbackReturns'
+                             'OriginalCauseAndBalancesDescriptors (0.00s)')
+        constructor_nested = ('--- PASS: TestConstructorNestedReviewPreserves'
+                              'UnattemptedContainingReferences (0.00s)')
+        lines += [constructor_close, constructor_clean, constructor_nested] * 3
         main = '--- PASS: TestReadinessCannotCommitAfterContextEnds (0.00s)'
         clock = ('--- PASS: TestReadinessContextChecksOriginalAndDerived'
                  'MonotonicDeadlines (0.00s)')
@@ -953,6 +962,21 @@ class BuildFeedbackTests(unittest.TestCase):
                     ('missing-identity-case', lines[:-1], 0, '\n', False),
                     ('extra-identity-case', lines + [identity_cases[0]],
                      0, '\n', False),
+                    ('missing-constructor-close',
+                     [line for line in lines if line != constructor_close],
+                     0, '\n', False),
+                    ('missing-constructor-clean',
+                     [line for line in lines if line != constructor_clean],
+                     0, '\n', False),
+                    ('extra-constructor-close', lines + [constructor_close],
+                     0, '\n', False),
+                    ('missing-constructor-nested',
+                     [line for line in lines if line != constructor_nested],
+                     0, '\n', False),
+                    ('changed-constructor-proof',
+                     [line.replace('constructor_close_eio=true',
+                                   'constructor_close_eio=false')
+                      for line in lines], 0, '\n', False),
                     ('missing-main', [line for line in lines if line != main],
                      0, '\n', False),
                     ('missing-clock',
