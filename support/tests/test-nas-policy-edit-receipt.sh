@@ -8,12 +8,15 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/phantowd-policy-edit-receipt.XXXXXX")
 trap 'rm -f "$scratch/log" "$scratch/link"; rmdir "$scratch"' EXIT HUP INT TERM
 marker='PHANTOWD_NAS_POLICY_EDIT_READY cases=7 coherent_revision=true detached=true cross_protocol_preserved=true publication=false scope=synthetic-policy-only'
 writer='PHANTOWD_POLICY_VIEW_WRITER_READY commits=3 stale_refused=true cross_protocol_preserved=true uncertainty_fenced=true original_locks=true product=false scope=temporary-qemu-only'
-for which in model writer; do
-    selected=$marker
-    other=$writer
-    if [ "$which" = writer ]; then selected=$writer; other=$marker; fi
+epoch='PHANTOWD_POLICY_EPOCH_RECORD_READY cases=8 exact_binding=true declarations_only=true admission=false scope=synthetic-memory-only'
+others() {
+    for row in "$marker" "$writer" "$epoch"; do
+        if [ "$row" != "$selected" ]; then printf '%s\n%s\n' "$row" "$row"; fi
+    done
+}
+for selected in "$marker" "$writer" "$epoch"; do
 for count in 0 1 2 3; do
-    printf '%s\n%s\n' "$other" "$other" >"$scratch/log"
+    others >"$scratch/log"
     index=0
     while [ "$index" -lt "$count" ]; do
         printf '%s\n' "$selected" >>"$scratch/log"
@@ -21,18 +24,20 @@ for count in 0 1 2 3; do
     done
     if sh "$verify" "$scratch/log"; then [ "$count" -eq 2 ]; else [ "$count" -ne 2 ]; fi
 done
-printf '%s\r\n%s\r\n%s\r\n%s\r\n' "$selected" "$selected" "$other" "$other" >"$scratch/log"
+printf '%s\r\n' "$marker" "$marker" "$writer" "$writer" "$epoch" "$epoch" >"$scratch/log"
 sh "$verify" "$scratch/log"
 for changed in "${selected}extra" "${selected%only}other" "${selected%% *}_LOOKALIKE"; do
-    printf '%s\n%s\n%s\n%s\n' "$selected" "$changed" "$other" "$other" >"$scratch/log"
+    others >"$scratch/log"
+    printf '%s\n%s\n' "$selected" "$changed" >>"$scratch/log"
     if sh "$verify" "$scratch/log"; then exit 1; fi
 done
-printf '%s\n%s\n%s\n%s\n%s\n' "$selected" "$selected" "$other" "$other" "${selected%% *} extra" >"$scratch/log"
+others >"$scratch/log"
+printf '%s\n%s\n%s\n' "$selected" "$selected" "${selected%% *} extra" >>"$scratch/log"
 if sh "$verify" "$scratch/log"; then exit 1; fi
 done
-printf '%s\n%s\n%s\n%s\n' "$marker" "$marker" "$writer" "$writer" >"$scratch/log"
+printf '%s\n' "$marker" "$marker" "$writer" "$writer" "$epoch" "$epoch" >"$scratch/log"
 ln -s "$scratch/log" "$scratch/link"
 if sh "$verify" "$scratch/link"; then exit 1; fi
 truncate -s 1048577 "$scratch/log"
 if sh "$verify" "$scratch/log"; then exit 1; fi
-printf 'NAS policy edit receipt controls passed: exact_model_writer_pairs=true incomplete_repeated_changed_refused=true bounded_regular_log=true\n'
+printf 'NAS policy edit receipt controls passed: exact_model_writer_epoch_pairs=true incomplete_repeated_changed_refused=true bounded_regular_log=true\n'

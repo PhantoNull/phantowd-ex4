@@ -166,6 +166,32 @@ fresh state/consumer observations and a separately specified authorized action.
 
 ## State-bundle and boot prerequisites
 
+### Session-bound declarations are not clean-boot authority
+
+The current writer's successful `close` releases references; it writes no durable
+policy-session closure witness. Existing clean two-boot observations therefore
+do not qualify recognition/recovery of an unclean previous session. Operation
+receipts alone cannot establish that distinction. The private experimental
+[epoch declaration codec/matcher](../policyevidence/README.md#policy-session-declarations--experimental-m12c1-prerequisite)
+now binds opening/current/closure bytes without adding filesystem behavior.
+It cannot certify actual opening, consumer drain, synchronization or Close.
+
+Before a product session gate can use those declarations, specify a separate
+bounded role namespace and retain original root/actual child locks across
+observation, effect ownership and shutdown. Persist opening before any admitted
+effects; close only after every consumer/role has verified settlement and all
+operation evidence is resolved. Closing uncertainty cannot leave a previous
+closure usable for a new session. Validate exact origin, complete state roles,
+history/checkpoint and medium semantics; never infer them from the new strings.
+Neither declaration absence nor a matching pair authorizes initialization,
+reopening, replay or service activation.
+
+The first-release behavior after unclean/uncertain restart remains an explicit
+product choice: diagnostic-only/manual reconciliation, or separately qualified
+automatic recovery. No default is silently selected by this codec. Physical
+placement/EX4 writes, runtime admission and all existing recovery gates remain
+unchanged while that decision is pending.
+
 Policy evidence is only one role. Product admission must also account for admin
 credentials, installation identity, volume registry, native account ledger and
 journals, Samba private state, CHAP secret references and system/network settings.

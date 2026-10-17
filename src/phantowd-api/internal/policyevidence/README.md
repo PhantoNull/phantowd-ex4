@@ -12,6 +12,41 @@ publication, retention, reconciliation and provisioning work remains. The chosen
 product protocol family is current policy plus per-operation bundles; that does
 not freeze the experimental bytes or choose a physical state medium.
 
+## Policy session declarations — experimental M1.2c.1 prerequisite
+
+The strict `EpochOpening` / `EpochClosure` codecs describe one proposed policy
+session; they do not create files or a boot lifecycle. Both carry installation
+and epoch IDs, an exact positive uint64 sequence and a policy revision/SHA-256.
+Closure additionally binds the **exact opening record bytes**. At the same policy
+revision, differing bytes cannot be declared as closure; later revisions require
+separate complete operation-history verification. Reformatting opening/current
+JSON changes its binding even when decoded values are equal.
+
+Each experimental schema1 record is bounded to4096 bytes/depth2, with exact keys,
+no duplicate/null/trailing/invalid-Unicode data and constant zero-on-error results.
+Explicit private encoders/decoders are separate from refused generic JSON and
+redacted formatting. Inputs must remain immutable during calls; results retain
+no mutable input buffers. Sequence and IDs are declaration data, not allocated
+authority: a future trusted Owner must generate its own epoch, enforce successor/
+overflow/reuse rules and retain its origin, never accept them from an HTTP caller.
+
+`MatchEpoch` validates all present records/current policy before missing-input
+diagnoses. It distinguishes no recorded epoch, observed opening, matching closure
+declarations, incomplete and inconsistent evidence. Orphan/foreign/mismatched
+epochs, revision rollback and changed exact bytes cannot become a matching pair.
+**Every result still permits no action.** In particular, `closure-matches-current`
+is not proof of actual consumer drain, Close/fsync returns, clean shutdown,
+history completeness, whole-NAS state, qualified persistence or rollback resistance.
+Record absence never proves pristine or permits enrollment.
+
+No runtime collector, writer, durable review marker, state namespace/file role,
+new HTTP route, recovery, boot admission or service restart is added. Do not insert
+these records into existing fixed-census policy/history directories. The first-
+release unclean-restart operator policy is a separate product decision; both
+manual and automatic recovery require qualified retained state and medium behavior.
+The existing standard ARM self-test exercises eight synthetic comparisons plus
+malformed/private controls, before/after its API restart; no extra boot or I/O.
+
 ## Checkpoint-anchored operation history
 
 `MatchHistory` compares a complete supplied history with a trusted exact policy

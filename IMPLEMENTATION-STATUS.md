@@ -3,6 +3,21 @@
 
 # Implementation status
 
+## Policy-session declarations — not clean-boot authority
+
+Private experimental opening/closure codecs now bind installation/epoch IDs,
+exact uint64 sequence and policy revision/hash; closure also binds exact opening
+bytes. Pure matching distinguishes absent/open/matching/incomplete/inconsistent
+declarations, never initialization, a clean shutdown or permission to start services.
+Malformed present data cannot hide behind another missing record.
+
+Windows units, pinned Go1.26.8 vet/units/race3, 2,000 bounded fuzz executions and
+actual ARMv5 standard smoke pass. Two exact epoch receipts join the existing
+model/view-writer pairs across API restart, with all old checks/budgets retained.
+No persistent epoch role, writer/allocator, history/whole-state qualification,
+HTTP or boot/recovery behavior is added. The first-release unclean-restart policy
+remains a separate decision. See the [record contract](src/phantowd-api/internal/policyevidence/README.md#policy-session-declarations--experimental-m12c1-prerequisite).
+
 ## Single-writer protocol-view transactions — QEMU-only
 
 The coherent editors now feed the existing disposable history writer under one

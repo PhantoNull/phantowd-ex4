@@ -854,6 +854,28 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   records and recovery identity; interrupted publication without confirmed
   readback remains review. Keep state-bundle/provisioning and qualified physical
   placement separate. A volatile watch/value is never durable boot permission.
+  **M1.2c.1 — policy-session declaration data (experimental prerequisite):**
+  strict private opening/closure records bind installation/epoch IDs, exact uint64
+  sequence and policy revision/hash; closure also binds the exact opening bytes.
+  Match complete supplied data without treating record absence as pristine or
+  a matching declaration as clean-shutdown/admission proof. Preserve independent
+  incomplete/inconsistent diagnoses; malformed present records cannot hide behind
+  another missing input. Retain4096-byte/depth2/strict-envelope/privacy bounds,
+  exact same-revision byte equality and zero-on-error; never wrap counters.
+  No ID allocation/succession authority, filesystem role, writer or boot behavior
+  is added. Require native units/vet/race, bounded fuzz and two actual ARM receipts
+  across existing API restart without relaxing old assertions or guest budgets.
+  **Next:** specify a bounded separate session namespace and trusted root Owner;
+  opening durability before effects, full role/consumer settlement before closure,
+  uncertain-return evidence and explicit fresh-epoch reconciliation on qualified
+  media. Do not insert new roles into existing fixed policy/history censuses,
+  silently reopen a writer or infer historical syscall returns from byte equality.
+  First-release manual versus qualified automatic recovery is an explicit product
+  decision, not selected by these codecs; physical/recovery/release gates remain.
+  **Local acceptance:** Windows units, pinned Go1.26.8 vet/units/race3, 2,000
+  bounded fuzz executions and actual standard ARMv5 smoke pass. Exact epoch,
+  model and writer pairs bracket API restart; all old checks/caps retained.
+  This qualifies declaration data only, not a persisted epoch or clean boot.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

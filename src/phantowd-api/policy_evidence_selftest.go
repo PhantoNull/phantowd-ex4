@@ -121,5 +121,8 @@ func exercisePolicyEvidencePair(base []byte, next naspolicy.Config) error {
 			return errors.New("policy evidence malformed input admitted")
 		}
 	}
+	if err := exercisePolicyEpochRecords(base, after); err != nil {
+		return err
+	}
 	return policytransaction.ExerciseBundleHistoryQEMU(installation, base, next)
 }
