@@ -18,9 +18,10 @@ import { classifyPageResource } from "./browser-resource-contract.mjs";
 import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture } from "./tests/test-iscsi-panel.mjs";
 import { networkPolicyFixture } from "./tests/test-network-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
+import { exerciseServicePolicy } from "./browser-service-policy-flow.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-assert.ok([4, 6, 7].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH [--network-preview]]");
+assert.ok([4, 6, 7].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH [--network-preview|--service-policy]]");
 assert.equal(process.argv[2], "--browser", "an explicit browser path is required");
 let apiFixture;
 if (process.argv.length >= 6) {
@@ -29,9 +30,10 @@ if (process.argv.length >= 6) {
   assert.ok((await lstat(apiFixture)).isFile(), "API fixture must be a regular test binary");
   assert.ok(/^phantowd-browser-api\.test(\.exe)?$/.test(basename(apiFixture)), "unexpected API fixture binary name");
 }
-const networkMode = process.argv.length === 7;
-if (networkMode) assert.equal(process.argv[6], "--network-preview");
-const scope = networkMode ? "headless-browser-network-preview-go-auth-memory-fixture" : apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
+if (process.argv.length === 7) assert.ok(["--network-preview", "--service-policy"].includes(process.argv[6]));
+const networkMode = process.argv[6] === "--network-preview";
+const serviceMode = process.argv[6] === "--service-policy";
+const scope = serviceMode ? "headless-browser-service-policy-memory-fixture" : networkMode ? "headless-browser-network-preview-go-auth-memory-fixture" : apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
 const browserPath = await realpath(process.argv[3]);
 assert.ok((await lstat(browserPath)).isFile(), "browser must be a regular file");
 assert.ok(/^(msedge|chrome|chromium)(\.exe)?$/i.test(basename(browserPath)), "unsupported browser executable");
@@ -45,7 +47,7 @@ const tempRoot = await realpath(tmpdir());
 let profile, cdp;
 let successful = false;
 let failure, result;
-const artifacts = join(repo, "artifacts", networkMode ? "dashboard-browser-network" : apiFixture ? "dashboard-browser-api" : "dashboard-browser");
+const artifacts = join(repo, "artifacts", serviceMode ? "dashboard-browser-policy" : networkMode ? "dashboard-browser-network" : apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
   for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "network-preview.js", "ghost.svg"]) {
@@ -58,7 +60,7 @@ const uiHashes = async () => {
 const sourceHashes = await uiHashes();
 const harnessHashes = async () => {
   const hashes = {};
-  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs", "support/browser-startup-contract.mjs", "support/tests/test-iscsi-panel.mjs", "support/tests/test-network-panel.mjs"]) {
+  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs", "support/browser-startup-contract.mjs", "support/browser-service-policy-flow.mjs", "support/tests/test-iscsi-panel.mjs", "support/tests/test-network-panel.mjs"]) {
     const bytes = await readFile(join(repo, name));
     assert.ok(bytes.length <= 65536, "browser harness source exceeded budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -175,7 +177,7 @@ class CDP {
 try {
   profile = await mkdtemp(join(tempRoot, "phantowd-dashboard-browser-"));
   const preview = apiFixture ? start(apiFixture, ["-test.run=^TestDashboardBrowserAPIFixture$", "-test.timeout=90s"], {
-    env: { ...process.env, PHANTOWD_BROWSER_API_FIXTURE: "1" }, stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, PHANTOWD_BROWSER_API_FIXTURE: "1", PHANTOWD_BROWSER_POLICY_FIXTURE: serviceMode ? "1" : "0" }, stdio: ["pipe", "pipe", "pipe"],
   }) : start(process.execPath, [join(repo, "support", "dashboard-preview.mjs")], {
     env: { ...process.env, PHANTOWD_PREVIEW_PORT: "0" },
   });
@@ -327,7 +329,12 @@ try {
   assert.equal(await evaluate("document.getElementById('support-download').disabled"), false);
   assert.equal(await evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(16, 19, 27)", "dashboard stylesheet was not applied");
 
-  if (apiFixture && !networkMode) {
+  let servicePolicyResult;
+  if (serviceMode) {
+    servicePolicyResult = await exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser });
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 3);
+  }
+  if (apiFixture && !networkMode && !serviceMode) {
     await clickVisible("iscsi-document");
     await replaceInput("iscsi-document", JSON.stringify(iscsiExposurePolicyFixture()));
     await clickVisible("iscsi-submit");
@@ -471,7 +478,7 @@ try {
   await evaluate("document.getElementById('refresh').click()");
   await until(() => evaluate(snapshotReady), browser, "explicit browser refresh");
   assert.equal(cdp.requests.filter((r) => new URL(r.url).pathname === "/api/v1/system").length, before + 1);
-  if (apiFixture) {
+  if (apiFixture && !serviceMode) {
     // Controlled401/status replies exercise the actual browser lifecycle;
     // logout/login and cookie revocation still use the real memory backend.
     // No desired-policy store or service activation is installed in the fixture.
@@ -576,7 +583,7 @@ try {
   assert.equal(cdp.exceptions, 0, "uncaught page JavaScript exception");
   assert.ok(!cdp.fault, "browser protocol observation failed");
   let localInlineImages = 0;
-  for (const request of cdp.requests) if (classifyPageResource(request, origin, Boolean(apiFixture)) === "local-inline-image") localInlineImages++;
+  for (const request of cdp.requests) if (classifyPageResource(request, origin, Boolean(apiFixture), serviceMode) === "local-inline-image") localInlineImages++;
   assert.ok(live(preview), "owned preview exited during browser verification");
   assert.ok(!previewErrorOutput, "owned fixture wrote an unexpected error");
   assert.deepEqual(await uiHashes(), sourceHashes, "dashboard source changed during browser verification");
@@ -586,16 +593,17 @@ try {
     ui_sha256: sourceHashes, harness_sha256: harnessSourceHashes,
     layouts, keyboard_skip_link: true, explicit_refresh: true, page_requests: cdp.requests.length,
     uncaught_exceptions: cdp.exceptions, actual_go_auth_memory_fixture: Boolean(apiFixture),
-    original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
-    intercepted_credential_deadline: Boolean(apiFixture),
-    intercepted_auth_mutation_deadlines: apiFixture ? ["password", "logout-all"] : [],
-    retired_service401_recheck: Boolean(apiFixture),
+    original_cookie_revocation_checked: Boolean(apiFixture && !serviceMode), authentication_qualified: false, hardware_qualified: false,
+    intercepted_credential_deadline: Boolean(apiFixture && !serviceMode),
+    intercepted_auth_mutation_deadlines: apiFixture && !serviceMode ? ["password", "logout-all"] : [],
+    retired_service401_recheck: Boolean(apiFixture && !serviceMode),
     visible_pointer_controls: pointerControls,
     auth_keyboard_tab_enter: Boolean(apiFixture),
-    iscsi_preview_actual_http: Boolean(apiFixture && !networkMode),
-    iscsi_guided_draft_actual_http: Boolean(apiFixture && !networkMode),
-    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture && !networkMode),
-    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode),
+    iscsi_preview_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
+    iscsi_guided_draft_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
+    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
+    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
+    service_policy_actual_http: servicePolicyResult ?? null,
     network_preview_actual_http: networkMode,
     network_base_refusal_actual_http: networkMode,
     local_inline_images: localInlineImages,

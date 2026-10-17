@@ -3,6 +3,21 @@
 
 # Implementation status
 
+## Focused browser file-service workflow
+
+The separately selected host browser policy fixture now saves and rereads three
+desired SMB/NFS revisions through visible controls and actual HTTP handlers. It
+checks that changing an SMB grant preserves NFS rules and removing NFS preserves
+the complete SMB policy. Windows units, pinned Linux vet/scoped units/race-count3,
+DOM controls, workflow routing and installed Edge execution pass. The default
+authentication fixture still has no desired-policy backend.
+
+This test backend is memory-only: no appliance persistence, service activation,
+disk observation, actual Samba account provisioning or release qualification is
+established. Form actions run at1365px; the three-width layout checks cover the
+overview, not every form. It changes no production API or embedded UI source.
+See the [browser test contract](src/phantowd-api/README.md).
+
 ## Current integration gate: `dedafa6` outer qualification budget
 
 The single complete cached qualifier of clean `dedafa6` terminates at its

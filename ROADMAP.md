@@ -3028,6 +3028,22 @@ milestone before enabling its controls; M1/M6 for deployment.
   multi-tab/password-manager/assistive testing, native policy-store browser
   writes, product enrollment/recovery and HTTPS browser trust remain open.
   This is not service activation, full firmware/hosted or physical qualification.
+- **M5.5p — Browser desired-policy round trip (partial; host only).** A separately
+  selected test-only memory backend exercises actual Go handlers with visible
+  pointer/keyboard form actions. Load uninitialized state, create SMB/NFS and
+  reread revision1, update an existing SMB grant and reread revision2 while
+  retaining NFS rules, then remove NFS and reread revision3 while retaining the
+  complete SMB policy. Require exactly three explicit PUTs, fixed same-origin
+  fixture routes, independent bounded snapshots, stale-revision refusal and
+  verified owned-process/profile disposal. Preserve the default fixture's
+  absent policy backend and the separate auth/network/iSCSI campaign claims.
+  Windows units, pinned Linux vet/scoped units/race3, existing DOM/resource/
+  workflow controls and installed Edge execution pass. Forms run at1365px;
+  overview layout additionally covers390/320px. Firmware/API production sources
+  and embedded assets are unchanged; only exact pure-host files bypass firmware
+  rebuild triggers. Appliance persistence, real-store browser transactions,
+  activation, accounts, all forms/accessibility, clean/hosted and physical
+  qualification remain open. This mode is not a substitute for those gates.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

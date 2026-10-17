@@ -25,7 +25,12 @@ func TestDashboardBrowserAPIFixture(t *testing.T) {
 		t.Skip("explicit host browser fixture only")
 	}
 	server := httptest.NewUnstartedServer(nil)
-	handler, serverAccounts := newBrowserFixtureHandler("http://" + server.Listener.Addr().String())
+	origin := "http://" + server.Listener.Addr().String()
+	var backend *serviceStateBackend
+	if os.Getenv("PHANTOWD_BROWSER_POLICY_FIXTURE") == "1" {
+		backend = newBrowserServicePolicyBackend()
+	}
+	handler, serverAccounts := newBrowserFixtureHandlerWithServiceState(origin, backend)
 	defer serverAccounts.Close()
 	server.Config.Handler = handler
 	server.Config.ReadHeaderTimeout = 5 * time.Second
@@ -71,15 +76,19 @@ func TestDashboardBrowserAPIFixture(t *testing.T) {
 }
 
 func newBrowserFixtureHandler(origin string) (http.Handler, *accountStore) {
+	return newBrowserFixtureHandlerWithServiceState(origin, nil)
+}
+
+func newBrowserFixtureHandlerWithServiceState(origin string, backend *serviceStateBackend) (http.Handler, *accountStore) {
 	accounts := &accountStore{backend: &memoryAccountBackend{}}
 	auth := newAuthController(accounts, origin)
-	return newHandler(func() (systemSnapshot, error) {
+	return newHandlerWithServiceState(func() (systemSnapshot, error) {
 		snapshot, err := collectSystem(fixtureProc(), time.Now())
 		snapshot.Target = "browser-auth-fixture"
 		return snapshot, err
 	}, func() (storageSnapshot, error) {
 		return storageSnapshot{}, errors.New("browser fixture storage unavailable")
-	}, auth), accounts
+	}, nil, nil, auth, nil, backend), accounts
 }
 
 func TestBrowserFixtureDiagnosticsStaySynthetic(t *testing.T) {
@@ -120,5 +129,12 @@ func TestBrowserFixtureDiagnosticsStaySynthetic(t *testing.T) {
 		if snapshot.Target != "browser-auth-fixture" {
 			t.Fatalf("wrong browser-auth fixture profile: %q", snapshot.Target)
 		}
+	}
+	r := loopbackRequest("GET", serviceStatePath, nil)
+	r.AddCookie(cookies[0])
+	withoutPolicy := httptest.NewRecorder()
+	handler.ServeHTTP(withoutPolicy, r)
+	if withoutPolicy.Code != http.StatusServiceUnavailable {
+		t.Fatal("default browser fixture unexpectedly configured policy storage")
 	}
 }

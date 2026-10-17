@@ -13,7 +13,7 @@ const fixturePostPaths = new Set([
   "/api/v1/network/preview", // Desired document only, never network observation/apply.
 ]);
 
-export function classifyPageResource(request, origin, allowAuthMutations = false) {
+export function classifyPageResource(request, origin, allowAuthMutations = false, allowPolicyFixture = false) {
   const refused = () => { throw new Error("unexpected browser page resource"); };
   if (!request || typeof request.url !== "string" || request.url.length > 8192 || typeof origin !== "string") refused();
   let base, url;
@@ -27,6 +27,9 @@ export function classifyPageResource(request, origin, allowAuthMutations = false
     refused();
   }
   if (url.protocol !== "http:" || url.origin !== origin || url.username || url.password) refused();
-  if (request.method !== "GET" && !(allowAuthMutations === true && request.method === "POST" && !url.search && fixturePostPaths.has(url.pathname))) refused();
+  const policyRequest = allowAuthMutations === true && allowPolicyFixture === true && !url.search &&
+    ((request.method === "PUT" && url.pathname === "/api/v1/file-services/configuration") ||
+     (request.method === "POST" && ["/api/v1/file-services/preview", "/api/v1/file-services/restore-preview"].includes(url.pathname)));
+  if (request.method !== "GET" && !policyRequest && !(allowAuthMutations === true && request.method === "POST" && !url.search && fixturePostPaths.has(url.pathname))) refused();
   return "same-origin-network";
 }

@@ -1848,6 +1848,30 @@ try {
 node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --api-fixture artifacts/dashboard-browser-api/phantowd-browser-api.test.exe
 ```
 
+The optional `--service-policy` mode additionally exercises desired SMB/NFS
+configuration through visible form controls and the actual Go HTTP handlers:
+
+```powershell
+node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --api-fixture artifacts/dashboard-browser-api/phantowd-browser-api.test.exe --service-policy
+```
+
+This separately selected test uses an uninitialized **memory-only desired-policy
+backend**, never the appliance store. It creates one SMB/NFS policy, saves and
+rereads revision1, changes the existing SMB user's grant to read/write while
+retaining NFS rules, then removes only the NFS export while retaining the complete
+SMB policy. Three explicit saves and rereads, real pointer/keyboard controls,
+overview layout at1365/390/320px and owned-process/profile disposal are required.
+The fixture's revision comparison refuses stale saves and decodes independent
+bounded snapshots. The ordinary authentication fixture still has no policy
+backend unless this separate mode is selected.
+
+This is browser-to-handler workflow coverage, not disk persistence, service
+activation, Unix/Samba account provisioning, full accessibility or release
+qualification. Form interactions run at1365px; the narrow checks cover the
+overview, not every form. The mode does not claim the separate authentication
+revocation/timeout, iSCSI or network-preview campaign results. No device or NAS
+is contacted and no Docker image/volume is created.
+
 On Linux, use the same command with a native `phantowd-browser-api.test` binary
 and explicit installed browser path. Never pass a firmware/ARM binary to a host
 runner. Recompile after changes: the test server reports nine embedded-asset

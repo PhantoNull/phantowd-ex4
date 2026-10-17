@@ -32,6 +32,14 @@ for (const value of ["", "45678\n/devtools/browser/abcd-123\nextra", "80\n/devto
 }
 
 const expectedOrigin = "http://127.0.0.1:45678";
+const policySaveRequest = { url: expectedOrigin + "/api/v1/file-services/configuration", method: "PUT" };
+assert.throws(() => classifyPageResource(policySaveRequest, expectedOrigin, true));
+assert.throws(() => classifyPageResource(policySaveRequest, expectedOrigin, false, true));
+assert.equal(classifyPageResource(policySaveRequest, expectedOrigin, true, true), "same-origin-network");
+for (const method of ["POST", "DELETE"]) {
+  assert.throws(() => classifyPageResource({ ...policySaveRequest, method }, expectedOrigin, true, true));
+}
+assert.throws(() => classifyPageResource({ ...policySaveRequest, url: policySaveRequest.url + "?apply=1" }, expectedOrigin, true, true));
 assert.equal(classifyPageResource({ url: expectedOrigin + "/", method: "GET" }, expectedOrigin), "same-origin-network");
 for (const path of [...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`), "/api/v1/iscsi/preview", "/api/v1/network/preview"]) {
   const request = { url: expectedOrigin + path, method: "POST" };

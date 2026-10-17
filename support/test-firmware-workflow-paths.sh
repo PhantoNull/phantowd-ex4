@@ -257,6 +257,9 @@ support/tests/test-dashboard-preview.mjs
 support/tests/test-iscsi-panel.mjs
 support/tests/test-network-panel.mjs
 src/phantowd-api/browser_fixture_test.go
+src/phantowd-api/browser_policy_fixture_test.go
+support/browser-resource-contract.mjs
+support/browser-service-policy-flow.mjs
 support/container/test-lab-tools.sh
 support/build-qemu.ps1
 support/clean-qemu-build-volumes.ps1
