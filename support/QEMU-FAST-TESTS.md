@@ -332,10 +332,41 @@ opt-in ext4 history matrix uses the same bounded snapshot-only preparation:
 .\support\test-revisionstore-media.ps1
 ```
 
-The first command is a mocked command-boundary check; it never starts Docker or
-QEMU. The second requires28 exact ordered rows: the unlinked-read-pin remount
+For the separate clean-reboot observation prerequisite, run:
+
+```powershell
+.\support\test-revisionstore-media.ps1 -Profile history-reboot
+```
+
+This profile deliberately starts two kernels, not two processes under one kernel.
+It creates one private32MiB RAW working copy from a hash-checked immutable seed;
+all images/caches/receipts stay in the existing1GiB disposable host tmpfs. QEMU's
+root-disk snapshot uses TMPDIR there as well; container `/var/tmp` remains read-only.
+No new package/image/volume or default CI guest is added. Each boot keeps45s Go/
+60s guest, with180s for the whole preparation/two-boot command and unchanged caps.
+Boot1 creates/closes fresh history and observes it read-only. Boot2 attaches that
+same disk with `readonly=on`, mounts `ro,noload`, and only uses the actual reader.
+Require both complete bound boot receipts, different boot IDs, normal unmounts/
+guest exits, exact file bytes and selected stable metadata across all six entries.
+Do not compare kernel mount IDs/device tuples or descriptors across boots. The
+known synthetic checkpoint is independent test input, not product provenance.
+The entire working disk must remain byte-identical during boot2, and seed/base
+hashes must remain unchanged. No writer adoption, replay or service activation.
+
+Actual ARM phases pass0.93s/0.29s, followed separately by all148default receipts on
+the final source. Six host parser/CLI tests exercise missing/duplicate/foreign/
+out-of-order evidence, exact bounds, changed data/metadata and stale kernel/PID/
+root/nonce bindings. The mocked wrapper now covers three profiles; it does not
+qualify guest execution itself. Initial pre-boot TMPDIR failure is preserved,
+not retried as an unchanged passing candidate. Native Go/Windows checks predate
+only that host-script environment correction; all other non-MD sources match,
+and final shell/consumer/actual guest checks cover it. This is clean synthetic
+reboot observation, not writable recovery, real power loss or physical durability.
+
+The wrapper-test command is a mocked boundary check; it never starts Docker or
+QEMU. The `history-ext4` profile requires28 exact ordered rows: the unlinked-read-pin remount
 control, four media cases plus parent and21 ext4 history SIGKILLs plus parent.
-The last independently requires all148 existing baseline rows. Neither substitutes
+The no-argument command independently requires all148 existing baseline rows. Neither substitutes
 for the other, and neither is a new default CI stage. Each profile keeps45s Go/
 60s guest/180s outer,4CPU/2GiB/256PIDs/1GiB temporary host scratch and256MiB guest.
 The wrapper now refuses unknown profiles, missing data-drive evidence or less

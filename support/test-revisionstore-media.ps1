@@ -4,7 +4,7 @@
 param(
     [string]$BaseArtifactDir,
     [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx'),
-    [ValidateSet('baseline','history-ext4')][string]$Profile = 'baseline'
+    [ValidateSet('baseline','history-ext4','history-reboot')][string]$Profile = 'baseline'
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -34,9 +34,10 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
-shellcheck /src/support/tests/test-revisionstore-media-qemu.sh /src/support/tests/revisionstore-media-init.sh /src/support/tests/test-revisionstore-media-log.sh /src/support/tests/history-ext4-init.sh /src/support/tests/test-history-ext4-log.sh
+shellcheck /src/support/tests/test-revisionstore-media-qemu.sh /src/support/tests/revisionstore-media-init.sh /src/support/tests/test-revisionstore-media-log.sh /src/support/tests/history-ext4-init.sh /src/support/tests/test-history-ext4-log.sh /src/support/tests/test-history-reboot-qemu.sh /src/support/tests/history-reboot-init.sh
 bash /src/support/tests/test-revisionstore-media-log.sh /src
 bash /src/support/tests/test-history-ext4-log.sh /src
+python3 -B /src/support/tests/test-history-reboot-result.py
 bash /src/support/tests/test-revisionstore-media-qemu.sh /base "$output" /src @PROFILE@
 '@
 $linux = $linux.Replace('@PROFILE@', $Profile)

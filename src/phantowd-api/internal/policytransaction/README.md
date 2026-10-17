@@ -222,9 +222,53 @@ controls. The unchanged default148-receipt campaign also passes on the same froz
 source. Both normal unmounts and unchanged base hashes are checked. Native tagged
 units/vet/race3, Windows and mocked wrapper controls pass their separate scopes;
 ordinary native positive media paths skip, not physical or ARM race qualification.
-No production Go source, HTTP, service startup, physical medium, OS reboot,
-power-cut, complete constructor/watch/close/EIO or writable restart is qualified.
+Those loss cases do not qualify production Go, HTTP, service startup, physical
+medium, OS reboot, power cut, complete constructor/watch/close/EIO or writable restart.
 Prior default-lane load sensitivity and full/audit/hosted/release gates stay open.
+
+### Clean two-kernel-boot observation prerequisite
+
+Run `support/test-revisionstore-media.ps1 -Profile history-reboot` explicitly.
+This separate test-only profile starts two ARMv5 kernels against one private
+32MiB RAW working disk in bounded host tmpfs. An immutable seed is retained and
+hash-checked; no qcow tool/package, Docker image/volume or physical device is
+needed. The manifest-verified base/source/SDK remain read-only. Each boot keeps
+45s Go/60s guest and the combined preparation/two-boot run keeps180s outer, under
+the existing4CPU/2GiB/no-swap/256PIDs/1GiB scratch and256MiB guest limits.
+
+Boot1 privately produces two successive nonempty three-protocol operations,
+verifies writer-process closure, remounts read-only and runs the actual retained
+history reader. Boot2 uses the exact same working disk exposed **block-device
+read-only**, mounts `ro,noload` and only observes. The fixture never reopens a
+writer for existing state, replays an operation or starts a service.
+
+Closed kernel requests reject missing/duplicate/unknown fields, arbitrary roots
+and absent/malformed prior boot identity. Both bounded complete Go-test receipts
+bind phase, run nonce, generated root and the test PID independently confirmed by
+guest init. Host verification requires distinct kernel boot IDs, both normal
+guest exits/unmounts and exact complete evidence. It compares raw policy/two
+record bytes and selected stable metadata of all six namespace entries: inode,
+mode, owner/group, link count, size and atime/mtime/ctime. Kernel mount IDs,
+device numbers and process descriptors are deliberately not cross-boot identities.
+The known synthetic checkpoint is compiled independently, not inferred from the
+record set or advertised as trusted product provenance.
+
+Host controls reject missing/duplicated/reordered/foreign proof, malformed JSON,
+noncanonical data, incomplete metadata, same/stale boot, root/nonce/PID mismatch
+and changed bytes/metadata. The entire working-disk hash must also remain unchanged
+during boot2; original seed and base hashes remain unchanged. Actual ARM boots pass
+in0.93s/0.29s for the Go fixture, and the unchanged default148-row campaign passes
+separately. Native tagged units/vet/race3, Windows, three-profile mocked wrapper
+and six host parser/CLI tests pass. A first pre-boot snapshot failure is preserved:
+QEMU needed TMPDIR inside private tmpfs, not read-only container `/var/tmp`.
+The correction changes only that host-runner environment, not Go behavior or
+container privileges. The final guest and shell/consumer checks qualify it.
+
+This proves one clean synthetic two-boot observation scenario only, not power cut,
+cache-flush/failing-device behavior, ACL/xattr completeness, trusted checkpoint
+origin, durable review/retention, writable boot admission or product recovery.
+Physical state-medium, EX4/NAND/ECC/thermal/compatibility and full/audit/hosted/
+installable-release gates remain independent. No default CI guest was added.
 
 ## One-operation namespace and ownership
 

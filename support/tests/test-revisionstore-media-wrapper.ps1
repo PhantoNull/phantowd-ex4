@@ -24,7 +24,7 @@ function Assert-MediaOption([object[]]$Arguments,[string]$Name,[string]$Value) {
 }
 try {
     $state=$global:phantowdMediaWrapperTest
-    foreach($profile in @('history-ext4','baseline')) {
+    foreach($profile in @('history-reboot','history-ext4','baseline')) {
         $state.Calls.Clear()
         & $wrapper -BaseArtifactDir $fixtureRoot -DockerDataVhdxPath $files[-1] -Profile $profile
         $runs=@($state.Calls | Where-Object {$_[0] -eq 'run'})
@@ -66,7 +66,7 @@ try {
     $state.Calls.Clear(); $refused=$false
     try { & $wrapper -BaseArtifactDir $fixtureRoot -DockerDataVhdxPath (Join-Path $fixtureRoot 'missing') -Profile history-ext4 } catch { $refused=$true }
     if(!$refused -or $state.Calls.Count -ne 0){throw 'Missing data drive admitted'}
-    'PHANTOWD_MEDIA_WRAPPER_TESTS_READY profiles=2 scope=mock-boundary-only actual_qemu=false'
+    'PHANTOWD_MEDIA_WRAPPER_TESTS_READY profiles=3 scope=mock-boundary-only actual_qemu=false'
 } finally {
     Remove-Variable phantowdMediaWrapperTest -Scope Global
     $global:LASTEXITCODE=$oldExit

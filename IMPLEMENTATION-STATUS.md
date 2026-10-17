@@ -221,6 +221,39 @@ resources, complete real EIO/constructor/watch/close, persistent checkpoint/revi
 retention, physical state medium and full/audit/hosted/release gates remain open.
 The earlier default-lane load/timing failure is not declared universally repaired.
 
+### M1 clean two-kernel-boot history observation
+
+The explicit optional `history-reboot` profile now produces fresh synthetic
+three-protocol history under boot1 and reads it under a distinct boot2 kernel.
+Both use the same private32MiB RAW working copy in bounded host tmpfs. Seed/base
+hashes remain unchanged; boot2 exposes the device read-only and mounts `ro,noload`.
+The full working-disk hash stays unchanged during boot2, not just named file bytes.
+No additional package/image/volume or default CI stage is introduced.
+
+Actual retained history observation and verified process/reference closure run
+in both boots. Host receipts bind phase/run nonce/generated root/test PID and
+different boot IDs, require both complete ordered Go passes/normal unmounts/exits,
+and compare exact policy/two-record bytes plus selected stable metadata of six
+entries. Mount IDs/device tuples/descriptors are not treated as cross-boot identity.
+The checkpoint is independently known synthetic input, not product provenance.
+
+Actual ARM fixture times are0.93s/0.29s, with45s Go/60s per guest and180s combined
+outer bounds unchanged. All148default receipts/77tmpfs/14old-ext4 losses also pass
+on the final source. Pinned tagged units/vet/race3, Windows/ARM cross-compile,
+three-profile mocked wrapper, shellcheck/flake8 and six host parser/CLI tests pass.
+Native media-positive cases skip on ordinary WSL. Native checks preceded one
+environment-only host-runner correction: export TMPDIR to private tmpfs, required
+after the first run failed before boot on read-only `/var/tmp`. All other non-MD
+inputs match those checks exactly; final actual guests and shell/consumer checks
+cover the correction. Neither the first failure nor earlier timing failures are
+retrospectively green or declared universally fixed.
+
+This is test/harness work, not production Go behavior or existing-state writer
+admission. Clean reboot is not power loss, failing-device/cache-flush evidence,
+durable quarantine/review, product checkpoint origin, writable reconciliation or
+physical state qualification. Full1800s integration/audit/hosted/release and EX4
+thermal/NAND/ECC/disk compatibility/recovery gates remain open; no NAS was touched.
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

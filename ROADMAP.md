@@ -996,15 +996,22 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
     worst-case16-record/4MiB memory and time, persistent checkpoint provenance,
     bounded retention/review and explicit reconciliation. Product capacities and
     compaction require a designed protocol, not silent deletion at record16.
-  **c.2d.3 next restart prerequisite, not product recovery:** build an explicit
-  disposable two-boot ext4 observation fixture before designing writable adoption.
+  **c.2d.3 clean two-boot prerequisite implemented/ARM fixture-qualified, not
+  product recovery:** explicit `history-reboot` profile passes two distinct kernels
+  on the same private32MiB RAW working disk. Actual history reader, complete bound
+  receipts/normal exits/unmounts, exact file bytes/selected stable metadata, unchanged
+  boot2 whole-disk hash and seed/base hashes pass. Go phases0.93s/0.29s fit45s/60s
+  each and180s combined; no default CI stage. All148default receipts independently
+  pass. First pre-boot snapshot failure required only private-tmpfs TMPDIR export;
+  container read-only/no-swap/resource policy was not relaxed. The acceptance
+  boundaries below remain requirements, not writable adoption authority.
   - Keep the manifest-verified base and seed disk read-only; put the one writable
-    virtual overlay, caches and all receipts in bounded private host tmpfs. No
+    virtual working copy, caches and all receipts in bounded private host tmpfs. No
     physical device passthrough, host ports/NIC, product init or persistent volume.
   - Boot1 creates only a fresh generated namespace, publishes two nonempty
     three-protocol revisions, verifies close and normally unmounts. Emit a bounded
     PID/challenge/root-bound proof; require normal guest exit before boot2.
-  - Bind boot2 to the same actual virtual overlay and exact first-boot namespace;
+  - Bind boot2 to the same actual virtual working disk and exact first-boot namespace;
     its known synthetic checkpoint is an independent test input, not inferred
     from the records or advertised as product checkpoint provenance. Observe with
     the real history reader after a verified read-only mount; never open a writer.

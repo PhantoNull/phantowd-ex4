@@ -8,6 +8,7 @@ source=${3:?repository required}
 profile=${4:-baseline}
 [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || exit 1
 case "$profile" in
+    history-reboot) exec bash "$source/support/tests/test-history-reboot-qemu.sh" "$base" "$output" "$source" ;;
     baseline) init="$source/support/tests/revisionstore-media-init.sh"; verifier="$source/support/tests/verify-revisionstore-media-log.awk" ;;
     history-ext4) init="$source/support/tests/history-ext4-init.sh"; verifier="$source/support/tests/verify-history-ext4-log.awk" ;;
     *) exit 1 ;;

@@ -65,9 +65,12 @@ and local receipt, including bounded successive operations under original locks.
 They cannot open existing state, recover or activate product services.
 The successive-operation prototype also tests normal, full and read-only writes
 on a sealed synthetic ext4 disk, followed by read-only observation in a new
-process. This is not writable restart admission, system reboot or power loss.
+process. That process-boundary test is not a system reboot.
 An additional opt-in synthetic ext4 campaign covers the history writer's own21
 syscall-boundary process losses without replacing the existing tmpfs tests.
+A separate two-kernel-boot fixture also verifies read-only history observation
+with identical bytes and selected stable metadata on one temporary virtual disk.
+This is clean-reboot observation, not writable recovery or power-loss durability.
 Dedicated process-loss and syscall-boundary tests for both prototypes inspect
 preserved evidence and pending metadata without recovery or retry; they do not
 qualify power loss or an EX4 state medium.
