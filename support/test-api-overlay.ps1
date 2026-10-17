@@ -61,11 +61,26 @@ sh /src/support/container/test-qemu-api-overlay.sh /base "$output/host/bin/go" /
 $linuxScript = $linuxScript.Replace("`r`n","`n")
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript))
 $command = "printf '%s' '$encoded' | base64 -d > /tmp/phantowd-api-overlay.sh; exec timeout --signal=TERM --kill-after=10s 360s /bin/sh /tmp/phantowd-api-overlay.sh"
-docker run --rm --pull never --cpus 2 --memory 2g --memory-swap 2g --pids-limit 256 `
+# Windows PowerShell 5 can promote a native stderr diagnostic into a terminating
+# ErrorRecord when this script is captured by a caller's 2>&1 pipeline. Do not
+# abandon a still-running guest on debugfs's informational stderr. Stream both
+# outputs, then decide from the actual exit code; restore the preference even
+# if command invocation itself fails. No timeout, guest assertion or retry changes.
+$previousNativePreference = $ErrorActionPreference
+$overlayExitCode = $null
+try {
+    $ErrorActionPreference = 'Continue'
+    # A missing native command must not inherit a successful preflight exit.
+    $global:LASTEXITCODE = $null
+    docker run --rm --pull never --cpus 2 --memory 2g --memory-swap 2g --pids-limit 256 `
     --network none --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges:true `
     --tmpfs '/tmp:rw,exec,nosuid,nodev,size=1024m,uid=1000,gid=1000' `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `
     --mount "type=bind,source=$baseRoot,target=/base,readonly" `
     --mount "type=volume,source=$workspace,target=/workspace,readonly,volume-nocopy" `
     --entrypoint /bin/sh $imageName -ec $command
-if ($LASTEXITCODE -ne 0) { throw 'API-only ARM overlay failed, timed out or was killed; no retry made.' }
+    $overlayExitCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $previousNativePreference
+}
+if ($null -eq $overlayExitCode -or $overlayExitCode -ne 0) { throw 'API-only ARM overlay failed, timed out or was killed; no retry made.' }

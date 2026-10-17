@@ -4027,6 +4027,22 @@ support per tested combination; refuse untested combinations without mutation.
   HTTP, product startup, credential/backing opening or target activation. Coherent
   desired state is necessary but not admission; retain the M9.1b use/access/session
   and backend gates. See the [contract](src/phantowd-api/internal/naspolicy/README.md).
+- **M9.2c.1 — Coherent protocol-view editing (internal model).**
+  Build a base+1 whole NAS document from either the file-service or iSCSI view;
+  preserve every other-protocol definition and advance all seven revision
+  bindings. Refuse invalid/stale/skipped/overflowing state and any removal or
+  redefinition of a volume referenced by a retained iSCSI backing. Return
+  independently owned nested values, never an authority or partial failure.
+  **Local acceptance:** units/vet, race-count3, 19 refusal cases, exact
+  maximum revision, empty collections, concurrent detached results and the
+  unchanged dense-sample allocation ceiling pass. The existing guest self-test
+  exercises seven cases before/after API restart with an exact-pair log guard.
+  Actual ARMv5 standard overlay smoke passes that pair and its existing checks;
+  this is not two-boot, full image/SBOM, physical or installable qualification.
+  **Next:** compose these helpers with the single product state Owner and the
+  M1 publication/recovery protocol before exposing a persistent edit workflow;
+  retain expected-revision comparison under that Owner. No second authoritative
+  store, automatic migration, backing/credential access or service activation.
 - **M9.2d — Retained coherent desired-policy owner (internal prerequisite).**
   Reuse the revision engine behind a private initialized-state owner, not a
   second parser/writer. Bounded opaque all-protocol revision claims fence both

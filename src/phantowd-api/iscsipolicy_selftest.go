@@ -6,8 +6,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
@@ -51,6 +54,9 @@ func exerciseQEMUISCSIPolicy() error {
 		strings.Contains(string(encoded), "fixture-outbound") || strings.Contains(string(encoded), "secret_ref") {
 		return errors.New("synthetic desired iSCSI preview disclosure or bounds failure")
 	}
+	if err := exerciseQEMUNASPolicyEdits(coherent); err != nil {
+		return err
+	}
 	coherent.ISCSI.Revision++
 	if invalid, err := iscsipreview.Build(coherent); err != iscsipreview.ErrInvalid || invalid.Format != "" || invalid.Targets != nil || invalid.Backings != nil {
 		return errors.New("synthetic desired iSCSI preview admitted stale policy")
@@ -73,5 +79,81 @@ func exerciseQEMUISCSIPolicy() error {
 			return errors.New("synthetic iSCSI policy refusal fixture failed")
 		}
 	}
+	return nil
+}
+
+// Pure all-protocol edit checks in the existing guest self-test. The 1GiB
+// backing is a desired reference only; no backing, secret or device is opened.
+func exerciseQEMUNASPolicyEdits(base naspolicy.Config) error {
+	fail := func() error { return errors.New("synthetic all-protocol policy edit failed") }
+	base.FileServices.Shares.Users = []shareconfig.User{{ID: "reader", Name: "reader"}}
+	base.FileServices.Shares.Shares = []shareconfig.Share{{ID: "books", Name: "Books", VolumeID: "fixture-volume", RelativePath: "books", Grants: []shareconfig.Grant{{UserID: "reader", Access: "ro"}}}}
+	base.FileServices.NFS.Exports = []nfsconfig.Export{{ID: "66666666-7777-4888-8999-aaaaaaaaaaaa", VolumeID: "fixture-volume", RelativePath: "books",
+		Clients: []nfsconfig.Client{{Network: "198.51.100.7/32", Access: "ro", Squash: "all", AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}}
+	original, err := json.Marshal(base)
+	if err != nil || base.Validate() != nil {
+		return fail()
+	}
+	fileBytes, err := json.Marshal(base.FileServices)
+	if err != nil {
+		return fail()
+	}
+	files, err := fileservice.DecodeConfig(bytes.NewReader(fileBytes))
+	if err != nil {
+		return fail()
+	}
+	files.Revision = 8
+	files.Shares.Revision = 8
+	files.NFS.Revision, files.NFS.VolumeRevision = 8, 8
+	files.Shares.Shares[0].Grants[0].Access = "rw"
+	first, err := naspolicy.ReplaceFileServices(base, files)
+	wantISCSI := base.ISCSI
+	wantISCSI.Revision, wantISCSI.VolumeRevision = 8, 8
+	if err != nil || first.Validate() != nil || !reflect.DeepEqual(first.ISCSI, wantISCSI) || first.Revision != 8 {
+		return fail()
+	}
+	iscsiBytes, err := json.Marshal(first.ISCSI)
+	if err != nil {
+		return fail()
+	}
+	next, err := iscsipolicy.Decode(bytes.NewReader(iscsiBytes), first.FileServices.Shares)
+	if err != nil {
+		return fail()
+	}
+	next.Revision, next.VolumeRevision = 9, 9
+	next.Targets[0].LUNs[0].Access = "rw"
+	next.Targets[0].Initiators[0].Grants[0].Access = "rw"
+	second, err := naspolicy.ReplaceISCSI(first, next)
+	wantFiles := first.FileServices
+	wantFiles.Revision, wantFiles.Shares.Revision = 9, 9
+	wantFiles.NFS.Revision, wantFiles.NFS.VolumeRevision = 9, 9
+	if err != nil || second.Validate() != nil || second.Revision != 9 || !reflect.DeepEqual(second.FileServices, wantFiles) {
+		return fail()
+	}
+	first.ISCSI.Targets[0].Initiators[0].Authentication.InitiatorSecretRef = "other-ref"
+	second.FileServices.NFS.Exports[0].Clients[0].Access = "rw"
+	after, err := json.Marshal(base)
+	if err != nil || !bytes.Equal(original, after) || next.Targets[0].Initiators[0].Authentication.InitiatorSecretRef != "fixture-inbound" || files.NFS.Exports[0].Clients[0].Access != "ro" {
+		return fail()
+	}
+	if got, err := naspolicy.ReplaceISCSI(base, base.ISCSI); err != naspolicy.ErrInvalid || !reflect.DeepEqual(got, naspolicy.Config{}) {
+		return fail()
+	}
+	files.Shares.Volumes[0].FilesystemUUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+	if got, err := naspolicy.ReplaceFileServices(base, files); err != naspolicy.ErrInvalid || !reflect.DeepEqual(got, naspolicy.Config{}) {
+		return fail()
+	}
+	files.Shares.Volumes, files.Shares.Shares, files.NFS.Exports = []shareconfig.Volume{}, []shareconfig.Share{}, []nfsconfig.Export{}
+	if got, err := naspolicy.ReplaceFileServices(base, files); files.Validate() != nil || err != naspolicy.ErrInvalid || !reflect.DeepEqual(got, naspolicy.Config{}) {
+		return fail()
+	}
+	base.Revision = ^uint64(0)
+	base.FileServices.Revision, base.FileServices.Shares.Revision = base.Revision, base.Revision
+	base.FileServices.NFS.Revision, base.FileServices.NFS.VolumeRevision = base.Revision, base.Revision
+	base.ISCSI.Revision, base.ISCSI.VolumeRevision = base.Revision, base.Revision
+	if got, err := naspolicy.ReplaceISCSI(base, next); base.Validate() != nil || err != naspolicy.ErrInvalid || !reflect.DeepEqual(got, naspolicy.Config{}) {
+		return fail()
+	}
+	fmt.Println("PHANTOWD_NAS_POLICY_EDIT_READY cases=7 coherent_revision=true detached=true cross_protocol_preserved=true publication=false scope=synthetic-policy-only")
 	return nil
 }

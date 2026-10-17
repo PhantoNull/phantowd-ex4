@@ -154,6 +154,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             printf 'QEMU did not verify the synthetic iSCSI desired-policy contract\n' >&2
             exit 1
         fi
+        if ! sh "$script_dir/tests/verify-nas-policy-edit.sh" "$log_file"; then
+            echo 'Expected two all-protocol desired-policy edit assertions across API restart' >&2
+            exit 1
+        fi
         # S99 runs the API self-test before AND after its intentional restart.
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_HISTORY_WRITER_READY operations=2 original_locks=true history_preserved=true uncertainty_fenced=true no_retry=true product=false scope=temporary-qemu-only')" -eq 2; then
             echo 'Expected two bounded multi-operation writer assertions across API restart' >&2

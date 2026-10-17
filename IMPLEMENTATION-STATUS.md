@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Coherent SMB/NFS/iSCSI edit preparation
+
+The internal NAS-policy model now supports editing either the file-service view
+or the iSCSI view while preserving the complete other protocol. All seven
+revision/binding counters advance together; missing, invalid, stale, skipped or
+overflowing revisions refuse without partial state. File-service edits also
+refuse removal or redefinition of volumes still referenced by an iSCSI backing.
+Results own independent nested collections, including grants, clients and LUNs.
+
+Windows units and pinned Linux Go1.26.8 units/vet/race-count3 pass. A dense
+128-user/32-share/16-export sample stays below its unchanged 50,000-allocation
+ceiling after replacing whole-document JSON round trips with typed copies.
+The measured cumulative allocation is not peak memory or EX4 performance.
+The actual ARMv5 standard overlay smoke passes with exactly two seven-case edit
+assertions across API restart. It reuses the verified base kernel/packages;
+the separate two-boot fixture, full image/SBOM and hardware were not tested here.
+See the [model and caller contract](src/phantowd-api/internal/naspolicy/README.md).
+
+This is edit preparation, not a new writer: no HTTP endpoint, saved configuration,
+recovery, backing/secret access or activation is added. The next product bridge
+must use the single authoritative state Owner and qualified publication/recovery,
+not independent file-service and NAS-policy stores. Hardware and release gates
+remain unchanged; deferred Samba status-producer work is not resumed.
+
 ## Focused browser file-service workflow
 
 The separately selected host browser policy fixture now saves and rereads three

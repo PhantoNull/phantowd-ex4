@@ -30,6 +30,40 @@ cross-protocol/global backing-use or session admission. A desired enabled target
 does not authorize startup. Input slices remain caller-owned and must not be
 mutated concurrently.
 
+## Editing protocol views without a second configuration
+
+`ReplaceFileServices` and `ReplaceISCSI` build a complete next-revision document
+from a validated base and an explicitly base+1 protocol view. All seven counters
+advance together; the other protocol's definitions and symbolic credential
+references are preserved. Overflow, invalid/stale/skipped/mixed revisions and
+invalid child limits return zero state and the constant `ErrInvalid`.
+
+A file-service edit cannot remove or change a volume definition still referenced
+by an iSCSI backing, even when its VolumeID remains the same. In particular,
+changing the expected filesystem UUID must not silently redirect an existing
+LUN. This is desired-model consistency, not physical volume qualification.
+The returned document owns detached copies of all mutable slices, including
+grants, NFS clients, LUNs and initiators. Caller inputs must not change concurrently.
+
+These helpers perform no I/O or publication. A future writer must read and compare
+the authoritative revision under the single state Owner and retain its recovery
+contract; a detached candidate is not a revision claim or authorization. Do not
+wire a second HTTP store around these helpers. No schema or startup change is
+introduced, and saving a future desired edit will not itself activate services.
+
+Native tests cover both views, cross-protocol preservation, nested detachment,
+concurrent independent results, explicit empty collections, maximum revision and
+19 invalid/stale/reference cases. A dense sample (128 users, 32 shares, 16 exports)
+retains a 50,000-allocation regression ceiling per edit. Typed copying avoids two
+complete JSON round trips while retaining base/candidate validation and encoded
+child limits. This is not peak-RSS, every-policy-maximum or EX4 timing qualification.
+The existing QEMU self-test checks seven synthetic cases on each side of its API
+restart; its log verifier requires exactly two complete assertions.
+That exact pair and the unchanged standard smoke checks pass in the actual
+ARMv5 userspace overlay with pinned Go1.26.8. This uses a verified prebuilt
+kernel/package base, not a clean image build, two-boot state campaign, EX4 test
+or release qualification. No physical storage is involved.
+
 ## Store and migration boundary
 
 The Linux [store adapter](../naspolicystore/store_linux.go) reuses the existing
