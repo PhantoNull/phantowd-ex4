@@ -17,6 +17,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyepochjournal"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"golang.org/x/sys/unix"
@@ -53,7 +54,18 @@ func actualLocksHeld(w *writer) bool {
 		_ = j.Close()
 		return false
 	}
-	return err == revisionstore.ErrBusy
+	if err != revisionstore.ErrBusy {
+		return false
+	}
+	if w.sessionProfile {
+		s, e := policyepochjournal.OpenFresh(context.Background(), w.root, w.installation, 1)
+		if s != nil {
+			_ = s.Close()
+			return false
+		}
+		return e == policyepochjournal.ErrBusy
+	}
+	return true
 }
 func fixtureSnapshot(w *writer) ([][]byte, error) {
 	var out [][]byte
@@ -104,6 +116,9 @@ func ExerciseTemporaryQEMU(ctx context.Context, provided naspolicy.Config) error
 	}
 	if err := exerciseHistoryViewEdits(ctx, initial); err != nil {
 		return fmt.Errorf("history protocol views: %w", err)
+	}
+	if err := exerciseHistorySessions(ctx, initial); err != nil {
+		return fmt.Errorf("history session composition: %w", err)
 	}
 	return ctx.Err()
 }

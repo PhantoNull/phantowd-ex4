@@ -30,6 +30,14 @@ existing fixed policy/history censuses. No physical EX4 state path or frozen
 product compatibility format is selected. The complete parent namespace and its
 role-owner composition still require explicit qualification.
 
+The private QEMU [history-writer session profile](../policytransaction/README.md#fresh-three-role-session-composition--m12c3)
+now supplies one explicit fresh three-role parent, its actual root lock/unique
+mount/path/watch guards and the existing policy/history locks. It records the
+opening before edit admission and serializes an explicit closure declaration
+with exact owned current/history checks. Old two-role profiles remain unchanged.
+This is not product boot, existing-state admission or complete child ABA/watch
+qualification; the remaining boundaries below still apply.
+
 ## Two declaration publications, one original writer
 
 | Lifetime state | Allowed behavior | Not established |

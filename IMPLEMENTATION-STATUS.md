@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## Session and configuration writer composition — QEMU-only
+
+The new explicit fresh three-role profile retains the same original root plus
+policy/history/session locks. It records an opening before allowing edits and
+checks it throughout the existing whole-policy/typed-view transactions. Explicit
+closure checks exact current policy and complete owned history under the same
+mutex, then refuses further edits. Close never writes a closure declaration;
+an uncertain return remains review even when matching closure bytes are visible.
+Existing two-role, crash and synthetic-ext4 profiles are not upgraded implicitly.
+
+Windows portable tests and pinned Linux vet/scoped units/race-count3 pass. Native
+exact-census/profile-refusal controls execute, but positive root lifecycles skip
+without mandatory unique mount IDs; that is not positive lifecycle/race evidence.
+Actual ARMv5 standard smoke passes all five composition scenarios twice across
+API restart, all previous assertions and unchanged budgets. Original four-lock
+exclusion, exact opening retention, no-effect terminal refusal and FD-balanced
+known-name disposal are checked. No producer experiment is resumed.
+
+This is not product startup/HTTP, writable recovery, consumer settlement or
+clean-shutdown authority. Child ABA/watch completeness, full constructor/close
+faults, durable review/succession and physical storage remain gates. See the
+[composition contract](src/phantowd-api/internal/policytransaction/README.md#fresh-three-role-session-composition--m12c3).
+
 ## Fresh policy-session journal — internal file component
 
 A fixed pre-provisioned `policy-session` role now records opening/closure

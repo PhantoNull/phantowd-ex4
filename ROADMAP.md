@@ -904,6 +904,28 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   A real value-formatting metadata leak led to an opaque immutable handle/private
   state split, concurrent-formatting race controls and final-source ARM retest.
   This is not physical durability, full/media/two-boot or product root admission.
+  **M1.2c.3 — compose fresh session and policy/history authority:** explicitly
+  select a new private QEMU tmpfs three-role profile; create the session role
+  before capturing the root witness, preserve the old two-role census unchanged.
+  Retain actual root/policy/history/session locks; record exact owned-base opening
+  before returning a usable edit writer. Guard every operation with its retained
+  opening, under the same mutex. Explicit closure rechecks exact current and
+  complete owned history before/after publication, seals further edits and never
+  overrides review. Close only releases; no implicit closure or existing-state
+  adoption. Incompatible ext4/crash/nonhistory combinations refuse before effects.
+  Acceptance: native exact-profile census/refusals/vet/race and actual ARM five
+  scenarios: normal alternating views, restored missing opening, policy commit
+  followed by error, cancel after actual closure, Close without seal. Verify
+  four real locks, no-effect terminal refusal, unchanged opening/history, preserved
+  evidence and FD-balanced disposal. Require two exact receipts at old budgets.
+  Still no product root/consumer/provisioning, durable review, successor/recovery,
+  child ABA/watch completeness, physical-media or clean-shutdown authority.
+  **Local acceptance:** portable Windows units and pinned native vet/scoped
+  units/race3 pass; exact-census/profile controls execute, positive root lifecycle
+  skips without mandatory unique mount IDs. Actual standard ARMv5 smoke passes
+  all five scenarios twice with strict complete receipts and all old caps/checks.
+  This does not qualify positive lifecycle race, media/two-boot/full integration
+  or any product bootstrap/recovery path.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

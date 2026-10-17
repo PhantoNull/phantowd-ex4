@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyepochjournal"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"golang.org/x/sys/unix"
@@ -78,6 +79,8 @@ type writer struct {
 	policy                                            *revisionstore.Store[naspolicy.Config]
 	journal                                           *revisionstore.Store[bundle]
 	history                                           *historyJournal
+	session                                           *policyepochjournal.Journal
+	sessionProfile, sessionSealed                     bool
 	checkpoint                                        []byte
 	medium                                            disposableMedium
 	base                                              []byte
@@ -129,6 +132,18 @@ func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config,
 }
 
 func newDisposableOnMedium(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool, historyPlan *disposableCrash, medium disposableMedium) (*writer, error) {
+	return newDisposableProfile(ctx, id, initial, crash, history, historyPlan, medium, false)
+}
+
+// Explicit fresh three-role fixture; existing profiles never autodetect it.
+func newDisposableHistorySession(ctx context.Context, id string, initial naspolicy.Config) (*writer, error) {
+	return newDisposableProfile(ctx, id, initial, nil, true, nil, disposableTmpfs, true)
+}
+
+func newDisposableProfile(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool, historyPlan *disposableCrash, medium disposableMedium, session bool) (*writer, error) {
+	if session && (!history || crash != nil || historyPlan != nil || medium != disposableTmpfs) {
+		return nil, ErrInvalid
+	}
 	parentRoot, filesystem, mediumErr := medium.location()
 	if mediumErr != nil || medium == disposableFixedExt4 && !history {
 		return nil, ErrInvalid
@@ -197,23 +212,29 @@ func newDisposableOnMedium(ctx context.Context, id string, initial naspolicy.Con
 	if err != nil {
 		return nil, ErrReview
 	}
-	for _, name := range []string{"policy", "operations"} {
+	roles := []string{"policy", "operations"}
+	if session {
+		roles = append(roles, "policy-session")
+	}
+	removeEmpty := func() {
+		for _, role := range roles {
+			_ = os.Remove(filepath.Join(dir, role))
+		}
+		_ = os.Remove(dir)
+	}
+	for _, name := range roles {
 		if os.Mkdir(filepath.Join(dir, name), 0700) != nil {
 			// Only these known empty fixture directories, never recursive removal.
-			_ = os.Remove(filepath.Join(dir, "operations"))
-			_ = os.Remove(filepath.Join(dir, "policy"))
-			_ = os.Remove(dir)
+			removeEmpty()
 			return nil, ErrReview
 		}
 	}
 	f, err := rootOpen(unix.AT_FDCWD, dir, unix.RESOLVE_NO_SYMLINKS|unix.RESOLVE_NO_MAGICLINKS)
 	if err != nil {
-		_ = os.Remove(filepath.Join(dir, "operations"))
-		_ = os.Remove(filepath.Join(dir, "policy"))
-		_ = os.Remove(dir)
+		removeEmpty()
 		return nil, ErrReview
 	}
-	w := &writer{mu: &sync.Mutex{}, root: f, path: dir, installation: id, watch: -1, medium: medium}
+	w := &writer{mu: &sync.Mutex{}, root: f, path: dir, installation: id, watch: -1, medium: medium, sessionProfile: session}
 	w.self = w
 	fail := func() (*writer, error) { w.review = true; return w, ErrReview }
 	w.initial, err = rootIdentity(f)
@@ -258,7 +279,7 @@ func newDisposableOnMedium(ctx context.Context, id string, initial naspolicy.Con
 		return fail()
 	}
 	_, w.base, err = w.policy.LoadExact()
-	if err != nil || !bytes.Equal(w.base, encoded) || w.guard(ctx) != nil {
+	if err != nil || !bytes.Equal(w.base, encoded) || w.guardRoot(ctx) != nil {
 		return fail()
 	}
 	w.policyWrite = w.policy.Commit
@@ -269,26 +290,62 @@ func newDisposableOnMedium(ctx context.Context, id string, initial naspolicy.Con
 		w.checkpoint = bytes.Clone(w.base)
 	}
 	w.policyRead = w.policy.LoadExact
+	if session {
+		// Sequence1 is fresh synthetic data, NOT a product successor allocator.
+		w.session, err = policyepochjournal.OpenFresh(ctx, w.root, id, 1)
+		if err != nil || w.session.RecordOpening(ctx, w.base) != nil || w.guard(ctx) != nil {
+			return fail()
+		}
+	}
 	return w, nil
 }
 
 func rootCensus(root *os.File) bool {
+	return rootCensusFor(root, false)
+}
+func rootCensusFor(root *os.File, session bool) bool {
 	f, err := rootOpen(int(root.Fd()), ".", below)
 	if err != nil {
 		return false
 	}
-	names, err := f.Readdirnames(3)
+	want := 2
+	if session {
+		want = 3
+	}
+	names, err := f.Readdirnames(want + 1)
 	complete := errors.Is(err, io.EOF)
-	if err == nil && len(names) < 3 {
+	if err == nil && len(names) < want+1 {
 		more, e := f.Readdirnames(1)
 		names = append(names, more...)
 		complete = errors.Is(e, io.EOF) && len(more) == 0
 	}
 	closeErr := f.Close()
-	return closeErr == nil && complete && len(names) == 2 &&
-		(names[0] == "policy" && names[1] == "operations" || names[1] == "policy" && names[0] == "operations")
+	seen := make(map[string]bool, want)
+	for _, name := range names {
+		if seen[name] || name != "policy" && name != "operations" && !(session && name == "policy-session") {
+			return false
+		}
+		seen[name] = true
+	}
+	return closeErr == nil && complete && len(names) == want
 }
 func (w *writer) guard(ctx context.Context) error {
+	if err := w.guardRoot(ctx); err != nil {
+		return err
+	}
+	if w.sessionProfile {
+		if w.session == nil || w.sessionSealed {
+			return ErrReview
+		}
+		d, err := w.session.Observe(ctx, w.base)
+		if err != nil || d.Kind() != policyevidence.OpenEpochObserved {
+			return ErrReview
+		}
+	}
+	return ctx.Err()
+}
+
+func (w *writer) guardRoot(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -301,7 +358,7 @@ func (w *writer) guard(ctx context.Context) error {
 		return ErrReview
 	}
 	held, err := rootIdentity(w.root)
-	if err != nil || held != w.initial || !rootCensus(w.root) {
+	if err != nil || held != w.initial || !rootCensusFor(w.root, w.sessionProfile) {
 		return ErrReview
 	}
 	f, err := rootOpen(unix.AT_FDCWD, w.path, unix.RESOLVE_NO_SYMLINKS|unix.RESOLVE_NO_MAGICLINKS)
@@ -464,6 +521,9 @@ func (w *writer) close() error {
 		return nil
 	}
 	fail := func() error { w.review = true; w.closeFailed = true; return ErrReview }
+	if w.session != nil && w.session.Close() != nil {
+		return fail()
+	}
 	if w.history != nil && w.history.close() != nil {
 		return fail()
 	}
@@ -510,13 +570,17 @@ func (w *writer) discard() error {
 	id, err := rootIdentity(f)
 	// Fixture root mtimes may differ after a deliberate structural fault.
 	id.mtime, id.ctime = w.initial.mtime, w.initial.ctime
-	if err != nil || id != w.initial || !rootCensus(f) {
+	if err != nil || id != w.initial || !rootCensusFor(f, w.sessionProfile) {
 		return ErrReview
 	}
-	for _, spec := range []struct {
+	specs := []struct {
 		dir                        string
 		codecCurrent, codecPending string
-	}{{"policy", "nas-services.json", ".nas-services.pending"}, {"operations", "operation.json", ".operation.pending"}} {
+	}{{"policy", "nas-services.json", ".nas-services.pending"}, {"operations", "operation.json", ".operation.pending"}}
+	if w.sessionProfile {
+		specs = append(specs, struct{ dir, codecCurrent, codecPending string }{"policy-session", "epoch.json", ".epoch.pending"})
+	}
+	for _, spec := range specs {
 		child, e := rootOpen(int(f.Fd()), spec.dir, below)
 		if e != nil {
 			return ErrReview

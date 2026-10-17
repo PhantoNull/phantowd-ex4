@@ -58,6 +58,9 @@ func (w *writer) historyReadyLocked(ctx context.Context) error {
 	if w.closed || w.closeFailed || w.review || w.attempted {
 		return ErrReview
 	}
+	if w.sessionSealed {
+		return ErrAttempted
+	}
 	return ctx.Err()
 }
 

@@ -54,6 +54,55 @@ This does not turn the one-operation disposable writer into a product store.
 
 ## Bounded successive-operation prototype
 
+### Fresh three-role session composition — M1.2c.3
+
+An explicit private `newDisposableHistorySession` profile composes the existing
+history writer with the [session journal](../policyepochjournal/README.md), under
+the same original root and actual root/policy/history/session flocks. It creates
+the third `policy-session` directory **before** capturing the root identity and
+watch, initializes its own synthetic policy, and records/readbacks an opening
+before returning a usable writer. Sequence1 is fresh synthetic data, not a
+product successor allocator. No existing state is opened or upgraded.
+
+Each ordinary transaction guard also requires the retained journal's opening.
+Both typed protocol views and whole-document edits remain under the original
+mutex. An explicit `sealSession` operation rechecks exact current policy and
+the complete owned history before and after recording the closure declaration;
+it then refuses further edits/seals. Its lock spans all those checks. Any admitted
+failure retains whole-writer review, even if matching closure data is visible.
+Pre-admission cancellation leaves the records unchanged and does not poison.
+`close()` releases the session child before the other roles and **never** seals.
+
+Old two-role constructors/readers and sealed-ext4/crash profiles keep their exact
+old census and behavior. The three-role profile is explicitly selected, tmpfs
+and history-only; incompatible combinations refuse before namespace creation.
+There is no autodetection, compatibility migration, product constructor/HTTP,
+service consumer, writable restart or automatic recovery.
+
+Five disposable scenarios cover alternating file-service/iSCSI publications,
+unchanged exact opening, actual four-lock exclusion, missing-then-restored
+opening, real policy publication followed by a reported error, cancellation
+after real closure publication, and Close with an unsealed opening. Tests check
+no effects on repeated refused attempts, preserved records, copied-handle
+refusal and verified descriptor-balanced disposal. Uncertain reference closure
+retains the original fixture writer rather than retrying/deleting its namespace.
+The standard smoke requires exactly two complete session-writer receipts in
+addition to every old receipt; no new lane or increased budget.
+
+This composition does not repair the child journal's unqualified original-current
+ABA/watch boundary or supply complete constructor/temporary-close faults, durable
+quarantine, full role/consumer ownership, trusted product provisioning, successor
+allocation/retention or physical-medium/power-loss evidence. A closure declaration
+is not consumer settlement, verified final Close, clean shutdown or boot authority.
+
+Portable Windows units and pinned Linux vet/scoped units/race-count3 pass. The
+exact-census/profile controls execute locally; positive root lifecycle tests skip
+when the kernel lacks mandatory unique mount IDs. That skip is not positive
+lifecycle or race qualification. The actual standard ARMv5 smoke executes all
+five scenarios twice with the strict session receipts and all previous assertions
+at unchanged15s filesystem/240s guest/360s outer limits. Separate synthetic media,
+two-boot, full integration, hosted and physical tests are not claimed by this run.
+
 A typed protocol-view bridge now keeps the same writer mutex from expected-base
 comparison and candidate construction through the existing history transaction.
 `executeFileServicesHistory` and `executeISCSIHistory` use the coherent model
