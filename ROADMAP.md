@@ -908,6 +908,60 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   owned mutations without suppressing external drift. Do not close/reopen across
   admission, prune/rebase the checkpoint, retry uncertain effects or activate
   product services implicitly.
+  **c.2c bounded multi-operation publication (QEMU-only prototype):** fresh tmpfs
+  root Owner mode retains root/policy/history locks and exact initial checkpoint.
+  Create a distinct operation-ID file per revision; preserve exact base/intent,
+  publish policy once, verify readback, then publish local confirmation. Retain
+  immutable original record descriptors/metadata/watches across later operations;
+  fresh bounded reads must still match the checkpoint chain. Preflight count16/
+  4MiB checkpoint/current/encoded-record limits, never prune/rebase to fit them.
+  Match the exact pending create/modify/write-close and cookie-paired move event
+  profile; never reset/drain watches to waive drift. Unknown event behavior fails
+  closed, not automatic retry. A successful distinct next revision may proceed;
+  every admitted uncertain return fences the whole lifetime and fresh IDs too.
+  Tests cover two operations, concurrent stale loser, preserved first original,
+  canceled intent/policy/receipt, post-success policy error, immutable write-open,
+  same locks, repeated no-effect refusal and balanced closure. Native child
+  journal tests actual16/17 files and watcher-enrollment cleanup regression.
+  This does not complete production c.2/c.3: next qualify this mode's own partial
+  write/sync/close/rename/directory-sync and process-loss boundaries, supported
+  filesystem/restart behavior, retained constructor/close faults and worst-case
+  resource bounds. Older one-operation process-loss tests do not transfer.
+  Only then admit explicitly provisioned product state, diagnostic epochs,
+  durable review/reconciliation and HTTP/service ownership; no observer upgrade
+  or NAS writes are authorized by this prototype.
+  **c.2d qualify history publication before product admission:** keep the new
+  writer behind its QEMU-only fresh-state constructor until its own fault corpus
+  passes. Start with native real-file fault controls, then the pinned ARM media
+  lane; older one-operation receipts cannot count for the new journal.
+  - Fix syscall/fault plans at construction, never per-operation or from HTTP.
+    Cover short/partial and full write, file sync, file close, before/after rename
+    and directory sync for second intent, policy and confirmation. Preserve first
+    confirmed record's original descriptor, exact bytes and metadata throughout.
+    Capture completion/close uncertainty without raw-descriptor retry; retained
+    original references survive any uncertain constructor/teardown result.
+  - Real SIGKILL probes use the original bounded PID/challenge/gate discipline.
+    Parent captures original root/policy/history/first-record references and
+    verifies actual child flocks before loss, then verifies death/reaping before
+    acquiring observation locks. Reacquired observation locks never confer writer
+    admission. Open the actual history reader with an independently supplied exact
+    checkpoint; do not initialize/delete pending evidence or manufacture recovery.
+  - Every pre-rename pending boundary is metadata-only review with no diagnosis.
+    A published intent with old policy may observe intent-base; new policy without
+    confirmation may observe publication-unconfirmed; published matching receipt
+    may observe local-confirmation. **Every killed writer still requires review**,
+    including matching receipt or apparently empty second operation. Verify no
+    retry/new-ID/service action, no changes to first record and bounded FD disposal.
+  - Keep the existing media guest selectors/catalogue closed and all old receipts,
+    normal unmounts and unchanged base checks mandatory. Measure the shared Go45s/
+    guest60s/outer180s and resource budget before adding cases; do not widen limits,
+    suppress old tests or add a default CI guest implicitly. If it cannot fit,
+    report the measured conflict rather than claim composite qualification.
+  - Same-kernel tmpfs SIGKILL is not physical persistence. Separately qualify a
+    supported local filesystem, process/system restart, ENOSPC/read-only behavior,
+    worst-case16-record/4MiB memory and time, persistent checkpoint provenance,
+    bounded retention/review and explicit reconciliation. Product capacities and
+    compaction require a designed protocol, not silent deletion at record16.
   A separate [strict anchored Store prerequisite](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
   now retains the actual child lock under a borrowed parent, does not sync on
   open, returns exact bounded readback and fences pending/unknown entries plus

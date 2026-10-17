@@ -236,6 +236,20 @@ new image/volume, clean build, ARM, speedup or product activation is qualified.
 
 ## Policy-store interruption and media faults — optional ARMv5 ext4 guest
 
+The existing standard smoke also exercises the separate QEMU-only successive
+operation writer, requiring two exact `PHANTOWD_POLICY_HISTORY_WRITER_READY`
+receipts across the original API restart. Six fresh-tmpfs scenarios check original
+root/policy/history locks, two operations, one concurrent winner, unchanged first
+record, cancellation after intent/policy/receipt, post-success policy error,
+immutable write-open refusal, no fresh-ID retry and balanced closure/disposal.
+Its child journal matches the exact five pending/publication events and keeps
+original confirmed-file watches; it never resets a watcher to waive drift.
+Native real-file controls additionally test16/17 capacity and watcher-enrollment
+cleanup. Whole-owner positive native tests skip without unique mount IDs.
+The existing15s shared fixture/240s smoke/360s wrapper budgets and all old proofs
+remain. This adds no CI guest, product writer or physical state placement; the
+older one-operation media/crash tests below do not qualify the new history mode.
+
 The existing standard smoke also runs an experimental retained history reader
 over fresh tmpfs files, with two successive nonempty SMB/NFS/iSCSI policy bundles.
 It requires two exact `PHANTOWD_POLICY_HISTORY_FS_READY` rows across the original

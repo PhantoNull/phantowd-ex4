@@ -76,6 +76,8 @@ type writer struct {
 	watch                                             int
 	policy                                            *revisionstore.Store[naspolicy.Config]
 	journal                                           *revisionstore.Store[bundle]
+	history                                           *historyJournal
+	checkpoint                                        []byte
 	base                                              []byte
 	attempted, review, confirmed, closed, closeFailed bool
 	uncertain                                         []*os.File
@@ -109,6 +111,17 @@ type disposableCrash struct {
 }
 
 func newDisposableWithCrash(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash) (*writer, error) {
+	return newDisposableMode(ctx, id, initial, crash, false)
+}
+
+func newDisposableHistory(ctx context.Context, id string, initial naspolicy.Config) (*writer, error) {
+	return newDisposableMode(ctx, id, initial, nil, true)
+}
+
+func newDisposableMode(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash, history bool) (*writer, error) {
+	if history && crash != nil {
+		return nil, ErrInvalid
+	}
 	var profile revisionstore.QEMUCommitCrash
 	if crash != nil {
 		target := uint64(2)
@@ -190,7 +203,9 @@ func newDisposableWithCrash(ctx context.Context, id string, initial naspolicy.Co
 	if err != nil {
 		return fail()
 	}
-	if crash != nil && crash.role != "policy" {
+	if history {
+		w.history, err = newHistoryJournal(f)
+	} else if crash != nil && crash.role != "policy" {
 		w.journal, err = revisionstore.OpenAnchoredQEMUCrashWithCodec(f, "operations", operationCodec(), profile)
 	} else {
 		w.journal, err = revisionstore.OpenAnchoredWithCodec(f, "operations", operationCodec())
@@ -215,7 +230,12 @@ func newDisposableWithCrash(ctx context.Context, id string, initial naspolicy.Co
 		return fail()
 	}
 	w.policyWrite = w.policy.Commit
-	w.journalWrite = w.journal.Commit
+	if w.journal != nil {
+		w.journalWrite = w.journal.Commit
+	}
+	if history {
+		w.checkpoint = bytes.Clone(w.base)
+	}
 	w.policyRead = w.policy.LoadExact
 	return w, nil
 }
@@ -290,6 +310,9 @@ func (w *writer) execute(ctx context.Context, next naspolicy.Config) (localOutco
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.history != nil {
+		return localOutcome{}, ErrInvalid
+	}
 	if w.closed || w.closeFailed || w.review {
 		return localOutcome{}, ErrReview
 	}
@@ -409,6 +432,9 @@ func (w *writer) close() error {
 		return nil
 	}
 	fail := func() error { w.review = true; w.closeFailed = true; return ErrReview }
+	if w.history != nil && w.history.close() != nil {
+		return fail()
+	}
 	if w.journal != nil && w.journal.Close() != nil {
 		return fail()
 	}
@@ -427,6 +453,7 @@ func (w *writer) close() error {
 	}
 	w.closed = true
 	clear(w.base)
+	clear(w.checkpoint)
 	return nil
 }
 
@@ -461,20 +488,28 @@ func (w *writer) discard() error {
 		if e != nil {
 			return ErrReview
 		}
-		names, readErr := child.Readdirnames(3)
+		limit := 3
+		if spec.dir == "operations" && w.history != nil {
+			limit = policyevidence.MaxHistoryOperations + 2
+		}
+		names, readErr := child.Readdirnames(limit)
 		complete := errors.Is(readErr, io.EOF)
-		if readErr == nil && len(names) < 3 {
+		if readErr == nil && len(names) < limit {
 			more, e := child.Readdirnames(1)
 			names = append(names, more...)
 			complete = errors.Is(e, io.EOF) && len(more) == 0
 		}
-		if !complete || len(names) > 2 {
+		if !complete || len(names) >= limit {
 			_ = child.Close()
 			return ErrReview
 		}
 		for _, name := range names {
 			var st unix.Stat_t
-			if name != spec.codecCurrent && name != spec.codecPending || unix.Fstatat(int(child.Fd()), name, &st, unix.AT_SYMLINK_NOFOLLOW) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 || st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 || unix.Unlinkat(int(child.Fd()), name, 0) != nil {
+			allowed := name == spec.codecCurrent || name == spec.codecPending
+			if spec.dir == "operations" && w.history != nil {
+				allowed = name == journalPending || w.history.attemptedNames[name]
+			}
+			if !allowed || unix.Fstatat(int(child.Fd()), name, &st, unix.AT_SYMLINK_NOFOLLOW) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 || st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 || unix.Unlinkat(int(child.Fd()), name, 0) != nil {
 				_ = child.Close()
 				return ErrReview
 			}

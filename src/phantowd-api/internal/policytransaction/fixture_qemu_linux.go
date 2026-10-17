@@ -99,6 +99,9 @@ func ExerciseTemporaryQEMU(ctx context.Context, provided naspolicy.Config) error
 			return fmt.Errorf("policy transaction fixture %s: %w", scenario, err)
 		}
 	}
+	if err := exerciseHistoryWriterQEMU(ctx, initial); err != nil {
+		return err
+	}
 	return ctx.Err()
 }
 func exerciseScenario(parent context.Context, scenario string, initial, next naspolicy.Config, base, candidate []byte) (result error) {

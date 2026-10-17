@@ -155,6 +155,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         # S99 runs the API self-test before AND after its intentional restart.
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_HISTORY_WRITER_READY operations=2 original_locks=true history_preserved=true uncertainty_fenced=true no_retry=true product=false scope=temporary-qemu-only')" -eq 2; then
+            echo 'Expected two bounded multi-operation writer assertions across API restart' >&2
+            exit 1
+        fi
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_HISTORY_FS_READY records=2 original_locks=true name_bound=true checkpoint_owned=true pending_metadata_only=true sticky_review=true readonly=true admission=false scope=temporary-qemu-only')" -eq 2; then
             echo 'Expected two retained multi-operation history filesystem assertions across API restart' >&2
             exit 1

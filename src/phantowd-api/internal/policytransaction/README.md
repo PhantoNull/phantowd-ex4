@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
 
-# Disposable one-operation protocol — experimental M1.3c
+# Disposable operation protocols — experimental M1.3c
 
 This package tests an actual **base/intent → policy → local receipt** sequence,
 not a deployable state store. Its private writer is compiled only with `qemu &&
@@ -51,7 +51,60 @@ standard ARM smoke requires two exact synthetic history receipts across its
 original intentional API restart; no extra guest or persistent write is added.
 This does not turn the one-operation disposable writer into a product store.
 
-## Namespace and ownership
+## Bounded successive-operation prototype
+
+A separate private QEMU/Linux mode creates fresh tmpfs state with the same
+original root/policy locks and a retained history-directory lock. It never opens
+existing state or upgrades a read-only Observer. The old one-operation mode and
+its crash profiles keep their original contracts; `execute` refuses this new mode.
+
+Each operation has its own canonical operation-ID JSON file. Publication uses
+one fixed exclusive pending name, full write/file sync/close, confined rename and
+directory sync, followed by exact readback of the original published inode.
+Initial publication is no-replace; only that operation's intent may become its
+matching local confirmation. Confirmed files retain original read-only/no-atime
+descriptors, metadata and individual watches for the entire writer lifetime.
+They are never overwritten by the next operation. Fresh history observations
+read those actual retained files, check exact bytes and the anchored chain.
+Captured identity/mode/owner/link/size/mtime/ctime are rechecked; this is not
+a complete xattr/ACL/atime witness or a physical-media guarantee.
+
+The child directory's watcher is not reset or drained indiscriminately around
+owned writes. Each publication requires the exact five directory events for
+pending create/modify/write-close and a cookie-paired pending-to-record move.
+Extra, missing, reordered, foreign-name or immutable-file events require review.
+Unsupported/coalescing behavior outside this experimental kernel/filesystem
+profile fails closed. This does not identify event authors or exclude malicious
+root/noncooperating same-UID writers; exclusive provisioning/cooperation remain
+prerequisites. The journal borrows its parent's lifetime; unique root mount/path
+and root watch authority are supplied by the enclosing constructor, not the
+standalone child primitive tested natively.
+
+A successful local operation advances the owned exact base and permits a distinct
+next revision. A stale concurrent proposal fails before effects. Any admitted
+error/cancellation fences the **whole** root lifetime, including when confirmed
+bytes survived. Another context, operation ID or restored source never bypasses
+review. Count16 and the4MiB aggregate checkpoint/current/encoded-record budget
+are checked before effects; reaching capacity does not prune or rebase history.
+No history retention/recovery policy is implied by these prototype bounds.
+
+The current fixture checks two operations, original Store-lock exclusion, one
+concurrent winner, unchanged original first record, cancellation after intent/
+policy/receipt, a real policy commit followed by an injected error, immutable
+write-open detection, repeated no-effect refusal and FD-balanced verified
+closure/disposal. Native real-file primitive controls include16/17 records and
+watch-enrollment failure. The latter reproduced a closed-original roster retry;
+enrolling the new pin before retiring the old one fixes that path. Controlled
+errors are not kernel EIO, complete close-fault coverage or power loss.
+
+This prototype is **not covered automatically** by the older one-operation
+SIGKILL/syscall/ext4 campaigns below. Still required: history publication faults
+at every declared boundary, interruption/restart on supported media, constructor/
+temporary-close/watcher races, worst-case memory/time bounds, independent product
+checkpoint provenance, durable review and authorized reconciliation. There is no
+product constructor, consumer lease, HTTP save or persistent EX4 placement.
+
+## One-operation namespace and ownership
 
 ```text
 /tmp/phantowd-transaction-<generated>/

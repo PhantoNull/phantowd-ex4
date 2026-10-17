@@ -58,6 +58,16 @@ func (i Intent) MatchesOperationID(id string) bool {
 	return i.value.valid() && canonicalHex(id, 32, true) && i.value.OperationID == id
 }
 
+// OperationRecordName explicitly supplies private naming data to the internal
+// writer. It is an experimental basename, never a path, authority or receipt.
+// Generic JSON/formatting remain private; no HTTP caller obtains this value.
+func (i Intent) OperationRecordName() (string, error) {
+	if !i.value.valid() {
+		return "", ErrInvalid
+	}
+	return i.value.OperationID + ".json", nil
+}
+
 func canonicalHex(value string, length int, nonzero bool) bool {
 	if len(value) != length {
 		return false

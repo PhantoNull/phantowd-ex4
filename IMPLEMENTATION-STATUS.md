@@ -89,9 +89,36 @@ controlled close cases for the six-object two-record profile. Two exact receipts
 across the original API restart and all old smoke assertions pass; no extra
 default guest or enlarged timeout is introduced. Native mount-lifecycle tests
 explicitly skip on the unsupported WSL kernel; those are not positive evidence.
-Host/race, tagged vet and57 runner controls pass. Serialized publication,
+Host/race, tagged vet and57 runner controls pass. Product-authorized publication,
 provisioning/retention, recovery and product HTTP/service wiring remain required;
 the latest complete integration gate above is unchanged.
+
+### M1 bounded successive-operation writer prototype
+
+A separate private QEMU/Linux mode now preserves distinct per-operation records
+under the same original root/policy/history locks. Full intent publication,
+policy commit/readback and local confirmation precede each new revision. It
+retains confirmed original file pins/watches and performs fresh bounded history
+reads; owned writes must match the exact five directory-event publication
+profile, not a watcher reset. Every admitted uncertainty fences the entire root
+lifetime, even when a matching local receipt survived; a fresh ID cannot retry.
+
+Whole Windows preflight/cross-compilation, pinned tagged native units/vet/race3
+and58 strict runner/lint controls pass. Native real-file primitive tests include
+16/17 capacity, unexpected write-open, sticky pending and a reproduced/fixed
+watch-enrollment close-roster regression. Whole-owner native admission explicitly
+skips without unique mount IDs. Actual standard ARM verifies six fresh-state
+scenarios twice: two operations/concurrent stale loser, cancellations after intent,
+policy and receipt, successful policy commit followed by an injected error, and
+immutable write-open. Original first record/locks, no-effect refusal and balanced
+closure remain mandatory at unchanged15s/240s/360s bounds and all old smoke proofs.
+
+Only fresh temporary namespaces are admitted. The old one-operation crash/media
+tests do not qualify this new journal's failure boundaries. Its own partial write,
+sync/close/rename/directory-sync and process-loss campaigns, supported filesystem
+restart, worst-case resources, persistent checkpoint/review and authorized
+reconciliation/product HTTP/service composition remain required. No installable
+firmware, product state medium or physical device qualification is implied.
 
 ## Earlier integration failure: `0beb01e` held/data deadline
 

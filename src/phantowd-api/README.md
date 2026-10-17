@@ -216,6 +216,13 @@ pending zero-read and sticky review feed the existing anchored history matcher.
 Actual ARM smoke covers two operations and controlled closure faults, not product
 publication/recovery, checkpoint provenance or a qualified physical state medium.
 
+A separate QEMU-only writer mode now preserves distinct per-operation files
+across successive confirmed revisions under the same original root/policy/history
+locks. It verifies exact publication events and actual retained history reads;
+any admitted uncertainty blocks the whole lifetime, even with a matching receipt.
+This is fresh temporary state only, not an existing-state product opener, HTTP
+save, durable recovery or qualification of the older crash matrix for this mode.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

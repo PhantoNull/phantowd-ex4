@@ -364,6 +364,12 @@ func FuzzMatchEvidence(f *testing.F) {
 
 func TestIntentMatchesOnlyItsValidatedOperationID(t *testing.T) {
 	_, intent, _ := fixture(t)
+	if name, err := intent.OperationRecordName(); err != nil || name != operation+".json" {
+		t.Fatal("validated record name", err)
+	}
+	if name, err := (Intent{}).OperationRecordName(); name != "" || err != ErrInvalid {
+		t.Fatal("zero record name", err)
+	}
 	for _, id := range []string{operation, strings.Repeat("b", 32), strings.ToUpper(operation), "", strings.Repeat("0", 32), operation + "extra"} {
 		if got := intent.MatchesOperationID(id); got != (id == operation) {
 			t.Fatal("operation binding predicate")
