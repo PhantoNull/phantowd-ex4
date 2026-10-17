@@ -73,7 +73,7 @@ status=0
 wait "$child_pid" || status=$?
 child_pid=
 expected='PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true copied_lifecycle_refused=true stop_reaped=true scope=qemu-only'
-readiness='PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true pinned_constructor_review=true scope=qemu-only'
+readiness='PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true pinned_constructor_review=true wait_settlement_review=true scope=qemu-only'
 metadata='PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true constructor_close_eio=true retained_error_chain=true cross_domain_review=true scope=qemu-only'
 identity_context='PHANTOWD_CODE_OWNER_IDENTITY_CONTEXT_READY cases=4 repeats=3 context_cause=true private_cause=false review_retained=true retry=false scope=qemu-only'
 supervised='PHANTOWD_CODE_OWNER_SUPERVISION_READY canceled=true drift=true unexpected_exit=true forced_review=true group_reaped=true pins_retained=true concurrent_refused=true scope=qemu-only'
@@ -90,6 +90,8 @@ if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_CODE_OWNER_' "$scratch/guest.log"
     [ "$(grep -c '^--- PASS: TestConstructorNestedReviewPreservesUnattemptedContainingReferences ' "$scratch/guest.log")" -ne 3 ] || \
     [ "$(grep -c '^--- PASS: TestConstructorCrossDomainReviewRetainsContainingReferences ' "$scratch/guest.log")" -ne 3 ] || \
     [ "$(grep -c '^--- PASS: TestPinnedConstructorRollbackRetainsCloseFailure ' "$scratch/guest.log")" -ne 3 ] || \
+    [ "$(grep -c '^--- PASS: TestFailedStartWaitSettlementPreservesReview ' "$scratch/guest.log")" -ne 3 ] || \
+    [ "$(grep -c '^--- PASS: TestFailedStartForcedCleanupCannotClearReview ' "$scratch/guest.log")" -ne 3 ] || \
     [ "$pinned_cases" -ne 12 ] || \
     [ "$(grep -c '^--- PASS: TestReadinessCannotCommitAfterContextEnds ' "$scratch/guest.log")" -ne 3 ] || \
     [ "$(grep -c '^--- PASS: TestReadinessContextChecksOriginalAndDerivedMonotonicDeadlines ' "$scratch/guest.log")" -ne 3 ] || \

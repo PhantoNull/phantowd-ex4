@@ -17,7 +17,7 @@ import (
 
 func TestNativeLiveTimingFixedBoundedNonqualifyingFields(t *testing.T) {
 	labels := []string{"clients", "pair-observe", "pair-verify", "revoke", "old-consumer",
-		"successor", "journal", "peer", "changed-pair", "fresh-login"}
+		"successor", "journal", "revoked-pair", "fresh-login"}
 	grammar := regexp.MustCompile(`^PHANTOWD_DIAG_NATIVE_LIVE operation=[a-z-]+ state=(begin|end) phase_ms=[0-9]{1,6} operation_ms=[0-9]{1,6} remaining_ms=[0-9]{1,6} parent_done=(true|false) failed=(true|false) cause=(none|deadline|canceled|other) qualifying=false scope=qemu-only$`)
 	for op, label := range labels {
 		row := nativeLiveTimingQEMU(nativeLiveOperationQEMU(op), true, time.Second, 0, 44*time.Second, false, nil)

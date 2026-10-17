@@ -401,10 +401,11 @@ class SambaRootFixture(unittest.TestCase):
                 fixture.check_campaign("\n".join(rows).replace(
                     marker, replacement), "held")
 
-    def test_native_pair_continuity_requires_both_new_observations(self):
+    def test_native_pair_continuity_requires_coherent_revocation(self):
         marker = next(row for row in fixture.MARKERS if row.startswith(
             "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
-        fields = ("original_pair_rechecked", "revoked_pair_refused")
+        fields = ("original_pair_rechecked", "revoked_pair_refused",
+                  "coherent_revocation")
         for field in fields:
             self.assertIn(field + "=true", marker)
         rows = campaign_rows()["native"]
@@ -1183,6 +1184,7 @@ class SambaRootFixture(unittest.TestCase):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY "
                     "accounts=2 qualified_pair=true "
                     "original_pair_rechecked=true revoked_pair_refused=true "
+                    "coherent_revocation=true "
                     "owner_bound=true "
                     "same_sid=true target_absent=true same_peer_session=true "
                     "new_login_denied=true other_login_allowed=true "
@@ -1192,7 +1194,8 @@ class SambaRootFixture(unittest.TestCase):
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(good)
         for field in ("qualified_pair", "original_pair_rechecked",
-                      "revoked_pair_refused", "owner_bound", "same_sid",
+                      "revoked_pair_refused", "coherent_revocation",
+                      "owner_bound", "same_sid",
                       "target_absent", "same_peer_session", "new_login_denied",
                       "other_login_allowed", "same_daemon",
                       "no_new_privileges",
@@ -1732,7 +1735,8 @@ class SambaRootFixture(unittest.TestCase):
             "stopped_reaped=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
             "qualified_pair=true original_pair_rechecked=true "
-            "revoked_pair_refused=true owner_bound=true same_sid=true "
+            "revoked_pair_refused=true coherent_revocation=true "
+            "owner_bound=true same_sid=true "
             "target_absent=true same_peer_session=true new_login_denied=true "
             "other_login_allowed=true same_daemon=true "
             "no_new_privileges=true stopped_reaped=true no_fd_leak=true "

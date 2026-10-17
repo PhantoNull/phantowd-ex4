@@ -498,17 +498,25 @@ button to an unqualified backend simply because the screen exists.
   cleanup; no timer or proof is relaxed. Actual-driver host controls and a real
   Docker PID1 timeout with stub guest commands pass. This is not an ARM/full-run
   qualification, repair of intermittency or guaranteed SIGKILL/durable logging.
-  **Latest constructor-checkpoint integration gates:** the unchanged host
-  forced-start-settlement race test retains review but has not yet cleared its
-  original PID. Isolated passes are not a causal repair. Ordinary-native Samba
-  also fails changed-pair post-admission at45,019ms under the original45s phase;
-  fresh-login15s is not reached. Keep both failed logs and reject their incomplete
-  proof. Construction-focused host/ARM passes do not qualify the complete suite.
-  **Proposed next bounded packet, contract confirmation pending:** investigate
-  one fresh complete original-backend session inventory for simultaneous original
-  peer continuity and original target absence, replacing adjacent full status
-  reads only after the proof contract is approved and tested. No cache/lease,
-  retry, stronger continuity claim, HTTP, privileges or timer changes implied.
+  **Failed-start test precondition corrected:** a real owned child with held
+  output-copy completion reproduces kernel-group absence while original Wait is
+  still pending. Retain PID/review until both are observed; the older assertion
+  now explicitly awaits the SAME original Wait before demanding PID release.
+  Separate test-only observation is bounded at2s, without signals/stop retries
+  or product-timeout changes. Selected full native/race3/58controls and existing
+  static ARMv5 guest pass, including3runs each of both cases. Exact historical
+  scheduling cause remains unproven; this is not a complete-image repair.
+  **Approved coherent revocation packet, host/QEMU only:** one fresh complete
+  original-backend session inventory now proves simultaneous original-peer
+  continuity and original-target absence instead of adjacent status workers.
+  Native units/vet/race3/80controls pass; current ARM native fails earlier in
+  Disable's4s status post-admission, with25.94s still left in the live phase.
+  New coherent observer is not reached or ARM-qualified. Preserve complete log;
+  distinguish Samba execution wait, emulation scheduling and admission cost
+  before another attempt. No unchanged retry or wider worker/parent allowance.
+  Earlier ordinary-native45019ms failure and full-image timeout remain
+  failed historical evidence. No cache/lease, retry, continuous guarantee, HTTP,
+  privileges or timer changes implied.
   - Keep the original opaque pair/backend binding and current decoder/limits.
     Refuse missing/extra/ambiguous sessions, changed peer/generation, wrong backend,
     incomplete/invalid output, expired/canceled or late-nil completion. Do not turn
@@ -2261,14 +2269,16 @@ storage. No production roster provider or activation path exists.
   rollback boundary verifies retained parent references and both domain causes.
   That parent fixture is not successful bundle admission. No global latch,
   backend/descriptor injection, product startup or new live-service authority follows.
-  Integration gates remain: full process-owner race still has an unchanged
-  forced-start-settlement failure, and ordinary-native Samba reaches45,019ms in
-  changed-pair post-admission with the original45s cap. Do not mark either repaired
-  from isolated passes. Next inspect whether one complete backend-bound inventory
-  can prove original-peer continuity AND target absence coherently, instead of
-  adjacent full status captures; derive/test the contract before changing it.
-  Preserve complete observation, original identities, late-result refusal and
-  all existing fixture/product bounds. No cache, retry or broader budget implied.
+  Focused follow-up corrects the failed-start test's unsupported assumption:
+  group absence alone is not original Wait completion. Deterministic real-I/O
+  RED, full selected native/race3 and static ARM pass after explicit same-Wait
+  observation; product process code unchanged, exact historical cause unproven.
+  Approved coherent peer/absence inventory replaces only ordinary-native's
+  adjacent post-revocation captures. Native tests pass; actual ARM campaign now
+  fails BEFORE that path in an unchanged4s Disable-status worker, with25.94s
+  remaining in its parent phase. Do not claim new observer ARM qualification or
+  full/hosted repair. Preserve original IDs, complete/late-result refusal and all
+  bounds; next separate execution, scheduling and admission costs from full log.
   - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
     retention, pending-input composition and pinned-process construction. Record
     exactly which original/temporary/independent references exist at each failure;

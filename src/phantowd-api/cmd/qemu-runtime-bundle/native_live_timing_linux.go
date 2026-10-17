@@ -22,8 +22,7 @@ const (
 	nativeLiveOldConsumerQEMU
 	nativeLiveSuccessorQEMU
 	nativeLiveJournalQEMU
-	nativeLivePeerQEMU
-	nativeLiveChangedPairQEMU
+	nativeLiveRevokedPairQEMU
 	nativeLiveFreshLoginQEMU
 )
 
@@ -33,7 +32,7 @@ const (
 func nativeLiveTimingQEMU(op nativeLiveOperationQEMU, begin bool, phase, elapsed, remaining time.Duration,
 	parentDone bool, operationErr error) string {
 	labels := [...]string{"clients", "pair-observe", "pair-verify", "revoke",
-		"old-consumer", "successor", "journal", "peer", "changed-pair", "fresh-login"}
+		"old-consumer", "successor", "journal", "revoked-pair", "fresh-login"}
 	if int(op) >= len(labels) || phase < 0 || phase > 10*time.Minute || elapsed < 0 ||
 		elapsed > phase || remaining < 0 || remaining > 10*time.Minute || (begin && (elapsed != 0 || operationErr != nil)) {
 		return ""

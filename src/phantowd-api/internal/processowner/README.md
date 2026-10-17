@@ -4,6 +4,26 @@
 fixed, ordered set of such processes. It is not a product service manager and
 is not reachable over HTTP or RPC.
 
+## Failed-start settlement
+
+An absent kernel process group does not by itself mean the original `Cmd.Wait`
+has completed: its output-copy goroutines may still be settling. After uncertain
+cleanup, Stop keeps the original PID and review until BOTH the original Wait
+notification and group absence are verified. A later confirmed Stop may release
+the PID but never clears failed-start review or permits automatic restart.
+
+A deterministic Linux fixture holds a real child's output-copy boundary across
+forced termination. It proves retained ownership while Wait is pending, then
+explicitly observes that SAME Wait and group before requiring PID release. The
+older failed-start regression now also observes this precondition rather than
+assuming uncertain Stop is completion. The separate test-only observation is
+bounded at two seconds and sends no signals or stop retries; product readiness,
+stop and drain limits are unchanged. Both cases run three times in the existing
+ARMv5 static-owner guest, with no additional boot or wider guest budget.
+
+This reproduces an invalid test assumption, not the exact scheduling cause of
+every earlier intermittent host failure or product-service recovery.
+
 ## Failed construction ownership
 
 `NewPinnedSet`, executable/read-only input duplication and `NewCapture` preserve

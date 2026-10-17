@@ -934,6 +934,11 @@ class BuildFeedbackTests(unittest.TestCase):
             f'{role} (0.00s)' for role in
             ('outer', 'readonly', 'trusted', 'capture')]
         lines += [pinned_main] * 3 + pinned_cases * 3
+        settlement_main = ('--- PASS: TestFailedStartWaitSettlementPreserves'
+                           'Review (0.00s)')
+        failed_start_main = ('--- PASS: TestFailedStartForcedCleanupCannot'
+                             'ClearReview (0.00s)')
+        lines += [settlement_main, failed_start_main] * 3
         main = '--- PASS: TestReadinessCannotCommitAfterContextEnds (0.00s)'
         clock = ('--- PASS: TestReadinessContextChecksOriginalAndDerived'
                  'MonotonicDeadlines (0.00s)')
@@ -994,6 +999,18 @@ class BuildFeedbackTests(unittest.TestCase):
                      0, '\n', False),
                     ('extra-pinned-case', lines + [pinned_cases[0]],
                      0, '\n', False),
+                    ('missing-wait-settlement',
+                     [line for line in lines if line != settlement_main],
+                     0, '\n', False),
+                    ('missing-original-failed-start',
+                     [line for line in lines if line != failed_start_main],
+                     0, '\n', False),
+                    ('extra-wait-settlement', lines + [settlement_main],
+                     0, '\n', False),
+                    ('changed-wait-proof',
+                     [line.replace('wait_settlement_review=true',
+                                   'wait_settlement_review=false')
+                      for line in lines], 0, '\n', False),
                     ('changed-cross-domain-proof',
                      [line.replace('cross_domain_review=true',
                                    'cross_domain_review=false')

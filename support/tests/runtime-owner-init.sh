@@ -12,8 +12,9 @@ prepare() {
 }
 readiness() {
     /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestPinnedConstructorRollbackRetainsCloseFailure$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
+    /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestFailedStart(WaitSettlementPreservesReview|ForcedCleanupCannotClearReview)$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
     /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestReadiness(CannotCommitAfterContextEnds|ContextChecksOriginalAndDerivedMonotonicDeadlines)$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
-    echo 'PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true pinned_constructor_review=true scope=qemu-only'
+    echo 'PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true pinned_constructor_review=true wait_settlement_review=true scope=qemu-only'
 }
 metadata() {
     /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^Test(RetainedMetadata|Constructor)' -test.count=3 -test.cpu=1 || return 1

@@ -22,6 +22,36 @@ inputs, match their frozen witnesses after termination; the workspace is idle.
 The post-success audit guard refuses this failed terminal before Docker.
 No retry, budget increase, audit, PR promotion or merge follows from this result.
 
+### Focused failed-start settlement and coherent revocation
+
+The failed-start regression now explicitly observes the original process Wait
+and kernel-group absence before requiring PID release. A deterministic real
+child/output-copy fixture proves that group absence alone is insufficient and
+that pending Wait must retain PID/review. Confirmed settlement releases only the
+PID, never review or restart admission. Product process code and timeouts are
+unchanged; the separate test-only observation phase is bounded at two seconds.
+Selected native units/vet/race-count3, 58 driver controls and the existing
+120-second ARMv5 static-owner guest pass, including three runs of both cases.
+This corrects an unsupported test assumption, not the exact historical scheduling
+cause or all intermittent failures.
+
+The QEMU-only ordinary-native Samba fixture now proves original peer continuity
+and original target absence on ONE fresh complete original-backend inventory,
+instead of two adjacent status workers. Exactly one unchanged peer is required;
+extra/missing/replaced/invalid sessions and canceled/late/failed observations
+refuse. Typed cancellation and invalid-authority causes are preserved. Standalone
+pair/peer readers remain available; no cache, lease or continuous guarantee is
+introduced. The proof verifier requires `coherent_revocation=true`; old failed
+evidence still refuses. Root-isolated native units/vet/race-count3 and all 80
+Samba controls pass. The current ARMv5 native campaign FAILS earlier, inside
+Disable: a status worker exhausts its unchanged4s cap at post-admission while
+the live phase still has25.94s left. Execution1.929s plus pre-admission1.525s and
+post-admission0.515s consume that worker allowance. The new coherent observer
+and fresh-login phase are NOT reached. Complete captured guest proof refuses;
+guest reboot/exit0 is not success. No unchanged retry or timer increase follows.
+This does not qualify the new path on ARM, repair the failed complete-image gate
+above, enable a product service or qualify hardware.
+
 ### Interrupted-test log retention: host-only correction
 
 The cached wrapper now declares its existing bounded group timeout; that caller's

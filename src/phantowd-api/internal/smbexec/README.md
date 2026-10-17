@@ -154,12 +154,16 @@ foreign witnesses, terminal adapters and canceled or late command replies.
 inventory differs; command/parser/deadline failure must never be interpreted
 as that observed change. No raw inventory or new session witness is returned.
 
-Root-isolated Linux race-count3 and a focused actual ARMv5 native campaign pass.
-The guest requires original-pair continuity before revocation and an explicit
-changed-pair observation afterward, while preserving the original same-peer,
-target-denial, owned-stop, final-FD and unchanged-base proofs. New proof fields
-are mandatory; omitted/false fields refuse. Existing session45/guest180 and
-worker bounds are unchanged. This is a point-in-time observation, not a retained
+The earlier pair-observation checkpoint passed Linux race-count3 and a focused
+ARMv5 campaign. The current coherent-revocation change passes root-isolated
+native units/vet/race3 and 80 verifier controls, but its ARM native attempt fails
+earlier during Disable's unchanged4s status worker; the new observer is not
+reached or ARM-qualified. Its parent live phase still has25.94s remaining.
+The guest requires original-pair continuity before revocation and coherent
+original-peer/target-absence observation afterward, preserving target-denial,
+owned-stop, final-FD and unchanged-base proofs. New proof fields are mandatory;
+omitted/false fields refuse. Existing session/worker/guest bounds are unchanged.
+This is a point-in-time observation, not a retained
 session/data-handle lease, composed-storage fault, full changed-image audit,
 durable-reconnect/recovery or product service qualification.
 
@@ -178,9 +182,15 @@ The controller retains separate startup20/idle20/session45-second phases and
 guest180. The QEMU native fixture now separates original preparation20 from
 enrollment60 instead of sharing60 (combined allowance80, not a performance
 gain); worker limits and shorter parent deadlines remain unchanged. Only the
-exact changed-pair sentinel qualifies its post-revocation observation; nil
-means unchanged and uncertain outcomes preserve their causes without becoming
-revocation evidence. Ordinary non-root Linux timing tests cover the complete composite
+fresh complete original-backend inventory now qualifies ordinary-native
+post-revocation observation: exactly the original peer record and no other
+session. It simultaneously proves original-peer continuity and target absence;
+it is not a cache, continuous guarantee or lease. The standalone pair-change
+sentinel remains available to other consumers, but no second pair status read
+is used at that call site. Invalid authority/cancellation/deadline causes remain
+typed; failed, incomplete, extra/replaced or late-nil results refuse. The exact
+guest proof additionally requires `coherent_revocation=true`. Ordinary non-root
+Linux timing tests cover the complete composite
 sequence and uncertain-control/no-retry path; constructor ownership and actual
 wrapper binding retain separate root/ARMv5 tests. Host/race tests enforce both
 profiles and shorter caller deadlines.

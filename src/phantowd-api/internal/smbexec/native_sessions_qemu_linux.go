@@ -102,11 +102,24 @@ func (b *NativeBackendQEMU) ObserveNativeSessionPairQEMU(ctx context.Context) (N
 }
 
 func (b *NativeBackendQEMU) VerifyNativePeerSessionQEMU(ctx context.Context, before NativeSessionPairQEMU) error {
+	return b.VerifyNativeRevokedPairQEMU(ctx, before)
+}
+
+// VerifyNativeRevokedPairQEMU proves BOTH original-peer continuity and original-
+// target absence from one fresh complete original-backend inventory. The peer
+// verifier requires exactly one record equal to the original peer; consequently
+// neither the original target nor a replacement/extra session can be present.
+// This is point-in-time evidence, not a cache, continuous guarantee, retained
+// session lease or activation authority. Uncertainty is never observed absence.
+func (b *NativeBackendQEMU) VerifyNativeRevokedPairQEMU(ctx context.Context, before NativeSessionPairQEMU) error {
 	if b == nil || before.backend != b || before.target.SessionID == "" || before.peer.SessionID == "" {
 		return ErrInvalid
 	}
 	sessions, err := b.readNativeSessionsQEMU(ctx)
-	if err != nil || len(sessions) != 1 {
+	if err != nil {
+		return err // Preserve invalid authority and cancellation/deadline causes.
+	}
+	if len(sessions) != 1 {
 		return ErrUnavailable
 	}
 	peer, ok := sessions[before.peer.SessionID]

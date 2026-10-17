@@ -559,17 +559,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if err != nil || journal.Phase != smbprovision.Disabled || journal.SID != sid {
 			return errors.New("native live session disabled confirmation")
 		}
-		liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLivePeerQEMU, sessionStarted)
-		err = backend.VerifyNativePeerSessionQEMU(sessionContext, pair)
-		reportNativeLiveTimingQEMU(sessionContext, nativeLivePeerQEMU, false, sessionStarted, liveOperationStarted, err)
+		liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveRevokedPairQEMU, sessionStarted)
+		err = backend.VerifyNativeRevokedPairQEMU(sessionContext, pair)
+		reportNativeLiveTimingQEMU(sessionContext, nativeLiveRevokedPairQEMU, false, sessionStarted, liveOperationStarted, err)
 		if err != nil {
-			return fmt.Errorf("native same peer session elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
-		}
-		liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveChangedPairQEMU, sessionStarted)
-		err = requireNativeRevokedPairChangedQEMU(backend.VerifyNativeSessionPairQEMU(sessionContext, pair))
-		reportNativeLiveTimingQEMU(sessionContext, nativeLiveChangedPairQEMU, false, sessionStarted, liveOperationStarted, err)
-		if err != nil {
-			return err
+			return fmt.Errorf("native coherent revoked pair elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
 		}
 		return nil
 	}, func(sessionContext context.Context) error {
@@ -614,24 +608,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return errors.New("native credential descriptor leak")
 	}
 	nativeCredentialPreparationMarkersQEMU()
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true original_pair_rechecked=true revoked_pair_refused=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true original_pair_rechecked=true revoked_pair_refused=true coherent_revocation=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
 	fmt.Println(nativeDataDescriptorMarkerQEMU)
 	return nil
-}
-
-func requireNativeRevokedPairChangedQEMU(observationErr error) error {
-	// Exact identity is deliberate: a wrapped/joined changed sentinel does not
-	// prove a complete observation. Uncertainty must never authorize revocation.
-	switch observationErr {
-	case smbexec.ErrNativeSessionPairChangedQEMU:
-		return nil
-	case nil:
-		return errors.New("native revoked pair remained unchanged")
-	default:
-		return fmt.Errorf("native revoked pair observation did not complete: %w", observationErr)
-	}
 }
 
 // Emitted only after each campaign's complete real work and parent FD census.

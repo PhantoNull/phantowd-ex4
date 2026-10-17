@@ -273,6 +273,11 @@ func TestFailedStartForcedCleanupCannotClearReview(t *testing.T) {
 		return
 	}
 	owner := New()
+	t.Cleanup(func() {
+		if owner.current != nil {
+			_, _ = owner.Stop(context.Background())
+		}
+	})
 	started, err := owner.Start(context.Background(), Spec{
 		Executable:   os.Args[0],
 		Args:         []string{"-test.run=^TestFailedStartForcedCleanupCannotClearReview$", "--", "ignore-term"},
@@ -285,9 +290,12 @@ func TestFailedStartForcedCleanupCannotClearReview(t *testing.T) {
 		t.Fatalf("failed start did not retain uncertain cleanup for review: snapshot=%+v err=%v", started, err)
 	}
 
+	// Retained review can precede Wait completion. Observe that original event
+	// explicitly instead of assuming an immediate second Stop must clear PID.
+	requireTestOriginalWaitSettled(t, owner.current)
 	stopped, err := owner.Stop(context.Background())
 	if !errors.Is(err, ErrReviewRequired) || stopped.State != StateReviewRequired || stopped.Generation != 0 || stopped.PID != 0 {
-		t.Fatalf("later stop cleared the failed-start review state: snapshot=%+v err=%v", stopped, err)
+		t.Fatalf("confirmed settlement lost failed-start review or retained PID: snapshot=%+v err=%v", stopped, err)
 	}
 	if err := syscall.Kill(-started.PID, 0); !errors.Is(err, syscall.ESRCH) {
 		t.Fatalf("failed-start process group remains or is uncertain: %v", err)

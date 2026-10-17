@@ -2677,11 +2677,16 @@ Worker/readiness/stop and live-session45 limits remain unchanged. Ordinary
 native now uses the shared300s work clock and360s host guard described above;
 this supersedes the earlier unchanged180s statement for that campaign only.
 
-After revocation, only the exact changed-pair sentinel establishes a completed
-changed observation. An unchanged pair and an incomplete observation have
-distinct refusal messages; incomplete outcomes retain their typed causes.
-Wrapped or joined changed sentinels still refuse. A deadline is not proof of
-revocation. Local native success and a slower-emulation negative do not establish
+After revocation, ordinary-native now uses ONE fresh complete original-backend
+inventory to require exactly the original peer and no other session. This proves
+peer continuity and target absence at the same point in time, not continuous
+continuity or a session lease. Each invocation reads anew; incomplete/ambiguous
+output, changed peer, extra sessions, cancellation, deadlines and late nil replies
+refuse, retaining typed failure causes. The standalone pair-change sentinel
+still means complete observed change, but is no longer the ordinary-native
+post-revocation proof. The strict guest receipt additionally requires
+`coherent_revocation=true`; omitted/false/old proof refuses. A deadline is not
+proof of revocation. Local native success and a slower-emulation negative do not establish
 that the integration PR's own hosted failure is fixed; full current-source and
 own-head hosted qualification remain separate gates.
 
