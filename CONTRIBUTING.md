@@ -37,6 +37,11 @@ Workflow contracts run immediately after checkout, before SDK setup or tests.
 The SDK-selector fixtures preserve exact LF/CRLF bytes and invoke the resolved
 Bash executable; GNU/mawk binary mode prevents Windows text normalization from
 turning a rejected pin into an accepted one. Keep that negative corpus strict.
+Feedback-driver fixtures also run before SDK setup. Their unchanged driver
+requires executable tmpfs, so CI prepares one private 256 MiB RAM mount under
+the runner's temporary directory and verifies unmount during cleanup. Only that
+ephemeral runner mount uses sudo; tests keep the ordinary runner identity.
+No shared mount is remounted, no physical device is supplied and no guest boots.
 
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,

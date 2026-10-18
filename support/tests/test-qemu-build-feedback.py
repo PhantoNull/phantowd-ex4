@@ -6,6 +6,7 @@ import pathlib
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -256,6 +257,8 @@ class BuildFeedbackTests(unittest.TestCase):
             "'BR2_CMAKE=/usr/bin/cmake'", ""))
 
     def test_system_cmake_fixture_refuses_missing_host_tool(self):
+        shell = shutil.which("sh")
+        self.assertIsNotNone(shell, "an installed POSIX shell is required")
         with tempfile.TemporaryDirectory() as temporary:
             directory = pathlib.Path(temporary)
             source = directory / "source"
@@ -270,7 +273,7 @@ class BuildFeedbackTests(unittest.TestCase):
                  str(source), str(external)],
                 text=True, capture_output=True, timeout=3,
                 env={**os.environ, "PATH": str(directory / "empty")},
-                executable="/bin/sh",
+                executable=str(pathlib.Path(shell).resolve()),
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("must provide /usr/bin/cmake", result.stderr)

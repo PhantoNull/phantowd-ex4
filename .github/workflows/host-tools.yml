@@ -228,6 +228,28 @@ jobs:
       - name: Verify firmware workflow path contracts
         run: sh support/test-firmware-workflow-paths.sh
 
+      - name: Verify QEMU build feedback contracts
+        run: |
+          set -eu
+          runner_temp="$(realpath -e "$RUNNER_TEMP")"
+          test "$runner_temp" != /
+          fixture="$(mktemp -d "$runner_temp/phantowd-native-feedback.XXXXXX")"
+          test "$(dirname "$(realpath -e "$fixture")")" = "$runner_temp"
+          cleanup() {
+            status=$?
+            trap - EXIT
+            if mountpoint -q -- "$fixture"; then
+              sudo umount "$fixture" || exit 1
+            fi
+            rmdir -- "$fixture" || exit 1
+            exit "$status"
+          }
+          trap cleanup EXIT
+          sudo mount -t tmpfs -o "size=256m,exec,nosuid,nodev,mode=0700,uid=$(id -u),gid=$(id -g)" tmpfs "$fixture"
+          export TMPDIR="$fixture"
+          python3 -B support/tests/test-qemu-build-feedback.py
+          python3 -B support/tests/test-build-jobs.py
+
       - name: Select pinned host Go SDK
         id: host_go
         shell: bash
@@ -297,11 +319,6 @@ jobs:
           GOTOOLCHAIN: local
           GOFLAGS: -mod=vendor
         run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|BrowserPolicyFixtureActualHTTPRoundTrip|DashboardBrowserAPIFixture)$' .
-
-      - name: Verify QEMU build feedback contracts
-        run: |
-          python3 -B support/tests/test-qemu-build-feedback.py
-          python3 -B support/tests/test-build-jobs.py
 
       - name: Verify cached-only local wrapper command boundary
         shell: pwsh
