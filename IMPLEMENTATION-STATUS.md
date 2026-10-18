@@ -1809,9 +1809,15 @@ and HTTP/HTTPS asset checks, DOM/privacy/resource controls and all16 SDK/workflo
 fixtures pass. All five actual Edge155 modes pass with identical nine UI and six
 harness hashes, their original deadlines/action bounds, three viewport widths
 and verified temporary-profile removal. The common browser assertion checks
-both invented42.125 and zero Celsius readings, not a physical sensor. A native
-Linux sysfs observation is included in the existing host CI step; its actual
-result, not this Windows evidence, is required before claiming that execution.
+both invented42.125 and zero Celsius readings, not a physical sensor.
+
+The exact [native run39101467127](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39101467127)
+passes all30 steps on `c218117`, using pinned Go1.26.8, complete ordinary API
+vet/units/race, tagged vet, DOM and all previous host gates. Its explicit non-root
+sysfs observation reports available/zero zones and states that no nonempty sensor
+observation was qualified. That is actual empty-inventory execution, not sensor
+accuracy, EX4 coverage, ARM/full build or cooling qualification. The same step
+still executes all five startup-option cases; no time or proof budget changed.
 
 ## M9.2k scoped desired iSCSI edits — host/browser workflow
 
