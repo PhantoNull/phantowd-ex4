@@ -940,7 +940,8 @@ and refuses non-Versatile PB machines. See the
   TLS certificate/key pair and one exact HTTPS origin. Certificate PEM input is
   limited to 256 KiB and private-key PEM to 64 KiB, including padding. Both must
   be nonempty regular non-symlink leaf files; POSIX keys must not be accessible
-  to group/other users. Linux opens leaves no-follow/nonblocking and checks the
+  to group/other users. Linux uses `openat2` with whole-path no-symlink/no-magic-link
+  resolution, preserving read-only/nonblocking/close-on-exec opens, and checks the
   opened identity/mode/size/mtime before and after bounded reads. The certificate
   must be currently valid and match the origin host. TLS has a minimum version
   of 1.2. Raw owned PEM buffers are cleared, not all parsed private-key memory.
@@ -948,6 +949,13 @@ and refuses non-Versatile PB machines. See the
   protection against all concurrent file changes. Byte bounds do not preempt
   stalled regular-file I/O or qualify total TLS heap/handshake load. Non-Linux
   development uses a portable opener and does not certify Linux flags or ACLs.
+  Linux certificate/key paths containing parent symlinks are intentionally
+  unsupported; supply the actual regular-file path. There is no weaker fallback
+  if the kernel or execution profile refuses `openat2`. See the
+  [Linux path-resolution contract](https://man7.org/linux/man-pages/man2/openat2.2.html).
+  This per-open check does not retain parent directories or rule out later mount
+  or path changes. Native Linux and ARM execution of this increment must be
+  qualified separately; the earlier leaf-only campaign does not supply it.
   No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
