@@ -33,6 +33,10 @@ firmware qualification. Native tests may explicitly skip unsupported/root-only
 cases; inspect the actual logs rather than treating a green job as those proofs.
 The workflow can be dispatched on a contributor branch before requesting heavy
 integration checks; it does not automatically hold/cancel a separate ARM job.
+Workflow contracts run immediately after checkout, before SDK setup or tests.
+The SDK-selector fixtures preserve exact LF/CRLF bytes and invoke the resolved
+Bash executable; GNU/mawk binary mode prevents Windows text normalization from
+turning a rejected pin into an accepted one. Keep that negative corpus strict.
 
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,

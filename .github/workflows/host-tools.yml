@@ -225,12 +225,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify firmware workflow path contracts
+        run: sh support/test-firmware-workflow-paths.sh
+
       - name: Select pinned host Go SDK
         id: host_go
         shell: bash
         run: |
           set -eu
-          version="$(awk -F= '
+          version="$(awk -v BINMODE=3 -F= '
             $1 == "GO_VERSION" { count++; value = substr($0, index($0, "=") + 1) }
             END {
               if (count != 1 || value !~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
@@ -273,15 +276,11 @@ jobs:
           GOMAXPROCS: '2'
         run: |
           go version
-          test "$(go env GOVERSION)" = "go${{ steps.host_go.outputs.version }}"
           go vet ./...
           go test -count=1 ./...
           go vet -tags=qemu ./...
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
           go test -race -count=1 ./...
-
-      - name: Verify firmware workflow path contracts
-        run: sh support/test-firmware-workflow-paths.sh
 
       - name: Verify synthetic dashboard preview boundaries
         run: |

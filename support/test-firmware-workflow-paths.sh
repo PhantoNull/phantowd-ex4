@@ -179,12 +179,17 @@ require_locked_host_go_sdk() {
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 
 workflow = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 pins = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+bash_executable = shutil.which("bash")
+if bash_executable is None:
+    raise SystemExit("host Go selector requires an installed Bash")
+bash_executable = str(pathlib.Path(bash_executable).resolve(strict=True))
 header = (
     r"^      - name: Select pinned host Go SDK\n"
     r"        id: host_go\n"
@@ -230,11 +235,14 @@ cases = [
 for name, contents, expected in cases:
     with tempfile.TemporaryDirectory(prefix="phantowd-host-go-pin-") as directory:
         root = pathlib.Path(directory)
-        (root / "versions.env").write_text(contents, encoding="utf-8")
+        # Text mode rewrites this deliberately LF-versus-CRLF corpus on Windows.
+        (root / "versions.env").write_bytes(contents.encode("utf-8"))
+        if (root / "versions.env").read_bytes() != contents.encode("utf-8"):
+            raise SystemExit(f"host Go selector fixture bytes changed: {name}")
         output = root / "github-output"
         environment = {"PATH": os.environ["PATH"], "LC_ALL": "C", "GITHUB_OUTPUT": str(output)}
         result = subprocess.run(
-            ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
+            [bash_executable, "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
             cwd=root, env=environment, capture_output=True, timeout=5, check=False,
         )
         observed = output.read_bytes() if output.exists() else b""
