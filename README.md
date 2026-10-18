@@ -259,6 +259,8 @@ unrelated Docker resources remain; Docker's VHDX may need separate compaction.
 - [Management API/UI](src/phantowd-api/README.md): authentication, configuration,
   identity coordination, development fixtures and a
   [draft management threat model](src/phantowd-api/THREAT-MODEL.md).
+- [Persistent-state ownership](STATE-OWNERSHIP.md): existing state roles, sole
+  writers, diagnostic-only readers and remaining bootstrap/recovery composition.
 - [Storage probe](src/phantowd-volume-probe/README.md): restricted descriptor-based
   metadata helper.
 - [Research toolkit](tools/phantowd-lab/README.md): host-only image, metadata and

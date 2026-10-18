@@ -8,6 +8,7 @@
 package iscsicredentials
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,6 +33,9 @@ var (
 )
 
 const maxBytes = 256 << 10
+
+// Bound for an explicit protected read-only observer; not a provisioning API.
+const MaxObservedDocumentBytes = maxBytes
 const maxEntries = iscsipolicy.MaxTargets * iscsipolicy.MaxInitiators * 2
 
 // Unlike web-login verifiers, this private disk document deliberately contains
@@ -113,6 +117,20 @@ func decode(r io.Reader) (document, error) {
 func codec() revisionstore.Codec[document] {
 	return revisionstore.Codec[document]{CurrentName: "chap-secrets.json", PendingName: ".chap-secrets.pending", MaxBytes: maxBytes,
 		Decode: decode, Validate: validate, Revision: func(d document) uint64 { return d.Revision }}
+}
+
+// InspectDocumentRevision validates private caller-owned DATA without opening
+// an Owner/fsync boundary or returning any references, names or CHAP material.
+// A valid revision is not credential provenance, policy coverage or admission.
+func InspectDocumentRevision(data []byte) (uint64, error) {
+	if len(data) == 0 || len(data) > maxBytes {
+		return 0, ErrInvalid
+	}
+	d, err := decode(bytes.NewReader(data))
+	if err != nil {
+		return 0, ErrInvalid
+	}
+	return d.Revision, nil
 }
 
 type Owner struct {

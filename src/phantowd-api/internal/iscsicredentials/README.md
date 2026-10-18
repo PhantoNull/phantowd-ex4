@@ -16,6 +16,14 @@ promoted or repaired. No public writer, generation, rotation, import, HTTP,
 listener, startup or NAS operation exists. The QEMU-only provisioner writes
 fixed **public synthetic tokens**, only to a newly created disposable directory.
 
+For read-only startup research, `InspectDocumentRevision` reuses the private
+strict decoder over caller-owned bounded DATA and returns only an exact revision.
+It opens no Owner, directory or sync boundary and returns no SecretRefs/material.
+The separate root-only [protected observer](../policyevidencefs/README.md#explicit-credential-state-profiles--m12c6)
+supplies retained read-only files and original lock/mount/watch checks. Neither
+path provisions credentials, verifies their entropy or policy-reference coverage,
+hands ownership to a consumer, or permits target activation.
+
 The private document is versioned separately from desired NAS policy; policy
 contains only `SecretRef`. The wrapper never exposes the disk document or a
 generic snapshot/commit API. A claim resolves all policy references before

@@ -162,6 +162,9 @@ func exerciseHistoryObservationQEMU(ctx context.Context, root string, base, curr
 	if err := exerciseSessionObservationQEMU(ctx, base, final, wires, names); err != nil {
 		return err
 	}
+	if err := exerciseCredentialObservationQEMU(ctx); err != nil {
+		return err
+	}
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(before) != len(after) {
 		return ErrReview

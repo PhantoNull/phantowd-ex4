@@ -59,6 +59,9 @@ func (s *state) initializeHistoryCheckpoint(checkpoint []byte) {
 }
 
 func (s *state) fileObjects() []object {
+	if s.credentials != noCredentialProfile {
+		return s.files[:1]
+	}
 	if s.historyProfile {
 		return s.historyFiles
 	}

@@ -61,7 +61,8 @@ type state struct {
 	watch                       int
 	bundleProfile               bool // immutable fixed profile, never per-observation input
 	historyProfile              bool
-	sessionProfile              bool   // explicit constructor; never autodetected
+	sessionProfile              bool // explicit constructor; never autodetected
+	credentials                 credentialProfile
 	checkpoint                  []byte // independent trusted caller checkpoint, owned copy
 	historyRoles                []roleSpec
 	historyFiles                []object
@@ -95,16 +96,30 @@ func open(ctx context.Context, directory, installation string, bundleProfile boo
 }
 
 func openProfile(ctx context.Context, directory, installation string, bundleProfile bool, checkpoint []byte, sessionProfile bool) (observer *Observer, result error) {
+	return openNamespace(ctx, directory, installation, bundleProfile, checkpoint, sessionProfile, noCredentialProfile)
+}
+
+func openNamespace(ctx context.Context, directory, installation string, bundleProfile bool, checkpoint []byte, sessionProfile bool, credentials credentialProfile) (observer *Observer, result error) {
+	if credentials > chapProfile || credentials != noCredentialProfile && (installation != "" || bundleProfile || checkpoint != nil || sessionProfile) {
+		return nil, ErrInvalid
+	}
 	if sessionProfile && (bundleProfile || len(checkpoint) == 0) {
 		return nil, ErrInvalid
 	}
 	if ctx == nil {
 		return nil, ErrInvalid
 	}
-	if _, err := policyevidence.Match(policyevidence.Evidence{InstallationID: installation,
-		Intent: policyevidence.Slot{State: policyevidence.Absent}, Receipt: policyevidence.Slot{State: policyevidence.Absent}, Current: policyevidence.Slot{State: policyevidence.Absent}}); err != nil ||
-		!filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+	if credentials == noCredentialProfile {
+		if _, err := policyevidence.Match(policyevidence.Evidence{InstallationID: installation,
+			Intent: policyevidence.Slot{State: policyevidence.Absent}, Receipt: policyevidence.Slot{State: policyevidence.Absent}, Current: policyevidence.Slot{State: policyevidence.Absent}}); err != nil ||
+			!filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+			return nil, ErrInvalid
+		}
+	} else if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
 		return nil, ErrInvalid
+	}
+	if credentials == chapProfile && os.Geteuid() != 0 {
+		return nil, ErrUnsafe
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -114,7 +129,7 @@ func openProfile(ctx context.Context, directory, installation string, bundleProf
 			return nil, err
 		}
 	}
-	s := &state{path: directory, installation: installation, watch: -1, bundleProfile: bundleProfile, sessionProfile: sessionProfile,
+	s := &state{path: directory, installation: installation, watch: -1, bundleProfile: bundleProfile, sessionProfile: sessionProfile, credentials: credentials,
 		closeFile: func(f *os.File) error { return f.Close() }, readAt: func(f *os.File, b []byte, off int64) (int, error) { return f.ReadAt(b, off) }}
 	if checkpoint != nil {
 		s.initializeHistoryCheckpoint(checkpoint)
@@ -139,6 +154,9 @@ func openProfile(ctx context.Context, directory, installation string, bundleProf
 		return nil, ErrIO
 	}
 	directoryNames := []string{directory, "policy", "operations"}
+	if credentials != noCredentialProfile {
+		directoryNames = directoryNames[:1]
+	}
 	if sessionProfile {
 		directoryNames = append(directoryNames, "policy-session")
 	}
@@ -227,10 +245,17 @@ func openProfile(ctx context.Context, directory, installation string, bundleProf
 		_, pending := s.names[3][".epoch.pending"]
 		s.review = s.review || pending
 	}
+	if s.credentials != noCredentialProfile {
+		_, name := s.credentialSpec()
+		_, s.review = s.names[0][name]
+	}
 	return a, nil
 }
 
 func (s *state) directoryObjects() []object {
+	if s.credentials != noCredentialProfile {
+		return s.dirs[:1]
+	}
 	if s.sessionProfile {
 		return s.dirs[:]
 	}
@@ -252,6 +277,10 @@ var bundleRoles = [...]roleSpec{
 }
 
 func (s *state) roleSpecs() []roleSpec {
+	if s.credentials != noCredentialProfile {
+		spec, _ := s.credentialSpec()
+		return []roleSpec{spec}
+	}
 	if s.historyProfile {
 		return s.historyRoles
 	}
@@ -340,6 +369,10 @@ func (s *state) census(ctx context.Context, index int) (found map[string]stamp, 
 		return nil, ErrReview
 	}
 	allowed := [...]map[string]bool{{"policy": true, "operations": true}, {"nas-services.json": true, ".nas-services.pending": true}, {"intent.json": true, "receipt.json": true}, {"epoch.json": true, ".epoch.pending": true}}
+	if s.credentials != noCredentialProfile {
+		spec, pending := s.credentialSpec()
+		allowed[0] = map[string]bool{spec.name: true, pending: true}
+	}
 	if s.sessionProfile {
 		allowed[0]["policy-session"] = true
 	}
@@ -384,12 +417,12 @@ func (s *state) census(ctx context.Context, index int) (found map[string]stamp, 
 		if err != nil {
 			return nil, err
 		}
-		if !owned(st, index == 0) || !sameMedium(st, s.dirs[0].initial) {
+		if !owned(st, index == 0 && s.credentials == noCredentialProfile) || !sameMedium(st, s.dirs[0].initial) {
 			return nil, ErrUnsafe
 		}
 		found[name] = st
 	}
-	if index == 0 && (len(found) != len(s.directoryObjects())-1 || found["policy"] != s.dirs[1].initial || found["operations"] != s.dirs[2].initial || s.sessionProfile && found["policy-session"] != s.dirs[3].initial) {
+	if index == 0 && s.credentials == noCredentialProfile && (len(found) != len(s.directoryObjects())-1 || found["policy"] != s.dirs[1].initial || found["operations"] != s.dirs[2].initial || s.sessionProfile && found["policy-session"] != s.dirs[3].initial) {
 		return nil, ErrReview
 	}
 	st, err = statFD(parent.file)
@@ -453,27 +486,28 @@ func (a *Observer) valid() bool { return a != nil && a.state != nil && a.state.s
 // Observe re-reads original file objects under all three original locks. Only
 // the existing redacted pure diagnosis escapes; every kind grants no action.
 func (a *Observer) Observe(ctx context.Context) (policyevidence.Diagnosis, error) {
-	d, err := a.observe(ctx, false)
+	d, err := a.observe(ctx, ordinaryObservation)
 	return d.legacy, err
 }
 
 // ObserveSession is only valid for the constructor-selected three-role profile.
 // It never converts a diagnostic or retained reference into writable authority.
 func (a *Observer) ObserveSession(ctx context.Context) (policyevidence.SessionDiagnosis, error) {
-	d, err := a.observe(ctx, true)
+	d, err := a.observe(ctx, sessionObservation)
 	return d.session, err
 }
 
 type observation struct {
-	legacy  policyevidence.Diagnosis
-	session policyevidence.SessionDiagnosis
+	legacy      policyevidence.Diagnosis
+	session     policyevidence.SessionDiagnosis
+	credentials CredentialDiagnosis
 }
 
-func (a *Observer) observe(ctx context.Context, session bool) (observation, error) {
+func (a *Observer) observe(ctx context.Context, mode observationMode) (observation, error) {
 	if !a.valid() || ctx == nil {
 		return observation{}, ErrInvalid
 	}
-	if a.state.sessionProfile != session {
+	if a.state.observationMode() != mode {
 		return observation{}, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
@@ -535,7 +569,9 @@ func (a *Observer) observe(ctx context.Context, session bool) (observation, erro
 	}
 	var d observation
 	var err error
-	if s.sessionProfile {
+	if s.credentials != noCredentialProfile {
+		d.credentials, err = s.matchCredentials(slots)
+	} else if s.sessionProfile {
 		d.session, err = s.matchSessionHistory(slots)
 	} else if s.historyProfile {
 		d.legacy, err = s.matchHistory(slots)

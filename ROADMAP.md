@@ -822,6 +822,12 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   journals, Samba private state and system settings. Distinguish persistent
   state from cache/log/session data. Select actual EX4 placement only after layout,
   capacity, wear and recovery review; do not assume a legacy mount is suitable.
+  The source-backed [ownership map](STATE-OWNERSHIP.md) identifies current role
+  names/writers and constructor effects. Administrator/CHAP Store/Owner opening
+  establishes sync boundaries; IdentityOwner startup can also recover interrupted
+  Samba intents to review. Do not construct these owners merely to observe boot
+  state. Network/TLS ownership, product provisioning, full role/consumer
+  composition, retention/reconciliation and physical placement remain unqualified.
 - **M1.2 — Explicit bootstrap and migration.** Define pristine, initialized,
   corrupt, incompatible and unavailable states. Enrollment is allowed only from
   proven pristine state. Version upgrades need checked preconditions, retained
@@ -983,6 +989,29 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   provenance/succession, durable quarantine/reconciliation or product admission.
   Keep actual writer-process/reboot/medium/physical and release gates separate;
   no boot/recovery default follows from matching records.
+  **M1.2c.6 — explicit administrator/CHAP diagnostic readers:** reuse the protected
+  retained read-only namespace engine with fixed role names and original schema
+  decoders, no per-read codec/backend. Retain actual original writer lock, file,
+  unique mount/path/census and watches. Return only private missing/valid kind
+  and exact revision, never names/verifiers/SecretRefs/material. Preserve root-only
+  CHAP opening and canonical account-v1 bytes; no KDF/authentication, Store/Owner
+  sync, enrollment, consumer handoff or automatic missing-state setup. Pending
+  must suppress all content reads; malformed/replaced/uncertain state stays review
+  after restoration. Wrong-profile calls and copied handles must refuse. Test both
+  schemas, exact revision/byte bounds, no private serialization/formatting, actual
+  lock exclusion, unchanged bytes/stat/atime and FD-balanced known-name disposal
+  in the existing bounded standard ARM guest. This is not the whole-state owner,
+  pristine classification, product credential provisioning or recovery admission.
+  **Local acceptance:** pinned native vet/scoped units/race3, fixed-schema metadata/
+  privacy/bounds/refusal and Windows portable checks pass. Native full positive
+  lifecycles SKIP without unique mount IDs. Actual standard ARM10 cases twice
+  cover both profiles' valid/missing/pending/restored/malformed state, actual lock
+  exclusion, copied/wrong-profile refusal, zero pending reads, ordinary exact
+  byte/stat/atime preservation and FD-balanced disposal. Seven strict receipt
+  pairs/all prior assertions pass at unchanged15s/240s/360s limits. No new default
+  lane, Docker image/volume, NAS operation or status-producer work. Full credential
+  constructor/temporary-close/watch/namespace faults and whole-product ownership/
+  consumer/provisioning/reconciliation/physical qualification remain required.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

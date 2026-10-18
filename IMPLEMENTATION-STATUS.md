@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Read-only administrator and CHAP state — internal profiles
+
+Two explicit credential-state readers now reuse the retained original-directory
+lock, no-atime/read-only file, unique mount/path/census and watch engine. Their
+fixed strict decoders return only private missing/valid kind and exact revision,
+never account/verifier/SecretRef/material. CHAP opening stays root-only. Canonical
+setup-only account v1 remains byte-identical, interpreted in memory as revision1.
+No KDF/authentication, sync, enrollment, secret consumer, recovery or service start.
+Pending suppresses all content reads; changed/malformed/uncertain observations
+retain review after restoration. Existing policy profiles remain strict.
+
+Pinned Linux vet/scoped units/race3, metadata/bounds/privacy/refusal tests, Windows
+portable account/transaction checks and strict receipt controls pass. Positive
+native full lifecycles skip without mandatory unique mount IDs; this is not a
+positive native lifecycle/race claim. Actual standard ARMv5 smoke passes ten cases
+twice across API restart: both profiles with valid, missing, pending, replaced/
+restored and malformed state. Actual original-lock exclusion, copied/wrong-profile
+refusal, pending zero-read, normal byte/stat/atime invariance and verified
+FD-balanced known-name disposal are checked. All old assertions and fixture15s/
+guest240s/outer360s caps remain; no new default lane or producer experiment.
+
+These diagnostic lifetimes are not continuous writer ownership, a complete
+bootstrap, trusted provisioning or permission to initialize missing credentials.
+Complete constructor/temporary-close/watch/namespace faults, all product roles and
+consumers, durable reconciliation, physical medium and release gates remain. The
+new [ownership map](STATE-OWNERSHIP.md) records current sole writers and their
+constructor effects; see the [reader contract](src/phantowd-api/internal/policyevidencefs/README.md#explicit-credential-state-profiles--m12c6).
+
 ## Retained session/history reader — internal read-only profile
 
 An explicit OpenSessionHistory/ObserveSession profile now reads existing synthetic

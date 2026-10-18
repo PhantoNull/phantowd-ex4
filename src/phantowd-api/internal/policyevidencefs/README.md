@@ -45,6 +45,49 @@ returns the same six no-action diagnoses and clears temporary decoded bytes.
 
 ## Lifetime contract
 
+### Explicit credential-state profiles — M1.2c.6
+
+`OpenAdministratorCredentials(ctx, directory)` and root-only
+`OpenCHAPCredentials(ctx, directory)` select one existing dedicated role, not
+the policy/history layout. The fixed names are `accounts.json` /
+`.accounts.pending` (4KiB) or `chap-secrets.json` / `.chap-secrets.pending`
+(256KiB). No caller supplies a decoder or changes the profile between reads.
+The shared retained engine holds the original directory and actual writer-lock,
+original no-atime/read-only file, unique mount/path identity, bounded complete
+census and file/directory watches. Old policy profiles remain unchanged.
+
+`ObserveCredentials` returns private missing/valid kind and exact uint64 revision
+only; generic JSON refuses and ordinary formatting contains no account, verifier,
+SecretRef or material. The original strict schema decoders are reused, without
+KDF/authentication work. Canonical setup-only account v1 is interpreted as revision1
+without changing its bytes; this is not import of WD credentials. Missing is not
+pristine or enrollment permission, and valid bytes do not establish credential
+entropy, policy-reference coverage or consumer/boot readiness.
+
+Pending metadata latches review before **any** content read. Malformed state,
+replacement, read/cancellation uncertainty and restored changes cannot yield a
+partial diagnosis or resume the lifetime. Wrong-profile methods/copies refuse.
+Close releases references only; uncertainty retains the existing no-retry/error
+ownership contract. No create, sync, promotion, deletion, owner construction,
+provisioning, secret consumption, session grant, recovery or product wiring.
+
+These are separate diagnostic lifetimes, not continuity from a prior writer or
+a complete startup coordinator. In particular, the ordinary credential Store/Owner
+constructors establish sync boundaries and must not be used as read-only probes.
+See the [whole-state ownership map](../../../../STATE-OWNERSHIP.md). Full constructor,
+temporary-close/watch, namespace/fault coverage, supported-media and product
+composition qualification remain required.
+
+Pinned native vet/scoped units/race3 and strict seven-family receipt controls pass;
+positive full native Open/Observe lifecycles explicitly skip without mandatory
+unique mount IDs. The actual standard ARM smoke exercises both profiles with
+valid, absent, pending, replaced/restored and malformed state (ten cases twice
+across API restart). It checks the actual directory-lock exclusion, copied/wrong
+entrypoints, no pending content reads, unchanged ordinary bytes/stat/atime and
+verified FD-balanced disposal. Two exact new receipts and all prior assertions
+are required at the unchanged shared15s/guest240s/outer360s limits. No extra lane,
+producer experiment, physical disk or persistent Docker resource is introduced.
+
 ### Explicit session/history profile — M1.2c.5
 
 `OpenSessionHistory(ctx, root, expectedInstallationID, exactCheckpoint)` selects
