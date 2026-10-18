@@ -10,6 +10,14 @@ below are names within each owner's dedicated role, not NAS deployment paths.
 
 ## Current roles
 
+Normal non-root API serving validates its transport and incompatible development
+policy-store options before opening the account or policy stores. TLS validation
+may read the explicitly supplied certificate/key files; this is not an I/O-free
+bootstrap probe. State-directory option presence and the root-serving refusal
+remain earlier checks. This ordering prevents known-invalid options from entering
+state constructors; it does not qualify complete state classification, product
+provisioning, all later startup failures, rollback or recovery.
+
 | Role | Existing state / sole mutator | Observation and composition requirement |
 | --- | --- | --- |
 | Panel administrator | `accounts.json` / `.accounts.pending`; [admincredentials.Store](src/phantowd-api/admincredentials/store_linux.go), then the authorized account controller | `Store.Open` establishes a sync boundary: not a read-only bootstrap probe. The explicit protected reader returns only missing/valid document metadata and revision. Canonical setup-only v1 reads as revision1 without rewriting; this is not WD credential import, authentication or enrollment permission. |

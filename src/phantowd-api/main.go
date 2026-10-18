@@ -161,11 +161,9 @@ func main() {
 	if err != nil {
 		log.Fatal("account state directory is not configured")
 	}
-	accounts, err := openAccountStore(stateDir)
-	if err != nil {
-		log.Fatal("account state is unavailable or insecure")
-	}
-	defer accounts.Close()
+	// Reject invalid transport/policy options before opening any state owner.
+	// TLS validation may read the explicitly supplied files, but it must not
+	// trigger account-store synchronization or policy-store initialization.
 	transport, err := loadAPITransportConfig()
 	if err != nil {
 		log.Fatal("API transport configuration is invalid")
@@ -174,6 +172,11 @@ func main() {
 	if validateServiceStateOptions(serviceDirectory, shareDirectory, transport) != nil {
 		log.Fatal("service configuration options are invalid")
 	}
+	accounts, err := openAccountStore(stateDir)
+	if err != nil {
+		log.Fatal("account state is unavailable or insecure")
+	}
+	defer accounts.Close()
 	readPolicy, closePolicy, err := openSharePolicyReader(shareDirectory)
 	if err != nil {
 		log.Fatal("share configuration storage is unavailable or insecure")

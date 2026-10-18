@@ -961,6 +961,10 @@ and refuses non-Versatile PB machines. See the
   No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
+  The normal non-root serving path validates transport and incompatible policy-
+  store options before opening account/policy stores. This is startup option
+  admission, not pristine-state classification, provisioning, recovery or a
+  guarantee that later initialization failures have no effects.
 - `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally
   requires `PHANTOWD_TLS_CERT_FILE`, `PHANTOWD_TLS_KEY_FILE`, and
   `PHANTOWD_PUBLIC_ORIGIN` (for example, `https://nas.example:8443`). These are
