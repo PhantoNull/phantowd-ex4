@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## Current source: local Linux and standard ARMv5 smoke qualification
+
+Source `38e94ee` passes the existing pinned Go1.26.8 non-root Linux wrapper:
+all ordinary API package vet/units, complete tagged vet and the selected proc
+diagnostic. The standard cached API overlay also terminates successfully at
+the original bounds, booting Linux6.18.55/ARMv5 and reaching QEMU_READY.
+All nine current dashboard assets match exact HTTP and HTTPS bytes twice across
+API restart; existing policy/session/identity, synthetic thermal-report, actual
+disposable mount/MD, SMB3 and NFS read/write/read-only fixtures pass.
+
+This is one standard smoke boot, not the separate two-kernel-boot persistence
+campaign, ten full Samba campaigns, a new complete Buildroot/SBOM/legal audit or
+independent clean reproduction. The API binary includes the new kernel-temperature
+diagnostic code, but the synthetic thermal-report receipt does not qualify the
+new sysfs adapter or any physical sensor. Automatic boot recovery remains a
+required, unimplemented product capability; these tests do not exercise it.
+Existing kernel/packages and unchanged volume helper are reused read-only;
+only a disposable RAM copy receives the new API and fixture inputs. No new image
+or volume is created. Neither physical EX4 nor installation is qualified.
+
 ## Complete API host checks — not full firmware qualification
 
 The complete Windows API/UI wrapper passes on the `ce31105` code: DOM/resource/
