@@ -402,7 +402,7 @@ try {
     await send("Emulation.setDeviceMetricsOverride", { width: 320, height: 900, deviceScaleFactor: 1, mobile: false });
     servicePolicyResult = { ...await exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser, inspectLayout }), form_action_width: 320, layouts: policyLayouts };
     await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
-    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 3);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 4);
   }
   if (apiFixture && !networkMode && !serviceMode) {
     await clickVisible("iscsi-document");

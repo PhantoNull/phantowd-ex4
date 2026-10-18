@@ -1856,20 +1856,25 @@ node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Micros
 ```
 
 This separately selected test uses an uninitialized **memory-only desired-policy
-backend**, never the appliance store. It creates one SMB/NFS policy, saves and
-rereads revision1, changes the existing SMB user's grant to read/write while
-retaining NFS rules, then removes only the NFS export while retaining the complete
-SMB policy. Three explicit saves and rereads, real pointer/keyboard controls,
+backend**, never the appliance store. It first creates and rereads an independent
+NFS export with no SMB share or user reference, checking its complete read-only/
+all-squash client rule. It then adds a combined SMB/NFS policy on the same volume,
+changes the existing SMB user's grant to read/write while retaining both NFS
+exports, and removes only the second export while retaining the first and the
+complete SMB policy. Four explicit saves and rereads, real pointer/keyboard controls,
 overview layout at1365/390/320px and owned-process/profile disposal are required.
 The policy form actions run at 320 px with 80-character share names, 32-character
-user references and 512-character relative paths; the first saved readback must
+user references and 512-character relative paths; the combined-addition readback must
 preserve every value exactly. Draft and all three reviews additionally check
 layout and associated labels at 1365/390/320 px (12 observations). Both review
 tables must be keyboard reachable with visible focus and horizontal arrow
 scrolling. The long folder-pair review additionally verifies bounded vertical
 scrolling without moving the page, followed by keyboard exit from the regions.
-Two fixed narrow screenshots and bounded layout metrics accompany the report;
-no extra HTTP mutation, fixture process, deadline or pointer budget is added.
+Two fixed narrow screenshots and bounded layout metrics accompany the report.
+The independent NFS-first step adds one explicit reviewed HTTP save and reread,
+without another fixture process or increased deadline, pointer or layout budget.
+It uses the same320px visible controls; the12 layout observations still cover the
+original combined-addition, SMB-edit and selected-NFS-removal reviews.
 The fixture's revision comparison refuses stale saves and decodes independent
 bounded snapshots. The ordinary authentication fixture still has no policy
 backend unless this separate mode is selected.

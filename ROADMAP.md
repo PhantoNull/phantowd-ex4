@@ -3277,10 +3277,12 @@ milestone before enabling its controls; M1/M6 for deployment.
   This is not service activation, full firmware/hosted or physical qualification.
 - **M5.5p — Browser desired-policy round trip (partial; host only).** A separately
   selected test-only memory backend exercises actual Go handlers with visible
-  pointer/keyboard form actions. Load uninitialized state, create SMB/NFS and
-  reread revision1, update an existing SMB grant and reread revision2 while
-  retaining NFS rules, then remove NFS and reread revision3 while retaining the
-  complete SMB policy. Require exactly three explicit PUTs, fixed same-origin
+  pointer/keyboard form actions. Load uninitialized state, create independent
+  NFS without SMB/users and reread revision1, add combined SMB/NFS and reread
+  revision2 without duplicating its volume reference, update an existing SMB
+  grant and reread revision3 while retaining both NFS exports, then remove only
+  the second export and reread revision4 while retaining the complete SMB policy
+  and original independent export. Require exactly four explicit PUTs, fixed same-origin
   fixture routes, independent bounded snapshots, stale-revision refusal and
   verified owned-process/profile disposal. Preserve the default fixture's
   absent policy backend and the separate auth/network/iSCSI campaign claims.
@@ -3293,10 +3295,11 @@ milestone before enabling its controls; M1/M6 for deployment.
   activation, accounts, all forms/accessibility, clean/hosted and physical
   qualification remain open. This mode is not a substitute for those gates.
 - **M5.5q — Responsive bounded desired-policy review (partial; host browser).**
-  Preserve the complete M5.5p three-revision workflow and all original caps;
+  Preserve the complete M5.5p workflow and all original caps;
   run visible policy actions at320px with80-character share names,32-character
   user references and512-character relative paths, verifying exact saved bytes.
-  Inspect draft and every review at1365/390/320px, with no horizontal page or
+  Inspect draft and the three original combined-add/edit/remove reviews at
+  1365/390/320px, with no horizontal page or
   control overflow and associated input labels. Two real browser REDs reproduce
   non-wrapping summary text (3491px on1350px) and a1225px long review region in
   a900px viewport. Summary wrapping and viewport-bounded scroll regions preserve

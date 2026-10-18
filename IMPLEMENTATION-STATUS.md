@@ -290,24 +290,30 @@ remain unchanged; deferred Samba status-producer work is not resumed.
 
 ## Focused browser file-service workflow
 
-The separately selected host browser policy fixture now saves and rereads three
-desired SMB/NFS revisions through visible controls and actual HTTP handlers. It
-checks that changing an SMB grant preserves NFS rules and removing NFS preserves
-the complete SMB policy. Windows units, pinned Linux vet/scoped units/race-count3,
+The separately selected host browser policy fixture now saves and rereads four
+desired revisions through visible controls and actual HTTP handlers. It first
+creates NFS without SMB/users, checks the complete read-only/all-squash client
+rule, adds combined SMB/NFS without duplicating the same volume, changes an SMB
+grant while retaining both exports, then removes only the second NFS export
+while retaining the first and complete SMB policy. The initial three-revision
+campaign passed Windows units, pinned Linux vet/scoped units/race-count3,
 DOM controls, workflow routing and installed Edge execution pass. The default
 authentication fixture still has no desired-policy backend.
 
 The responsive M5.5q extension runs all policy actions at320px with80-character
 share names,32-character user references and512-character relative paths, with
-exact saved readback. Draft and all three reviews pass12 layout/label observations
+exact saved readback. Draft and the three combined-add/edit/remove reviews pass12 layout/label observations
 at1365/390/320px. Real browser failures first reproduced a3491px non-wrapping
 summary and a1225px long review pane; two CSS rules now wrap summary text and
 bound scroll regions without truncating content or reducing valid input limits.
 Both tables are keyboard reachable, visibly focused and horizontally scrollable;
 the long pair table also scrolls vertically without moving the page, then permits
 keyboard exit. Current complete Windows host and Edge checks pass at unchanged
-caps. The production stylesheet changes; current pinned Linux/ARM asset/full/
-hosted qualification is pending, not supplied by earlier campaign results.
+caps. The four-revision extension changes host tests only: API/UI source and
+all nine asset hashes are unchanged, with32pointer actions under the old32cap.
+The complete hosted native gate above covers that unchanged production tree,
+not the newly extended browser harness. Current ARM asset/full/physical and
+product qualification remain separate; this does not repair earlier failures.
 
 This test backend remains memory-only: no appliance persistence, service activation,
 disk observation, actual Samba account provisioning or release qualification is
