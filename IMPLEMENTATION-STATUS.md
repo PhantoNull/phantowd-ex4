@@ -787,8 +787,10 @@ Go tests plus the original tagged HTTP/HTTPS asset checks pass. Actual Edge155
 network mode passes four explicit preview POSTs, exact max revision, dual-stack
 /16/IPv6/gateway/route entry, keyboard replacement consent and three widths with
 31of32 pointer actions. All four separate browser modes pass with byte-exact
-current assets and disposed profiles. Native hosted and ARM execution remain
-separate from this host evidence; M6.1g's older ARM proof is not inherited.
+current assets and disposed profiles. Exact native host run39098559138 on81f8b3e
+also completes successfully: pinned Go1.26.8 ordinary API/vet/race, tagged vet,
+DOM/boundary tests, toolkit/fuzz and every existing host gate. This does not
+execute ARM or qualify live networking; M6.1g's older ARM proof is not inherited.
 
 ## M6.1g manual network proposal preview — host/browser/ARM prototype
 
