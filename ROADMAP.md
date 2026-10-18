@@ -1012,6 +1012,30 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   lane, Docker image/volume, NAS operation or status-producer work. Full credential
   constructor/temporary-close/watch/namespace faults and whole-product ownership/
   consumer/provisioning/reconciliation/physical qualification remain required.
+  **M1.2c.7 — stored identity-document comparison:** compare a complete supplied
+  registry/native/optional-enrollment journal roster using the existing strict
+  decoders, without constructing IdentityOwner or opening/recovering stores.
+  Exact naming/identity/revision links, duplicate/orphan/SID refusal, native
+  operation ordering and interrupted phases must yield private no-action results.
+  Validate all present bytes before semantic diagnosis; known contradictions
+  must not become mere missing data. Require explicit complete roster, exact
+  uint64 revisions and inclusive individual/count/aggregate bounds. Retired
+  registry states remain explicitly unsupported, never erased or reused. Test
+  immutable bytes, privacy, concurrency and actual ARM synthetic comparisons in
+  the existing standard self-test/receipt pair. This is not a filesystem census,
+  Unix/passdb observation, writer handoff, recovery or startup admission. Next
+  integrate retained namespace observation with complete product roles/consumers.
+  **Local host acceptance:** Windows portable/root fixture and pinned Linux tagged
+  vet/scoped units/race3 pass. Exact uint64, inclusive individual/count/aggregate
+  bounds, privacy, input immutability and concurrency controls pass. Reproduced
+  known-link/missing-evidence precedence and fixture serialization-oracle defects
+  are corrected without changing original decoders or serialization refusals.
+  No positive filesystem/runtime ownership or startup permission follows.
+  **ARM acceptance:** actual standard ARMv5 smoke passes eight synthetic cases
+  twice across API restart and all previous assertions; eight strict receipt
+  pairs/unchanged limits, no new default stage or producer experiment. Retained
+  identity filesystem provenance, all product-role/consumer ownership, durable
+  reconciliation and media/full/hosted/physical/release gates remain open.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

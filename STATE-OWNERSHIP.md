@@ -45,6 +45,12 @@ for the exact tested scope rather than inferring it from this design map.
 
 ## Required composition
 
+The private [identity-document comparison](src/phantowd-api/internal/identityevidence/README.md)
+checks complete supplied registry/native/enrollment document links without
+constructing IdentityOwner or invoking recovery/runtime backends. Its fixed
+no-action diagnosis is not a retained namespace census, live identity/passdb
+observation or whole-appliance startup decision; those integrations remain open.
+
 1. Define and provision the complete required role set under independently
    trusted installation/medium identity; missing or unimplemented roles must
    never silently become pristine, optional or ready.

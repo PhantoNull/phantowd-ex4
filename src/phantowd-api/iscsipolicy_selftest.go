@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/identityevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
@@ -23,6 +24,9 @@ import (
 
 // Pure desired-policy fixture: no file, socket, target, credential or disk I/O.
 func exerciseQEMUISCSIPolicy() error {
+	if err := identityevidence.RunQEMUFixture(); err != nil {
+		return err
+	}
 	volumes := shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 7,
 		Volumes: []shareconfig.Volume{{ID: "fixture-volume", FilesystemUUID: "12345678-1234-1234-1234-123456789abc"}},
 		Users:   []shareconfig.User{}, Shares: []shareconfig.Share{}}

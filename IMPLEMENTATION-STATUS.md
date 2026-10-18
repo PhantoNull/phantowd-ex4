@@ -3,6 +3,39 @@
 
 # Implementation status
 
+## Stored identity-document comparison — internal data component
+
+The private identityevidence matcher now compares a supplied complete registry,
+native journal and optional enrollment journal roster with the existing strict
+decoders. It checks exact identity/name/revision links, creation ordering,
+duplicates/orphans, duplicate nonempty SIDs and unresolved operation phases.
+All present bytes are validated before diagnoses; malformed or contradictory
+records cannot silently become missing data. Results are private no-action
+kinds; absent is not pristine and matching links do not prove live accounts or
+access readiness. Retired ledger records remain explicitly unsupported, not
+deleted, reused or imported.
+
+This portable component performs no filesystem/backend I/O and constructs no
+Owner. Existing startup recovery, authentication, account mutations, service
+activation and HTTP are unchanged. The complete retained identity census,
+cross-role ownership/provisioning/reconciliation and physical/release gates
+remain. See the [component contract](src/phantowd-api/internal/identityevidence/README.md).
+
+Windows portable/root-fixture checks and pinned Linux tagged vet/scoped units/
+race3 pass. Tests cover exact max uint64 revision, individual/count/aggregate
+inclusive bounds, private output, immutable inputs and concurrent comparisons.
+A known-tuple contradiction masked by unavailable data was reproduced and fixed.
+The first guest-fixture host test also caught its invalid generic-JSON snapshot
+attempt; final independent byte copies preserve the original private-slot refusal
+instead of weakening it. These are data tests, not positive native filesystem,
+runtime Owner, import, recovery or product-startup qualification.
+
+Actual standard ARMv5 smoke passes eight synthetic comparison cases twice across
+API restart, with immutable-byte/privacy controls and all prior assertions.
+Eight strict receipt families are required; original fixture/guest/outer caps
+are unchanged. This does not qualify a retained identity filesystem collector,
+two-boot/media/full image/SBOM, hosted checks, physical hardware or release.
+
 ## Read-only administrator and CHAP state — internal profiles
 
 Two explicit credential-state readers now reuse the retained original-directory
