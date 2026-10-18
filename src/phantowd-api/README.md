@@ -954,8 +954,10 @@ and refuses non-Versatile PB machines. See the
   if the kernel or execution profile refuses `openat2`. See the
   [Linux path-resolution contract](https://man7.org/linux/man-pages/man2/openat2.2.html).
   This per-open check does not retain parent directories or rule out later mount
-  or path changes. Native Linux and ARM execution of this increment must be
-  qualified separately; the earlier leaf-only campaign does not supply it.
+  or path changes. Complete pinned native Linux API/race checks pass; see
+  [qualification scope](../../IMPLEMENTATION-STATUS.md#https-startup-bounded-supplied-certificate-and-private-key-files).
+  ARM execution of this increment remains unqualified; the earlier leaf-only
+  campaign does not supply it.
   No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.

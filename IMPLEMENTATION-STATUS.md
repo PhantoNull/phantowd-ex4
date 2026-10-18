@@ -13,11 +13,11 @@ wrapper separately passes all ordinary API package vet/units, whole QEMU-tagged
 vet and the selected proc-reader diagnostic, running non-root with existing
 read-only caches and no network.
 
-The complete [host-only CI run39094413607](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39094413607)
-now passes on `edaa4c9`, including all ordinary API package vet/units/race,
+The complete [host-only CI run39096146569](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39096146569)
+now passes on `ae09c64`, including all ordinary API package vet/units/race,
 QEMU-tagged vet/selected proc diagnostic, host-tool race/fixed fuzz campaigns,
 browser-fixture boundaries and the command/mock/syntax contracts. It uses the
-locked Go1.26.8 SDK; API source is unchanged from `c83a2dc`. Cheap contracts run
+locked Go1.26.8 SDK and the new Linux TLS whole-path resolution tests. Cheap contracts run
 before SDK/Go work. Feedback fixtures use private executable256MiB RAM scratch;
 only ephemeral runner mount/unmount uses sudo, tests remain non-root. All58
 feedback and8 build-job tests execute on Linux without skips. Portable overlay
@@ -1964,6 +1964,22 @@ This is not retained parent/trust authority, all concurrent-change/close-fault
 coverage, a regular-file I/O deadline, total TLS-memory qualification, certificate
 provisioning/recovery or a product LAN listener. There is no complete image/
 hosted/physical qualification; no prior native timing gate is waived.
+
+The current Linux opener strengthens that leaf-only contract with `openat2`
+no-symlink/no-magic-link resolution for every supplied path component, retaining
+read-only/nonblocking/close-on-exec and ARM32 large-file flags. There is no weaker
+fallback if the syscall is unavailable or denied. Use actual regular-file paths,
+not parent-link aliases. Native Go1.26.8 whole API/race checks pass on `ae09c64`,
+including eight certificate/key alias refusals against a leaf-only comparison
+control, normal/relative-path admission and descriptor flags. This is per-open
+resolution, not retained parent/mount authority, rotation or all I/O faults.
+ARM execution/cross-compilation of this increment remains unqualified.
+
+Latest Windows Go1.27 ordinary API checks pass, but its complete wrapper fails
+the later tagged HTTPS smoke at an anonymous iSCSI request transport error.
+Fifty unchanged isolated smoke executions pass; the original intermittent failure
+is neither explained nor repaired. Those runs do not qualify the Linux-only
+opener or replace the failed complete Windows wrapper.
 
 ## Identity admission: failed-open cleanup uncertainty
 

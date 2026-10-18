@@ -2975,6 +2975,16 @@ milestone before enabling its controls; M1/M6 for deployment.
   and one normal ARMv5 smoke pass. This is not retained parent authority, all-change/low-
   level I/O-fault coverage, an I/O deadline, whole-TLS memory qualification,
   certificate provisioning/renewal or product LAN admission.
+  **M5.2c — kernel-checked supplied TLS paths (partial; host Linux):**
+  use `openat2` whole-path no-symlink/no-magic-link resolution, with no weaker
+  fallback on a missing/denied syscall. Preserve readonly/nonblocking/CLOEXEC
+  and ARM32 large-file flags; require real regular-file paths rather than parent
+  symlink aliases. Pinned native whole API/vet/race passes eight cert/key alias
+  refusals, leaf-only comparison controls and ordinary relative/descriptor tests.
+  This is not retained parent/mount authority, all replacement/close faults,
+  certificate provisioning or ARM execution; qualify those before product use.
+  The latest Windows full wrapper has an unexplained tagged HTTPS/iSCSI transport
+  failure despite50isolated passes. Do not substitute those passes for repair.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable
