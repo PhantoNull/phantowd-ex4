@@ -472,6 +472,9 @@ for path in \
     require_ignored_path "$stage_b3_workflow" "$path"
 done
 for path in 'support/build-qemu.ps1' \
+    'support/run-cached-qemu.mjs' \
+    'support/tests/test-cached-qemu-runner.mjs' \
+    'support/tests/fixtures/cached-docker.mjs' \
     'support/tests/test-cached-qemu-wrapper.ps1' \
     'support/tests/test-cached-qemu-preflight.py'; do
     require_triggered_path "$host_workflow" "$path"

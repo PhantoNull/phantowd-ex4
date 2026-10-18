@@ -17,7 +17,16 @@ separate. Existing full/hosted/physical/release gates are not closed by these ru
 
 The cached full wrapper's1800s/30s timeout executes **inside** the container.
 It does not bound daemon-side creation/startup or a blocked host CLI. A scoped
-host startup/settlement controller and bounded metadata queries remain required;
+host startup/settlement controller is now available through the explicit
+`-CachedOnly -HostLifecycleGuard` option. Nineteen local fake-process cases and
+the mocked PowerShell wrapper pass; exact-ID/name/label checks precede scoped
+cleanup, and unproven retirement retains a same-checkout guard and source context.
+Auto-removal may precede attached-client exit: a bounded original-client handoff
+now precedes final exit/absence proof, with a reproduced failing/passing fixture.
+The old default is not switched: healthy/faulted actual Docker lifecycle and
+late-reply/unsettled-client qualification remain required. See the
+[host guard contract](support/CACHED-QEMU-HOST-GUARD.md). The earlier external
+startup stall is not repaired by these tests, nor is full firmware qualified;
 an observation timeout or killed client must never certify container retirement.
 No automatic retry, global Docker restart or prune is an acceptable substitute.
 

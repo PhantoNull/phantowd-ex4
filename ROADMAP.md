@@ -468,6 +468,13 @@ button to an unqualified backend simply because the screen exists.
   all existing active budgets/proofs, image/volume reuse and headroom guards.
   Test delayed/no creation, created-not-running, late replies, query timeout,
   uncertain stop/cleanup and healthy actual lifecycle before default adoption.
+  An explicit opt-in [host guard](support/CACHED-QEMU-HOST-GUARD.md) now implements
+  bounded metadata/startup/active waits, original-client settlement, exact owned
+  cleanup and retained uncertainty. Nineteen local fake-process cases plus
+  mocked PowerShell delegation/default-profile checks pass. No actual Docker
+  lifecycle is inferred from the reproduced/fixed auto-remove/client-exit race.
+  No external daemon-stall repair is claimed; default adoption and
+  late-daemon/unsettled-client/host-cancellation qualification remain open.
 - **M0.2 — Resolve shutdown fixture ownership.** Reproduce the intermittent
   state-volume unmount refusal; capture only bounded, redacted process/FD/mount
   ownership evidence. Test the concrete owner/lifecycle defect before changing

@@ -1423,7 +1423,13 @@ remains for existing source/key verification. It does not emulate EX4 hardware,
 authorize NAS writes, demonstrate clean reproduction or replace hosted checks.
 
 `support/tests/test-cached-qemu-wrapper.ps1` mocks only the command boundary
-and checks profile/refusal/no-retry behavior. The Linux Python preflight test
+and checks default profile/refusal/no-retry behavior and experimental host-runner
+delegation. The [opt-in host lifecycle guard](CACHED-QEMU-HOST-GUARD.md) bounds
+preflight/startup/metadata/client settlement independently of the inner timer.
+Its 19 local fake-process cases do not qualify real Docker lifecycle or repair
+the outstanding daemon-side startup stall. It is not default-adopted. Uncertain
+jobs retain source/identity evidence and a same-checkout guard; no automatic retry,
+global daemon reset or prune. The Linux Python preflight test
 executes the actual embedded shell against disposable initialized/missing/
 changed-config/nonwritable fixtures. Neither is itself a full build result.
 

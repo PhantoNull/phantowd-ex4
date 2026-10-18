@@ -3,10 +3,14 @@ param(
     [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker\wsl\disk\docker_data.vhdx'),
     [ValidateRange(1, 1024)]
     [int]$MinimumFreeGiB = 40,
-    [switch]$CachedOnly
+    [switch]$CachedOnly,
+    [switch]$HostLifecycleGuard
 )
 
 $ErrorActionPreference = 'Stop'
+if ($HostLifecycleGuard -and -not $CachedOnly) {
+    throw 'HostLifecycleGuard is experimental and requires CachedOnly.'
+}
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $dashboardTest = Join-Path $repoRoot 'support/test-dashboard-ui.mjs'
 $versionLines = @(Get-Content (Join-Path $repoRoot 'versions.env') | Where-Object { $_ -match '^BUILDROOT_VERSION=' })
@@ -38,28 +42,23 @@ if ($freeBytes -lt $minimumFreeBytes) {
     throw ('Docker data drive {0}: has only {1:N1} GiB free; this full Buildroot/QEMU build requires at least {2} GiB of host headroom before starting.' -f $dockerDrive, ($freeBytes / 1GB), $MinimumFreeGiB)
 }
 
-docker info | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Docker Desktop is not available.'
-}
-
 $bindMount = "type=bind,source=$repoRoot,target=/external"
 $volumeMount = "type=volume,source=$workspaceVolume,target=/workspace,volume-nocopy"
 $ccacheMount = "type=volume,source=$ccacheVolume,target=/ccache,volume-nocopy"
 
 if ($CachedOnly) {
-    # Fail closed: do not let Docker implicitly create or populate a cache.
-    docker image inspect $imageName | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Cached-only image is missing: $imageName. Seed it with the ordinary wrapper; this mode never builds or pulls an image."
-    }
-    foreach ($requiredVolume in @($workspaceVolume, $ccacheVolume)) {
-        docker volume inspect $requiredVolume | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Cached-only volume is missing: $requiredVolume. Seed it with the ordinary wrapper; this mode never creates volumes."
+    # Keep default adoption separate from synthetic host-controller tests.
+    # The opt-in controller performs the same preflight with host deadlines.
+    if (-not $HostLifecycleGuard) {
+        docker info | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Docker Desktop is not available.' }
+        docker image inspect $imageName | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Cached-only image is missing: $imageName" }
+        foreach ($requiredVolume in @($workspaceVolume, $ccacheVolume)) {
+            docker volume inspect $requiredVolume | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Cached-only volume is missing: $requiredVolume" }
         }
     }
-
     $cachedScript = @'
 set -eu
 . /external/versions.env
@@ -84,25 +83,36 @@ exec /bin/sh /external/support/container/build-qemu.sh
     $encodedScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($cachedScript))
     $cachedCommand = "set -eu; printf '%s' '$encodedScript' | base64 -d > /tmp/phantowd-cached-build.sh; exec /bin/sh /tmp/phantowd-cached-build.sh"
 
-    # The cold API race suite was reproduced failing at 256 MiB /tmp and
-    # passing at 2048 MiB. Caches/scratch are separate bounded RAM filesystems.
-    docker run --rm --pull never `
-        --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
-        --cpus 4 --memory 6g --pids-limit 512 `
-        --tmpfs '/tmp:rw,exec,nosuid,nodev,size=2048m,uid=1000,gid=1000' `
-        --tmpfs '/phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m,uid=1000,gid=1000' `
-        --tmpfs '/workspace/api-host-cache:rw,exec,nosuid,nodev,size=768m,uid=1000,gid=1000' `
-        --tmpfs '/workspace/lab-tools-host-cache:rw,exec,nosuid,nodev,size=768m,uid=1000,gid=1000' `
-        --mount $bindMount --mount $volumeMount --mount $ccacheMount `
-        --env PHANTOWD_CCACHE_DIR=/ccache --env GOMAXPROCS=4 `
-        --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/external `
-        --entrypoint /usr/bin/timeout $imageName `
-        --signal=TERM --kill-after=30 1800 /bin/sh -ec $cachedCommand
+    # The host controller also bounds Docker metadata/create/start/settlement.
+    # It preserves the existing non-root resources and inner 1800+30 timer.
+    if ($HostLifecycleGuard) {
+        node (Join-Path $PSScriptRoot 'run-cached-qemu.mjs') `
+            --repo $repoRoot --image $imageName --workspace $workspaceVolume `
+            --ccache $ccacheVolume --command $cachedCommand
+    } else {
+        docker run --rm --pull never `
+            --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
+            --cpus 4 --memory 6g --pids-limit 512 `
+            --tmpfs '/tmp:rw,exec,nosuid,nodev,size=2048m,uid=1000,gid=1000' `
+            --tmpfs '/phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m,uid=1000,gid=1000' `
+            --tmpfs '/workspace/api-host-cache:rw,exec,nosuid,nodev,size=768m,uid=1000,gid=1000' `
+            --tmpfs '/workspace/lab-tools-host-cache:rw,exec,nosuid,nodev,size=768m,uid=1000,gid=1000' `
+            --mount $bindMount --mount $volumeMount --mount $ccacheMount `
+            --env PHANTOWD_CCACHE_DIR=/ccache --env GOMAXPROCS=4 `
+            --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/external `
+            --entrypoint /usr/bin/timeout $imageName `
+            --signal=TERM --kill-after=30 1800 /bin/sh -ec $cachedCommand
+    }
 
     if ($LASTEXITCODE -ne 0) {
         throw 'The cached-only full Buildroot/QEMU validation failed; no retry or cache repair was attempted.'
     }
     return
+}
+
+docker info | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw 'Docker Desktop is not available.'
 }
 
 docker build --file $dockerfile --tag $imageName $repoRoot

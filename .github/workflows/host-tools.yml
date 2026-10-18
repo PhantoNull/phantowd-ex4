@@ -63,6 +63,9 @@ on:
       - 'support/tests/test-runtime-loader-fixture.py'
       - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
+      - 'support/run-cached-qemu.mjs'
+      - 'support/tests/test-cached-qemu-runner.mjs'
+      - 'support/tests/fixtures/cached-docker.mjs'
       - 'support/tests/test-cached-qemu-wrapper.ps1'
       - 'support/tests/test-cached-qemu-preflight.py'
       - 'support/test-api-linux.ps1'
@@ -161,6 +164,9 @@ on:
       - 'support/tests/test-runtime-loader-fixture.py'
       - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
+      - 'support/run-cached-qemu.mjs'
+      - 'support/tests/test-cached-qemu-runner.mjs'
+      - 'support/tests/fixtures/cached-docker.mjs'
       - 'support/tests/test-cached-qemu-wrapper.ps1'
       - 'support/tests/test-cached-qemu-preflight.py'
       - 'support/test-api-linux.ps1'
@@ -283,6 +289,9 @@ jobs:
       - name: Verify cached-only local wrapper command boundary
         shell: pwsh
         run: ./support/tests/test-cached-qemu-wrapper.ps1
+
+      - name: Verify experimental cached host lifecycle with fake local children
+        run: node support/tests/test-cached-qemu-runner.mjs
 
       - name: Verify cached-only preflight on disposable Linux fixtures
         run: python3 -B support/tests/test-cached-qemu-preflight.py
