@@ -354,7 +354,7 @@ func TestCloseUncertaintyDoesNotRetryOrReleaseRemainingLocks(t *testing.T) {
 	if !errors.Is(err, naspolicystore.ErrBusy) {
 		t.Fatal("uncertainty released policy lock")
 	}
-	for _, roster := range [][3]object{a.state.files, a.state.dirs} {
+	for _, roster := range [][]object{a.state.files[:], a.state.directoryObjects()} {
 		for _, o := range roster {
 			if o.file != nil {
 				o.file.Close()

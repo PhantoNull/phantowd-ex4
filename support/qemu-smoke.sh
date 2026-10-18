@@ -155,7 +155,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         if ! sh "$script_dir/tests/verify-nas-policy-edit.sh" "$log_file"; then
-            echo 'Expected two complete model, writer, epoch, journal and composed-session assertions across API restart' >&2
+            echo 'Expected two complete model, writer, epoch, journal, composed-session and session-filesystem assertions across API restart' >&2
             exit 1
         fi
         # S99 runs the API self-test before AND after its intentional restart.

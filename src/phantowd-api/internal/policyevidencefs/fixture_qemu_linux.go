@@ -436,7 +436,7 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 		good := first == ErrReview && second == ErrReview && calls == 1 && errors.Is(writerErr, naspolicystore.ErrBusy) && errors.Is(observeErr, ErrReview)
 		// Only this fixture knows its injected close did not touch the FD.
 		// Settle the known-open synthetic objects without resuming the Owner.
-		for _, roster := range [][3]object{a.state.files, a.state.dirs} {
+		for _, roster := range [][]object{a.state.files[:], a.state.directoryObjects()} {
 			for _, o := range roster {
 				if o.file != nil && o.file.Close() != nil {
 					good = false

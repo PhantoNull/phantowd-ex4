@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyepochjournal"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
 )
 
@@ -78,6 +79,41 @@ func matchBundleHistoryObservation(installation string, anchor, current policyev
 	d, err := policyevidence.MatchHistory(installation, anchor, current, decoded.entries)
 	if err != nil {
 		return policyevidence.Diagnosis{}, ErrInvalid
+	}
+	return d, nil
+}
+
+// Read-only DATA bridge for an explicitly selected session/history collector.
+// The collector, not this function, must establish complete original-file census
+// and locks. No result grants writes, boot, recovery or service authority.
+func MatchNamedSessionHistoryObservation(installation string, journal, checkpoint, current policyevidence.Slot, entries []NamedBundleObservation) (policyevidence.SessionDiagnosis, error) {
+	if len(entries) > policyevidence.MaxHistoryOperations || len(journal.Data) > policyepochjournal.MaxObservedDocumentBytes {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	names := make([]string, len(entries))
+	operations := make([]policyevidence.Slot, len(entries))
+	remaining := policyevidence.MaxHistoryInputBytes
+	for _, size := range []int{len(journal.Data), len(checkpoint.Data), len(current.Data)} {
+		if size > remaining {
+			return policyevidence.SessionDiagnosis{}, ErrInvalid
+		}
+		remaining -= size
+	}
+	for index, entry := range entries {
+		if len(entry.Operation.Data) > remaining {
+			return policyevidence.SessionDiagnosis{}, ErrInvalid
+		}
+		remaining -= len(entry.Operation.Data)
+		names[index], operations[index] = entry.Name, entry.Operation
+	}
+	decoded, err := decodeBundleHistory(checkpoint, current, operations, names)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	defer decoded.clear()
+	d, err := policyepochjournal.MatchObservedHistory(installation, journal, checkpoint, current, decoded.entries)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
 	}
 	return d, nil
 }

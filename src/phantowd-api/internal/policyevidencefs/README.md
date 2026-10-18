@@ -45,6 +45,59 @@ returns the same six no-action diagnoses and clears temporary decoded bytes.
 
 ## Lifetime contract
 
+### Explicit session/history profile — M1.2c.5
+
+`OpenSessionHistory(ctx, root, expectedInstallationID, exactCheckpoint)` selects
+three fixed child directories: `policy`, `operations`, `policy-session`. The
+four original directory flocks remain held in root/policy/operations/session
+order, with original files, unique mount/path identities, complete censuses and
+file/directory mutation watches. The checkpoint is validated and privately copied.
+All directories must exist; optional missing records yield incomplete DATA,
+never pristine/boot permission. No directory or record is initialized/synced.
+
+`policy-session` allows only `epoch.json` (strict12KiB experimental envelope) and
+metadata-only `.epoch.pending`. Policy and operation names/limits remain those of
+OpenHistory. The4MiB raw metadata budget includes checkpoint/current/journal and
+all operation bundles before reading, in addition to the decoded joined bounds.
+Any of the three pending roles latches review before **any** content read. No
+pending bytes are opened, promoted, deleted or recovered by the observer.
+
+Use `ObserveSession`, which supplies the complete named bundle set and original
+journal/current bytes to the strict joined matcher under the same mutex. The
+opening must bind the exact checkpoint, not a coherent later suffix. All reads
+are bounded/no-atime/read-only and bracketed by original-object/namespace checks.
+Malformation, drift, read error or in-flight cancellation returns no partial kind
+and retains review; restoration/new context cannot resume the lifetime.
+
+This is an explicit fourth profile, not layout autodetection: legacy Open,
+OpenBundle and OpenHistory retain their two-child census and refuse the new role.
+Observe rejects this profile; ObserveSession rejects other profiles, without
+poisoning a healthy lifetime. Close uses the actual retained roster, stops at
+first uncertainty and never writes a closure, clears evidence or opens a writer.
+An uncertain constructor result retains the same reviewed-handle/error contract.
+
+Portable strict-journal/named-history bridge tests and pinned native vet/scoped
+units/race3 pass. Native positive full lifecycles skip without unique mount IDs,
+not positive lifecycle/race qualification. Close-only native controls additionally
+cover all eight file/directory positions of a synthetic two-operation session
+roster, with both pre-close and post-close/recycled-FD errors. That does not
+qualify actual Open/Observe there, larger rosters, constructors or kernel EIO.
+
+Actual standard ARM smoke repeats10 cases across API restart: closed/open/missing
+journal, policy/history/session pending, restored file replacement, malformed
+journal, restored session-directory bind mount and read error. Four actual locks,
+copied/wrong-profile refusal, owned checkpoint, sticky review/zero reads for
+pending, known-name disposal and FD balance are checked. Ordinary cases preserve
+exact bytes and selected complete stat metadata including atime. Two exact new
+receipts and every older assertion are mandatory at unchanged15s fixture/240s
+guest/360s outer limits; no extra default lane or persistent Docker resource.
+
+These observations use invented declarations in fresh tmpfs layouts, not actual
+writer/reboot/power-loss evidence. No HTTP/product startup, existing-state writer
+admission, trusted checkpoint provenance/succession, full product roles/consumers,
+durable review/reconciliation, physical medium or release qualification follows.
+Complete constructor/temporary-close/watch and larger-roster faults remain gates.
+
 ### Explicit multi-operation history profile
 
 `OpenHistory(ctx, root, expectedInstallationID, exactCheckpoint)` fixes a third

@@ -397,6 +397,15 @@ this is not production/global-use exclusion.
 
 ## Private bundle codec
 
+`MatchNamedSessionHistoryObservation` is the bounded DATA bridge for the explicit
+read-only session/history collector. It reuses the same owned strict bundle/name
+decoder and clears it on success/error, includes the journal in its4MiB wire
+budget, and invokes the strict existing-journal/joined comparison with an
+independently expected installation and exact checkpoint. Missing journal cannot
+hide malformed later bundles; foreign identity/name-content/duplicate/count/
+aggregate failures return no partial kind. No paths/backends, I/O, lease or
+permission to recover/start services is supplied by this function.
+
 One flat schema1 document, maximum896KiB/depth2, contains format, schema_version,
 revision, phase, installation_id, base, intent and receipt. Its format is
 `phantowd-policy-operation-bundle-experimental`. Journal revision1/phase `intent`

@@ -18,6 +18,9 @@ import (
 )
 
 const maxDocumentBytes = 12 << 10
+
+// Fixed read-only observation bound, not a product on-disk compatibility pledge.
+const MaxObservedDocumentBytes = maxDocumentBytes
 const documentFormat = "phantowd-policy-session-journal-experimental"
 
 var (
@@ -88,6 +91,10 @@ func (d document) validate() error {
 // Supplied policy/history DATA only; the retained product root must supply the
 // actual origins and full census. No diagnostic grants recovery or admission.
 func (d document) observeHistory(checkpoint, current policyevidence.Slot, operations []policyevidence.HistoryOperation) (policyevidence.SessionDiagnosis, error) {
+	return d.observeHistoryFor(d.Installation, checkpoint, current, operations)
+}
+
+func (d document) observeHistoryFor(installation string, checkpoint, current policyevidence.Slot, operations []policyevidence.HistoryOperation) (policyevidence.SessionDiagnosis, error) {
 	o, err := recordBytes(d.Opening, false)
 	if err != nil {
 		return policyevidence.SessionDiagnosis{}, ErrInvalid
@@ -102,11 +109,41 @@ func (d document) observeHistory(checkpoint, current policyevidence.Slot, operat
 	if len(c) != 0 {
 		closure = policyevidence.Slot{State: policyevidence.Present, Data: c}
 	}
-	diagnosis, err := policyevidence.MatchSessionHistory(d.Installation, policyevidence.Slot{State: policyevidence.Present, Data: o}, closure, checkpoint, current, operations)
+	diagnosis, err := policyevidence.MatchSessionHistory(installation, policyevidence.Slot{State: policyevidence.Present, Data: o}, closure, checkpoint, current, operations)
 	if err != nil {
 		return policyevidence.SessionDiagnosis{}, ErrInvalid
 	}
 	return diagnosis, nil
+}
+
+// MatchObservedHistory decodes caller-supplied private journal DATA, then joins
+// it with an independently expected installation and exact history/checkpoint.
+// It performs no I/O, provenance/admission, initialization or recovery. Absent
+// and unavailable documents stay distinct; neither means pristine. Every
+// present input is validated before a diagnosis. Inputs stay immutable.
+func MatchObservedHistory(installation string, journal, checkpoint, current policyevidence.Slot, operations []policyevidence.HistoryOperation) (policyevidence.SessionDiagnosis, error) {
+	if len(operations) > policyevidence.MaxHistoryOperations || len(journal.Data) > maxDocumentBytes {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	if journal.State == policyevidence.Present {
+		if len(journal.Data) == 0 {
+			return policyevidence.SessionDiagnosis{}, ErrInvalid
+		}
+		d, err := decodeDocument(bytes.NewReader(journal.Data))
+		if err != nil {
+			return policyevidence.SessionDiagnosis{}, ErrInvalid
+		}
+		return d.observeHistoryFor(installation, checkpoint, current, operations)
+	}
+	if len(journal.Data) != 0 || journal.State != policyevidence.Absent && journal.State != policyevidence.Unavailable {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	empty := policyevidence.Slot{State: journal.State}
+	d, err := policyevidence.MatchSessionHistory(installation, empty, empty, checkpoint, current, operations)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	return d, nil
 }
 func decodeDocument(input io.Reader) (document, error) {
 	if input == nil {

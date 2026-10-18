@@ -19,7 +19,7 @@ import (
 // an invented error and an atomically allocated duplicate at that exact FD.
 // This checks that no later Close/Observe touches a recycled descriptor.
 func exerciseCloseFaultMatrixQEMU(ctx context.Context, count int, factory func(int, bool) (*Observer, error)) error {
-	if count < 1 || count > 6 {
+	if count < 1 || count > 8 {
 		return ErrInvalid
 	}
 	for boundary := 0; boundary < count; boundary++ {
@@ -54,7 +54,7 @@ func exerciseOneCloseFaultQEMU(ctx context.Context, a *Observer, count, boundary
 	s := a.state
 	var slots []*object
 	var originals []*os.File
-	for _, roster := range [][]object{s.fileObjects(), s.dirs[:]} {
+	for _, roster := range [][]object{s.fileObjects(), s.directoryObjects()} {
 		for i := len(roster) - 1; i >= 0; i-- {
 			if roster[i].file != nil {
 				slots = append(slots, &roster[i])
@@ -139,9 +139,16 @@ func exerciseOneCloseFaultQEMU(ctx context.Context, a *Observer, count, boundary
 		if a.Close() != ErrReview || calls != boundary+1 {
 			return ErrReview
 		}
-		d, err := a.Observe(ctx)
-		if err != ErrReview || d.Kind() != "" {
-			return ErrReview
+		if s.sessionProfile {
+			d, err := a.ObserveSession(ctx)
+			if err != ErrReview || d.Kind() != "" {
+				return ErrReview
+			}
+		} else {
+			d, err := a.Observe(ctx)
+			if err != ErrReview || d.Kind() != "" {
+				return ErrReview
+			}
 		}
 	}
 	for index, slot := range slots {

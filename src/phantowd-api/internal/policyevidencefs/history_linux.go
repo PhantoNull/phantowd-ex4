@@ -11,6 +11,7 @@ import (
 	"slices"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyepochjournal"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policytransaction"
 )
@@ -27,6 +28,17 @@ func OpenHistory(ctx context.Context, directory, installation string, checkpoint
 		return nil, ErrInvalid
 	}
 	return open(ctx, directory, installation, false, checkpoint)
+}
+
+// OpenSessionHistory explicitly fixes policy/operations/policy-session, retaining
+// all four original flocks and bounded original read-only files. Never creates,
+// initializes, synchronizes, adopts a writer, repairs or admits product services.
+// The independently trusted exact checkpoint is copied for this lifetime.
+func OpenSessionHistory(ctx context.Context, directory, installation string, checkpoint []byte) (*Observer, error) {
+	if len(checkpoint) == 0 {
+		return nil, ErrInvalid
+	}
+	return openProfile(ctx, directory, installation, false, checkpoint, true)
 }
 
 func validateHistoryCheckpoint(installation string, checkpoint []byte) error {
@@ -65,6 +77,9 @@ func (s *state) prepareHistoryRoles() error {
 	}
 	slices.Sort(names) // deterministic IO only; chronology comes from bound tuples.
 	s.historyRoles = []roleSpec{{1, "nas-services.json", naspolicy.MaxInputBytes}}
+	if s.sessionProfile {
+		s.historyRoles = append(s.historyRoles, roleSpec{3, "epoch.json", policyepochjournal.MaxObservedDocumentBytes})
+	}
 	for _, name := range names {
 		s.historyRoles = append(s.historyRoles, roleSpec{2, name, policytransaction.MaxObservedBundleBytes})
 	}
@@ -79,6 +94,18 @@ func (s *state) prepareHistoryRoles() error {
 	}
 	s.historyFiles = make([]object, len(s.historyRoles))
 	return nil
+}
+
+func (s *state) matchSessionHistory(slots []policyevidence.Slot) (policyevidence.SessionDiagnosis, error) {
+	if len(slots) != len(s.historyRoles) || len(slots) < 2 {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	entries := make([]policytransaction.NamedBundleObservation, len(slots)-2)
+	for index := range entries {
+		entries[index] = policytransaction.NamedBundleObservation{Name: s.historyRoles[index+2].name, Operation: slots[index+2]}
+	}
+	return policytransaction.MatchNamedSessionHistoryObservation(s.installation, slots[1],
+		policyevidence.Slot{State: policyevidence.Present, Data: s.checkpoint}, slots[0], entries)
 }
 
 func (s *state) matchHistory(slots []policyevidence.Slot) (policyevidence.Diagnosis, error) {

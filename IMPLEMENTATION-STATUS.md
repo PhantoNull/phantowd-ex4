@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Retained session/history reader — internal read-only profile
+
+An explicit OpenSessionHistory/ObserveSession profile now reads existing synthetic
+policy/operations/policy-session layouts under four original directory locks,
+unique mount/path witnesses, complete bounded censuses and retained file watches.
+It joins original journal/current/history bytes with an owned trusted checkpoint;
+no constructor initialization/sync, writer adoption, repair or service activation.
+All three pending roles refuse before any content read. Old two-child profiles
+remain strict; wrong-profile methods refuse without degrading the lifetime.
+
+Windows portable bridge tests and pinned native vet/scoped units/race3 pass.
+Positive native full lifecycles skip without mandatory unique mount IDs. Native
+Close-only controls execute all eight positions of a synthetic two-operation
+session roster, including controlled before/after-close and recycled-FD refusal.
+Actual standard ARM smoke passes ten session-reader scenarios twice, all old
+assertions and unchanged budgets: four actual locks, owned checkpoint, pending
+zero-read, restored file/mount sticky review, malformed/read-error refusal and
+normal byte/stat/atime/FD preservation. No new default lane or producer work.
+
+This is diagnosis over invented tmpfs state, not trusted checkpoint provenance,
+continuous writer authority, verified restart, complete product roles/consumers,
+durable recovery, physical medium or release qualification. Full constructor/
+temporary-close/watch and larger-roster faults remain. See the
+[reader contract](src/phantowd-api/internal/policyevidencefs/README.md#explicit-sessionhistory-profile--m12c5).
+
 ## Unified session/history diagnosis — internal/QEMU
 
 Session declarations, exact opening checkpoint/current and complete operation

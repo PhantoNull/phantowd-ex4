@@ -18,7 +18,7 @@ import (
 func TestCloseFaultMatrixWithoutMountAdmission(t *testing.T) {
 	// Native WSL need not support unique mount IDs: this tests actual Close
 	// over owned synthetic descriptors, NOT Open/Observe admission/lifecycle.
-	for _, count := range []int{5, 6} {
+	for _, count := range []int{5, 6, 8} {
 		t.Run(fmt.Sprint(count), func(t *testing.T) {
 			root := t.TempDir()
 			err := exerciseCloseFaultMatrixQEMU(context.Background(), count, func(boundary int, after bool) (*Observer, error) {
@@ -27,6 +27,12 @@ func TestCloseFaultMatrixWithoutMountAdmission(t *testing.T) {
 					return nil, err
 				}
 				s := &state{watch: -1, closeFile: func(f *os.File) error { return f.Close() }}
+				dirs := 3
+				if count == 8 {
+					dirs = 4
+					s.sessionProfile, s.historyProfile = true, true
+					s.historyFiles = make([]object, 4)
+				}
 				a := &Observer{state: s}
 				s.self = a
 				var err error
@@ -34,7 +40,7 @@ func TestCloseFaultMatrixWithoutMountAdmission(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				for index := range 3 {
+				for index := range dirs {
 					path := filepath.Join(dir, fmt.Sprintf("dir-%d", index))
 					if err := os.Mkdir(path, 0700); err != nil {
 						return nil, err
@@ -48,12 +54,12 @@ func TestCloseFaultMatrixWithoutMountAdmission(t *testing.T) {
 						return nil, err
 					}
 				}
-				for index := 0; index < count-3; index++ {
+				for index := 0; index < count-dirs; index++ {
 					file, err := os.CreateTemp(dir, "file-")
 					if err != nil {
 						return nil, err
 					}
-					s.files[index].file = file
+					s.fileObjects()[index].file = file
 				}
 				return a, nil
 			})

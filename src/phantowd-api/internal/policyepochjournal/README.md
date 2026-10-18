@@ -79,6 +79,17 @@ This method does not establish the caller data's origin or grant boot authority.
 The private history writer supplies its actual retained census and exact current
 under all original role locks; product startup/recovery remain unwired.
 
+The pure `MatchObservedHistory` adapter also accepts a bounded existing journal
+DATA slot and independently expected installation, checkpoint/current and decoded
+history. It uses this same strict envelope/record/joined comparison, not another
+format. Foreign identity cannot self-certify through the document's own field;
+absent/unavailable journal remains incomplete and cannot hide malformed present
+history. It performs no file access or authority transfer. The explicit
+[read-only session/history collector](../policyevidencefs/README.md#explicit-sessionhistory-profile--m12c5)
+supplies complete original-file reads under its own four directory locks. That
+collector never upgrades this journal or adopts a writer; its separately acquired
+observation locks are not uninterrupted writer authority or boot admission.
+
 Each publication reuses the actual write/file-sync/close/rename/directory-sync
 transaction once, then checks exact readback. Any admitted error, uncertain result
 or late cancellation latches review, even if the complete record is visible.

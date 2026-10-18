@@ -965,6 +965,24 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   QEMU tooling and measure cost first; no new default historical build stages.
   This still cannot supply complete product credential/identity/registry/secret/
   network roles, succession/retention, consumer settlement or recovery permission.
+  **M1.2c.5 local acceptance:** explicit OpenSessionHistory/ObserveSession uses
+  original root/policy/operations/session locks and the existing no-atime/census/
+  unique-mount/watch engine, with pure strict expected-identity journal/named-
+  history bridges. All three pending roles latch review before any content read;
+  wrong-profile methods refuse, old profiles never autodetect. Portable Windows
+  bridges and pinned native vet/scoped units/race3 pass; positive native root
+  lifecycles skip without unique IDs. Native Close-only eight-position two-op
+  roster controls pass before/after close, no raw-FD retry/recycled-FD damage.
+  Actual standard ARM10 scenarios twice cover closed/open/missing, three pending,
+  restored file/mount, malformed and read-error cases. Four actual locks, owned
+  checkpoint, copied/wrong-profile refusal, sticky review, byte/stat/atime and FD
+  invariance/known-name disposal pass with all old proof and unchanged budgets.
+  **Next:** qualify all constructor/temporary-witness/cursor/watch-close failures,
+  larger rosters/namespace/content/bounds and full role bundle. These synthetic
+  observation locks do not grant writer handoff/reopen, pristine, checkpoint
+  provenance/succession, durable quarantine/reconciliation or product admission.
+  Keep actual writer-process/reboot/medium/physical and release gates separate;
+  no boot/recovery default follows from matching records.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:
