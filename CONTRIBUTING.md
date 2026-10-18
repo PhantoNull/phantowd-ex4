@@ -24,6 +24,16 @@ and checks the installed SDK before testing. A module's `go` directive is its
 minimum language/toolchain requirement, not the CI compiler selector. Pin-only
 changes trigger host CI as well as the applicable firmware qualification.
 
+The same host workflow covers API-source changes with native Linux API vet,
+ordinary tests, race tests and QEMU-tagged vet plus the proc-diagnostic contract,
+using that exact SDK. It also checks the memory-only browser policy backend.
+This stays one bounded host job: no Docker build, kernel compilation or QEMU
+boot. It does not replace ARM execution, positive privileged lifecycle tests or
+firmware qualification. Native tests may explicitly skip unsupported/root-only
+cases; inspect the actual logs rather than treating a green job as those proofs.
+The workflow can be dispatched on a contributor branch before requesting heavy
+integration checks; it does not automatically hold/cancel a separate ARM job.
+
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,
 concurrency and interruption tests for the behavior being changed. Exercise

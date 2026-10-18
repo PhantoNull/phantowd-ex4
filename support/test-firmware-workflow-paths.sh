@@ -449,6 +449,7 @@ EOF
 
 require_develop_push "$host_workflow"
 require_triggered_path "$host_workflow" versions.env
+require_triggered_path "$host_workflow" 'src/phantowd-api/**'
 for path in \
     'support/container/build-qemu-lio-kernel.sh' \
     'support/container/build-qemu-iscsi-client.sh' \
