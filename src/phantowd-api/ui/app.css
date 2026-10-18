@@ -180,6 +180,9 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 .policy-grid label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
 .policy-grid input, .policy-grid select { width: 100%; min-height: 42px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--canvas); font: inherit; }
 .policy-grid small { color: var(--muted); line-height: 1.5; }
+#network-draft-fields > fieldset { grid-column: 1 / -1; min-width: 0; margin: 0; }
+#network-draft-fields textarea { width: 100%; min-width: 0; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--canvas); font: inherit; }
+#network-draft-replace { width: auto; align-self: flex-start; }
 .policy-grid input:focus-visible, .policy-grid select:focus-visible, .policy-panel summary:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
 .policy-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .policy-panel h3 { font-size: 14px; }

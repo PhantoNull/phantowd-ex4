@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
 import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture } from "./tests/test-iscsi-panel.mjs";
-import { networkPolicyFixture } from "./tests/test-network-panel.mjs";
+import { networkPolicyFixture, networkDraftFieldsFixture } from "./tests/test-network-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 import { exerciseServicePolicy } from "./browser-service-policy-flow.mjs";
 
@@ -518,7 +518,66 @@ try {
     assert.equal(await evaluate("document.getElementById('network-result').hidden"), true);
     await clickVisible("network-clear");
     assert.equal(await evaluate("document.getElementById('network-document').value"), "");
-    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/network/preview").length, 2);
+    await clickVisible("network-draft-toggle");
+    const fields = networkDraftFieldsFixture();
+    const edit = async (name, value) => {
+      await clickVisible(`network-draft-${name}`);
+      await replaceInput(`network-draft-${name}`, value);
+    };
+    await edit("revision", fields.revision);
+    await edit("hostname", fields.hostname);
+    await clickVisible("network-draft-lan-1-ipv4-mode");
+    await key("ArrowDown", "ArrowDown", 40); await key("ArrowDown", "ArrowDown", 40); await key("Enter", "Enter", 13); await key("Tab", "Tab", 9);
+    assert.equal(await evaluate("document.activeElement.id"), "network-draft-lan-1-ipv4-addresses");
+    await replaceInput("network-draft-lan-1-ipv4-addresses", fields["lan-1-ipv4-addresses"]);
+    await key("Tab", "Tab", 9); await replaceInput("network-draft-lan-1-ipv4-gateway", fields["lan-1-ipv4-gateway"]);
+    await key("Tab", "Tab", 9); await replaceInput("network-draft-lan-1-ipv4-metric", fields["lan-1-ipv4-metric"]);
+    await key("Tab", "Tab", 9); await key("ArrowDown", "ArrowDown", 40); await key("ArrowDown", "ArrowDown", 40); await key("Tab", "Tab", 9);
+    await replaceInput("network-draft-lan-1-ipv6-addresses", fields["lan-1-ipv6-addresses"]);
+    await key("Tab", "Tab", 9); await replaceInput("network-draft-lan-1-ipv6-gateway", fields["lan-1-ipv6-gateway"]);
+    await key("Tab", "Tab", 9); await replaceInput("network-draft-lan-1-ipv6-metric", fields["lan-1-ipv6-metric"]);
+    await clickVisible("network-draft-lan-2-ipv4-mode");
+    await key("ArrowDown", "ArrowDown", 40); await key("Enter", "Enter", 13); await key("Tab", "Tab", 9);
+    await clickVisible("network-draft-lan-2-ipv6-mode");
+    await key("ArrowDown", "ArrowDown", 40); await key("Enter", "Enter", 13); await key("Tab", "Tab", 9);
+    await clickVisible("network-draft-dns-source");
+    await key("ArrowDown", "ArrowDown", 40); await key("Enter", "Enter", 13); await key("Tab", "Tab", 9);
+    await edit("search-domains", fields["search-domains"]);
+    await edit("routes", fields.routes);
+    for (const [name, value] of Object.entries(fields)) {
+      assert.equal(await evaluate(`document.getElementById('network-draft-${name}').value`), value, `actual guided field ${name}`);
+    }
+    await clickVisible("network-draft-build");
+    await until(() => evaluate(`document.getElementById('network-status').textContent.includes('Guided proposal validated') && !document.getElementById('network-draft-build').disabled`), browser, "actual guided network HTTP validation");
+    const guidedText = await evaluate("document.getElementById('network-document').value");
+    assert.match(guidedText, /"revision":18446744073709551615,/);
+    assert.deepEqual(JSON.parse(guidedText.replace('"revision":18446744073709551615', '"revision":1')), networkPolicyFixture());
+    for (const width of [1365, 390, 320]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await evaluate("document.getElementById('network-draft-fields').scrollIntoView({block:'start'})");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), true, `guided network page overflow at ${width}`);
+      assert.equal(await evaluate("[...document.querySelectorAll('#network-draft-fields input, #network-draft-fields select, #network-draft-fields textarea')].every(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().right <= document.documentElement.clientWidth)"), true);
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(shot.data.length <= 8 * 1024 * 1024);
+      await writeFile(join(artifacts, `network-guided-${width}.png`), Buffer.from(shot.data, "base64"));
+    }
+    await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
+    await clickVisible("network-draft-build");
+    assert.match(await evaluate("document.getElementById('network-status').textContent"), /Confirm complete replacement/);
+    assert.equal(await evaluate("document.getElementById('network-document').value"), guidedText);
+    await key("Tab", "Tab", 9, 8);
+    assert.equal(await evaluate("document.activeElement.id"), "network-draft-replace");
+    await key(" ", "Space", 32);
+    assert.equal(await evaluate("document.getElementById('network-draft-replace').checked"), true);
+    await key("Tab", "Tab", 9); await key("Enter", "Enter", 13);
+    await until(() => evaluate(`document.getElementById('network-status').textContent.includes('Guided proposal validated') && !document.getElementById('network-draft-build').disabled`), browser, "explicit guided replacement HTTP validation");
+    assert.equal(await evaluate("document.getElementById('network-document').value"), guidedText);
+    assert.equal(await evaluate("document.getElementById('network-draft-replace').checked"), false);
+    await clickVisible("network-clear");
+    for (const id of ["hostname", "routes", "lan-1-ipv4-addresses", "lan-1-ipv6-gateway"]) {
+      assert.equal(await evaluate(`document.getElementById('network-draft-${id}').value`), "");
+    }
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/network/preview").length, 4);
   }
 
   // Use actual browser keyboard dispatch, not HTMLElement.focus(), for Tab.
@@ -675,6 +734,8 @@ try {
     iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
     service_policy_actual_http: servicePolicyResult ?? null,
     network_preview_actual_http: networkMode,
+    network_guided_draft_actual_http: networkMode,
+    network_guided_replacement_consent: networkMode,
     network_base_refusal_actual_http: networkMode,
     local_inline_images: localInlineImages,
     same_origin_network_requests: cdp.requests.length - localInlineImages,

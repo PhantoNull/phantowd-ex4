@@ -3469,6 +3469,21 @@ board network observations limited.
   builds; runtime/API changes still select their original checks. No kernel
   inventory, resolver or store is wired here. This closes neither physical-slot
   binding nor M6.2 trial/recovery, production networking or product state gates.
+  **M6.1h — Guided complete proposals (host development workflow):** use explicit
+  hostname/revision, both logical slots and IPv4/IPv6 modes/aliases/defaults,
+  DNS/search fields and up to16 additional routes. No enabled-family or /24
+  default, existing-JSON import or second address parser. Emit canonical uint64
+  revisions exactly. Existing nonempty text requires one-shot whole-replacement
+  consent, cleared by input edits; publish new text only after the existing
+  server validates it and every projected setting matches. Refusal, timeout,
+  drifted reply and retired work preserve original text. Reuse the single-flight
+  ten-second operation,16/32KiB limits, auth/CSRF and clear/logout privacy.
+  Acceptance includes pure mode/list/route/revision guards, server refusals,
+  manual/guided concurrency, edited/cleared/logged-out/timed-out work and real
+  browser dual-stack /16 plus IPv6/gateway/route fields at1365/390/320px.
+  This is a whole-proposal builder, not current-state editing, persistence,
+  qualified physical-slot mapping or application. ARM embedded-asset execution
+  and full product networking remain separate from host/browser evidence.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

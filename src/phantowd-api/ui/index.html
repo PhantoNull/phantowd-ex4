@@ -367,7 +367,7 @@
       <section class="policy-panel" aria-labelledby="network-title">
         <p class="eyebrow">MANUAL DESIRED-POLICY REVIEW</p>
         <h2 id="network-title">Network configuration preview</h2>
-        <p id="network-help" class="policy-help">Review one complete desired network JSON policy: hostname, logical lan-1/lan-2 slots, IPv4/IPv6, routes and DNS. This does not load current settings, discover physical interfaces, check external conflicts, save configuration or change networking. There is no apply action.</p>
+        <p id="network-help" class="policy-help">Review one complete desired network JSON policy, or build a new proposal with the guided fields below: hostname, logical lan-1/lan-2 slots, IPv4/IPv6, routes and DNS. This does not load current settings, discover physical interfaces, check external conflicts, save configuration or change networking. There is no apply action.</p>
         <form id="network-form" autocomplete="off" aria-describedby="network-help network-privacy">
           <label for="network-document">Complete desired network policy JSON</label>
           <textarea id="network-document" class="iscsi-document" rows="10" maxlength="16384" spellcheck="false" autocomplete="off" required></textarea>
@@ -376,6 +376,50 @@
             <button id="network-submit" class="refresh-button" type="submit">Review desired network settings</button>
             <button id="network-clear" class="refresh-button" type="button">Clear network review</button>
           </div>
+          <details>
+            <summary id="network-draft-toggle">Build a complete network proposal without writing JSON</summary>
+            <p id="network-draft-help" class="policy-help">This creates a whole replacement proposal, not an edit of existing JSON or current network settings. Nothing is enabled by default: select at least one active family. Slots are logical labels, not verified physical sockets. Enter addresses with explicit prefixes; no /24 is assumed. Lists accept whitespace-separated entries. Blank metric means no default route; enter 1–65535 to request one. Static defaults also require a gateway. Leave addresses/gateway blank for dynamic or disabled families, and metric blank for disabled families. The server validates the complete proposal before the JSON is replaced.</p>
+            <fieldset id="network-draft-fields" class="policy-grid" aria-describedby="network-draft-help">
+              <legend>New desired settings — not current device settings</legend>
+              <label>Proposal revision (positive uint64, not a saved-state revision)<input id="network-draft-revision" value="1" maxlength="20" inputmode="numeric" spellcheck="false"></label>
+              <label>Desired hostname<input id="network-draft-hostname" maxlength="63" spellcheck="false" placeholder="nas-example"></label>
+              <fieldset class="policy-grid">
+                <legend>lan-1 / IPv4 — logical slot</legend>
+                <label>Addressing<select id="network-draft-lan-1-ipv4-mode"><option value="disabled">Disabled</option><option value="dhcp">DHCP</option><option value="static">Static</option></select></label>
+                <label>Static addresses (up to 4)<textarea id="network-draft-lan-1-ipv4-addresses" rows="2" maxlength="1024" spellcheck="false" placeholder="192.0.2.10/16"></textarea></label>
+                <label>Static default gateway<input id="network-draft-lan-1-ipv4-gateway" maxlength="64" spellcheck="false"></label>
+                <label>Default-route metric (blank = none)<input id="network-draft-lan-1-ipv4-metric" maxlength="5" inputmode="numeric"></label>
+              </fieldset>
+              <fieldset class="policy-grid">
+                <legend>lan-1 / IPv6 — logical slot</legend>
+                <label>Addressing<select id="network-draft-lan-1-ipv6-mode"><option value="disabled">Disabled</option><option value="auto">Automatic</option><option value="static">Static</option></select></label>
+                <label>Static addresses (up to 4)<textarea id="network-draft-lan-1-ipv6-addresses" rows="2" maxlength="1024" spellcheck="false" placeholder="2001:db8:1::10/64"></textarea></label>
+                <label>Static default gateway<input id="network-draft-lan-1-ipv6-gateway" maxlength="64" spellcheck="false"></label>
+                <label>Default-route metric (blank = none)<input id="network-draft-lan-1-ipv6-metric" maxlength="5" inputmode="numeric"></label>
+              </fieldset>
+              <fieldset class="policy-grid">
+                <legend>lan-2 / IPv4 — logical slot</legend>
+                <label>Addressing<select id="network-draft-lan-2-ipv4-mode"><option value="disabled">Disabled</option><option value="dhcp">DHCP</option><option value="static">Static</option></select></label>
+                <label>Static addresses (up to 4)<textarea id="network-draft-lan-2-ipv4-addresses" rows="2" maxlength="1024" spellcheck="false"></textarea></label>
+                <label>Static default gateway<input id="network-draft-lan-2-ipv4-gateway" maxlength="64" spellcheck="false"></label>
+                <label>Default-route metric (blank = none)<input id="network-draft-lan-2-ipv4-metric" maxlength="5" inputmode="numeric"></label>
+              </fieldset>
+              <fieldset class="policy-grid">
+                <legend>lan-2 / IPv6 — logical slot</legend>
+                <label>Addressing<select id="network-draft-lan-2-ipv6-mode"><option value="disabled">Disabled</option><option value="auto">Automatic</option><option value="static">Static</option></select></label>
+                <label>Static addresses (up to 4)<textarea id="network-draft-lan-2-ipv6-addresses" rows="2" maxlength="1024" spellcheck="false"></textarea></label>
+                <label>Static default gateway<input id="network-draft-lan-2-ipv6-gateway" maxlength="64" spellcheck="false"></label>
+                <label>Default-route metric (blank = none)<input id="network-draft-lan-2-ipv6-metric" maxlength="5" inputmode="numeric"></label>
+              </fieldset>
+              <label>DNS mode<select id="network-draft-dns-mode"><option value="automatic">Automatic</option><option value="manual">Manual</option></select></label>
+              <label>Automatic DNS source (choose none for manual DNS)<select id="network-draft-dns-source"><option value="lan-1">lan-1</option><option value="lan-2">lan-2</option><option value="">None — manual DNS</option></select></label>
+              <label>Manual DNS servers (up to 3, blank for automatic)<textarea id="network-draft-dns-servers" rows="2" maxlength="1024" spellcheck="false"></textarea></label>
+              <label>Search domains (up to 6, optional)<textarea id="network-draft-search-domains" rows="2" maxlength="2048" spellcheck="false"></textarea></label>
+              <label>Additional routes (up to 16, one per line: slot destination gateway metric)<textarea id="network-draft-routes" rows="3" maxlength="4096" spellcheck="false" placeholder="lan-1 198.51.100.0/24 192.0.2.2 300"></textarea></label>
+              <label><input id="network-draft-replace" type="checkbox">Replace all existing JSON after successful validation. No current field or route will be preserved automatically.</label>
+            </fieldset>
+            <button id="network-draft-build" class="refresh-button" type="button">Validate and stage complete proposal</button>
+          </details>
         </form>
         <p id="network-status" class="policy-help" role="status">No current preview. Nothing was saved or applied.</p>
         <div id="network-result" hidden></div>

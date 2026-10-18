@@ -1745,6 +1745,23 @@ non-cooperative replies. Input edits or session retirement discard old work;
 late401 cannot clear a newer preview. Logout clears private input/result; nothing
 is kept in browser storage and no request is retried automatically.
 
+The optional guided builder creates a **new complete proposal**, never imports
+or repairs existing JSON or current device settings. Explicit fields cover both
+logical slots, IPv4/IPv6 modes and static aliases, opt-in default metrics/gateways,
+hostname, DNS and up to16 additional routes (`slot destination gateway metric`,
+one per line). All address families initially remain disabled; at least one must
+be selected and pass server validation. No subnet size is assumed. The canonical
+positive uint64 revision is emitted exactly, including values above JavaScript's
+safe-integer range. Address/conflict semantics stay in the existing Go validator.
+
+Nonempty original JSON requires explicit one-shot whole-replacement consent;
+editing any proposal field clears that consent. The original text is replaced
+only after the bounded server reply matches every submitted setting. Refusal,
+timeout, input/session retirement or a mismatched reply preserves the original.
+The builder shares the existing single-flight admission and ten-second lifetime,
+and clear/logout removes all private fields. No new route, save/apply operation,
+browser persistence or network side effect is introduced.
+
 For a synthetic proposal suitable for local development (not an installation
 recommendation), paste this complete document:
 
@@ -1754,7 +1771,8 @@ recommendation), paste this complete document:
 
 Host/DOM tests cover auth/body/precision/refusal and retirement boundaries. An
 opt-in real-browser profile exercises actual memory-only Go authentication,
-keyboard proposal submission, strict refusal, clear and 1365/390/320px layouts:
+keyboard raw and guided dual-stack proposal submission, strict refusal, explicit
+whole-replacement consent, clear and 1365/390/320px layouts:
 append `--network-preview` to the browser command below. The original profile
 continues to exercise iSCSI instead; neither mode claims the other's checks.
 Both retain original 90-second / 32-pointer-action limits and cookie-revocation

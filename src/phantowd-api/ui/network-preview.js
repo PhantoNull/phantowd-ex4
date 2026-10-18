@@ -5,6 +5,68 @@
 
 const networkPreviewPath = "/api/v1/network/preview";
 const networkPreviewState = { operation: null };
+const networkDraftFields = Object.freeze(["revision", "hostname", "dns-mode", "dns-source", "dns-servers", "search-domains", "routes",
+  ...["lan-1", "lan-2"].flatMap(slot => ["ipv4", "ipv6"].flatMap(family =>
+    ["mode", "addresses", "gateway", "metric"].map(key => `${slot}-${family}-${key}`)))]);
+const networkDraftDefaults = Object.freeze({ revision: "1", "dns-mode": "automatic", "dns-source": "lan-1",
+  "lan-1-ipv4-mode": "disabled", "lan-1-ipv6-mode": "disabled", "lan-2-ipv4-mode": "disabled", "lan-2-ipv6-mode": "disabled" });
+
+// Construct a NEW complete proposal, never parse/repair existing JSON. Address,
+// gateway, DNS and cross-slot semantics remain the existing server's job.
+function buildNetworkDraft(fields) {
+  const invalid = () => { throw new Error("Invalid network draft"); };
+  for (const key of networkDraftFields) if (typeof fields[key] !== "string" || fields[key].length > 4096) invalid();
+  const revision = fields.revision;
+  if (!/^[1-9][0-9]{0,19}$/.test(revision) || (revision.length === 20 && revision > "18446744073709551615") ||
+      !fields.hostname || fields.hostname.length > 63) invalid();
+  const words = (value, maximum) => {
+    const list = value.trim() ? value.trim().split(/\s+/) : [];
+    if (list.length > maximum || list.some(v => v.length > 253)) invalid();
+    return list;
+  };
+  const metric = value => {
+    if (!/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 65535) invalid();
+    return Number(value);
+  };
+  const policy = { format: "phantowd-network-policy", schema_version: 1, hostname: fields.hostname,
+    interfaces: ["lan-1", "lan-2"].map(slot => {
+      const port = { slot };
+      for (const family of ["ipv4", "ipv6"]) {
+        const prefix = `${slot}-${family}-`, mode = fields[prefix + "mode"];
+        const addresses = words(fields[prefix + "addresses"], 4), gateway = fields[prefix + "gateway"], priority = fields[prefix + "metric"];
+        if (!["disabled", family === "ipv4" ? "dhcp" : "auto", "static"].includes(mode) ||
+            (mode === "static" ? !addresses.length : addresses.length || gateway) ||
+            (mode === "disabled" && priority) || (gateway && !priority) || (mode === "static" && priority && !gateway)) invalid();
+        port[family] = { mode, addresses, default_route: priority !== "", ...(gateway ? { gateway } : {}), metric: priority ? metric(priority) : 0 };
+      }
+      return port;
+    }), routes: [], dns: { mode: fields["dns-mode"], servers: words(fields["dns-servers"], 3), search_domains: words(fields["search-domains"], 6) } };
+  const lines = fields.routes.trim() ? fields.routes.trim().split(/\r?\n/) : [];
+  if (lines.length > 16) invalid();
+  policy.routes = lines.map(line => {
+    const parts = words(line, 4);
+    if (parts.length !== 4 || !["lan-1", "lan-2"].includes(parts[0])) invalid();
+    return { slot: parts[0], destination: parts[1], gateway: parts[2], metric: metric(parts[3]) };
+  });
+  if (policy.dns.mode === "automatic") {
+    if (!["lan-1", "lan-2"].includes(fields["dns-source"]) || policy.dns.servers.length) invalid();
+    policy.dns.source = fields["dns-source"];
+  } else if (policy.dns.mode !== "manual" || !policy.dns.servers.length || fields["dns-source"] !== "") invalid();
+  // Keep all uint64 revisions exact without sending a JSON string or using an
+  // unsafe Number. Only the canonical decimal above is emitted unquoted.
+  const text = `{"revision":${revision},${JSON.stringify(policy).slice(1)}`;
+  if (new TextEncoder().encode(text).byteLength > 16384) invalid();
+  return { text, revision, policy };
+}
+
+function networkDraftMatches(preview, draft) {
+  const fields = p => ({ hostname: p.hostname, interfaces: p.interfaces.map(port => ({ slot: port.slot,
+    ...Object.fromEntries(["ipv4", "ipv6"].map(key => { const f = port[key]; return [key,
+      { mode: f.mode, addresses: f.addresses, default_route: f.default_route, gateway: f.gateway ?? null, metric: f.metric }]; })) })),
+    routes: p.routes.map(r => ({ slot: r.slot, destination: r.destination, gateway: r.gateway, metric: r.metric })),
+    dns: { mode: p.dns.mode, source: p.dns.source ?? null, servers: p.dns.servers, search_domains: p.dns.search_domains } });
+  return preview.revision === draft.revision && JSON.stringify(fields(preview)) === JSON.stringify(fields(draft.policy));
+}
 
 function retireNetworkPreview(clearInput = false) {
   const operation = networkPreviewState.operation;
@@ -13,9 +75,16 @@ function retireNetworkPreview(clearInput = false) {
   if (operation) clearTimeout(operation.timer);
   byId("network-submit").disabled = false;
   byId("network-submit").removeAttribute("aria-busy");
+  byId("network-draft-build").disabled = false;
+  byId("network-draft-build").removeAttribute("aria-busy");
+  byId("network-draft-fields").disabled = false;
   byId("network-result").hidden = true;
   byId("network-result").replaceChildren();
-  if (clearInput) byId("network-document").value = "";
+  byId("network-draft-replace").checked = false;
+  if (clearInput) {
+    byId("network-document").value = "";
+    for (const field of networkDraftFields) byId(`network-draft-${field}`).value = networkDraftDefaults[field] ?? "";
+  }
   setText("network-status", "No current preview. Nothing was saved or applied.");
 }
 
@@ -84,11 +153,20 @@ function renderNetworkPreview(value) {
   byId("network-result").hidden = false;
 }
 
-async function submitNetworkPreview(event) {
+async function submitNetworkPreview(event, guided = false) {
   event?.preventDefault();
   if (networkPreviewState.operation) return;
+  const replace = byId("network-draft-replace").checked === true;
   retireNetworkPreview();
-  const body = byId("network-document").value;
+  let draft;
+  if (guided) {
+    if (byId("network-document").value !== "" && !replace) {
+      setText("network-status", "Existing JSON is unchanged. Confirm complete replacement or clear it before building a guided proposal."); return;
+    }
+    try { draft = buildNetworkDraft(Object.fromEntries(networkDraftFields.map(key => [key, byId(`network-draft-${key}`).value]))); }
+    catch { setText("network-status", "Guided proposal refused. Check modes, explicit defaults, bounded lists, revision and DNS source. Existing JSON is unchanged; nothing was sent."); return; }
+  }
+  const body = draft ? draft.text : byId("network-document").value;
   if (!body.trim() || body.length > 16384 || new TextEncoder().encode(body).byteLength > 16384) {
     setText("network-status", "Provide one complete desired network policy, at most 16384 UTF-8 bytes. Nothing was sent."); return;
   }
@@ -106,6 +184,8 @@ async function submitNetworkPreview(event) {
     return response;
   };
   byId("network-submit").disabled = true; byId("network-submit").setAttribute("aria-busy", "true");
+  byId("network-draft-build").disabled = true; byId("network-draft-build").setAttribute("aria-busy", "true");
+  byId("network-draft-fields").disabled = true;
   setText("network-status", "Validating submitted desired settings only…");
   operation.timer = setTimeout(() => operation.controller.abort(), 10000);
   let abort;
@@ -118,8 +198,11 @@ async function submitNetworkPreview(event) {
       const reply = await request(networkPreviewPath, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token }, body });
       const value = await readAdministrativeJSON(reply, networkPreviewPath, signal, "POST");
       if (!current()) throw canceled();
+      validateNetworkPreview(value);
+      if (draft && !networkDraftMatches(value, draft)) throw new Error("Draft preview mismatch");
       renderNetworkPreview(value);
-      setText("network-status", "Submitted desired settings validated for review only. Nothing was saved or applied; live networking was not checked.");
+      if (draft) byId("network-document").value = draft.text;
+      setText("network-status", draft ? "Guided proposal validated and staged as complete JSON only. Nothing was saved or applied; live networking was not checked." : "Submitted desired settings validated for review only. Nothing was saved or applied; live networking was not checked.");
     };
     await new Promise((resolve, reject) => {
       abort = () => reject(canceled());
@@ -138,6 +221,8 @@ async function submitNetworkPreview(event) {
     if (networkPreviewState.operation === operation) {
       networkPreviewState.operation = null;
       byId("network-submit").disabled = false; byId("network-submit").removeAttribute("aria-busy");
+      byId("network-draft-build").disabled = false; byId("network-draft-build").removeAttribute("aria-busy");
+      byId("network-draft-fields").disabled = false;
     }
   }
 }
@@ -145,3 +230,10 @@ async function submitNetworkPreview(event) {
 byId("network-form").addEventListener("submit", submitNetworkPreview);
 byId("network-document").addEventListener("input", () => retireNetworkPreview());
 byId("network-clear").addEventListener("click", clearNetworkPreview);
+byId("network-draft-build").addEventListener("click", event => submitNetworkPreview(event, true));
+for (const key of networkDraftFields) byId(`network-draft-${key}`).addEventListener("input", () => retireNetworkPreview());
+byId("network-draft-replace").addEventListener("input", () => {
+  const selected = byId("network-draft-replace").checked;
+  retireNetworkPreview();
+  byId("network-draft-replace").checked = selected;
+});

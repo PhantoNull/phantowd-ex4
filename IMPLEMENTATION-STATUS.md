@@ -770,6 +770,26 @@ or establish repair of earlier Samba intermittency. No successful full/audit,
 hosted/merge, product activation or physical EX4 qualification is inferred.
 No persistent image, volume or device contents are enlarged by this correction.
 
+## M6.1h guided complete network proposals — host development workflow
+
+The panel now builds a complete network proposal from explicit hostname,
+revision, two logical slots, IPv4/IPv6 modes/aliases/defaults, DNS and additional
+route fields. All families start disabled; there is no assumed subnet prefix.
+Exact uint64 revisions remain unrounded. Existing JSON is not parsed or repaired:
+one-shot explicit consent is required to replace nonempty text, and replacement
+happens only after the existing server validates and returns matching settings.
+No new endpoint, state writer, network operation or service activation exists.
+
+The builder retains the original16/32KiB bounds and one ten-second manual/guided
+operation. Refusals, mismatched replies and canceled/retired work preserve original
+text; clear/logout erases private fields. Complete DOM and Windows vet/ordinary
+Go tests plus the original tagged HTTP/HTTPS asset checks pass. Actual Edge155
+network mode passes four explicit preview POSTs, exact max revision, dual-stack
+/16/IPv6/gateway/route entry, keyboard replacement consent and three widths with
+31of32 pointer actions. All four separate browser modes pass with byte-exact
+current assets and disposed profiles. Native hosted and ARM execution remain
+separate from this host evidence; M6.1g's older ARM proof is not inherited.
+
 ## M6.1g manual network proposal preview — host/browser/ARM prototype
 
 The authenticated manual network panel now reviews one submitted desired
