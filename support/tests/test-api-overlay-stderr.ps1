@@ -4,6 +4,12 @@
 param()
 $ErrorActionPreference = 'Stop'
 $wrapper = Join-Path $PSScriptRoot '../test-api-overlay.ps1'
+# This fixture runs on Windows and Linux: do not evaluate the Windows-only
+# default VHDX path or require a C: provider. Every path remains mocked.
+$fixtureArguments = @{
+    ReuseBaseVolumeProbe = $true
+    DockerDataVhdxPath = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'phantowd-synthetic-overlay.vhdx')
+}
 $previousExitCode = $global:LASTEXITCODE
 if (Get-Variable phantowdOverlayWrapperTest -Scope Global -ErrorAction SilentlyContinue) { throw 'Overlay test context already active.' }
 $global:phantowdOverlayWrapperTest = @{
@@ -18,7 +24,7 @@ $global:phantowdOverlayWrapperTest = @{
 function Test-Path { param($LiteralPath, $PathType) $true }
 function Resolve-Path {
     param($Path, $LiteralPath)
-    if ($LiteralPath) { [pscustomobject]@{Path = 'C:\synthetic-overlay-base'} }
+    if ($LiteralPath) { [pscustomobject]@{Path = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'phantowd-synthetic-overlay-base')} }
     else { Microsoft.PowerShell.Management\Resolve-Path -Path $Path }
 }
 function Get-Item {
@@ -45,7 +51,7 @@ function docker {
 }
 try {
     $state = $global:phantowdOverlayWrapperTest
-    $rows = @(& $wrapper -ReuseBaseVolumeProbe 2>&1 | ForEach-Object { $_.ToString() })
+    $rows = @(& $wrapper @fixtureArguments 2>&1 | ForEach-Object { $_.ToString() })
     if (-not ($rows -match 'synthetic native diagnostic') -or -not ($rows -match 'synthetic terminal output')) {
         throw 'Successful native diagnostics must not discard terminal output.'
     }
@@ -61,7 +67,7 @@ try {
         $state.Calls.Clear()
         $state.Exit = $code
         $refused = $false
-        try { & $wrapper -ReuseBaseVolumeProbe 2>&1 | ForEach-Object { $_.ToString() } | Out-Null } catch { $refused = $true }
+        try { & $wrapper @fixtureArguments 2>&1 | ForEach-Object { $_.ToString() } | Out-Null } catch { $refused = $true }
         if (-not $refused -or @($state.Calls | Where-Object { $_[0] -eq 'run' }).Count -ne 1) {
             throw 'Failure, timeout or OOM must refuse without retry.'
         }
@@ -71,7 +77,7 @@ try {
         $state.Calls.Clear()
         $state.Failure = $failure
         $refused = $false
-        try { & $wrapper -ReuseBaseVolumeProbe | Out-Null } catch { $refused = $true }
+        try { & $wrapper @fixtureArguments | Out-Null } catch { $refused = $true }
         if (-not $refused -or @($state.Calls | Where-Object { $_[0] -eq 'run' }).Count -ne 0) {
             throw 'Missing dependency must refuse before run.'
         }
@@ -79,7 +85,7 @@ try {
     $state.Failure = ''
     $state.CommandMissing = $true
     $refused = $false
-    try { & $wrapper -ReuseBaseVolumeProbe 2>&1 | ForEach-Object { $_.ToString() } | Out-Null } catch { $refused = $true }
+    try { & $wrapper @fixtureArguments 2>&1 | ForEach-Object { $_.ToString() } | Out-Null } catch { $refused = $true }
     if (-not $refused) { throw 'Missing native invocation must not inherit a previous zero exit.' }
     'PHANTOWD_API_OVERLAY_WRAPPER_READY native_stderr=true nonzero_refused=true original_limits=true scope=local-command-boundary-only'
 } finally {

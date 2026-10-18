@@ -42,6 +42,9 @@ requires executable tmpfs, so CI prepares one private 256 MiB RAM mount under
 the runner's temporary directory and verifies unmount during cleanup. Only that
 ephemeral runner mount uses sudo; tests keep the ordinary runner identity.
 No shared mount is remounted, no physical device is supplied and no guest boots.
+All remaining command/mock and syntax contracts also precede Go SDK work; a
+portable fixture must supply synthetic paths rather than evaluate Windows-only
+launcher defaults on a Linux runner. Keep every existing check and budget.
 
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,

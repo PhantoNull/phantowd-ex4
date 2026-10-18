@@ -250,6 +250,74 @@ jobs:
           python3 -B support/tests/test-qemu-build-feedback.py
           python3 -B support/tests/test-build-jobs.py
 
+      - name: Verify cached-only local wrapper command boundary
+        shell: pwsh
+        run: ./support/tests/test-cached-qemu-wrapper.ps1
+
+      - name: Verify experimental cached host lifecycle with fake local children
+        run: node support/tests/test-cached-qemu-runner.mjs
+
+      - name: Verify cached-only preflight on disposable Linux fixtures
+        run: python3 -B support/tests/test-cached-qemu-preflight.py
+
+      - name: Verify bounded local Linux API wrapper command boundary
+        shell: pwsh
+        run: |
+          ./support/tests/test-api-linux-wrapper.ps1
+          ./support/tests/test-api-overlay-wrapper.ps1
+          ./support/tests/test-api-overlay-stderr.ps1
+
+      - name: Verify SMART wrapper default and bounded command boundary
+        shell: pwsh
+        run: ./support/tests/test-smart-report-wrapper.ps1
+
+      - name: Verify SMART runner markers and disposable cleanup
+        run: python3 -B support/tests/test-smart-replay-contract.py
+
+      - name: Verify invented ATA identity input and projection controls
+        run: python3 -B support/tests/test-smart-replay-identify.py
+
+      - name: Verify SMART producer runner and guest init syntax
+        run: |
+          for script in support/tests/test-qemu-smart-replay.sh support/tests/smart-replay-arm-init.sh; do
+            sh -n "$script"
+          done
+
+      - name: Verify native service launcher refusals
+        run: python3 -B support/tests/test-service-launcher.py
+
+      - name: Verify runtime-loader comparison refusals
+        run: python3 -B support/tests/test-runtime-loader-fixture.py
+
+      - name: Verify atomic-dispatch evidence refusals
+        run: python3 -B support/tests/test-atomic-dispatch-fixture.py
+
+      - name: Verify Samba-root experiment refusals
+        run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify Samba wrapper defaults and bounded command boundary
+        shell: pwsh
+        run: ./support/tests/test-samba-root-wrapper.ps1
+
+      - name: Verify kernel-input invalidation and ACL requirements
+        run: python3 -B support/tests/test-qemu-kernel-inputs.py
+
+      - name: Verify isolated LIO contracts without kernel compilation or guest boot
+        run: |
+          python3 -B support/tests/test-qemu-lio-inputs.py
+          python3 -B support/tests/test-qemu-lio-result.py
+          sh support/tests/test-lio-lun-set.sh "$PWD"
+          for script in support/container/build-qemu-lio-kernel.sh support/container/build-qemu-iscsi-client.sh support/qemu-lio-fixture.sh support/fixtures/qemu-lio-init.sh support/tests/test-qemu-lio-snapshot-temp.sh; do
+            sh -n "$script"
+          done
+
+      - name: Verify LIO local wrapper command boundary without Docker
+        shell: pwsh
+        run: ./support/tests/test-qemu-lio-wrapper.ps1
+
+      - name: Test Stage B kernel-config audit policy
+        run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh
+
       - name: Select pinned host Go SDK
         id: host_go
         shell: bash
@@ -319,71 +387,3 @@ jobs:
           GOTOOLCHAIN: local
           GOFLAGS: -mod=vendor
         run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|BrowserPolicyFixtureActualHTTPRoundTrip|DashboardBrowserAPIFixture)$' .
-
-      - name: Verify cached-only local wrapper command boundary
-        shell: pwsh
-        run: ./support/tests/test-cached-qemu-wrapper.ps1
-
-      - name: Verify experimental cached host lifecycle with fake local children
-        run: node support/tests/test-cached-qemu-runner.mjs
-
-      - name: Verify cached-only preflight on disposable Linux fixtures
-        run: python3 -B support/tests/test-cached-qemu-preflight.py
-
-      - name: Verify bounded local Linux API wrapper command boundary
-        shell: pwsh
-        run: |
-          ./support/tests/test-api-linux-wrapper.ps1
-          ./support/tests/test-api-overlay-wrapper.ps1
-          ./support/tests/test-api-overlay-stderr.ps1
-
-      - name: Verify SMART wrapper default and bounded command boundary
-        shell: pwsh
-        run: ./support/tests/test-smart-report-wrapper.ps1
-
-      - name: Verify SMART runner markers and disposable cleanup
-        run: python3 -B support/tests/test-smart-replay-contract.py
-
-      - name: Verify invented ATA identity input and projection controls
-        run: python3 -B support/tests/test-smart-replay-identify.py
-
-      - name: Verify SMART producer runner and guest init syntax
-        run: |
-          for script in support/tests/test-qemu-smart-replay.sh support/tests/smart-replay-arm-init.sh; do
-            sh -n "$script"
-          done
-
-      - name: Verify native service launcher refusals
-        run: python3 -B support/tests/test-service-launcher.py
-
-      - name: Verify runtime-loader comparison refusals
-        run: python3 -B support/tests/test-runtime-loader-fixture.py
-
-      - name: Verify atomic-dispatch evidence refusals
-        run: python3 -B support/tests/test-atomic-dispatch-fixture.py
-
-      - name: Verify Samba-root experiment refusals
-        run: python3 -B support/tests/test-samba-root-fixture.py
-
-      - name: Verify Samba wrapper defaults and bounded command boundary
-        shell: pwsh
-        run: ./support/tests/test-samba-root-wrapper.ps1
-
-      - name: Verify kernel-input invalidation and ACL requirements
-        run: python3 -B support/tests/test-qemu-kernel-inputs.py
-
-      - name: Verify isolated LIO contracts without kernel compilation or guest boot
-        run: |
-          python3 -B support/tests/test-qemu-lio-inputs.py
-          python3 -B support/tests/test-qemu-lio-result.py
-          sh support/tests/test-lio-lun-set.sh "$PWD"
-          for script in support/container/build-qemu-lio-kernel.sh support/container/build-qemu-iscsi-client.sh support/qemu-lio-fixture.sh support/fixtures/qemu-lio-init.sh support/tests/test-qemu-lio-snapshot-temp.sh; do
-            sh -n "$script"
-          done
-
-      - name: Verify LIO local wrapper command boundary without Docker
-        shell: pwsh
-        run: ./support/tests/test-qemu-lio-wrapper.ps1
-
-      - name: Test Stage B kernel-config audit policy
-        run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh
