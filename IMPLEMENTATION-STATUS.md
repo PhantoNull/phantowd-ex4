@@ -1804,8 +1804,10 @@ tagged smoke/HTTP/HTTPS asset checks pass. All five actual Edge155 profiles pass
 with exact current assets and disposed profiles. The dedicated edit profile uses
 27of32pointer actions and11preview POSTs for five edits, no-cascade refusal,
 duplicate-original refusal and three widths, preserving two targets/three LUNs/
-multiple peers. These are host/browser proofs, not the older ARM evidence below;
-current ARM/full/physical qualification and product persistence remain open.
+multiple peers. Exact pinned Go1.26.8 host run39099880579 on62b5380 also succeeds:
+complete ordinary API/vet/race, tagged vet, DOM/new edit controls, toolkit/fuzz and
+all existing host gates. These are host/browser proofs, not the older ARM evidence
+below; current ARM/full/physical qualification and product persistence remain open.
 
 ## M9.2j disabled-target LUN draft extension — local host/browser/ARM prototype
 
