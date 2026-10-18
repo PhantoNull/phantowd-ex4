@@ -282,10 +282,22 @@ the complete SMB policy. Windows units, pinned Linux vet/scoped units/race-count
 DOM controls, workflow routing and installed Edge execution pass. The default
 authentication fixture still has no desired-policy backend.
 
-This test backend is memory-only: no appliance persistence, service activation,
+The responsive M5.5q extension runs all policy actions at320px with80-character
+share names,32-character user references and512-character relative paths, with
+exact saved readback. Draft and all three reviews pass12 layout/label observations
+at1365/390/320px. Real browser failures first reproduced a3491px non-wrapping
+summary and a1225px long review pane; two CSS rules now wrap summary text and
+bound scroll regions without truncating content or reducing valid input limits.
+Both tables are keyboard reachable, visibly focused and horizontally scrollable;
+the long pair table also scrolls vertically without moving the page, then permits
+keyboard exit. Current complete Windows host and Edge checks pass at unchanged
+caps. The production stylesheet changes; current pinned Linux/ARM asset/full/
+hosted qualification is pending, not supplied by earlier campaign results.
+
+This test backend remains memory-only: no appliance persistence, service activation,
 disk observation, actual Samba account provisioning or release qualification is
-established. Form actions run at1365px; the three-width layout checks cover the
-overview, not every form. It changes no production API or embedded UI source.
+established. Tested narrow desired-policy states are not full accessibility,
+all forms or touch/mobile-device qualification. No API operation changes.
 See the [browser test contract](src/phantowd-api/README.md).
 
 ## Current integration gate: `dedafa6` outer qualification budget

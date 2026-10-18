@@ -3285,12 +3285,29 @@ milestone before enabling its controls; M1/M6 for deployment.
   verified owned-process/profile disposal. Preserve the default fixture's
   absent policy backend and the separate auth/network/iSCSI campaign claims.
   Windows units, pinned Linux vet/scoped units/race3, existing DOM/resource/
-  workflow controls and installed Edge execution pass. Forms run at1365px;
-  overview layout additionally covers390/320px. Firmware/API production sources
-  and embedded assets are unchanged; only exact pure-host files bypass firmware
+  workflow controls and installed Edge execution pass in the initial campaign.
+  Its original forms ran at1365px, with overview layout at390/320px. The
+  responsive extension below now changes CSS and expands browser coverage;
+  only exact pure-host files bypass firmware
   rebuild triggers. Appliance persistence, real-store browser transactions,
   activation, accounts, all forms/accessibility, clean/hosted and physical
   qualification remain open. This mode is not a substitute for those gates.
+- **M5.5q — Responsive bounded desired-policy review (partial; host browser).**
+  Preserve the complete M5.5p three-revision workflow and all original caps;
+  run visible policy actions at320px with80-character share names,32-character
+  user references and512-character relative paths, verifying exact saved bytes.
+  Inspect draft and every review at1365/390/320px, with no horizontal page or
+  control overflow and associated input labels. Two real browser REDs reproduce
+  non-wrapping summary text (3491px on1350px) and a1225px long review region in
+  a900px viewport. Summary wrapping and viewport-bounded scroll regions preserve
+  complete content without lowering valid input limits or hiding overflow.
+  Both table regions require Tab reachability, visible focus and horizontal
+  arrow scrolling; the long pair table also needs vertical arrow scrolling with
+  unchanged page position and verified keyboard exit. Twelve layout observations,
+  two fixed screenshots and original process/profile disposal are required.
+  Current Windows host and installed Edge checks pass; current pinned Linux,
+  ARM embedded-asset execution, full/hosted, broad accessibility, touch/mobile
+  hardware and product persistence/activation qualification remain separate.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

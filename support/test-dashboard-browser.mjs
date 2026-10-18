@@ -331,7 +331,77 @@ try {
 
   let servicePolicyResult;
   if (serviceMode) {
-    servicePolicyResult = await exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser });
+    const policyLayouts = [];
+    const policyScreenshot = async (phase) => {
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(shot.data.length <= 8 * 1024 * 1024, "policy screenshot exceeded output budget");
+      await writeFile(join(artifacts, `policy-${phase}-320.png`), Buffer.from(shot.data, "base64"));
+    };
+    const inspectLayout = async (phase) => {
+      assert.ok(["draft", "review-1", "review-2", "review-3"].includes(phase), "unknown policy layout phase");
+      const actionWidth = await evaluate("innerWidth");
+      for (const width of [1365, 390, 320]) {
+        await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+        const layout = await evaluate(`(() => {
+          const root = document.getElementById('policy-form').closest('section');
+          const controls = Array.from(root.querySelectorAll('input, select, button')).filter(e => e.getClientRects().length && getComputedStyle(e).visibility === 'visible');
+          const client = document.documentElement.clientWidth;
+          return { width: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth, client,
+            visible_controls: controls.length,
+            escaped_controls: controls.filter(e => { const r = e.getBoundingClientRect(); return r.left < -0.5 || r.right > client + 0.5; }).map(e => e.id).slice(0, 16),
+            unlabeled_inputs: controls.filter(e => e.tagName !== 'BUTTON' && !e.labels?.length && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')).map(e => e.id).slice(0, 16) };
+        })()`);
+        layout.phase = phase;
+        policyLayouts.push(layout);
+        assert.ok(policyLayouts.length <= 12, "policy layout observation bound exceeded");
+        await writeFile(join(artifacts, "policy-layouts.json"), JSON.stringify(policyLayouts, null, 2) + "\n");
+        if (width === 320 && phase === "draft") {
+          await evaluate("document.getElementById('policy-form').scrollIntoView({ block: 'start', behavior: 'instant' })");
+          await policyScreenshot(phase);
+        }
+        assert.equal(layout.width, width, "policy viewport override did not apply");
+        assert.ok(layout.visible_controls > 0 && layout.visible_controls <= 64, "policy controls unavailable or excessive");
+        assert.ok(layout.document <= layout.client && layout.body <= layout.client, `policy horizontal overflow: ${JSON.stringify({ phase, ...layout })}`);
+        assert.deepEqual(layout.escaped_controls, [], "policy input escaped the visible page");
+        assert.deepEqual(layout.unlabeled_inputs, [], "policy input has no associated label");
+        if (phase === "review-2" && width === 320) {
+          layout.keyboard_regions = [];
+          for (const id of ["service-diff", "service-overlaps"]) {
+            let tabs = 0;
+            while (!await evaluate(`document.activeElement === document.getElementById(${JSON.stringify(id)}).closest('.policy-diff-scroll')`) && tabs < 64) {
+              await key("Tab", "Tab", 9); tabs++;
+            }
+            assert.equal(await evaluate(`document.activeElement === document.getElementById(${JSON.stringify(id)}).closest('.policy-diff-scroll')`), true, "policy review region is not keyboard reachable");
+            const before = await evaluate(`(() => { const e = document.activeElement; return { left: e.scrollLeft, top: e.scrollTop, width: e.clientWidth, content: e.scrollWidth, height: e.clientHeight, full_height: e.scrollHeight, viewport_height: innerHeight, page_top: document.documentElement.scrollTop, outline: getComputedStyle(e).outlineStyle }; })()`);
+            assert.ok(before.content > before.width, "narrow review must exercise a genuinely scrollable table");
+            assert.ok(before.height <= before.viewport_height * 2 / 3, `review region consumes the viewport: ${JSON.stringify(before)}`);
+            const vertical = before.full_height > before.height;
+            if (id === "service-overlaps") assert.ok(vertical, "long folder-pair review must exercise vertically retained content");
+            assert.notEqual(before.outline, "none", "keyboard review focus is not visible");
+            await key("ArrowRight", "ArrowRight", 39);
+            await until(() => evaluate(`document.activeElement.scrollLeft > ${before.left}`), browser, "keyboard policy table scrolling");
+            assert.equal(await evaluate("document.documentElement.scrollLeft"), 0, "table keyboard scroll moved the whole page");
+            if (vertical) {
+              await key("ArrowDown", "ArrowDown", 40);
+              await until(() => evaluate(`document.activeElement.scrollTop > ${before.top}`), browser, "keyboard policy table vertical scrolling");
+              assert.equal(await evaluate("document.documentElement.scrollTop"), before.page_top, "table vertical scroll moved the whole page");
+            }
+            layout.keyboard_regions.push({ id, tabs, focus_visible: true, scroll_verified: true, vertical_scroll_verified: vertical,
+              visible_height: before.height, full_height: before.full_height });
+          }
+          await key("Tab", "Tab", 9);
+          const exit = await evaluate("({ tag: document.activeElement.tagName, inside: Boolean(document.activeElement.closest('.policy-diff-scroll')) })");
+          assert.ok(!exit.inside && exit.tag !== "BODY", "policy review trapped keyboard focus");
+          layout.keyboard_exit_verified = true;
+          await writeFile(join(artifacts, "policy-layouts.json"), JSON.stringify(policyLayouts, null, 2) + "\n");
+          await policyScreenshot(phase);
+        }
+      }
+      await send("Emulation.setDeviceMetricsOverride", { width: actionWidth, height: 900, deviceScaleFactor: 1, mobile: false });
+    };
+    await send("Emulation.setDeviceMetricsOverride", { width: 320, height: 900, deviceScaleFactor: 1, mobile: false });
+    servicePolicyResult = { ...await exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser, inspectLayout }), form_action_width: 320, layouts: policyLayouts };
+    await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 3);
   }
   if (apiFixture && !networkMode && !serviceMode) {

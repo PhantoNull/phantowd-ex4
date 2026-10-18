@@ -5,7 +5,8 @@
 // No service activation, disk collector or persistent appliance state.
 import assert from "node:assert/strict";
 
-export async function exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser }) {
+export async function exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser, inspectLayout }) {
+  assert.equal(typeof inspectLayout, "function", "real policy layout observer required");
   const input = async (id, value) => {
     await clickVisible(id);
     await replaceInput(id, value);
@@ -29,22 +30,29 @@ export async function exerciseServicePolicy({ evaluate, clickVisible, replaceInp
     await clickVisible(button);
     await until(() => evaluate("!document.getElementById('service-review').hidden && !document.getElementById('service-save').disabled"), browser, "complete policy review");
     assert.match(await evaluate("document.getElementById('service-change').textContent"), /No service activation/);
+    await inspectLayout(`review-${revision}`);
     await clickVisible("service-save");
     await until(() => evaluate(`!document.getElementById('service-load').disabled && document.getElementById('service-summary').textContent.includes('Saved revision ${revision}:')`), browser, "explicit desired policy save");
     await load(revision);
     return saved();
   };
   await load(0);
-  for (const [name, value] of Object.entries({ uuid: "11111111-2222-4333-8444-555555555555", name: "Browser library", path: "books", user: "reader" })) {
+  const fixture = { uuid: "11111111-2222-4333-8444-555555555555", name: "Browser" + "L".repeat(73),
+    path: "books/" + "a".repeat(252) + "/" + "b".repeat(253), user: "reader" + "a".repeat(26) };
+  for (const [name, value] of Object.entries(fixture)) {
     await input(`policy-${name}`, value);
   }
   await choose("policy-nfs-enabled", "on");
   await input("policy-export-id", "66666666-7777-4888-8999-aaaaaaaaaaaa");
   await input("policy-network", "198.51.100.7/32");
+  await inspectLayout("draft");
   const first = await previewAndSave("service-prepare", 1);
   assert.equal(first.shares.shares.length, 1);
   assert.equal(first.nfs.exports.length, 1);
   assert.equal(first.shares.shares[0].grants[0].access, "ro");
+  assert.equal(first.shares.shares[0].name, fixture.name, "long share name was not preserved");
+  assert.equal(first.shares.shares[0].relative_path, fixture.path, "long relative path was not preserved");
+  assert.equal(first.shares.users[0].name, fixture.user, "long user reference was not preserved");
   const smb = first.shares.shares[0];
   await choose("service-target", `smb:${smb.id}`);
   await choose("service-member", smb.grants[0].user_id);

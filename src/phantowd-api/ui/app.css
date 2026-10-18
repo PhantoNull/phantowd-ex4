@@ -174,7 +174,7 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 .footer-dot { padding-left: 5px; font-size: 8px; }
 
 .policy-panel { margin-top: 40px; }
-.policy-help { color: var(--muted); font-size: 12px; line-height: 1.65; }
+.policy-help { color: var(--muted); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
 .policy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
 .policy-grid legend { padding: 0 8px; font-size: 13px; }
 .policy-grid label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
@@ -194,7 +194,7 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 .saved-shares li { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .saved-shares strong, .saved-shares span { display: block; }
 .saved-shares summary { overflow-wrap: anywhere; }
-.policy-diff-scroll { max-width: 100%; overflow: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; }
+.policy-diff-scroll { max-width: 100%; max-height: min(60vh, 32rem); overflow: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; }
 .policy-diff-scroll:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
 .policy-diff-table { width: 100%; min-width: 32rem; border-collapse: collapse; table-layout: fixed; font-size: 12px; line-height: 1.6; }
 .policy-diff-table caption { padding: 12px; text-align: left; color: var(--muted); }

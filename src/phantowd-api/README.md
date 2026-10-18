@@ -1861,14 +1861,23 @@ rereads revision1, changes the existing SMB user's grant to read/write while
 retaining NFS rules, then removes only the NFS export while retaining the complete
 SMB policy. Three explicit saves and rereads, real pointer/keyboard controls,
 overview layout at1365/390/320px and owned-process/profile disposal are required.
+The policy form actions run at 320 px with 80-character share names, 32-character
+user references and 512-character relative paths; the first saved readback must
+preserve every value exactly. Draft and all three reviews additionally check
+layout and associated labels at 1365/390/320 px (12 observations). Both review
+tables must be keyboard reachable with visible focus and horizontal arrow
+scrolling. The long folder-pair review additionally verifies bounded vertical
+scrolling without moving the page, followed by keyboard exit from the regions.
+Two fixed narrow screenshots and bounded layout metrics accompany the report;
+no extra HTTP mutation, fixture process, deadline or pointer budget is added.
 The fixture's revision comparison refuses stale saves and decodes independent
 bounded snapshots. The ordinary authentication fixture still has no policy
 backend unless this separate mode is selected.
 
 This is browser-to-handler workflow coverage, not disk persistence, service
 activation, Unix/Samba account provisioning, full accessibility or release
-qualification. Form interactions run at1365px; the narrow checks cover the
-overview, not every form. The mode does not claim the separate authentication
+qualification. These checks cover the tested desired-policy states, not all
+forms, assistive technology or physical mobile devices. The mode does not claim the separate authentication
 revocation/timeout, iSCSI or network-preview campaign results. No device or NAS
 is contacted and no Docker image/volume is created.
 
