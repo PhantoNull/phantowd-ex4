@@ -61,7 +61,10 @@ both exact rows plus all prior checks. No new guest or default build stage.
 See [implementation status](../../../../IMPLEMENTATION-STATUS.md) for actual
 terminal results; compilation alone does not qualify ARM execution.
 
-Next: retained complete identity namespace observation and composition with the
-other original state roles. Product provisioning, live identity/passdb checks,
+An explicit experimental [retained namespace reader](../policyevidencefs/README.md#explicit-identity-namespace-profile--m12c8)
+now supplies original locked files/censuses to this comparison without opening
+the mutating Owner. Its separate qualification does not transfer authority to
+this DATA API. Next: complete reader fault/resource qualification and composition
+with the other original state roles. Product provisioning, live identity/passdb checks,
 writer ownership/handoff, durable review/reconciliation, physical placement,
 supported legacy migration and release qualification remain separate gates.

@@ -30,6 +30,7 @@ const (
 	ordinaryObservation observationMode = iota
 	sessionObservation
 	credentialObservation
+	identityObservation
 )
 
 // Private metadata only. Neither kind grants authentication, enrollment,
@@ -74,6 +75,9 @@ func (s *state) credentialSpec() (roleSpec, string) {
 	return roleSpec{0, "chap-secrets.json", iscsicredentials.MaxObservedDocumentBytes}, ".chap-secrets.pending"
 }
 func (s *state) observationMode() observationMode {
+	if s.identities != nil {
+		return identityObservation
+	}
 	if s.credentials != noCredentialProfile {
 		return credentialObservation
 	}

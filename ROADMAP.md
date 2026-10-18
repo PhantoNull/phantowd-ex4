@@ -1036,6 +1036,29 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   pairs/unchanged limits, no new default stage or producer experiment. Retained
   identity filesystem provenance, all product-role/consumer ownership, durable
   reconciliation and media/full/hosted/physical/release gates remain open.
+  **M1.2c.8 — explicit retained identity namespace reader:** root-only fixed
+  root/registry/operations/account/optional-smb layout, actual original flocks in
+  documented deterministic order, complete bounded census, unique mount/path and
+  file/directory watches. Reuse protected read-only/no-atime/chunk/Close engine;
+  compare complete original current records with M1.2c.7. Any pending role must
+  suppress all content reads; empty present enrollment child is unavailable, not
+  absent. No Owner/Store construction, sync, recovery, live identity/passdb check,
+  handoff or admission. Require original-lock exclusion, wrong/copy refusal,
+  restored sticky review, malformed/missing/partial state and ordinary exact
+  bytes/stat/atime/FD preservation in existing bounded ARM smoke. Preserve old
+  profiles/proofs/caps. Maximal1024-account roster descriptor/resource needs,
+  complete constructor/temporary-close/watch/namespace/cancel faults, real writer/
+  restart/media provenance, whole-role/consumer and product qualification remain.
+  **Local acceptance:** pinned tagged vet/scoped units/race3 and nine-family
+  refusal controls pass; positive native lifetime SKIP for the non-root profile.
+  Actual ARM8 scenarios twice cover valid/missing registry/empty enrollment,
+  three pending roles, observed substitution/restoration and malformed state.
+  Six actual directory locks, wrong/copy refusal, zero pending reads, ordinary
+  byte/stat/atime invariance and FD-balanced known-name disposal pass with all
+  old checks and unchanged shared15s/240s/360s caps. No new default guest or
+  producer work. Complete constructor/temporary-close/watch/namespace/cancel/
+  read/close faults, maximal-roster resources, actual writer/restart/media and
+  whole-product/physical/release qualification remain open.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

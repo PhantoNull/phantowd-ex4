@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Retained identity namespace reader — internal read-only profile
+
+Root-only OpenIdentity/ObserveIdentity now retain actual root/registry/operations/
+account/optional-enrollment locks and original no-atime/read-only current files,
+unique mount/path witnesses, complete bounded census and mutation watches. The
+complete records feed the existing private comparison; no Store/Owner opening,
+sync, recovery, live Unix/passdb commands, handoff, service or HTTP activation.
+All three kinds of pending evidence suppress every content read. Missing current
+in a present enrollment child is unavailable, never enrollment absence. Drift or
+uncertainty stays review after restoration; copied/wrong-profile calls refuse.
+
+Pinned native tagged vet/scoped units/race3 and nine-family receipt controls pass.
+Actual positive native lifetime explicitly skips for this non-root test profile;
+no full native filesystem/race qualification is implied. Native controls cover
+original active-roster aliasing, role grammar, root-only refusal, canceled new
+directory acquisition and a controlled dynamic-roster Close uncertainty, not
+kernel EIO or all close/constructor/watch faults. Complete resource/fault/product
+composition, writer/restart/media and physical/release gates remain. See the
+[reader contract](src/phantowd-api/internal/policyevidencefs/README.md#explicit-identity-namespace-profile--m12c8).
+
+Actual standard ARMv5 smoke passes eight identity-namespace cases twice across
+API restart: valid, missing registry, empty enrollment child, three pending
+roles, observed file substitution/restoration and malformed registry. Six actual
+directory-lock exclusions, wrong/copied handle refusal, pending zero-read,
+ordinary exact bytes/stat/atime and verified known-name disposal/FD balance are
+checked. Nine exact receipt pairs/all old assertions pass at unchanged shared15s/
+guest240s/outer360s caps. No new default guest or producer experiment. This is
+invented tmpfs state, not physical placement, actual writer/restart/power-loss,
+complete constructor/watch/close or maximal-roster qualification.
+
 ## Stored identity-document comparison — internal data component
 
 The private identityevidence matcher now compares a supplied complete registry,

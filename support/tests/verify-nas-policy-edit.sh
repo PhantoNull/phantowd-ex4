@@ -15,7 +15,8 @@ for marker in \
     'PHANTOWD_POLICY_SESSION_WRITER_READY scenarios=5 original_locks=true opening_required=true unified_history=true checkpoint_bound=true closure_serialized=true uncertainty_fenced=true close_does_not_seal=true product=false scope=temporary-qemu-only' \
     'PHANTOWD_POLICY_SESSION_FS_READY scenarios=10 original_locks=4 checkpoint_bound=true pending_metadata_only=true restored_refused=true readonly=true admission=false scope=temporary-qemu-only' \
     'PHANTOWD_CREDENTIAL_STATE_FS_READY profiles=2 scenarios=10 root_only_chap=true values_redacted=true legacy_preserved=true pending_metadata_only=true original_lock=true readonly=true admission=false scope=temporary-qemu-only' \
-    'PHANTOWD_IDENTITY_DOCUMENT_READY cases=8 complete_links=true malformed_not_hidden=true values_redacted=true readonly=true recovery=false admission=false scope=synthetic-memory-only'; do
+    'PHANTOWD_IDENTITY_DOCUMENT_READY cases=8 complete_links=true malformed_not_hidden=true values_redacted=true readonly=true recovery=false admission=false scope=synthetic-memory-only' \
+    'PHANTOWD_IDENTITY_STATE_FS_READY cases=8 original_locks=true complete_roster=true pending_metadata_only=true restored_refused=true readonly=true recovery=false admission=false scope=temporary-qemu-only'; do
     prefix=${marker%% *}
     rows=$(sed 's/\r$//' "$log_file" | grep -c "^$prefix" || true)
     exact=$(sed 's/\r$//' "$log_file" | grep -Fxc "$marker" || true)

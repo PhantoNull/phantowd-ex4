@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/identityevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policytransaction"
@@ -63,6 +64,7 @@ type state struct {
 	historyProfile              bool
 	sessionProfile              bool // explicit constructor; never autodetected
 	credentials                 credentialProfile
+	identities                  *identityLayout
 	checkpoint                  []byte // independent trusted caller checkpoint, owned copy
 	historyRoles                []roleSpec
 	historyFiles                []object
@@ -253,6 +255,9 @@ func openNamespace(ctx context.Context, directory, installation string, bundlePr
 }
 
 func (s *state) directoryObjects() []object {
+	if s.identities != nil {
+		return s.identities.dirs
+	}
 	if s.credentials != noCredentialProfile {
 		return s.dirs[:1]
 	}
@@ -277,6 +282,9 @@ var bundleRoles = [...]roleSpec{
 }
 
 func (s *state) roleSpecs() []roleSpec {
+	if s.identities != nil {
+		return s.identities.roles
+	}
 	if s.credentials != noCredentialProfile {
 		spec, _ := s.credentialSpec()
 		return []roleSpec{spec}
@@ -354,6 +362,9 @@ func (s *state) closeTemporary(f *os.File) error {
 
 // A separate confined cursor never replaces the locked original directory FD.
 func (s *state) census(ctx context.Context, index int) (found map[string]stamp, result error) {
+	if s.identities != nil {
+		return s.censusIdentity(ctx, index)
+	}
 	parent := s.dirs[index]
 	cursor, err := openFile(int(parent.file.Fd()), ".", true, confined)
 	if err != nil {
@@ -446,7 +457,7 @@ func (s *state) verify(ctx context.Context) error {
 	}
 	st, statErr := statFD(witness)
 	closeErr := s.closeTemporary(witness)
-	if statErr != nil || closeErr != nil || st != s.dirs[0].initial {
+	if statErr != nil || closeErr != nil || st != s.directoryObjects()[0].initial {
 		return ErrReview
 	}
 	for i, dir := range s.directoryObjects() {
@@ -458,10 +469,10 @@ func (s *state) verify(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if len(found) != len(s.names[i]) {
+		if len(found) != len(s.namesAt(i)) {
 			return ErrReview
 		}
-		for name, expected := range s.names[i] {
+		for name, expected := range s.namesAt(i) {
 			if actual, ok := found[name]; !ok || actual != expected {
 				return ErrReview
 			}
@@ -501,6 +512,7 @@ type observation struct {
 	legacy      policyevidence.Diagnosis
 	session     policyevidence.SessionDiagnosis
 	credentials CredentialDiagnosis
+	identities  identityevidence.Diagnosis
 }
 
 func (a *Observer) observe(ctx context.Context, mode observationMode) (observation, error) {
@@ -528,6 +540,9 @@ func (a *Observer) observe(ctx context.Context, mode observationMode) (observati
 	fail := func(err error) (observation, error) {
 		s.review = true
 		return observation{}, errors.Join(ErrReview, err, ctx.Err())
+	}
+	if s.identities != nil && (os.Getuid() != 0 || os.Geteuid() != 0) {
+		return fail(ErrUnsafe)
 	}
 	if err := s.verify(ctx); err != nil {
 		return fail(err)
@@ -569,7 +584,9 @@ func (a *Observer) observe(ctx context.Context, mode observationMode) (observati
 	}
 	var d observation
 	var err error
-	if s.credentials != noCredentialProfile {
+	if s.identities != nil {
+		d.identities, err = s.matchIdentity(slots)
+	} else if s.credentials != noCredentialProfile {
 		d.credentials, err = s.matchCredentials(slots)
 	} else if s.sessionProfile {
 		d.session, err = s.matchSessionHistory(slots)

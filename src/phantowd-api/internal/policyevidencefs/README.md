@@ -45,6 +45,65 @@ returns the same six no-action diagnoses and clears temporary decoded bytes.
 
 ## Lifetime contract
 
+### Explicit identity namespace profile — M1.2c.8
+
+Root-only `OpenIdentity(ctx, directory)` selects the current native Owner's
+dedicated layout, never guesses a policy or credential profile:
+
+```text
+identity-root/
+  registry/service-accounts.json       # optional current; fixed pending name
+  operations/<account-id>/
+    identity-operation.json            # optional current; fixed pending name
+    smb/smb-operation.json             # optional child/current; fixed pending name
+```
+
+Root, registry and operations directories must exist. Retain their actual flocks
+in that order, then account directories in lexical ID order and each present
+`smb` child immediately after its parent. Lexical order is only lock/IO order;
+creation chronology comes from bound registry/journal data. Reuse the domain ID
+grammar, not an independent filename parser. Census every directory with fixed
+names/types or at most1024 account directories. Unknown, alias, symlink, unsafe
+ownership/mode, cross-mount and changed entries refuse. All directories/files
+retain original unique mount identities and mutation watches; no layout upgrade.
+
+`ObserveIdentity` feeds the complete original bounded record set to the private
+[identity comparison](../identityevidence/README.md), with before/after namespace
+and file rechecks under the same mutex. A present-but-empty `smb` child means
+unavailable enrollment evidence, not proven absence. Any registry/native/Samba
+pending file latches review before **all** content reads. Read-only/no-atime opens,
+chunk bounds, private/copied handles and first-uncertain-close retention reuse
+the shared engine. Cancellation is checked before each new directory/current
+open and metadata-budget step; kernel calls themselves remain non-interruptible.
+Constructor never creates/syncs/replays, and restoration cannot resume review.
+
+The4MiB metadata budget includes all current bytes and account names before file
+content reads; original individual limits remain. The maximal syntactic roster
+can require2051 retained directories and2049 current files, plus watch/temporary
+descriptors. No process limit is raised and resource exhaustion refuses; that
+worst case is **not** qualified on EX4 or the complete product process. Product
+resource budgeting/FD limits and larger-roster qualification remain gates.
+
+This is a diagnostic lifetime, not Owner construction/handoff, live Unix/passdb/
+session observation, durable review, whole-appliance startup or permission to
+initialize missing state. Full constructor/temporary-close/watch, namespace/
+mount/read/cancel/fault coverage, actual writer/restart/media provenance, product
+role/consumer composition and physical/release qualification remain required.
+Existing policy/credential profiles, Owner recovery and HTTP stay unchanged.
+
+Pinned native tagged vet/scoped units/race3 and nine-family receipt controls pass.
+Positive native root lifecycle explicitly SKIP for the non-root test profile.
+Native controls test active-roster aliasing, domain naming/root refusal, canceled
+directory acquisition and a single controlled dynamic pre-close refusal;
+they do not qualify all constructor/close/watch or kernel-EIO outcomes. Actual
+standard ARM smoke executes eight cases twice: valid, missing registry, empty
+enrollment child, three pending roles, observed/restored file replacement and
+malformed registry. Six actual locks, copied/wrong methods, pending zero-read,
+ordinary exact bytes/stat/atime and FD-balanced known-name disposal pass at the
+unchanged shared15s/guest240s/outer360s bounds, alongside all prior assertions.
+No new default guest or producer work. Those six-directory/four-current fixture
+rosters are not the maximal1024-account descriptor/namespace qualification.
+
 ### Explicit credential-state profiles — M1.2c.6
 
 `OpenAdministratorCredentials(ctx, directory)` and root-only
