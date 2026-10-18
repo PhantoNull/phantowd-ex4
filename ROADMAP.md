@@ -452,6 +452,22 @@ button to an unqualified backend simply because the screen exists.
   for its exact final head; retain the fixed identity response-publication
   regression. Never substitute an older green commit. Delete superseded branches
   only with squash-aware provenance checks, preserving unmerged work.
+  **Complete API host checkpoint:** the `ce31105` code passes the whole Windows
+  API/UI wrapper (Go1.27.0, portable packages/selected contracts/cross-compile)
+  and pinned Go1.26.8 Linux wrapper (ordinary package suite, QEMU-tagged vet and
+  selected proc diagnostic, non-root). This is not complete race/root lifecycle,
+  full image/SBOM/hosted or release qualification.
+  **M0.1a — bounded host startup and settlement:** current cached timeout1800/
+  kill-after30 begins inside the container and cannot bound Docker creation or
+  host CLI stalls. Capture each invocation's exact client/container association;
+  bound startup and metadata queries separately from active validation. Timeout,
+  missing reply or client termination must retain uncertain source/job evidence,
+  never imply that its container stopped. Stop only a proven owned disposable
+  target, verify retirement before source cleanup, and never automatically retry,
+  restart the daemon, prune resources or touch unrelated workloads. Preserve
+  all existing active budgets/proofs, image/volume reuse and headroom guards.
+  Test delayed/no creation, created-not-running, late replies, query timeout,
+  uncertain stop/cleanup and healthy actual lifecycle before default adoption.
 - **M0.2 — Resolve shutdown fixture ownership.** Reproduce the intermittent
   state-volume unmount refusal; capture only bounded, redacted process/FD/mount
   ownership evidence. Test the concrete owner/lifecycle defect before changing

@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Complete API host checks — not full firmware qualification
+
+The complete Windows API/UI wrapper passes on the `ce31105` code: DOM/resource/
+preview controls, all portable API package vet/units/coverage, selected QEMU-tagged
+contracts and ARMv5 test cross-compilation. The installed Windows compiler is
+Go1.27.0; cross-compilation is not guest execution. The pinned Go1.26.8 Linux
+wrapper separately passes all ordinary API package vet/units, whole QEMU-tagged
+vet and the selected proc-reader diagnostic, running non-root with existing
+read-only caches and no network. This is not a new whole-suite race or positive
+root-filesystem qualification; earlier scoped race/actual ARM evidence remains
+separate. Existing full/hosted/physical/release gates are not closed by these runs.
+
+The cached full wrapper's1800s/30s timeout executes **inside** the container.
+It does not bound daemon-side creation/startup or a blocked host CLI. A scoped
+host startup/settlement controller and bounded metadata queries remain required;
+an observation timeout or killed client must never certify container retirement.
+No automatic retry, global Docker restart or prune is an acceptable substitute.
+
 ## Retained identity namespace reader — internal read-only profile
 
 Root-only OpenIdentity/ObserveIdentity now retain actual root/registry/operations/
