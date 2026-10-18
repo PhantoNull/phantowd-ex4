@@ -172,6 +172,25 @@ Desired disabled is not proof of runtime inactivity. Existing strict validation,
 limits, integer precision, shared deadline and no-save/open/activation boundaries
 remain; this does not qualify any live target mutation.
 
+M9.2k adds one-at-a-time **desired-only** edits for target state, LUN access or
+an existing initiator grant. Require the exact target ID/IQN and the selected
+LUN/initiator IDs. Access edits require desired-disabled state; this does not
+establish that a real target is stopped. Making a LUN read-only refuses while
+any desired grant remains read/write: reduce those grants explicitly first.
+No other grant, LUN, backing, authentication reference or SMB/NFS definition is
+changed; no-op and ambiguous selections refuse. Desired enabled never starts a
+service, and desired disabled never stops one or revokes a session.
+
+The existing original-then-candidate strict previews and single ten-second
+lifetime remain. Compare the complete public target/LUN/grant/backing projection,
+revision and SMB/NFS counts before replacing the text, not only the edited row.
+Any refusal, mismatched reply or retired work preserves the original (logout/
+clear erases it). No route, authoritative store, delete/resize/open/provisioning
+or live mutation is added. The opt-in host browser profile `--iscsi-edit` covers
+five coherent edits, no-cascade refusal, strict original refusal and three widths
+under the same90-second/32-pointer-action caps. It does not claim the separate
+create/extend campaign or actual ARM execution.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot

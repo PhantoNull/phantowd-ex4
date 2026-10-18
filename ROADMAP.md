@@ -4481,6 +4481,24 @@ support per tested combination; refuse untested combinations without mutation.
   embedded HTTP/HTTPS bytes, not JS execution. No save/allocation/secret resolution/
   target activation; product creation/enable/grow/remove still requires M9.3's
   real session/storage/credential authority and M1 recovery/source of truth.
+- **M9.2k — Scoped desired target/LUN/grant edits (host/browser workflow).**
+  Edit one target state, one LUN's access or one existing initiator grant in the
+  supplied complete coherent policy. Exact target ID+IQN and selected LUN/peer;
+  refuse ambiguous/no-op/unsafe-number input. Access changes require desired-
+  disabled state, never inferred runtime inactivity. A read-only LUN refuses
+  while any grant is read/write; no cascade or credential/backing/file-service
+  mutation. Advance every coherent revision together. Reuse the same strict
+  original/candidate POSTs, auth/CSRF,16-target/64-backing and original byte/time/
+  single-flight/retirement limits. Match the complete public projection before
+  publishing local text, including unrelated targets/LUNs/grants/backings and
+  file-service counts. Acceptance: multiple targets/LUNs/peers with immutable
+  credentials and unselected policy; base/candidate and valid-but-substituted
+  reply refusals; shared manual/add/edit exclusion and private clear/retirement;
+  actual browser/Go API five edits, no-cascade refusal, duplicate-original
+  refusal, keyboard controls and1365/390/320px layouts. No new endpoint/store,
+  delete/resize/allocation/credential provisioning or product activation. Native
+  host evidence does not replace ARM asset or full/physical qualification;
+  desired enabled/disabled is never a target start/stop/session-revocation result.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

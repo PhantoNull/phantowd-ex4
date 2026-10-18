@@ -360,6 +360,21 @@
             <button id="iscsi-submit" class="refresh-button" type="submit">Review desired iSCSI definitions</button>
             <button id="iscsi-clear" class="refresh-button" type="button">Clear iSCSI review</button>
           </div>
+          <details>
+            <summary id="iscsi-edit-toggle">Edit desired target state, LUN access or an existing grant</summary>
+            <p id="iscsi-edit-help" class="policy-help">Edit one entry in the complete JSON above. This is a local proposal only: desired enabled/disabled does not start or stop a target, prove inactivity or revoke sessions. LUN/grant editing requires desired-disabled state, never runtime permission. Only the selected operation changes; other LUNs, backings, credentials, grants and SMB/NFS definitions remain. To make a LUN read-only, explicitly reduce any read/write grants first; grants are never changed automatically. No deletion, resize, credential provisioning, save or activation is performed. Guided editing refuses unsafe browser integers; use manual JSON review for larger values.</p>
+            <fieldset id="iscsi-edit-fields" class="policy-grid" aria-describedby="iscsi-edit-help">
+              <legend>One explicit change to an existing desired definition</legend>
+              <label>Operation<select id="iscsi-edit-mode"><option value="">Choose an operation</option><option value="target-state">Target: desired state only</option><option value="lun-access">LUN: desired access only</option><option value="grant-access">Initiator: existing LUN grant only</option></select></label>
+              <label>Exact target ID<input id="iscsi-edit-target-id" maxlength="64" spellcheck="false"></label>
+              <label>Exact target IQN<input id="iscsi-edit-name" maxlength="223" spellcheck="false"></label>
+              <label>New desired state (target operation only)<select id="iscsi-edit-state"><option value="">Choose a desired state</option><option value="disabled">Disabled — proposal only</option><option value="enabled">Enabled — proposal only</option></select></label>
+              <label>Exact LUN ID (LUN/grant operations)<input id="iscsi-edit-lun-id" maxlength="64" spellcheck="false"></label>
+              <label>Exact initiator IQN (grant operation only)<input id="iscsi-edit-initiator" maxlength="223" spellcheck="false"></label>
+              <label>New desired access (LUN/grant operations)<select id="iscsi-edit-access"><option value="">Choose desired access</option><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
+            </fieldset>
+            <button id="iscsi-edit-submit" class="refresh-button" type="button">Validate and stage selected edit</button>
+          </details>
         </form>
         <p id="iscsi-status" class="policy-help" role="status">No current preview. Nothing was saved or activated.</p>
         <div id="iscsi-result" hidden></div>

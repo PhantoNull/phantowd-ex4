@@ -23,7 +23,7 @@ export function iscsiPreviewFixture() {
 export function iscsiPreviewForPolicy(c) {
   return { format: "phantowd-desired-iscsi-preview", schema_version: 2, scope: "desired-policy-only", revision: String(c.revision),
     storage_validated: false, credentials_validated: false, runtime_validated: false, activation_available: false,
-    smb_definitions: 0, nfs_definitions: 0,
+    smb_definitions: c.file_services.shares.shares.length, nfs_definitions: c.file_services.nfs.exports.length,
     backings: c.iscsi.backings.map(b => ({ ...b, capacity_bytes: String(b.capacity_bytes), smb_path_overlap_count: 0, nfs_path_overlap_count: 0 })),
     targets: c.iscsi.targets.map(t => ({ id: t.id, name: t.name, desired_state: t.state, luns: t.luns,
       initiators: t.initiators.map(p => ({ name: p.name, desired_authentication: p.authentication.mode, grants: p.grants })) })),
@@ -48,6 +48,117 @@ export function iscsiExposurePolicyFixture() {
 
 const text = (element) => [element.textContent, ...element.children.map(text)].join(" ");
 const turn = () => new Promise(resolve => setImmediate(resolve));
+
+export function iscsiEditPolicyFixture() {
+  const c = iscsiExposurePolicyFixture();
+  c.iscsi.backings.push({ ...c.iscsi.backings[0], id: "other-backing", relative_path: "other/retained.img" });
+  c.iscsi.targets.push({ id: "other-target", name: "iqn.2001-04.com.example:other", state: "disabled",
+    luns: [{ id: "other-lun", number: 0, backing_id: "other-backing", access: "ro" }],
+    initiators: [{ name: "iqn.2001-04.com.example:other-peer", authentication: { mode: "chap", initiator_user: "other-user", initiator_secret_ref: "other-ref" }, grants: [{ lun_id: "other-lun", access: "ro" }] }] });
+  c.iscsi.backings.push({ ...c.iscsi.backings[0], id: "retained-backing", relative_path: "retained/extra.img" });
+  c.iscsi.targets[0].luns.push({ id: "retained-lun", number: 4, backing_id: "retained-backing", access: "ro" });
+  c.iscsi.targets[0].initiators[0].grants.push({ lun_id: "retained-lun", access: "ro" });
+  c.iscsi.targets[0].initiators.push({ name: "iqn.2001-04.com.example:retained-peer", authentication: { mode: "chap", initiator_user: "retained-user", initiator_secret_ref: "retained-ref" }, grants: [{ lun_id: "lun", access: "ro" }] });
+  return c;
+}
+
+export async function testISCSIEdit(createHarness, jsonResponse, snapshotResponse) {
+  const token = "a".repeat(43), path = "/api/v1/iscsi/preview";
+  const common = route => route === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    route === "/api/v1/auth/session" ? jsonResponse({ csrf_token: token }) : snapshotResponse(route);
+  const fixture = iscsiEditPolicyFixture(), source = JSON.stringify(fixture);
+  const fields = { mode: "target-state", "target-id": "target", name: fixture.iscsi.targets[0].name, state: "disabled", "lun-id": "lun", initiator: fixture.iscsi.targets[0].initiators[0].name, access: "ro" };
+  const h = await createHarness(async (route, options) => route === path ? jsonResponse(iscsiPreviewForPolicy(JSON.parse(options.body))) : common(route));
+  const build = (text = source, f = fields) => h.context.buildISCSIEdit(text, f);
+  const disabled = build(), p = JSON.parse(disabled.text);
+  assert.equal(fixture.iscsi.targets[0].state, "enabled", "immutable input");
+  assert.equal(p.iscsi.targets[0].state, "disabled"); assert.equal(p.revision, 2);
+  assert.deepEqual(p.iscsi.targets[1], fixture.iscsi.targets[1]); assert.deepEqual(p.iscsi.backings, fixture.iscsi.backings);
+  const normalize = policy => { const copy = structuredClone(policy); copy.revision = 1; copy.shares.revision = copy.nfs.revision = copy.nfs.volume_revision = 1; return copy; };
+  assert.deepEqual(normalize(p.file_services), normalize(fixture.file_services));
+  assert.deepEqual(p.iscsi.targets[0].initiators, fixture.iscsi.targets[0].initiators);
+  assert.deepEqual(p.iscsi.targets[0].luns, fixture.iscsi.targets[0].luns);
+  assert.equal(p.iscsi.revision, 2); assert.equal(p.iscsi.volume_revision, 2);
+  for (const change of [
+    f => { f.mode = ""; }, f => { f.mode = "delete"; }, f => { f["target-id"] = "unknown"; },
+    f => { f.name = fixture.iscsi.targets[1].name; }, f => { f.name = ""; }, f => { f.state = "running"; },
+    f => { f.state = "enabled"; }, f => { f.name = "\n"; }, f => { delete f.state; },
+    f => { f.initiator = "x".repeat(1025); },
+  ]) { const f = { ...fields }; change(f); assert.throws(() => build(source, f)); }
+  for (const revision of [0, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => build(JSON.stringify({ ...fixture, revision })));
+  }
+  const oversizedNumber = structuredClone(fixture); oversizedNumber.iscsi.backings[0].capacity_bytes = Number.MAX_SAFE_INTEGER + 1;
+  assert.throws(() => build(JSON.stringify(oversizedNumber)));
+  const duplicate = structuredClone(fixture); duplicate.iscsi.targets.push(structuredClone(duplicate.iscsi.targets[0]));
+  assert.throws(() => build(JSON.stringify(duplicate)));
+  assert.throws(() => build(source, { ...fields, mode: "lun-access" }), /Invalid guided iSCSI edit/, "editing desired-enabled LUN refused");
+  const edit = (text, mode, access) => build(text, { ...fields, mode, access });
+  const readOnly = edit(disabled.text, "lun-access", "ro"), ro = JSON.parse(readOnly.text);
+  assert.equal(ro.iscsi.targets[0].luns[0].access, "ro"); assert.equal(ro.revision, 3);
+  assert.deepEqual(ro.iscsi.targets[0].initiators, p.iscsi.targets[0].initiators, "no cascading grants");
+  assert.throws(() => edit(readOnly.text, "grant-access", "rw"), /Invalid guided iSCSI edit/);
+  assert.throws(() => edit(readOnly.text, "lun-access", "ro"), /Invalid guided iSCSI edit/, "no-op refused");
+  const writableGrant = edit(disabled.text, "grant-access", "rw"), rw = JSON.parse(writableGrant.text);
+  assert.equal(rw.iscsi.targets[0].initiators[0].grants[0].access, "rw");
+  assert.deepEqual(rw.iscsi.targets[0].initiators[0].authentication, p.iscsi.targets[0].initiators[0].authentication);
+  assert.throws(() => edit(writableGrant.text, "lun-access", "ro"), /Invalid guided iSCSI edit/, "must explicitly reduce grants first");
+  for (const change of [f => { f["lun-id"] = "other-lun"; }, f => { f.initiator = "foreign"; }, f => { f.access = ""; }]) {
+    const f = { ...fields, mode: "grant-access", access: "rw" }; change(f); assert.throws(() => build(disabled.text, f));
+  }
+  const setFields = b => { for (const [key, value] of Object.entries(fields)) b.elements[`iscsi-edit-${key}`].value = value; };
+  setFields(h); h.elements["iscsi-document"].value = source;
+  await h.context.submitISCSIPreview(undefined, "edit");
+  assert.deepEqual(h.requests.filter(r => r.path === path).map(r => r.options.body), [source, disabled.text]);
+  assert.equal(h.elements["iscsi-document"].value, disabled.text);
+  assert.match(h.elements["iscsi-status"].textContent, /No target was started or stopped/);
+  assert.equal(h.elements["iscsi-edit-fields"].disabled, false);
+  for (const fault of ["base-refused", "candidate-refused", "changed-unselected-target", "changed-unselected-backing", "changed-grant", "changed-revision", "changed-count"]) {
+    let calls = 0;
+    const b = await createHarness(async (route, options) => {
+      if (route !== path) return common(route);
+      calls++;
+      if ((fault === "base-refused" && calls === 1) || (fault === "candidate-refused" && calls === 2)) return jsonResponse({}, 400);
+      const preview = iscsiPreviewForPolicy(JSON.parse(options.body));
+      if (calls === 2) {
+        if (fault === "changed-unselected-target") preview.targets[1].name += "-changed";
+        if (fault === "changed-unselected-backing") preview.backings[1].relative_path += ".changed";
+        if (fault === "changed-grant") preview.targets[0].initiators[0].grants[0].access = "rw";
+        if (fault === "changed-revision") preview.revision = "3";
+        if (fault === "changed-count") preview.smb_definitions++;
+      }
+      return jsonResponse(preview);
+    });
+    setFields(b); b.elements["iscsi-document"].value = source;
+    await b.context.submitISCSIPreview(undefined, "edit");
+    assert.equal(calls, fault === "base-refused" ? 1 : 2, fault);
+    assert.equal(b.elements["iscsi-document"].value, source, fault);
+    assert.equal(b.elements["iscsi-result"].hidden, true, fault);
+  }
+  for (const retire of ["field-edit", "clear", "logout", "timeout", "late401"]) {
+    let release, calls = 0, timer; const blocked = new Promise(resolve => { release = resolve; });
+    const b = await createHarness(async (route, options) => {
+      if (route !== path) return common(route);
+      calls++; const preview = iscsiPreviewForPolicy(JSON.parse(options.body));
+      if (calls === 2) { await blocked; if (retire === "late401") return jsonResponse({}, 401); }
+      return jsonResponse(preview);
+    }, { setTimeout(callback) { timer = callback; return 1; }, clearTimeout() {} });
+    setFields(b); b.elements["iscsi-document"].value = source;
+    const pending = b.context.submitISCSIPreview(undefined, "edit"); await turn();
+    assert.equal(calls, 2); assert.equal(b.elements["iscsi-edit-fields"].disabled, true);
+    await b.context.submitISCSIPreview(); await b.context.submitISCSIPreview(undefined, true);
+    assert.equal(calls, 2, "one shared manual/add/edit operation");
+    if (retire === "timeout") timer();
+    else if (retire === "logout") b.context.showAuthUnavailable();
+    else if (retire === "clear") b.context.clearISCSIPreview();
+    else b.elements["iscsi-edit-target-id"].listeners.get("input")();
+    await pending; release(); await turn(); await turn();
+    assert.equal(b.elements["iscsi-document"].value, ["clear", "logout"].includes(retire) ? "" : source);
+    assert.equal(b.elements["iscsi-result"].hidden, true); assert.equal(b.elements["iscsi-edit-fields"].disabled, false);
+    if (["clear", "logout"].includes(retire)) for (const key of Object.keys(fields)) assert.equal(b.elements[`iscsi-edit-${key}`].value, "");
+  }
+  process.stdout.write("iSCSI desired edit controls passed: exact-target=true disabled-only-access=true no-cascade=true preservation=true two-strict-previews=true complete-projection=true shared-retirement=true live-mutation=false.\n");
+}
 
 export async function testISCSIPanel(createHarness, jsonResponse, snapshotResponse) {
   const token = "a".repeat(43), path = "/api/v1/iscsi/preview";

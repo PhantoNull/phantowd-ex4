@@ -1785,6 +1785,28 @@ qualification follows. No new Docker image/volume or NAS operation. Next is
 completing qualification of the separate experimental retained collector;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
+## M9.2k scoped desired iSCSI edits — host/browser workflow
+
+The panel can now edit a selected target's desired state, LUN access or an
+existing initiator grant. Exact target ID/IQN and selected LUN/peer are required;
+no-op/ambiguous/unsafe-number edits refuse. Access changes require desired-disabled
+state. Read-only LUN changes refuse if any grant remains read/write; no grant is
+silently reduced. Other targets, LUNs, grants, backings, credential references and
+SMB/NFS data remain unchanged apart from coherent revision advancement.
+
+The same strict original/candidate preview, single ten-second operation and
+bounded authenticated readers are reused. Entire public projections must match
+before text replacement; refused, substituted or retired work cannot publish.
+Clear/logout erases the private edit fields. These are local proposal edits, not
+target start/stop, revocation, persistent save, file creation/deletion or a new
+server endpoint. Complete DOM, Windows Go1.27 vet/ordinary tests and the original
+tagged smoke/HTTP/HTTPS asset checks pass. All five actual Edge155 profiles pass
+with exact current assets and disposed profiles. The dedicated edit profile uses
+27of32pointer actions and11preview POSTs for five edits, no-cascade refusal,
+duplicate-original refusal and three widths, preserving two targets/three LUNs/
+multiple peers. These are host/browser proofs, not the older ARM evidence below;
+current ARM/full/physical qualification and product persistence remain open.
+
 ## M9.2j disabled-target LUN draft extension — local host/browser/ARM prototype
 
 The guided draft can add a backing/LUN to a matching desired-disabled target,

@@ -15,13 +15,13 @@ import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
-import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture } from "./tests/test-iscsi-panel.mjs";
+import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture, iscsiEditPolicyFixture } from "./tests/test-iscsi-panel.mjs";
 import { networkPolicyFixture, networkDraftFieldsFixture } from "./tests/test-network-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 import { exerciseServicePolicy } from "./browser-service-policy-flow.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-assert.ok([4, 6, 7].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH [--network-preview|--service-policy]]");
+assert.ok([4, 6, 7].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH [--network-preview|--service-policy|--iscsi-edit]]");
 assert.equal(process.argv[2], "--browser", "an explicit browser path is required");
 let apiFixture;
 if (process.argv.length >= 6) {
@@ -30,10 +30,11 @@ if (process.argv.length >= 6) {
   assert.ok((await lstat(apiFixture)).isFile(), "API fixture must be a regular test binary");
   assert.ok(/^phantowd-browser-api\.test(\.exe)?$/.test(basename(apiFixture)), "unexpected API fixture binary name");
 }
-if (process.argv.length === 7) assert.ok(["--network-preview", "--service-policy"].includes(process.argv[6]));
+if (process.argv.length === 7) assert.ok(["--network-preview", "--service-policy", "--iscsi-edit"].includes(process.argv[6]));
 const networkMode = process.argv[6] === "--network-preview";
 const serviceMode = process.argv[6] === "--service-policy";
-const scope = serviceMode ? "headless-browser-service-policy-memory-fixture" : networkMode ? "headless-browser-network-preview-go-auth-memory-fixture" : apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
+const iscsiEditMode = process.argv[6] === "--iscsi-edit";
+const scope = iscsiEditMode ? "headless-browser-iscsi-edit-go-auth-memory-fixture" : serviceMode ? "headless-browser-service-policy-memory-fixture" : networkMode ? "headless-browser-network-preview-go-auth-memory-fixture" : apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
 const browserPath = await realpath(process.argv[3]);
 assert.ok((await lstat(browserPath)).isFile(), "browser must be a regular file");
 assert.ok(/^(msedge|chrome|chromium)(\.exe)?$/i.test(basename(browserPath)), "unsupported browser executable");
@@ -47,7 +48,7 @@ const tempRoot = await realpath(tmpdir());
 let profile, cdp;
 let successful = false;
 let failure, result;
-const artifacts = join(repo, "artifacts", serviceMode ? "dashboard-browser-policy" : networkMode ? "dashboard-browser-network" : apiFixture ? "dashboard-browser-api" : "dashboard-browser");
+const artifacts = join(repo, "artifacts", iscsiEditMode ? "dashboard-browser-iscsi-edit" : serviceMode ? "dashboard-browser-policy" : networkMode ? "dashboard-browser-network" : apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
   for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "network-preview.js", "ghost.svg"]) {
@@ -404,7 +405,7 @@ try {
     await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 4);
   }
-  if (apiFixture && !networkMode && !serviceMode) {
+  if (apiFixture && !networkMode && !serviceMode && !iscsiEditMode) {
     await clickVisible("iscsi-document");
     await replaceInput("iscsi-document", JSON.stringify(iscsiExposurePolicyFixture()));
     await clickVisible("iscsi-submit");
@@ -488,6 +489,66 @@ try {
     assert.equal(await evaluate("document.getElementById('iscsi-result').hidden"), true);
     for (const name of ["name", "path", "initiator", "chap-user", "secret-ref"]) assert.equal(await evaluate(`document.getElementById('iscsi-draft-${name}').value`), "");
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 6);
+  }
+
+  if (iscsiEditMode) {
+    const expected = iscsiEditPolicyFixture();
+    await clickVisible("iscsi-document");
+    await replaceInput("iscsi-document", JSON.stringify(expected));
+    await clickVisible("iscsi-edit-toggle");
+    const select = async (steps, opened = false) => {
+      await key("Home", "Home", 36);
+      for (let i = 0; i < steps; i++) await key("ArrowDown", "ArrowDown", 40);
+      if (opened) await key("Enter", "Enter", 13);
+      await key("Tab", "Tab", 9);
+    };
+    const enterEdit = async (mode, state, access) => {
+      await clickVisible("iscsi-edit-mode"); await select(mode, true);
+      await replaceInput("iscsi-edit-target-id", "target"); await key("Tab", "Tab", 9);
+      await replaceInput("iscsi-edit-name", expected.iscsi.targets[0].name); await key("Tab", "Tab", 9);
+      await select(state);
+      await replaceInput("iscsi-edit-lun-id", "lun"); await key("Tab", "Tab", 9);
+      await replaceInput("iscsi-edit-initiator", expected.iscsi.targets[0].initiators[0].name); await key("Tab", "Tab", 9);
+      await select(access);
+      assert.equal(await evaluate("document.activeElement.id"), "iscsi-edit-submit");
+      await key("Enter", "Enter", 13);
+    };
+    const accepted = async mutate => {
+      await until(() => evaluate(`document.getElementById('iscsi-status').textContent.includes('Desired iSCSI edit staged') && !document.getElementById('iscsi-edit-submit').disabled`), browser, "actual desired-iSCSI edit HTTP round trip");
+      mutate(); expected.revision++;
+      const fs = expected.file_services, p = expected.iscsi;
+      fs.revision = fs.shares.revision = fs.nfs.revision = fs.nfs.volume_revision = p.revision = p.volume_revision = expected.revision;
+      assert.deepEqual(JSON.parse(await evaluate("document.getElementById('iscsi-document').value")), expected, "complete unselected policy/credentials/backings preserved");
+      assert.match(await evaluate("document.getElementById('iscsi-status').textContent"), /No target was started or stopped/);
+    };
+    await enterEdit(1, 1, 0); await accepted(() => { expected.iscsi.targets[0].state = "disabled"; });
+    await enterEdit(3, 0, 2); await accepted(() => { expected.iscsi.targets[0].initiators[0].grants[0].access = "rw"; });
+    const beforeRefusal = cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length;
+    await enterEdit(2, 0, 1);
+    assert.match(await evaluate("document.getElementById('iscsi-status').textContent"), /Guided draft refused/);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, beforeRefusal);
+    assert.deepEqual(JSON.parse(await evaluate("document.getElementById('iscsi-document').value")), expected, "read-only change cannot silently cascade into grants");
+    await enterEdit(3, 0, 1); await accepted(() => { expected.iscsi.targets[0].initiators[0].grants[0].access = "ro"; });
+    await enterEdit(2, 0, 1); await accepted(() => { expected.iscsi.targets[0].luns[0].access = "ro"; });
+    await enterEdit(1, 2, 0); await accepted(() => { expected.iscsi.targets[0].state = "enabled"; });
+    for (const width of [1365, 390, 320]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await evaluate("document.getElementById('iscsi-edit-fields').scrollIntoView({block:'start'})");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), true);
+      assert.equal(await evaluate("[...document.querySelectorAll('#iscsi-edit-fields input, #iscsi-edit-fields select')].every(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().right <= document.documentElement.clientWidth)"), true);
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(shot.data.length <= 8 * 1024 * 1024);
+      await writeFile(join(artifacts, `iscsi-edit-${width}.png`), Buffer.from(shot.data, "base64"));
+    }
+    await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
+    const duplicate = JSON.stringify(expected).replace(`"revision":${expected.revision}`, `"revision":${expected.revision},"revision":${expected.revision}`);
+    await clickVisible("iscsi-document"); await replaceInput("iscsi-document", duplicate);
+    await enterEdit(1, 1, 0);
+    await until(() => evaluate(`document.getElementById('iscsi-status').textContent.includes('could not be verified') && !document.getElementById('iscsi-edit-submit').disabled`), browser, "strict original-iSCSI edit refusal");
+    assert.equal(await evaluate("document.getElementById('iscsi-document').value"), duplicate);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 11);
+    await clickVisible("iscsi-clear");
+    for (const name of ["mode", "target-id", "name", "state", "lun-id", "initiator", "access"]) assert.equal(await evaluate(`document.getElementById('iscsi-edit-${name}').value`), "");
   }
 
   if (networkMode) {
@@ -728,10 +789,11 @@ try {
     retired_service401_recheck: Boolean(apiFixture && !serviceMode),
     visible_pointer_controls: pointerControls,
     auth_keyboard_tab_enter: Boolean(apiFixture),
-    iscsi_preview_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
-    iscsi_guided_draft_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
-    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
-    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode && !serviceMode),
+    iscsi_preview_actual_http: Boolean(apiFixture && !networkMode && !serviceMode && !iscsiEditMode),
+    iscsi_guided_draft_actual_http: Boolean(apiFixture && !networkMode && !serviceMode && !iscsiEditMode),
+    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture && !networkMode && !serviceMode && !iscsiEditMode),
+    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode && !serviceMode && !iscsiEditMode),
+    iscsi_existing_policy_edit_actual_http: iscsiEditMode,
     service_policy_actual_http: servicePolicyResult ?? null,
     network_preview_actual_http: networkMode,
     network_guided_draft_actual_http: networkMode,

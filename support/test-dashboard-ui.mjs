@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createContext, Script } from "node:vm";
 import { supportFixture } from "./tests/test-support-bundle.mjs";
-import { testISCSIPanel } from "./tests/test-iscsi-panel.mjs";
+import { testISCSIPanel, testISCSIEdit } from "./tests/test-iscsi-panel.mjs";
 import { testNetworkPanel } from "./tests/test-network-panel.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -280,6 +280,7 @@ async function createHarness(respond, timing = {}) {
     ...["form", "document", "submit", "clear", "result", "status"].map(id => `iscsi-${id}`),
     ...["form", "document", "submit", "clear", "result", "status"].map(id => `network-${id}`),
     ...markupIDs.filter(id => id.startsWith("network-draft-")),
+    ...markupIDs.filter(id => id.startsWith("iscsi-edit-")),
     ...["fields", "add", "mode", "target-id", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map(id => `iscsi-draft-${id}`),
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
@@ -3464,5 +3465,6 @@ async function testAdministrativeInclusiveByteCapsAndUTF8Refusals() {
 }
 await testAdministrativeInclusiveByteCapsAndUTF8Refusals();
 await testISCSIPanel(createHarness, jsonResponse, snapshotResponse);
+await testISCSIEdit(createHarness, jsonResponse, snapshotResponse);
 await testNetworkPanel(createHarness, jsonResponse, snapshotResponse);
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
