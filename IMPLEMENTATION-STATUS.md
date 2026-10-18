@@ -11,9 +11,24 @@ contracts and ARMv5 test cross-compilation. The installed Windows compiler is
 Go1.27.0; cross-compilation is not guest execution. The pinned Go1.26.8 Linux
 wrapper separately passes all ordinary API package vet/units, whole QEMU-tagged
 vet and the selected proc-reader diagnostic, running non-root with existing
-read-only caches and no network. This is not a new whole-suite race or positive
-root-filesystem qualification; earlier scoped race/actual ARM evidence remains
-separate. Existing full/hosted/physical/release gates are not closed by these runs.
+read-only caches and no network.
+
+The complete [host-only CI run39094413607](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39094413607)
+now passes on `edaa4c9`, including all ordinary API package vet/units/race,
+QEMU-tagged vet/selected proc diagnostic, host-tool race/fixed fuzz campaigns,
+browser-fixture boundaries and the command/mock/syntax contracts. It uses the
+locked Go1.26.8 SDK; API source is unchanged from `c83a2dc`. Cheap contracts run
+before SDK/Go work. Feedback fixtures use private executable256MiB RAM scratch;
+only ephemeral runner mount/unmount uses sudo, tests remain non-root. All58
+feedback and8 build-job tests execute on Linux without skips. Portable overlay
+stderr mocks now supply synthetic native paths instead of Windows-only defaults.
+No test, command or time budget was dropped to obtain this result.
+
+This does not qualify positive root-filesystem lifecycles skipped by ordinary
+non-root tests, ARM execution, actual Docker lifecycle, complete firmware/SBOM,
+clean reproduction, physical storage or release. The standalone Samba status-
+producer experiment remains deferred and excluded; its unresolved completeness
+gate is not waived. No NAS service or user disk is activated by these tests.
 
 The cached full wrapper's1800s/30s timeout executes **inside** the container.
 It does not bound daemon-side creation/startup or a blocked host CLI. A scoped
