@@ -45,6 +45,9 @@ No shared mount is remounted, no physical device is supplied and no guest boots.
 All remaining command/mock and syntax contracts also precede Go SDK work; a
 portable fixture must supply synthetic paths rather than evaluate Windows-only
 launcher defaults on a Linux runner. Keep every existing check and budget.
+The native API step explicitly requires a non-root runner and prints the focused
+normal-serving startup tests before the complete suite, so their root-only skip
+cannot silently stand in for positive non-root execution.
 
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,
