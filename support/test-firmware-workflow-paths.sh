@@ -569,7 +569,7 @@ require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
 for command in '          node --check support/test-dashboard-browser.mjs' \
     '          node support/tests/test-dashboard-preview.mjs' \
     '          node support/test-dashboard-ui.mjs' \
-    "        run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|DashboardBrowserAPIFixture)\$' ."; do
+    "        run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|BrowserPolicyFixtureActualHTTPRoundTrip|DashboardBrowserAPIFixture)\$' ."; do
     if ! grep -Fx "$command" "$host_workflow" >/dev/null; then
         printf 'host workflow must execute dashboard check: %s\n' "$command" >&2
         exit 1
