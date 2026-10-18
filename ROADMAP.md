@@ -851,6 +851,14 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   Samba intents to review. Do not construct these owners merely to observe boot
   state. Network/TLS ownership, product provisioning, full role/consumer
   composition, retention/reconciliation and physical placement remain unqualified.
+  **Normal API startup preflight (host-tested):** validate transport and
+  incompatible development policy-store options before opening account/policy
+  stores. Actual command-entry subprocess tests reproduce three earlier state-
+  first refusals, then verify the corrected boundaries and two admission-order
+  controls using only a temporary regular-file sentinel, never a state directory.
+  Preserve root refusal, explicit state-option presence, deadlines and generic
+  errors. This is option admission, not pristine classification, whole-root
+  ownership, all later startup rollback, provisioning or recovery.
 - **M1.2 — Explicit bootstrap and migration.** Define pristine, initialized,
   corrupt, incompatible and unavailable states. Enrollment is allowed only from
   proven pristine state. Version upgrades need checked preconditions, retained

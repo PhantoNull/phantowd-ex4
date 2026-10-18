@@ -13,11 +13,12 @@ wrapper separately passes all ordinary API package vet/units, whole QEMU-tagged
 vet and the selected proc-reader diagnostic, running non-root with existing
 read-only caches and no network.
 
-The complete [host-only CI run39096146569](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39096146569)
-now passes on `ae09c64`, including all ordinary API package vet/units/race,
+The complete [host-only CI run39097218286](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39097218286)
+now passes on `2b91e23`, including all ordinary API package vet/units/race,
 QEMU-tagged vet/selected proc diagnostic, host-tool race/fixed fuzz campaigns,
 browser-fixture boundaries and the command/mock/syntax contracts. It uses the
-locked Go1.26.8 SDK and the new Linux TLS whole-path resolution tests. Cheap contracts run
+locked Go1.26.8 SDK, Linux TLS whole-path resolution tests and explicit non-root
+command-startup execution. Cheap contracts run
 before SDK/Go work. Feedback fixtures use private executable256MiB RAM scratch;
 only ephemeral runner mount/unmount uses sudo, tests remain non-root. All58
 feedback and8 build-job tests execute on Linux without skips. Portable overlay
@@ -44,6 +45,27 @@ late-reply/unsettled-client qualification remain required. See the
 startup stall is not repaired by these tests, nor is full firmware qualified;
 an observation timeout or killed client must never certify container retirement.
 No automatic retry, global Docker restart or prune is an acceptable substitute.
+
+## Normal API startup: validate options before state owners
+
+The normal non-root command entry point now validates transport and incompatible
+development policy-store options before opening account or policy stores. Three
+actual child-process REDs previously reached state refusal first; they now
+report the intended fixed option errors. Controls preserve the earlier missing-
+state-option refusal and show valid options reach the expected state-storage refusal.
+Every child uses a temporary regular-file sentinel, not a state directory;
+its bytes/entries remain unchanged and each process must terminate within5s.
+
+Windows ordinary vet/units and complete pinned Linux native/race checks pass.
+CI requires a non-root UID and prints all five focused command-entry cases before
+the full suite, so their root-only skip cannot substitute for execution.
+This does not classify pristine state, perform
+provisioning/recovery, qualify all subsequent constructor/cleanup failures or
+guarantee no I/O: supplied TLS material can be read during transport validation.
+The unrelated tagged HTTPS/iSCSI Windows failure remains unexplained; ten
+unchanged original-group repetitions pass but do not repair it. No new endpoint,
+listener policy, account behavior, root permission or experimental-mode change.
+See [state ownership](STATE-OWNERSHIP.md).
 
 ## Retained identity namespace reader — internal read-only profile
 
