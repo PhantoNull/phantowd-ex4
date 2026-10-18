@@ -926,6 +926,45 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   all five scenarios twice with strict complete receipts and all old caps/checks.
   This does not qualify positive lifecycle race, media/two-boot/full integration
   or any product bootstrap/recovery path.
+  **M1.2c.4 — joined session/history diagnosis:** compare declarations, exact
+  opening checkpoint/current and complete operation history as one bounded
+  observation. Reuse strict epoch/history codecs; include all fields in the4MiB
+  bound and retain16-operation/4096-record/656128-policy limits. Exact opening
+  revision/hash must bind the checkpoint itself, never a coherent later suffix.
+  Validate present malformed data before a diagnosis, preserve known mismatch
+  over missing evidence, and keep unconfirmed operations unresolved even with a
+  matching closure. Five private redacted kinds grant no boot/recovery/action.
+  The retained journal must compare supplied DATA under its own mutex/readback;
+  the fresh writer supplies actual original history/current under all role locks.
+  Run at initialization, accepted publication and before/after closure. Shared
+  owned bundle decoder must retain filename/content binding, zero-on-error and
+  cleanup, without caller backends or paths. Require native tuple/missing/invalid/
+  privacy/concurrency/exact-inclusive-bound/fuzz tests and actual ARM coherent-
+  suffix refusal, unresolved publication and canceled-closure sticky review.
+  Strengthen existing session receipts, no new stage/cap relaxation. This is not
+  existing-state provenance, a complete boot bundle or authorized reconciliation;
+  all product/physical/succession/consumer/recovery gates above remain.
+  **Local acceptance:** Windows portable tests, pinned native vet/scoped units/
+  race3, exact inclusive aggregate/record/count and concurrency/privacy controls,
+  2,000 opening-input fuzz executions and final actual ARM smoke pass. Root
+  lifecycle skips natively without mandatory unique IDs. Two exact strengthened
+  session receipts plus all old checks/caps required, no temporary diagnostics.
+  First15s guest timeout has no isolated cause; measured diagnostic run passed
+  at12.1–12.5s. Remove duplicated independent+joined complete comparisons at each
+  boundary, not reference checks or cases. Native two-operation DATA benchmark
+  records47% fewer allocations, not peak RAM/ARM/product or historical flake repair.
+  **Next M1.2c.5 — explicit retained read-only session/history profile:** qualify
+  an opt-in three-role collector with original root/policy/operations/session
+  locks, fixed bounded schema/census, original files/mount/watch lifetime and
+  exact checkpoint binding. Existing two-role OpenHistory must remain strict,
+  never autodetect/adopt/upgrade. Read all present evidence before diagnosis;
+  pending is metadata-only review, never recovery/promotion. Constructor must
+  never initialize/sync/delete, and every drift/cancel/close uncertainty stays
+  review. Test missing/foreign/mixed layouts, restored substitutions, full actual
+  lock exclusions and read-only byte/metadata/FD invariance. Reuse existing host/
+  QEMU tooling and measure cost first; no new default historical build stages.
+  This still cannot supply complete product credential/identity/registry/secret/
+  network roles, succession/retention, consumer settlement or recovery permission.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:

@@ -242,6 +242,35 @@ func (j *Journal) Observe(ctx context.Context, policy []byte) (policyevidence.Ep
 	return d, nil
 }
 
+// ObserveHistory rechecks this original journal under its lock, then joins its
+// declarations with supplied exact checkpoint/current and full history DATA.
+// It does not qualify the origin of caller data or issue boot/service authority.
+func (j *Journal) ObserveHistory(ctx context.Context, checkpoint, current []byte, operations []policyevidence.HistoryOperation) (policyevidence.SessionDiagnosis, error) {
+	if !j.valid() || ctx == nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	j.state.mu.Lock()
+	defer j.state.mu.Unlock()
+	if err := j.ready(ctx); err != nil {
+		return policyevidence.SessionDiagnosis{}, err
+	}
+	if err := j.verify(ctx); err != nil {
+		return policyevidence.SessionDiagnosis{}, err
+	}
+	if j.state.doc.Revision == 0 {
+		return policyevidence.SessionDiagnosis{}, ErrConflict
+	}
+	d, err := j.state.doc.observeHistory(policyevidence.Slot{State: policyevidence.Present, Data: checkpoint},
+		policyevidence.Slot{State: policyevidence.Present, Data: current}, operations)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	if ctx.Err() != nil {
+		return policyevidence.SessionDiagnosis{}, j.poison(ctx)
+	}
+	return d, nil
+}
+
 // Close only releases references. It NEVER writes a closure declaration or
 // deletes evidence, even after review. An uncertain close is terminal, no retry.
 func (j *Journal) Close() error {

@@ -64,6 +64,25 @@ watch, initializes its own synthetic policy, and records/readbacks an opening
 before returning a usable writer. Sequence1 is fresh synthetic data, not a
 product successor allocator. No existing state is opened or upgraded.
 
+**M1.2c.4:** that profile now also joins the retained journal with the exact owned
+checkpoint/current and actual pinned history-file census. One shared owned bundle
+decoder preserves strict filename/content binding and clears private decoded
+buffers on success/error. The combined comparison runs before constructor return,
+after every successful history publication, and around explicit closure, under
+the same original writer mutex and role locks. Checkpoint revision/hash must
+match the opening itself. A coherent suffix that independently passes ordinary
+history matching is refused by the joined comparison; an unconfirmed tail stays
+unresolved even when a closure declaration matches the current bytes. No new
+path/backend/ID injection, product opener or recovery behavior is introduced.
+The joined validator invokes the same strict epoch/history comparators, so it
+replaces duplicated independent full comparisons at a boundary; it does not
+cache permission across boundaries. Original root/history/current rechecks and
+all uncertainty fences remain. Native/vet/scoped race3 and the final exact-source
+ARM smoke pass the strengthened receipts. First shared15s timeout remains without
+an isolated cause; an instrumented sample passed12.1–12.5s before deduplication.
+Temporary timing instrumentation is removed. Neither the final passing sample
+nor the native allocation benchmark qualifies every intermittent/full/hosted case.
+
 Each ordinary transaction guard also requires the retained journal's opening.
 Both typed protocol views and whole-document edits remain under the original
 mutex. An explicit `sealSession` operation rechecks exact current policy and
@@ -88,6 +107,10 @@ refusal and verified descriptor-balanced disposal. Uncertain reference closure
 retains the original fixture writer rather than retrying/deleting its namespace.
 The standard smoke requires exactly two complete session-writer receipts in
 addition to every old receipt; no new lane or increased budget.
+The strengthened receipts additionally require `unified_history=true` and
+`checkpoint_bound=true`. Actual synthetic suffix and unresolved-publication
+controls exercise the joined comparison; a matching joined diagnosis after a
+canceled closure still cannot clear the containing writer's review.
 
 This composition does not repair the child journal's unqualified original-current
 ABA/watch boundary or supply complete constructor/temporary-close faults, durable

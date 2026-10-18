@@ -182,6 +182,14 @@ provisioned role; it is not the retained complete product root or a writable
 bootstrap/reopen path. Neither this role nor its caller is wired into product
 startup, and existing policy/history directory schemas remain unchanged.
 
+The private fresh three-role writer now joins its retained session declarations
+with exact owned opening checkpoint/current and actual complete history reads.
+The checkpoint cannot be silently rebased to a later coherent suffix. A matching
+closure with an unconfirmed operation stays unresolved; a diagnostic match never
+overrides the containing writer's uncertain return. This supplies combined DATA
+diagnosis under original fixture locks, not a read-only existing-state opener,
+product bootstrap, writable reconciliation or proof of historical Close/drain.
+
 Before a product session gate can use those declarations, specify a separate
 bounded role namespace and retain original root/actual child locks across
 observation, effect ownership and shutdown. Persist opening before any admitted

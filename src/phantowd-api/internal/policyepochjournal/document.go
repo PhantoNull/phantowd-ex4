@@ -84,6 +84,30 @@ func (d document) validate() error {
 	}
 	return nil
 }
+
+// Supplied policy/history DATA only; the retained product root must supply the
+// actual origins and full census. No diagnostic grants recovery or admission.
+func (d document) observeHistory(checkpoint, current policyevidence.Slot, operations []policyevidence.HistoryOperation) (policyevidence.SessionDiagnosis, error) {
+	o, err := recordBytes(d.Opening, false)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	defer clear(o)
+	c, err := recordBytes(d.Closure, d.Revision == 1)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	defer clear(c)
+	closure := policyevidence.Slot{State: policyevidence.Absent}
+	if len(c) != 0 {
+		closure = policyevidence.Slot{State: policyevidence.Present, Data: c}
+	}
+	diagnosis, err := policyevidence.MatchSessionHistory(d.Installation, policyevidence.Slot{State: policyevidence.Present, Data: o}, closure, checkpoint, current, operations)
+	if err != nil {
+		return policyevidence.SessionDiagnosis{}, ErrInvalid
+	}
+	return diagnosis, nil
+}
 func decodeDocument(input io.Reader) (document, error) {
 	if input == nil {
 		return document{}, ErrInvalid

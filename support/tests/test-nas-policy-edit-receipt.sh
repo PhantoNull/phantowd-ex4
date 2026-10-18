@@ -10,7 +10,7 @@ marker='PHANTOWD_NAS_POLICY_EDIT_READY cases=7 coherent_revision=true detached=t
 writer='PHANTOWD_POLICY_VIEW_WRITER_READY commits=3 stale_refused=true cross_protocol_preserved=true uncertainty_fenced=true original_locks=true product=false scope=temporary-qemu-only'
 epoch='PHANTOWD_POLICY_EPOCH_RECORD_READY cases=8 exact_binding=true declarations_only=true admission=false scope=synthetic-memory-only'
 journal='PHANTOWD_POLICY_EPOCH_JOURNAL_READY scenarios=3 fresh_only=true actual_store_lock=true exact_readback=true uncertainty_fenced=true private_copies=true declarations_only=true admission=false scope=temporary-qemu-only'
-session='PHANTOWD_POLICY_SESSION_WRITER_READY scenarios=5 original_locks=true opening_required=true closure_serialized=true uncertainty_fenced=true close_does_not_seal=true product=false scope=temporary-qemu-only'
+session='PHANTOWD_POLICY_SESSION_WRITER_READY scenarios=5 original_locks=true opening_required=true unified_history=true checkpoint_bound=true closure_serialized=true uncertainty_fenced=true close_does_not_seal=true product=false scope=temporary-qemu-only'
 others() {
     for row in "$marker" "$writer" "$epoch" "$journal" "$session"; do
         if [ "$row" != "$selected" ]; then printf '%s\n%s\n' "$row" "$row"; fi

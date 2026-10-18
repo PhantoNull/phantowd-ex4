@@ -68,6 +68,17 @@ caller buffers are retained by the journal.
 not establish the origin of a current policy read. All returned epoch kinds grant
 no action, including `closure-matches-current`.
 
+`ObserveHistory` additionally compares the same retained declaration file with
+supplied exact checkpoint/current and complete operation DATA, under its original
+journal mutex. The checkpoint must bind to the opening itself; a coherent later
+suffix is inconsistent. An unconfirmed tail remains unresolved even with matching
+closure data. No opening returns phase conflict; malformed supplied data returns
+no partial diagnosis and does not rewrite records. Actual read/cancellation/drift
+uncertainty still retains review, and restoration cannot revive the instance.
+This method does not establish the caller data's origin or grant boot authority.
+The private history writer supplies its actual retained census and exact current
+under all original role locks; product startup/recovery remain unwired.
+
 Each publication reuses the actual write/file-sync/close/rename/directory-sync
 transaction once, then checks exact readback. Any admitted error, uncertain result
 or late cancellation latches review, even if the complete record is visible.

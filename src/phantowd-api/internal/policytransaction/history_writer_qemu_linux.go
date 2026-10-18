@@ -153,7 +153,18 @@ func (w *writer) executeHistoryLocked(ctx context.Context, next naspolicy.Config
 		return localOutcome{}, w.poison(ctx)
 	}
 	w.at("after-receipt")
-	if !guard() || !w.policyMatches(candidate) || !w.historyMatches(candidate) || !guard() {
+	if !guard() || !w.policyMatches(candidate) {
+		return localOutcome{}, w.poison(ctx)
+	}
+	// Joined history includes the exact legacy MatchHistory comparison. Old
+	// two-role profiles retain their original comparison and final guard.
+	historyMatches := false
+	if w.sessionProfile {
+		historyMatches = w.sessionHistoryMatches(ctx, candidate, policyevidence.OpenSessionHistoryObserved)
+	} else {
+		historyMatches = w.historyMatches(candidate)
+	}
+	if !historyMatches || !guard() {
 		return localOutcome{}, w.poison(ctx)
 	}
 	clear(w.base)

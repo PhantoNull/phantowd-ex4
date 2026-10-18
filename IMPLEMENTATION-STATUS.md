@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Unified session/history diagnosis — internal/QEMU
+
+Session declarations, exact opening checkpoint/current and complete operation
+history now have one private bounded comparison. A coherent later history suffix
+cannot replace the opening checkpoint; an unconfirmed operation stays unresolved
+even with matching closure data. Malformed present inputs yield no partial result.
+The retained journal rechecks its original file; the fresh QEMU writer supplies
+actual history/current under the same original locks at initialization, accepted
+publication and explicit closure. No diagnostic grants boot/recovery authority.
+
+Portable Windows units, pinned native vet/scoped units/race3, inclusive byte/count
+limits, concurrency/privacy and2,000 opening-input fuzz executions pass. Positive
+native root lifecycle still skips without mandatory unique mount IDs. Final actual
+ARM standard smoke passes both strengthened session receipts and all old checks
+at unchanged budgets, with temporary diagnostics removed and frozen inputs.
+
+One first guest exceeded the shared15s fixture budget; an instrumented run passed
+at12.1–12.5s, so its exact cause is not isolated. Redundant independent/combined
+comparisons were removed at the same boundaries, retaining the original strict
+validators and fresh reference checks. A fixed200-iteration native two-operation
+DATA microbenchmark records47% fewer allocations; not peak RSS, ARM throughput
+or proof of all intermittent failures repaired. No new default lane or producer
+work. Existing-state observation, full product state/consumers, writable recovery
+and physical/release qualification remain required. See the
+[joined contract](src/phantowd-api/internal/policyevidence/README.md#unified-sessionhistory-diagnosis--m12c4).
+
 ## Session and configuration writer composition — QEMU-only
 
 The new explicit fresh three-role profile retains the same original root plus

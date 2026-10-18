@@ -70,58 +70,93 @@ func MatchNamedBundleHistoryObservation(installation string, anchor, current pol
 }
 
 func matchBundleHistoryObservation(installation string, anchor, current policyevidence.Slot, operations []policyevidence.Slot, names []string) (policyevidence.Diagnosis, error) {
-	if len(operations) > policyevidence.MaxHistoryOperations {
+	decoded, err := decodeBundleHistory(anchor, current, operations, names)
+	if err != nil {
+		return policyevidence.Diagnosis{}, err
+	}
+	defer decoded.clear()
+	d, err := policyevidence.MatchHistory(installation, anchor, current, decoded.entries)
+	if err != nil {
 		return policyevidence.Diagnosis{}, ErrInvalid
+	}
+	return d, nil
+}
+
+// Owned decoded data, not another authority or backend. Clear on every exit.
+type decodedBundleHistory struct {
+	bundles []bundle
+	entries []policyevidence.HistoryOperation
+}
+
+func (d *decodedBundleHistory) clear() {
+	for index := range d.bundles {
+		d.bundles[index].clear()
+	}
+	d.bundles, d.entries = nil, nil
+}
+
+func decodeBundleHistory(anchor, current policyevidence.Slot, operations []policyevidence.Slot, names []string) (result decodedBundleHistory, resultErr error) {
+	defer func() {
+		if resultErr != nil {
+			result.clear()
+		}
+	}()
+	if len(operations) > policyevidence.MaxHistoryOperations {
+		return result, ErrInvalid
+	}
+	if names != nil && len(names) != len(operations) {
+		return result, ErrInvalid
+	}
+	for index, name := range names {
+		if !IsHistoryRecordName(name) {
+			return result, ErrInvalid
+		}
+		for previous := 0; previous < index; previous++ {
+			if names[previous] == name {
+				return result, ErrInvalid
+			}
+		}
 	}
 	remaining := policyevidence.MaxHistoryInputBytes
 	for _, size := range []int{len(anchor.Data), len(current.Data)} {
 		if size > remaining {
-			return policyevidence.Diagnosis{}, ErrInvalid
+			return result, ErrInvalid
 		}
 		remaining -= size
 	}
 	for _, slot := range operations {
 		if !validObservedBundleSlot(slot) || len(slot.Data) > remaining {
-			return policyevidence.Diagnosis{}, ErrInvalid
+			return result, ErrInvalid
 		}
 		remaining -= len(slot.Data)
 	}
-	owned := make([]bundle, 0, len(operations))
-	defer func() {
-		for index := range owned {
-			owned[index].clear()
-		}
-	}()
-	entries := make([]policyevidence.HistoryOperation, len(operations))
+	result.bundles = make([]bundle, 0, len(operations))
+	result.entries = make([]policyevidence.HistoryOperation, len(operations))
 	for index, slot := range operations {
 		if slot.State != policyevidence.Present {
 			continue
 		}
 		b, err := decodeBundle(bytes.NewReader(slot.Data))
 		if err != nil {
-			return policyevidence.Diagnosis{}, ErrInvalid
+			return result, ErrInvalid
 		}
-		owned = append(owned, b)
+		result.bundles = append(result.bundles, b)
 		if names != nil {
 			i, err := policyevidence.DecodeIntent(bytes.NewReader(b.intent))
-			if err != nil || !i.MatchesOperationID(names[index][:32]) {
-				return policyevidence.Diagnosis{}, ErrInvalid
+			if err != nil || !IsHistoryRecordName(names[index]) || !i.MatchesOperationID(names[index][:32]) {
+				return result, ErrInvalid
 			}
 		}
-		entries[index] = policyevidence.HistoryOperation{
+		result.entries[index] = policyevidence.HistoryOperation{
 			Base:    policyevidence.Slot{State: policyevidence.Present, Data: b.base},
 			Intent:  policyevidence.Slot{State: policyevidence.Present, Data: b.intent},
 			Receipt: policyevidence.Slot{State: policyevidence.Absent},
 		}
 		if b.revision == 2 {
-			entries[index].Receipt = policyevidence.Slot{State: policyevidence.Present, Data: b.receipt}
+			result.entries[index].Receipt = policyevidence.Slot{State: policyevidence.Present, Data: b.receipt}
 		}
 	}
-	d, err := policyevidence.MatchHistory(installation, anchor, current, entries)
-	if err != nil {
-		return policyevidence.Diagnosis{}, ErrInvalid
-	}
-	return d, nil
+	return result, nil
 }
 
 func validObservedBundleSlot(slot policyevidence.Slot) bool {

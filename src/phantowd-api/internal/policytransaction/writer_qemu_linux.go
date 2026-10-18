@@ -293,7 +293,7 @@ func newDisposableProfile(ctx context.Context, id string, initial naspolicy.Conf
 	if session {
 		// Sequence1 is fresh synthetic data, NOT a product successor allocator.
 		w.session, err = policyepochjournal.OpenFresh(ctx, w.root, id, 1)
-		if err != nil || w.session.RecordOpening(ctx, w.base) != nil || w.guard(ctx) != nil {
+		if err != nil || w.session.RecordOpening(ctx, w.base) != nil || w.guardRoot(ctx) != nil || !w.sessionHistoryMatches(ctx, w.base, policyevidence.OpenSessionHistoryObserved) || w.guardRoot(ctx) != nil {
 			return fail()
 		}
 	}

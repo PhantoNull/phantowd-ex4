@@ -33,7 +33,7 @@ func exerciseHistorySessions(ctx context.Context, initial naspolicy.Config) erro
 			return fmt.Errorf("session fixture %s: %w", scenario, err)
 		}
 	}
-	fmt.Println("PHANTOWD_POLICY_SESSION_WRITER_READY scenarios=5 original_locks=true opening_required=true closure_serialized=true uncertainty_fenced=true close_does_not_seal=true product=false scope=temporary-qemu-only")
+	fmt.Println("PHANTOWD_POLICY_SESSION_WRITER_READY scenarios=5 original_locks=true opening_required=true unified_history=true checkpoint_bound=true closure_serialized=true uncertainty_fenced=true close_does_not_seal=true product=false scope=temporary-qemu-only")
 	return ctx.Err()
 }
 
@@ -62,6 +62,44 @@ func sessionOpeningUnchanged(before, after []byte, revision uint64) bool {
 		a.Revision == 1 && a.Opening != "" && a.Closure == "" &&
 		b.Revision == revision && a.Opening == b.Opening &&
 		(revision == 1 && b.Closure == "" || revision == 2 && b.Closure != "")
+}
+
+// Independent coherent suffix control: ordinary history matching accepts it,
+// but the original opening forbids silently rebasing its checkpoint to revision2.
+func sessionSuffixRefused(ctx context.Context, w *writer) bool {
+	entries, err := w.history.observe()
+	if err != nil || len(entries) != 2 {
+		return false
+	}
+	defer func() {
+		for _, entry := range entries {
+			clear(entry.Operation.Data)
+		}
+	}()
+	for _, entry := range entries {
+		b, err := decodeBundle(bytes.NewReader(entry.Operation.Data))
+		if err != nil {
+			return false
+		}
+		defer b.clear()
+		c, err := naspolicy.Decode(bytes.NewReader(b.base))
+		if err != nil {
+			return false
+		}
+		if c.Revision != 2 {
+			continue
+		}
+		suffix := []policyevidence.HistoryOperation{{Base: policyevidence.Slot{State: policyevidence.Present, Data: b.base},
+			Intent:  policyevidence.Slot{State: policyevidence.Present, Data: b.intent},
+			Receipt: policyevidence.Slot{State: policyevidence.Present, Data: b.receipt}}}
+		h, err := policyevidence.MatchHistory(w.installation, suffix[0].Base, policyevidence.Slot{State: policyevidence.Present, Data: w.base}, suffix)
+		if err != nil || h.Kind() != policyevidence.LocalConfirmationObserved {
+			return false
+		}
+		d, err := w.session.ObserveHistory(ctx, b.base, w.base, suffix)
+		return err == nil && d.Kind() == policyevidence.InconsistentSessionEvidence
+	}
+	return false
 }
 
 // Caller holds the fixture mutex. On uncertain reference closure retain the
@@ -168,6 +206,9 @@ func exerciseHistorySession(parent context.Context, initial naspolicy.Config, sc
 		if err != nil || !bytes.Equal(start["session"], after["session"]) || bytes.Equal(start["policy"], after["policy"]) || len(w.history.records) != 1 || w.history.inflight == "" {
 			return ErrReview
 		}
+		if !w.sessionHistoryMatches(parent, after["policy"], policyevidence.UnresolvedSessionOperation) {
+			return ErrReview
+		}
 	case "normal", "cancel-after-closure":
 		if out, e := w.executeFileServicesHistory(ctx, 1, next.FileServices); e != nil || out.revision != 2 {
 			return ErrReview
@@ -181,6 +222,9 @@ func exerciseHistorySession(parent context.Context, initial naspolicy.Config, sc
 		}
 		after, err = sessionWriterSnapshot(w)
 		if err != nil || !bytes.Equal(start["session"], after["session"]) || !w.historyMatches(w.base) || len(w.history.records) != 2 {
+			return ErrReview
+		}
+		if !w.sessionHistoryMatches(ctx, w.base, policyevidence.OpenSessionHistoryObserved) || !sessionSuffixRefused(ctx, w) {
 			return ErrReview
 		}
 		if scenario == "cancel-after-closure" {
@@ -201,6 +245,9 @@ func exerciseHistorySession(parent context.Context, initial naspolicy.Config, sc
 		// Matching closure DATA does not override the containing writer's review.
 		d, e := w.session.Observe(parent, w.base)
 		if e != nil || d.Kind() != policyevidence.ClosureMatchesCurrent {
+			return ErrReview
+		}
+		if !w.sessionHistoryMatches(parent, w.base, policyevidence.ClosureSessionHistoryObserved) {
 			return ErrReview
 		}
 	default:

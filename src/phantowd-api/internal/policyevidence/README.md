@@ -54,6 +54,41 @@ medium qualification and recovery remain separate gates.
 
 ## Checkpoint-anchored operation history
 
+### Unified session/history diagnosis — M1.2c.4
+
+`MatchSessionHistory` joins the strict opening/closure comparison and the complete
+operation history. The checkpoint must have the **same revision and exact-byte
+hash as the opening**, not merely be a valid later revision. A coherent suffix
+history and independently matching closure cannot silently rebase that checkpoint.
+All present records/policies are validated before a diagnosis; known mismatches
+take precedence over missing evidence. Inputs remain caller-owned and immutable.
+
+Five private redacted kinds distinguish an open coherent history, a matching
+closure with coherent history, an unresolved operation, incomplete evidence and
+inconsistency. A matching closure with an unconfirmed tail remains unresolved.
+Missing opening is incomplete, never pristine; every result grants **no action**.
+Generic JSON refuses and formatting exposes only the fixed redacted kind.
+
+The aggregate4MiB limit includes both declarations, checkpoint/current and all
+operation fields, with the existing16-operation/4096-record/656128-policy bounds.
+Limits do not authorize dropping records or changing the checkpoint. This is a
+pure comparison, not a filesystem census, original-generation witness, successor
+allocator, historical syscall-return proof, verified Close/consumer settlement,
+clean shutdown, boot classification, recovery or service admission.
+
+Portable/native controls cover all five diagnoses, coherent-suffix counterexample,
+known mismatch with missing evidence, malformed present roles, immutable concurrent
+inputs, inclusive4MiB/4096-byte/16-operation limits and zero/private results.
+An opening-input fuzz campaign is bounded2,000 executions, not a full-history fuzz
+claim. The private writer's actual ARM fixture checks original-file/census joining,
+suffix refusal and unresolved publication with two strengthened receipts.
+
+The fixed200-iteration Go1.26.8 Linux-native two-operation DATA microbenchmark
+compares redundant independent+joined validation with joined-only validation:
+42,718 versus22,445 allocations/op and1,532,518 versus805,080 bytes/op. Both branches
+perform the same strict epoch/history checks. These are synthetic cumulative
+allocations, not peak RSS, retained-file I/O, ARM timing or product throughput.
+
 `MatchHistory` compares a complete supplied history with a trusted exact policy
 checkpoint and current bytes. It orders validated operations by base revision,
 rejects repeated operation IDs and requires contiguous exact revision/hash links
