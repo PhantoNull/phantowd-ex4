@@ -75,13 +75,60 @@ fault/resource/role/consumer/startup composition remains open.
 4. Preserve uncertain evidence and the containing review decision. Never call
    writer Open, fsync, pending deletion or startup recovery to manufacture a
    successful read-only observation or erase a previous error.
-5. Select/qualify explicit administrator-authorized reconciliation and retention
-   before writable admission. Closing an observer and reopening a path is not
-   authority handoff. The first-release unclean-restart policy remains an open
-   product decision, not a default selected by these diagnostics.
+5. Implement and qualify automatic recovery/restart for the first release as
+   specified below. Closing an observer and reopening a path is not authority
+   handoff. Unresolved evidence still cannot grant writable admission.
 6. Qualify migration, actual EX4 storage placement, NAND/ECC, thermal safety,
    signed updates and demonstrated recovery before any physical installation.
 
 No row or combination of diagnostic rows grants service activation. This map
 does not freeze the experimental formats as a public firmware compatibility
 contract or authorize operations on existing user disks.
+
+## First-release automatic recovery requirement
+
+The selected product behavior is automatic recovery and restart of desired-enabled
+SMB/NFS/iSCSI services after an ordinary unclean shutdown, without a mandatory
+administrator confirmation on every boot. This is a required release capability,
+not implemented behavior or permission to change the existing diagnostic/Owner
+contracts. A manual-only initial release does not satisfy this requirement.
+
+The future product boot coordinator must:
+
+1. Validate the installation/state medium and complete role set under original
+   locks before opening writers. Missing/corrupt/foreign state is not first boot.
+   Establish a new qualified boot lifetime; never reuse stale process identities,
+   mount handles, runtime claims or a prior boot's service-ready observation.
+2. Compare exact confirmed policy, operation/session history, native identities,
+   enrollment and protected credential references. Recover only explicitly
+   specified, tested interrupted states, preserving original evidence and
+   recording durable recovery progress. Byte equality or a missing reply alone
+   cannot authorize retry, promotion, pending-file deletion or secret recreation.
+3. Reacquire qualified stable-volume, supported array/filesystem, runtime-code,
+   network and credential authority. Recheck identity, permissions, retained
+   mount/backing handles and whole-use exclusion before any service starts.
+   Never substitute an empty local mountpoint or infer identity from a bay/path.
+4. Start each desired-enabled service at most once for that admitted boot
+   transition, after its dependencies and policy revision agree. Desired-disabled
+   services remain disabled. Publish running only after actual readiness/access
+   checks, not process creation. Ordinary unclean shutdown alone must not force
+   manual confirmation or silently disable otherwise recoverable services.
+5. On ambiguity, incompatible storage, failed recovery or uncertain effects,
+   withhold affected service admission and expose a persistent, redacted recovery
+   diagnosis/notification with an explicit remediation path. Independently safe
+   services may continue only when shared-state/consumer isolation is proven.
+   Never reset a reviewed Owner, blind-replay a mutation or enter a restart loop.
+
+Existing in-lifetime drift/uncertain-stop contracts remain terminal review with
+retained authority: a boot recovery coordinator is a separate, qualified protocol,
+not permission to call Open again until a failure disappears. Manual recovery is
+an exceptional response to unresolved faults, not the default after every outage.
+
+Before integration, specify the complete state/transition and action matrix,
+durable checkpoints, allowed recovery mutations, lock order, interruption/space
+bounds and consumer handoff. First prove normal and interrupted reboots using
+disposable host/QEMU storage, real service access and verified process cleanup.
+Require confirmed old/new state, disabled-service preservation, no fallback writes,
+no ambiguous-disk admission, and no startup after failed/uncertain recovery.
+Actual power-loss durability, physical EX4 placement, cooling and demonstrated
+recovery remain separate hardware/release gates. No NAS operation is authorized.

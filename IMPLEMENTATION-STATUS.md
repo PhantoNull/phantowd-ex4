@@ -265,8 +265,11 @@ Windows units, pinned Go1.26.8 vet/units/race3, 2,000 bounded fuzz executions an
 actual ARMv5 standard smoke pass. Two exact epoch receipts join the existing
 model/view-writer pairs across API restart, with all old checks/budgets retained.
 No persistent epoch role, writer/allocator, history/whole-state qualification,
-HTTP or boot/recovery behavior is added. The first-release unclean-restart policy
-remains a separate decision. See the [record contract](src/phantowd-api/internal/policyevidence/README.md#policy-session-declarations--experimental-m12c1-prerequisite).
+HTTP or boot/recovery behavior is added. The selected first-release requirement
+is automatic recovery and desired-service restart after an ordinary unclean
+shutdown, not routine manual confirmation. It is not implemented by these
+declarations. See [recovery requirements](STATE-OWNERSHIP.md#first-release-automatic-recovery-requirement)
+and the [record contract](src/phantowd-api/internal/policyevidence/README.md#policy-session-declarations--experimental-m12c1-prerequisite).
 
 ## Single-writer protocol-view transactions — QEMU-only
 

@@ -907,8 +907,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   uncertain-return evidence and explicit fresh-epoch reconciliation on qualified
   media. Do not insert new roles into existing fixed policy/history censuses,
   silently reopen a writer or infer historical syscall returns from byte equality.
-  First-release manual versus qualified automatic recovery is an explicit product
-  decision, not selected by these codecs; physical/recovery/release gates remain.
+  Qualified automatic recovery/service restart is now required for the first
+  release; these codecs do not implement it. See the
+  [selected recovery requirement](STATE-OWNERSHIP.md#first-release-automatic-recovery-requirement);
+  physical/recovery/release gates remain.
   **Local acceptance:** Windows units, pinned Go1.26.8 vet/units/race3, 2,000
   bounded fuzz executions and actual standard ARMv5 smoke pass. Exact epoch,
   model and writer pairs bracket API restart; all old checks/caps retained.
@@ -1375,6 +1377,24 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   to an explicit review/reconciliation workflow. An intent plus missing reply
   does not imply failure or success. Preserve orphaned publications; compare
   fresh observed state before any authorized recovery. No blind replay/deletion.
+  **M1.3e — Automatic boot recovery and service restart (required; not implemented).**
+  Ordinary unclean shutdown must not require routine panel confirmation. Specify
+  the complete installation/role/history/identity/storage/credential/action matrix,
+  independently trusted checkpoints, durable recovery progress and lock order
+  before adding mutations. Reacquire fresh qualified authorities and start only
+  desired-enabled services after coherent dependencies/readiness checks; never
+  reuse prior-boot leases or a bay-derived identity. Preserve desired-disabled
+  services and original interrupted evidence. Unresolved/unsafe cases withhold
+  affected admission and notify, not blind replay, pending deletion, an empty
+  mountpoint, reviewed-Owner reset or a restart loop. Prove isolation before
+  allowing unaffected services. Acceptance: real SMB/NFS/iSCSI access after
+  normal and ordinary unclean fixture reboot without a manual action; actual
+  interrupted recovery at each durable boundary, stale/missing/clone/permission/
+  credential faults, ENOSPC/read-only/cancel/cleanup uncertainty and disabled
+  services. Host/QEMU evidence must preserve exact data/state and include real
+  readiness/closure, not only a matching diagnosis. Physical power loss, EX4
+  medium/cooling/compatibility/recovery remain separate gates. Existing Owner
+  review semantics remain unchanged until a separately qualified handoff exists.
 - **M1.4 — Qualify filesystem durability.** Exercise write, rename, file/directory
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.
