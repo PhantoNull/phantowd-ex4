@@ -1689,6 +1689,38 @@ intervals. Input assertions cannot establish those properties. No normal startup
 HTTP, device access or control is added; a synthetic fixture is called by the
 existing ARMv5 self-test, not by a new guest or privileged process.
 
+### Kernel-reported temperatures in system diagnostics
+
+Normal development serving adds an optional schema-1 `thermal` envelope to the
+existing authenticated `GET /api/v1/system`. The fixed source is Linux
+`/sys/class/thermal`; only canonical `thermal_zoneN/type` and `temp` attributes
+are opened read-only. No endpoint, request, polling loop, command, ioctl or
+actuator is added. The same16KiB system response budget remains.
+
+Collect at most8 zones from two bounded directory enumerations (128 total entries
+each), read at most129 bytes per attribute and accept at most128. Validate the
+bounded printable UTF-8 type before reading temperature. Canonical signed32-bit
+millidegrees Celsius preserve zero and negatives; a failed/malformed/close-error
+sample has no numerical value, never a last-good fallback. Per-zone failures
+are explicit partial results; unavailable, excessive or changed name sets yield
+no zone values. Source/time/identity consistency is not established by this
+limited before/after name comparison. Reads are synchronous, not a guarantee
+of interruptible driver I/O or a total collection deadline.
+
+The panel independently validates that optional envelope and clears old values
+on refresh, invalid input or session retirement without hiding valid runtime/
+memory data. Missing older envelopes remain unavailable. Driver labels are text,
+not markup; values retain up to3 fractional Celsius digits. The sanitized support
+export deliberately omits the whole thermal envelope, labels and values.
+
+`hardware_qualified` and `control_available` are always false. Zone names are
+transient kernel labels, not qualified EX4 sources; driver cache age, calibration,
+physical identity, complete board/disk coverage and operating limits remain
+unknown. This diagnostic adapter does not construct `thermalreport` sources,
+authorize fan/shutdown/workload changes, provide SMART history or qualify safe
+cooling. Linux's [thermal sysfs ABI](https://www.kernel.org/doc/html/latest/driver-api/thermal/sysfs-api.html)
+defines the interface, not the accuracy of a particular board/driver.
+
 ### Private health census prerequisite
 
 `smart_census.go` derives a complete private sysfs sample and a deterministic

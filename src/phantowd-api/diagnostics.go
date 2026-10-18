@@ -25,18 +25,19 @@ type memoryInfo struct {
 }
 
 type systemSnapshot struct {
-	SchemaVersion     int        `json:"schema_version"`
-	Target            string     `json:"target"`
-	Mode              string     `json:"mode"`
-	Flashable         bool       `json:"flashable"`
-	HardwareValidated bool       `json:"hardware_validated"`
-	ObservedAt        time.Time  `json:"observed_at"`
-	Architecture      string     `json:"architecture"`
-	GOARM             string     `json:"goarm"`
-	Kernel            string     `json:"kernel"`
-	UptimeSeconds     float64    `json:"uptime_seconds"`
-	Memory            memoryInfo `json:"memory"`
-	EffectiveUID      int        `json:"effective_uid"`
+	SchemaVersion     int                       `json:"schema_version"`
+	Target            string                    `json:"target"`
+	Mode              string                    `json:"mode"`
+	Flashable         bool                      `json:"flashable"`
+	HardwareValidated bool                      `json:"hardware_validated"`
+	ObservedAt        time.Time                 `json:"observed_at"`
+	Architecture      string                    `json:"architecture"`
+	GOARM             string                    `json:"goarm"`
+	Kernel            string                    `json:"kernel"`
+	UptimeSeconds     float64                   `json:"uptime_seconds"`
+	Memory            memoryInfo                `json:"memory"`
+	EffectiveUID      int                       `json:"effective_uid"`
+	Thermal           *kernelThermalObservation `json:"thermal,omitempty"`
 }
 
 // Only these fixed proc paths are ever opened. No request controls a file path.

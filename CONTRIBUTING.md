@@ -48,6 +48,9 @@ launcher defaults on a Linux runner. Keep every existing check and budget.
 The native API step explicitly requires a non-root runner and prints the focused
 normal-serving startup tests before the complete suite, so their root-only skip
 cannot silently stand in for positive non-root execution.
+The same focused invocation also prints the native read-only kernel thermal
+observation's status/count. An empty or unavailable host roster is reported
+explicitly; it is not nonempty-sensor, calibration or EX4 qualification.
 
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,

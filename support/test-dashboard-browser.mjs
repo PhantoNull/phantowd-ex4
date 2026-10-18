@@ -319,6 +319,10 @@ try {
     await submitLogin(fixturePassword);
   }
   await until(() => evaluate(snapshotReady), browser, "rendered synthetic snapshot");
+  const thermalText = await evaluate("document.getElementById('thermal-list').textContent");
+  assert.match(thermalText, /42[.,]125 °C/);
+  assert.match(thermalText, /reported 0 °C/);
+  assert.match(await evaluate("document.getElementById('thermal-status').textContent"), /calibration and sample age are not verified/);
   assert.equal(await evaluate("document.getElementById('profile-notice-mark').textContent"), apiFixture ? "MEMORY-ONLY AUTH FIXTURE" : "FIXTURE DATA");
   if (apiFixture) {
     for (const id of ["logout", "logout-all", "password-panel"]) {

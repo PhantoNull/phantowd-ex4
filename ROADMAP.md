@@ -3610,6 +3610,23 @@ equipment/media; not ordinary software work.
   Acceptance: independent big-integer oracle including wide products, signed
   output bounds, zero/fractional cases, fixed-count fuzz, allocation benchmark
   with exact scope and synthetic execution in the existing ARM self-test.
+  **M7.3g — Kernel temperature diagnostic adapter (host/browser workflow):**
+  attach an optional thermal envelope to the existing authenticated system reply,
+  not a new polling request. Observe at most8 canonical kernel zone labels with
+  two128-entry-capped directory censuses and128-byte attribute acceptance.
+  Validate type before measuring; canonical signed32-bit millidegrees preserve
+  zero/negative reports. Failed samples have no number, partial states are explicit,
+  changed/excessive/unavailable inventories have no retained values. Isolate
+  malformed optional thermal data from valid runtime/memory display and omit
+  labels/values from sanitized reports. Hardware-qualified/control flags stay
+  false; no trusted sensor identity, calibration, sample age, complete coverage,
+  actuator, thresholds, alerts or thermal-safe workload admission follows.
+  Synchronous driver reads have no promised total I/O deadline. Acceptance:
+  type/value/roster/byte bounds, actual read/close/error/no-retry controls,
+  no cooling-device access, unchanged response budget, HTTP synthetic boundary,
+  independently bounded display/no-last-good and all real-browser regressions.
+  Native CI must print actual status/count; empty inventory does not qualify a
+  sensor. Actual ARM/physical board and safe cooling qualification remain open.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.

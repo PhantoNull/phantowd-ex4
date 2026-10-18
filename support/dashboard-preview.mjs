@@ -29,6 +29,11 @@ const systemFixture = {
   uptime_seconds: 123456,
   memory: { total_bytes: 257912832, available_bytes: 120000000 },
   effective_uid: 100,
+  thermal: { schema_version: 1, scope: "kernel-thermal-sysfs-only", read_only: true, hardware_qualified: false, control_available: false,
+    status: "available", zones: [
+      { name: "thermal_zone0", type: "synthetic-board", status: "reported", milli_celsius: 42125 },
+      { name: "thermal_zone1", type: "synthetic-other", status: "reported", milli_celsius: 0 },
+    ] },
 };
 
 const storageFixture = {

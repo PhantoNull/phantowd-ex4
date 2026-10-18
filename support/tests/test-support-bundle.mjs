@@ -17,7 +17,8 @@ export function supportFixture() {
     system: { schema_version: 1, target: "qemu-armv5", architecture: "arm", goarm: "5", kernel: `6.18.55-${privateValue}`,
       flashable: false, hardware_validated: false, uptime_seconds: 100.5,
       memory: { total_bytes: 512 * 1024 ** 2, available_bytes: 128 * 1024 ** 2 }, effective_uid: 1234,
-      hostname: privateValue, token: privateValue },
+      hostname: privateValue, token: privateValue,
+      thermal: { zones: [{ name: privateValue, type: privateValue, milli_celsius: 42125 }] } },
     storage: { schema_version: 2, scope: "kernel-sysfs-only", inventory_read_only: true,
       block_devices_opened: false, content_read: false, mutations_performed: false, stable_identity_available: false,
       device_count: 2, observations: [
@@ -52,7 +53,7 @@ assert.equal(parsed.observations.arrays.health.degraded, 1);
 assert.equal(parsed.observations.mounts.filesystems.ext4, 1);
 assert.equal(parsed.observations.mounts.filesystems.other, 1);
 assert.ok(!text.includes("PRIVATE-SENTINEL") && !text.includes("192.0.2.9"));
-for (const key of ["effective_uid", "hostname", "token", "serial", "wwn", "uuid", "name", "parent_name", "members", "mount_point", "options", "configuration", "logs"]) {
+for (const key of ["thermal", "milli_celsius", "effective_uid", "hostname", "token", "serial", "wwn", "uuid", "name", "parent_name", "members", "mount_point", "options", "configuration", "logs"]) {
   assert.ok(!text.includes(`"${key}":`), `private field ${key} leaked`);
 }
 assert.ok(new TextEncoder().encode(text).byteLength <= 4096);

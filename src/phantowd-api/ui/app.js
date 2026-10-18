@@ -45,6 +45,7 @@ function validSystemObservation(system) {
 
 function renderSystem(system) {
   if (!validSystemObservation(system)) throw new Error("System observation is invalid.");
+  renderKernelThermal(system.thermal);
   const buildLabel = system.target === "qemu-armv5" ? "QEMU · EMULATED" :
     system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" :
     system.target === "browser-auth-fixture" ? "AUTH FIXTURES" : "DEVELOPMENT PROFILE";
@@ -103,6 +104,41 @@ function renderSystem(system) {
   observedAt.textContent = formattedTime ? `Last observed ${formattedTime}` : "Observation time unavailable";
   if (formattedTime) observedAt.dateTime = new Date(system.observed_at).toISOString();
   else observedAt.removeAttribute("datetime");
+}
+
+function renderKernelThermal(value) {
+  const list = byId("thermal-list"); list.replaceChildren();
+  setText("thermal-status", "No kernel thermal report was returned. Hardware coverage is unknown.");
+  if (value === undefined) return; // Older diagnostic fixtures have no thermal envelope.
+  const record = v => v !== null && typeof v === "object" && !Array.isArray(v);
+  const kind = v => typeof v === "string" && v.length > 0 && new TextEncoder().encode(v).byteLength <= 64 &&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(v) && new TextDecoder().decode(new TextEncoder().encode(v)) === v;
+  try {
+    if (!record(value) || value.schema_version !== 1 || value.scope !== "kernel-thermal-sysfs-only" || value.read_only !== true ||
+        value.hardware_qualified !== false || value.control_available !== false || !["available", "partial", "unavailable"].includes(value.status) ||
+        !Array.isArray(value.zones) || value.zones.length > 8 || (value.status === "unavailable" && value.zones.length)) throw new Error();
+    const names = new Set();
+    for (const z of value.zones) {
+      const number = typeof z?.name === "string" && z.name.match(/^thermal_zone(0|[1-9][0-9]{0,9})$/);
+      if (!record(z) || !number || Number(number[1]) > 4294967295 || names.has(z.name) || !["reported", "unavailable"].includes(z.status) ||
+          (z.type !== undefined && !kind(z.type)) || (z.status === "reported" ? !kind(z.type) || !Number.isInteger(z.milli_celsius) ||
+            z.milli_celsius < -2147483648 || z.milli_celsius > 2147483647 : z.milli_celsius !== undefined)) throw new Error();
+      names.add(z.name);
+    }
+    const failed = value.zones.some(z => z.status === "unavailable");
+    if ((value.status === "partial") !== failed) throw new Error();
+    for (const z of value.zones) {
+      const item = document.createElement("li");
+      item.textContent = `${z.name}${z.type ? ` / ${z.type}` : ""}: ${z.status === "reported" ?
+        `kernel reported ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 }).format(z.milli_celsius / 1000)} °C` : "temperature unavailable"}.`;
+      list.append(item);
+    }
+    setText("thermal-status", value.status === "unavailable" ? "Kernel thermal inventory unavailable. No current values." :
+      value.status === "partial" ? "Some kernel temperature reports are unavailable. No cooling-safety assessment." :
+      value.zones.length ? "Kernel temperature reports loaded; calibration and sample age are not verified." : "No kernel thermal zones were reported. Hardware coverage remains unknown.");
+  } catch {
+    list.replaceChildren(); setText("thermal-status", "Kernel thermal report invalid or unavailable. No current values.");
+  }
 }
 
 function makeIdentityChip(label, status) {
@@ -305,6 +341,7 @@ function renderMounts(inventory) {
 }
 
 function clearSystemObservation() {
+  renderKernelThermal();
   setText("kernel-value", "Unavailable");
   setText("runtime-value", "No current system observation");
   setText("target-value", "Target unavailable");

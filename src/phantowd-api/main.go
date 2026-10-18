@@ -188,7 +188,7 @@ func main() {
 	}
 	defer closeServiceState()
 	server := newConfiguredServer(newHandlerWithStorageGPTObservation(func() (systemSnapshot, error) {
-		return collectSystem(os.DirFS("/proc"), time.Now())
+		return collectSystemWithThermal(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorageFromBroker()
 	}, func() mdArraySnapshot {

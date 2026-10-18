@@ -83,7 +83,7 @@ func newBrowserFixtureHandlerWithServiceState(origin string, backend *serviceSta
 	accounts := &accountStore{backend: &memoryAccountBackend{}}
 	auth := newAuthController(accounts, origin)
 	return newHandlerWithServiceState(func() (systemSnapshot, error) {
-		snapshot, err := collectSystem(fixtureProc(), time.Now())
+		snapshot, err := collectSystemWithThermal(fixtureProc(), fixtureThermal(), time.Now())
 		snapshot.Target = "browser-auth-fixture"
 		return snapshot, err
 	}, func() (storageSnapshot, error) {
@@ -128,6 +128,12 @@ func TestBrowserFixtureDiagnosticsStaySynthetic(t *testing.T) {
 		}
 		if snapshot.Target != "browser-auth-fixture" {
 			t.Fatalf("wrong browser-auth fixture profile: %q", snapshot.Target)
+		}
+		if snapshot.Thermal == nil || snapshot.Thermal.HardwareQualified || snapshot.Thermal.ControlAvailable ||
+			snapshot.Thermal.Status != "available" || len(snapshot.Thermal.Zones) != 2 ||
+			snapshot.Thermal.Zones[0].MilliCelsius == nil || *snapshot.Thermal.Zones[0].MilliCelsius != 42125 ||
+			snapshot.Thermal.Zones[1].MilliCelsius == nil || *snapshot.Thermal.Zones[1].MilliCelsius != 0 {
+			t.Fatal("fixture lost synthetic thermal source boundary")
 		}
 	}
 	r := loopbackRequest("GET", serviceStatePath, nil)

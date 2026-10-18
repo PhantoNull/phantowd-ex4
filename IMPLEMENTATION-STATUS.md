@@ -1785,6 +1785,34 @@ qualification follows. No new Docker image/volume or NAS operation. Next is
 completing qualification of the separate experimental retained collector;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
+## M7.3g kernel-reported temperature diagnostics — host/browser workflow
+
+The existing authenticated system reply now optionally reports bounded Linux
+thermal-zone attributes, with explicit available/partial/unavailable states.
+Normal serving reads fixed sysfs type/temp paths, at most8 zones/128 directory
+entries/128 accepted attribute bytes. Invalid types suppress measurement; zero
+and negative canonical signed32-bit millidegrees remain valid reported numbers.
+Read/close failures never become zero or cached values. Changed or excessive
+name sets return no zone data. No endpoint, extra browser request, command,
+ioctl, write, control setting or polling task is added.
+
+The panel independently validates and clears optional thermal data without
+discarding valid runtime/memory values. Labels are text-only and sanitized export
+omits thermal labels/values. Kernel reports are not qualified physical identity,
+calibration, sample age, complete board/disk coverage, fan status or safe limits;
+hardware-qualified/control flags remain false. Synchronous sysfs reads are not
+promised interruptible or wall-clock-bounded. No qualified cooling provider or
+fan/workload/shutdown admission, ARM/full/physical or release claim follows.
+
+Windows Go1.27 ordinary API vet/units, the original selected tagged host group
+and HTTP/HTTPS asset checks, DOM/privacy/resource controls and all16 SDK/workflow
+fixtures pass. All five actual Edge155 modes pass with identical nine UI and six
+harness hashes, their original deadlines/action bounds, three viewport widths
+and verified temporary-profile removal. The common browser assertion checks
+both invented42.125 and zero Celsius readings, not a physical sensor. A native
+Linux sysfs observation is included in the existing host CI step; its actual
+result, not this Windows evidence, is required before claiming that execution.
+
 ## M9.2k scoped desired iSCSI edits — host/browser workflow
 
 The panel can now edit a selected target's desired state, LUN access or an

@@ -138,6 +138,15 @@
       </section>
 
       <div class="section-heading storage-heading">
+        <div><p class="eyebrow">READ-ONLY KERNEL REPORTS</p><h2>Reported temperatures</h2></div>
+      </div>
+      <section class="card" aria-label="Kernel-reported temperatures">
+        <p id="thermal-status" class="snapshot-status" role="status" aria-live="polite">Waiting for the system observation.</p>
+        <ul id="thermal-list"></ul>
+        <p class="policy-help">Kernel zones are temporary labels, not qualified EX4 sensor identities. These are driver-reported values, not verified calibration, sample freshness, complete board/disk coverage, fan status or safe operating limits. No fan control, automatic polling, alerts or shutdown is performed.</p>
+      </section>
+
+      <div class="section-heading storage-heading">
         <div>
           <p class="eyebrow">KERNEL PROCFS + SYSFS</p>
           <h2>Software RAID</h2>

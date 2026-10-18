@@ -275,6 +275,7 @@ async function createHarness(respond, timing = {}) {
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    "thermal-status", "thermal-list",
     "gpt-observe", "gpt-observation-status",
     "support-panel", "support-help", "support-download", "support-status",
     ...["form", "document", "submit", "clear", "result", "status"].map(id => `iscsi-${id}`),
@@ -3467,4 +3468,43 @@ await testAdministrativeInclusiveByteCapsAndUTF8Refusals();
 await testISCSIPanel(createHarness, jsonResponse, snapshotResponse);
 await testISCSIEdit(createHarness, jsonResponse, snapshotResponse);
 await testNetworkPanel(createHarness, jsonResponse, snapshotResponse);
+
+async function testKernelThermalPanel() {
+  const h = await createHarness(async path => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) : snapshotResponse(path));
+  const fixture = () => ({ schema_version: 1, scope: "kernel-thermal-sysfs-only", read_only: true, hardware_qualified: false, control_available: false,
+    status: "available", zones: [{ name: "thermal_zone0", type: "synthetic-board", status: "reported", milli_celsius: 42125 },
+      { name: "thermal_zone1", type: "synthetic-other", status: "reported", milli_celsius: 0 }] });
+  const listText = () => h.elements["thermal-list"].children.map(e => e.textContent).join(" ");
+  h.context.renderSystem({ ...systemFixture(), thermal: fixture() });
+  assert.match(listText(), /42[.,]125 °C/); assert.match(listText(), /reported 0 °C/);
+  assert.match(h.elements["thermal-status"].textContent, /calibration and sample age are not verified/);
+  const partial = fixture(); partial.status = "partial"; partial.zones[1] = { name: "thermal_zone1", status: "unavailable" };
+  h.context.renderKernelThermal(partial); assert.match(listText(), /temperature unavailable/); assert.doesNotMatch(listText(), /reported 0/);
+  h.context.renderKernelThermal({ ...fixture(), zones: [] }); assert.match(h.elements["thermal-status"].textContent, /coverage remains unknown/);
+  h.context.renderKernelThermal({ ...fixture(), status: "unavailable", zones: [] }); assert.match(h.elements["thermal-status"].textContent, /No current values/);
+  for (const change of [
+    t => { t.schema_version = 2; }, t => { t.scope = "hardware-qualified"; }, t => { t.hardware_qualified = true; },
+    t => { delete t.read_only; }, t => { t.control_available = true; }, t => { t.status = "healthy"; },
+    t => { t.zones = null; }, t => { t.zones = Array(9).fill(t.zones[0]); }, t => { t.zones[1].name = "thermal_zone0"; },
+    t => { t.zones[0].name = "thermal_zone01"; }, t => { t.zones[0].name = "thermal_zone4294967296"; },
+    t => { t.zones[0].type = "x".repeat(65); }, t => { t.zones[0].type = "\ud800"; }, t => { t.zones[0].type = "bad\nlabel"; },
+    t => { t.zones[0].type = "bad\u0085label"; }, t => { delete t.zones[0].type; },
+    ...[null, "42000", 0.1, 2147483648, -2147483649, NaN].map(v => t => { t.zones[0].milli_celsius = v; }),
+    t => { t.status = "partial"; }, t => { t.status = "unavailable"; }, t => { t.zones[0].status = "unavailable"; },
+  ]) {
+    const value = fixture(); change(value);
+    h.context.renderSystem({ ...systemFixture(), thermal: value });
+    assert.equal(h.elements["thermal-list"].children.length, 0, "invalid reports never retain old numbers");
+    assert.match(h.elements["thermal-status"].textContent, /invalid or unavailable/);
+    assert.match(h.elements["kernel-value"].textContent, /Linux/, "thermal refusal must not hide valid runtime");
+  }
+  const injected = fixture(); injected.zones[0].type = "<img-onerror=fixture>";
+  h.context.renderKernelThermal(injected); assert.match(listText(), /<img-onerror=fixture>/);
+  assert.equal(h.elements["thermal-list"].children[0].children.length, 0, "type is text, not markup");
+  h.context.renderKernelThermal(fixture()); h.context.clearSystemObservation();
+  assert.equal(h.elements["thermal-list"].children.length, 0);
+  h.context.renderSystem(systemFixture()); assert.match(h.elements["thermal-status"].textContent, /No kernel thermal report/);
+  process.stdout.write("Kernel thermal panel controls passed: reported-not-qualified=true zero-valid=true partial-explicit=true bounded=true isolated-failure=true no-last-good=true no-control=true.\n");
+}
+await testKernelThermalPanel();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
