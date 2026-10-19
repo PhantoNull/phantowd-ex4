@@ -112,16 +112,16 @@ func exerciseSessionObservationCase(ctx context.Context, scenario string, base, 
 	defer func() {
 		if mounted {
 			retainedSessionObservations = append(retainedSessionObservations, a)
-			result = ErrReview
+			result = errors.Join(result, fmt.Errorf("session-fixture retained-mount: %w", ErrReview))
 			return
 		}
 		if a != nil && (a.state.closeFailed || a.Close() != nil) {
 			retainedSessionObservations = append(retainedSessionObservations, a)
-			result = ErrReview
+			result = errors.Join(result, fmt.Errorf("session-fixture deferred-close: %w", ErrReview))
 			return
 		}
 		if len(retainedSessionObservations) != 0 {
-			result = ErrReview
+			result = errors.Join(result, fmt.Errorf("session-fixture prior-retention: %w", ErrReview))
 			return
 		}
 		// Known-name/nonrecursive disposal only, after verified reference closure.
@@ -131,19 +131,19 @@ func exerciseSessionObservationCase(ctx context.Context, scenario string, base, 
 		}
 		for _, name := range paths {
 			if e := os.Remove(filepath.Join(root, name)); e != nil && !errors.Is(e, os.ErrNotExist) {
-				result = ErrReview
+				result = errors.Join(result, fmt.Errorf("session-fixture cleanup-file: %w", ErrReview))
 				return
 			}
 		}
 		for _, name := range []string{"policy", "operations", "policy-session", ""} {
 			if os.Remove(filepath.Join(root, name)) != nil {
-				result = ErrReview
+				result = errors.Join(result, fmt.Errorf("session-fixture cleanup-directory: %w", ErrReview))
 				return
 			}
 		}
 		after, e := os.ReadDir("/proc/self/fd")
 		if e != nil || len(after) != len(before) {
-			result = ErrReview
+			result = errors.Join(result, fmt.Errorf("session-fixture descriptor-balance: %w", ErrReview))
 		}
 	}()
 	for _, name := range []string{"policy", "operations", "policy-session"} {
@@ -209,7 +209,7 @@ func exerciseSessionObservationCase(ctx context.Context, scenario string, base, 
 	checkpoint := bytes.Clone(base)
 	a, err = OpenSessionHistory(ctx, root, installation, checkpoint)
 	if err != nil {
-		return err
+		return fmt.Errorf("session-fixture open: %w", err)
 	}
 	checkpoint[0] = '!'
 	if !sessionObserverLocks(root) {
@@ -253,10 +253,10 @@ func exerciseSessionObservationCase(ctx context.Context, scenario string, base, 
 				return ErrReview
 			}
 		} else if !errors.Is(e, ErrReview) || d.Kind() != "" {
-			return ErrReview
+			return fmt.Errorf("session-fixture observation: %w", ErrReview)
 		}
 		if pending != "" && reads != 0 || scenario == "read-error" && reads != 1 || !sessionObserverLocks(root) {
-			return ErrReview
+			return fmt.Errorf("session-fixture lock-or-read-count: %w", ErrReview)
 		}
 		if i == 0 && scenario == "restored" {
 			if os.Remove(filepath.Join(root, "policy-session/epoch.json")) != nil || os.Rename(filepath.Join(root, "original-epoch"), filepath.Join(root, "policy-session/epoch.json")) != nil {
@@ -264,14 +264,17 @@ func exerciseSessionObservationCase(ctx context.Context, scenario string, base, 
 			}
 		}
 		if i == 0 && mounted {
-			if unix.Unmount(filepath.Join(root, "policy-session"), 0) != nil {
-				return ErrReview
+			if err := unix.Unmount(filepath.Join(root, "policy-session"), 0); err != nil {
+				if errors.Is(err, unix.EBUSY) {
+					return fmt.Errorf("session-fixture unmount-busy: %w", ErrReview)
+				}
+				return fmt.Errorf("session-fixture unmount-other: %w", ErrReview)
 			}
 			mounted = false
 		}
 	}
 	if a.Close() != nil {
-		return ErrReview
+		return fmt.Errorf("session-fixture explicit-close: %w", ErrReview)
 	}
 	if scenario != "restored" && scenario != "role-bind" {
 		after, e := readSessionFixtureSnapshot(root, tracked)
