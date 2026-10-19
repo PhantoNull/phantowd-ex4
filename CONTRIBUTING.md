@@ -52,6 +52,26 @@ The same focused invocation also prints the native read-only kernel thermal
 observation's status/count. An empty or unavailable host roster is reported
 explicitly; it is not nonempty-sensor, calibration or EX4 qualification.
 
+Keep host-only test edits out of unrelated firmware builds. For the NFS reboot
+checks, preserve the same routing for `push` and `pull_request`:
+
+| Changed input | Host checks | QEMU qualification | EX4 B3 build |
+| --- | --- | --- | --- |
+| `support/nfs-reboot-result.py` | Yes | Yes | No |
+| `support/tests/test-nfs-reboot-result.py` | Yes | No | No |
+| `support/tests/test-nfs-workflow-routing.py` | Yes | No | No |
+
+On Linux, run `sh support/test-firmware-workflow-paths.sh` and
+`python3 -B support/tests/test-nfs-workflow-routing.py` before publication.
+The latter runs the real contract against disposable workflow copies, including
+missing event rules, wrong filter kinds and hidden QEMU checker inputs. It does
+not compile firmware or boot a guest. Keep the checker itself a QEMU input.
+GitHub's [`paths-ignore` semantics](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore)
+skip a workflow only when all changed paths match its exclusions; mixed runtime
+changes still need their qualification. Path/diff limits and required-check
+configuration also matter: filters are not a guarantee that a run can never
+start, or evidence that historical timing failures are repaired.
+
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,
 concurrency and interruption tests for the behavior being changed. Exercise

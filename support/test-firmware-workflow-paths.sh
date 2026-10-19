@@ -14,13 +14,16 @@ require_event_path() {
     workflow=$1
     event=$2
     path=$3
-    if ! awk -v event="$event" -v path="$path" '
+    filter=$4
+    if ! awk -v event="$event" -v path="$path" -v filter="$filter" '
         $0 == "  " event ":" { in_event = 1; next }
-        /^  [a-z_]+:/ { in_event = 0 }
-        in_event && $0 == "      - \047" path "\047" { found = 1 }
+        /^  [a-z_]+:/ { in_event = 0; in_filter = 0 }
+        in_event && $0 == "    " filter ":" { in_filter = 1; next }
+        in_event && /^    [a-z_-]+:/ { in_filter = 0 }
+        in_event && in_filter && $0 == "      - \047" path "\047" { found = 1 }
         END { exit !found }
     ' "$workflow"; then
-        printf 'workflow %s must list path %s under %s\n' "$workflow" "$path" "$event" >&2
+        printf 'workflow %s must list path %s under %s.%s\n' "$workflow" "$path" "$event" "$filter" >&2
         exit 1
     fi
 }
@@ -28,8 +31,8 @@ require_event_path() {
 require_ignored_path() {
     workflow=$1
     path=$2
-    require_event_path "$workflow" push "$path"
-    require_event_path "$workflow" pull_request "$path"
+    require_event_path "$workflow" push "$path" paths-ignore
+    require_event_path "$workflow" pull_request "$path" paths-ignore
 }
 
 require_not_ignored_pattern() {
@@ -53,8 +56,8 @@ require_not_ignored_pattern() {
 require_triggered_path() {
     workflow=$1
     path=$2
-    require_event_path "$workflow" push "$path"
-    require_event_path "$workflow" pull_request "$path"
+    require_event_path "$workflow" push "$path" paths
+    require_event_path "$workflow" pull_request "$path" paths
 }
 
 require_pr_ready_for_review() {
@@ -370,6 +373,20 @@ require_triggered_path "$host_workflow" 'support/tests/test-smart-report-wrapper
 require_ignored_path "$stage_b3_workflow" 'support/tests/test-samba-root-wrapper.ps1'
 require_ignored_path "$qemu_workflow" 'support/tests/test-samba-root-wrapper.ps1'
 require_triggered_path "$host_workflow" 'support/tests/test-samba-root-wrapper.ps1'
+# The host result checker is a QEMU qualification input, not an EX4 image input.
+# Its unit tests must remain cheap host coverage; neither rebuilds EX4 kernels.
+for path in 'support/nfs-reboot-result.py' 'support/tests/test-nfs-reboot-result.py' \
+    'support/tests/test-nfs-workflow-routing.py'; do
+    require_ignored_path "$stage_b3_workflow" "$path"
+    require_triggered_path "$host_workflow" "$path"
+done
+require_ignored_path "$qemu_workflow" 'support/tests/test-nfs-reboot-result.py'
+require_ignored_path "$qemu_workflow" 'support/tests/test-nfs-workflow-routing.py'
+for event in push pull_request; do
+    require_not_ignored_pattern "$qemu_workflow" "$event" 'support/nfs-reboot-result.py'
+    require_not_ignored_pattern "$qemu_workflow" "$event" 'support/**'
+    require_not_ignored_pattern "$qemu_workflow" "$event" '**'
+done
 api_and_qemu_paths='
 src/phantowd-api/**
 package/phantowd-api/**

@@ -43,6 +43,7 @@ on:
       - 'support/tests/test-service-launcher.py'
       - 'support/nfs-reboot-result.py'
       - 'support/tests/test-nfs-reboot-result.py'
+      - 'support/tests/test-nfs-workflow-routing.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
@@ -147,6 +148,7 @@ on:
       - 'support/tests/test-service-launcher.py'
       - 'support/nfs-reboot-result.py'
       - 'support/tests/test-nfs-reboot-result.py'
+      - 'support/tests/test-nfs-workflow-routing.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
@@ -230,7 +232,9 @@ jobs:
           persist-credentials: false
 
       - name: Verify firmware workflow path contracts
-        run: sh support/test-firmware-workflow-paths.sh
+        run: |
+          sh support/test-firmware-workflow-paths.sh
+          python3 -B support/tests/test-nfs-workflow-routing.py
 
       - name: Verify QEMU build feedback contracts
         run: |
