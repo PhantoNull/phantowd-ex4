@@ -112,6 +112,9 @@ func runQEMUStateTest(phase string) (result error) {
 	if phase == "verify" {
 		fmt.Println("PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only")
 	}
+	if err := exerciseQEMUNFSReboot(phase); err != nil {
+		return fmt.Errorf("NFS persistence %s: %w", phase, err)
+	}
 	return nil
 }
 

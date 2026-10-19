@@ -41,6 +41,8 @@ on:
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
+      - 'support/nfs-reboot-result.py'
+      - 'support/tests/test-nfs-reboot-result.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
@@ -143,6 +145,8 @@ on:
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
+      - 'support/nfs-reboot-result.py'
+      - 'support/tests/test-nfs-reboot-result.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
@@ -283,8 +287,10 @@ jobs:
             sh -n "$script"
           done
 
-      - name: Verify native service launcher refusals
-        run: python3 -B support/tests/test-service-launcher.py
+      - name: Verify native service launcher and NFS reboot receipt refusals
+        run: |
+          python3 -B support/tests/test-service-launcher.py
+          python3 -B support/tests/test-nfs-reboot-result.py
 
       - name: Verify runtime-loader comparison refusals
         run: python3 -B support/tests/test-runtime-loader-fixture.py
@@ -372,7 +378,7 @@ jobs:
           go test -count=1 ./...
           go vet -tags=qemu ./...
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
-          go test -tags=qemu -run '^TestQEMUNFSRebootPolicy' -count=1 -v .
+          go test -tags=qemu -run '^(TestQEMUNFSReboot|TestQEMURebootShutdown)' -count=1 -v .
           go test -race -count=1 ./...
 
       - name: Verify synthetic dashboard preview boundaries

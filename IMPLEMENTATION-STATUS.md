@@ -3,39 +3,45 @@
 
 # Implementation status
 
-## Confirmed NFS reboot policy — native fixture prerequisite
+## Actual NFS access across two clean QEMU boots
 
-A QEMU-tagged, Linux-only fixture prepares a dedicated coherent SMB/NFS/iSCSI
-policy containing the existing three synthetic NFS exports. Verification opens
-only that exact confirmed policy, retains its real store lock and does not
-initialize missing state. Pending/unknown evidence is refused before opening
-the writer; corrupt or different policy is preserved and refused. Lifetime
-checks retain refusal after a change, even if original bytes are restored.
+The dedicated two-kernel state fixture now starts real NFSv3/TCP services from
+its own retained coherent policy. Both boots verify client reads/synced writes,
+server-side anonymous UID/GID, EROFS from a read-only export and server rejection
+of an unauthorized client. Verification reads the original before creating any
+new data. Independent host checks require different kernel boot IDs and equal
+policy/data hashes plus the original inode, followed by normal guest unmount.
 
-Six native tests, including the race detector, cover clean reopen without
-policy rewrite, lock retention, closed/missing/unknown state and preserved
-pending/foreign/corrupt evidence. The bounded local Linux wrapper and existing
-host CI explicitly select these tests; the original qualification commands and
-limits remain unchanged. No new job, image, volume or privilege is introduced.
+Actual local ARMv5 execution passes the standard smoke and both state boots
+under the existing resource/360s-work/60s-per-state-boot limits. Foreground daemon
+groups are stopped and waited, exports withdrawn, kernel NFS threads stopped,
+and client/server mounts ordinarily released before success. Native API units/
+vet, tagged vet and focused race tests pass; five strict host receipt tests and
+the original command-boundary controls pass. A shell-lint warning was corrected
+before the guest run; no timer increase or unmount retry was introduced.
 
-This is not yet connected to the two-boot guest: it starts no NFS daemon,
-mount or export and proves no NFS data access after reboot. Actual guest
-activation/access/teardown is the next acceptance step. Automatic product
-recovery/restart remains required but unimplemented; neither physical storage
-nor the deferred Samba status-producer experiment is touched.
+The fixture holds the actual policy Store/flock through normal consumer cleanup;
+its existing tests preserve missing/pending/foreign/corrupt evidence and sticky
+refusal. It never activates the other deliberately uncertain state samples.
+This is not a product NFS Owner/boot coordinator, complete constructor/stop-fault
+qualification, ordinary unclean/power-loss recovery, physical storage evidence
+or an installable release. Automatic product recovery/restart remains required
+and unimplemented. No new image/volume, host privilege or NAS operation occurs;
+the deferred Samba status-producer experiment remains untouched.
 
 ## Explicit local clean-reboot qualification option
 
 The local API overlay runner now accepts `-IncludeStateReboot`, preserving its
 default single-smoke behavior and every existing resource/deadline boundary.
-The optional invocation runs the unchanged two-kernel state harness only after
+The optional invocation runs the two-kernel state harness only after
 the standard smoke succeeds. An actual pinned Go1.26.8/ARMv5 invocation passes
 all three boots under the original360s container-work cap: current policy and credentials
 survive, corrupt/pending/stale-policy checks remain, and actual Samba access,
 rotated-password retention and disabled-account behavior pass after clean reboot.
 
-NFS/iSCSI desired references survive too, but their automatic activation is not
-tested. This is not ordinary unclean-shutdown recovery, a new boot coordinator,
+The original NFS/iSCSI desired-reference samples remain non-activating; the
+separate confirmed NFS fixture above adds actual service access. This is not
+ordinary unclean-shutdown recovery, a new product boot coordinator,
 product state placement, physical power loss or installable firmware. Command-
 boundary RED/GREEN tests require the explicit selection, identical container
 arguments and no retry after dependency/run/timeout/OOM failures in both modes.

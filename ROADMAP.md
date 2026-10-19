@@ -1402,6 +1402,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   readiness/closure, not only a matching diagnosis. Physical power loss, EX4
   medium/cooling/compatibility/recovery remain separate gates. Existing Owner
   review semantics remain unchanged until a separately qualified handoff exists.
+  Current software evidence includes real NFSv3/TCP policy/data access across
+  two clean QEMU boots, with denied writes/clients and verified normal teardown;
+  this does not complete product startup, unclean recovery or the fault matrix.
 - **M1.4 — Qualify filesystem durability.** Exercise write, rename, file/directory
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.

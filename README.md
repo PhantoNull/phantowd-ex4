@@ -223,7 +223,9 @@ profile; it does not replace the full build's 40 GiB headroom requirement.
 
 Add `-IncludeStateReboot` to run the existing two independent clean-reboot
 state/credential checks after that smoke boot, in the same bounded disposable
-run. This does not test unclean-shutdown recovery or automatic NFS/iSCSI startup.
+run. This also tests actual guest NFSv3/TCP access from retained policy after
+reboot, including writes and read-only denial. It does not qualify product
+automatic recovery, unclean shutdown or iSCSI startup.
 
 ### Build and boot QEMU
 

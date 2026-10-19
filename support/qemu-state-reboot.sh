@@ -6,6 +6,7 @@ set -eu
 images=${1:?images directory}
 log=${2:?output log}
 qemu=${QEMU_SYSTEM_ARM:-qemu-system-arm}
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 case "$images" in *[!a-zA-Z0-9_./:-]*) echo 'Unsupported image path' >&2; exit 1 ;; esac
 for file in rootfs.ext2 zImage versatile-pb.dtb; do
     [ -f "$images/$file" ] && [ ! -L "$images/$file" ] || exit 1
@@ -61,6 +62,8 @@ for phase in seed verify; do
     grep -F "PHANTOWD_STATE_BOOT_READY phase=$phase scope=disposable-qemu-only" "$workspace/$phase.log" >/dev/null
     grep -F 'reboot: Restarting system' "$workspace/$phase.log" >/dev/null
 done
+nfs_proof=$(python3 -B "$script_dir/nfs-reboot-result.py" "$workspace/seed.log" "$workspace/verify.log")
+printf '%s\n' "$nfs_proof" | tee -a "$log"
 grep -F 'PHANTOWD_SHARE_READ_READY authenticated=true backend=sharestore after_reboot=true mutation=false scope=qemu-handler-dispatch-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_STATE_READY protocols=smb,nfs atomic_revision=true after_reboot=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_NAS_POLICY_STATE_READY protocols=smb,nfs,iscsi atomic_revision=true nonempty=true after_reboot=true pending_preserved=true corrupt_refused=true stale_writer_denied=true activation=false scope=disposable-qemu-only' "$log" >/dev/null

@@ -267,7 +267,7 @@ func exerciseSMBRebootConnections(configPath, phase string) (result error) {
 	done := make(chan error, 1)
 	go func() { done <- daemon.Wait() }()
 	defer func() {
-		result = errors.Join(result, stopQEMURebootSamba(daemon, done))
+		result = errors.Join(result, stopQEMURebootDaemon(daemon, done))
 	}()
 	client := func(auth, operation string) ([]byte, error) {
 		return smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", smbRebootRuntime+"/"+auth+".auth", "//127.0.0.1/Reboot", "-c", operation)
@@ -326,14 +326,14 @@ func exerciseSMBRebootConnections(configPath, phase string) (result error) {
 }
 
 // Keep this fixture-specific seam separate from production runtime ownership.
-func stopQEMURebootSamba(daemon *exec.Cmd, done <-chan error) error {
+func stopQEMURebootDaemon(daemon *exec.Cmd, done <-chan error) error {
 	if daemon == nil || daemon.Process == nil || daemon.Process.Pid <= 1 ||
 		daemon.Process.Pid == os.Getpid() || done == nil || daemon.SysProcAttr == nil || !daemon.SysProcAttr.Setpgid || daemon.SysProcAttr.Pgid != 0 {
-		return errors.New("invalid reboot Samba process ownership")
+		return errors.New("invalid reboot fixture process ownership")
 	}
 	pid := daemon.Process.Pid
 	if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
-		return errors.New("reboot Samba termination uncertain")
+		return errors.New("reboot fixture termination uncertain")
 	}
 	parentExited := false
 	settled, err := awaitQEMURebootGroup(pid, done, &parentExited, 3*time.Second)
@@ -344,13 +344,13 @@ func stopQEMURebootSamba(daemon *exec.Cmd, done <-chan error) error {
 		return nil
 	}
 	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
-		return errors.New("reboot Samba forced termination uncertain")
+		return errors.New("reboot fixture forced termination uncertain")
 	}
 	settled, err = awaitQEMURebootGroup(pid, done, &parentExited, 2*time.Second)
 	if err != nil || !settled {
-		return errors.New("reboot Samba process group unsettled")
+		return errors.New("reboot fixture process group unsettled")
 	}
-	return errors.New("reboot Samba needed forced termination")
+	return errors.New("reboot fixture needed forced termination")
 }
 
 // Waiting for owned processes is not an unmount retry or a timing workaround.
@@ -374,7 +374,7 @@ func awaitQEMURebootGroup(pid int, done <-chan error, parentExited *bool, budget
 			return true, nil
 		}
 		if err != nil && !errors.Is(err, syscall.ESRCH) {
-			return false, errors.New("reboot Samba process-group observation uncertain")
+			return false, errors.New("reboot fixture process-group observation uncertain")
 		}
 		select {
 		case <-timer.C:

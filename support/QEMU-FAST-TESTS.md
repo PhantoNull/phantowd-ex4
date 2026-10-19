@@ -1672,8 +1672,9 @@ in-container preparation/smoke/state run still has the original360s cap and10s k
 retry, extra image/volume, privilege or port forwarding. A failure at any stage
 fails the whole invocation, even if an earlier boot passed. The new option does
 not reroute default CI or qualify power loss/unclean-shutdown recovery, product
-startup or automatic NFS/iSCSI activation. Existing ordinary policy/credential
-persistence and actual Samba access checks remain unchanged.
+startup or iSCSI activation. Existing policy/credential and Samba checks remain;
+a separate confirmed policy now also exercises real guest NFSv3/TCP service
+startup and retained data access after clean reboot, as specified below.
 
 Both modes preserve the same container arguments and before-Docker admission.
 Local command tests cover absent dependency, failed run, timeout and OOM refusal
@@ -2070,7 +2071,7 @@ After the normal smoke, both the fast lane and clean Buildroot runner execute
 `support/qemu-state-reboot.sh`. It creates a new 16 MiB regular-file ext2 disk,
 starts two independent ARMv5 kernels and retains only that generated data disk
 between them. Each root disk is separately snapshotted; no NIC is attached.
-Only guest loopback is raised for the HTTP/HTTPS and Samba state fixtures.
+Only guest loopback is raised for the HTTP/HTTPS, Samba and NFS state fixtures.
 A dedicated PID-1 script skips all normal services and accepts only fixed seed
 and verify phases. Compiled machine/VPD/device/UUID checks precede the writable
 mount; the expected mounted identity is verified before touching configuration.
@@ -2114,6 +2115,21 @@ Account-file hashes, file inode/content/mode/ownership and loopback-only listene
 are checked. `PHANTOWD_SMB_REBOOT_READY` is required after daemon cleanup. The
 fixture stops its own Samba instance, syncs the generated filesystem and releases
 its mounts; it neither changes the base root image nor the default service profile.
+
+A dedicated coherent NAS policy, separate from the deliberately pending/corrupt
+samples, supplies three synthetic NFS exports. Its real Store/flock remains held
+through normal consumer cleanup. Each fresh kernel starts foreground rpcbind/
+mountd and kernel NFSv3 threads, serves loopback TCP clients, then verifies stop,
+export withdrawal, zero NFS threads and ordinary unmount without a retry. The
+first phase creates original data through NFS; the second reads it before
+creating a different file, never recreating the original. Both phases verify
+synced writes/server UID/GID, a readable RO marker, EROFS on attempted RO writes,
+and a denied-client mount rejected by the server rather than a timeout.
+The strict host comparison requires one complete receipt per phase, different
+kernel boot IDs, equal policy/data hashes and inode, plus successful whole-state
+closure/reboot. Missing/duplicate/changed/reordered/failed/bounded-log controls
+run in `support/tests/test-nfs-reboot-result.py`. These positive lifecycle checks
+are not complete constructor/stop-fault or product-admission qualification.
 
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, production account management,

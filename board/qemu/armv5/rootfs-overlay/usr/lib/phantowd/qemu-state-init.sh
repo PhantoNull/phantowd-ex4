@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 # Dedicated PID 1 for a host-owned two-boot virtual-disk test. Only a guarded,
-# guest-loopback Samba fixture is started; no ordinary NAS init/services.
+# guest-loopback Samba/NFS fixtures are started; no ordinary NAS init/services.
 set -efu
 [ "$$" -eq 1 ]
 mount -t proc proc /proc

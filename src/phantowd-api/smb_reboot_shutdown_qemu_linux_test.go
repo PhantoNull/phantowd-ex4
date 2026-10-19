@@ -47,7 +47,7 @@ func TestQEMURebootShutdownRefusesUnknownOwnership(t *testing.T) {
 		nil, {}, {Process: &os.Process{Pid: 1}}, {Process: &os.Process{Pid: os.Getpid()}},
 		{Process: &os.Process{Pid: os.Getpid() + 1}, SysProcAttr: &syscall.SysProcAttr{Setpgid: true, Pgid: os.Getpid()}},
 	} {
-		if err := stopQEMURebootSamba(cmd, make(chan error)); err == nil {
+		if err := stopQEMURebootDaemon(cmd, make(chan error)); err == nil {
 			t.Fatal("unknown group accepted")
 		}
 	}
@@ -188,13 +188,13 @@ func TestQEMURebootShutdownHelper(t *testing.T) {
 		if err != nil || group != parent.Process.Pid {
 			t.Fatal("descendant escaped fixture group", group, err)
 		}
-		stopErr := stopQEMURebootSamba(parent, done)
+		stopErr := stopQEMURebootDaemon(parent, done)
 		alive := syscall.Kill(childPID, 0) == nil
 		if mode == "harness" {
 			if stopErr == nil {
 				t.Fatal("cleanup accepted parent exit while descendant still held fixture file")
 			}
-			if alive || stopErr.Error() != "reboot Samba needed forced termination" {
+			if alive || stopErr.Error() != "reboot fixture needed forced termination" {
 				t.Fatal("forced descendant shutdown did not settle with explicit failure", stopErr, alive)
 			}
 		}

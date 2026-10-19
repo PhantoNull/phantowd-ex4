@@ -9,8 +9,20 @@ import (
 	"encoding/json"
 	"os"
 	"reflect"
+	"runtime"
 	"testing"
 )
+
+func TestQEMUNFSRebootRuntimeRefusesHost(t *testing.T) {
+	if runtime.GOARCH == "arm" {
+		t.Skip("native-host refusal is separate from the guarded ARM guest")
+	}
+	for _, phase := range []string{"unknown", "seed", "verify"} {
+		if err := exerciseQEMUNFSReboot(phase); err == nil {
+			t.Fatal("native host admitted as the disposable NFS reboot guest", phase)
+		}
+	}
+}
 
 func TestQEMUNFSRebootPolicy(t *testing.T) {
 	root := t.TempDir()
