@@ -9,7 +9,7 @@ The local API overlay runner now accepts `-IncludeStateReboot`, preserving its
 default single-smoke behavior and every existing resource/deadline boundary.
 The optional invocation runs the unchanged two-kernel state harness only after
 the standard smoke succeeds. An actual pinned Go1.26.8/ARMv5 invocation passes
-all three boots under the original360s whole-run cap: current policy and credentials
+all three boots under the original360s container-work cap: current policy and credentials
 survive, corrupt/pending/stale-policy checks remain, and actual Samba access,
 rotated-password retention and disabled-account behavior pass after clean reboot.
 
@@ -19,6 +19,12 @@ product state placement, physical power loss or installable firmware. Command-
 boundary RED/GREEN tests require the explicit selection, identical container
 arguments and no retry after dependency/run/timeout/OOM failures in both modes.
 No CI job, default campaign, image, volume, privilege or NAS operation is added.
+That work cap does not bound Docker daemon creation/startup or a blocked host CLI.
+
+Exact [host run39232493156](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39232493156)
+passes all30 steps on `5e56607`, including the new wrapper receipt, pinnedGo1.26.8
+ordinary API/vet/race, tagged vet, toolkit/fuzz and all prior host contracts.
+Hosted command mocks do not substitute for the separately successful local ARM run.
 
 ## Current source: local Linux and standard ARMv5 smoke qualification
 

@@ -1654,7 +1654,8 @@ refuse without provisioning. The fixed API-only profile is 2 CPU / 2 GiB / 256 P
 read-only source/base/workspace and automatic container removal. It reserves
 8 GiB host headroom on the actual Docker data drive, not the full builder's 40 GiB:
 all test writes are confined to RAM scratch. This does not bound unrelated/WSL
-host writes. Entire launcher has 360 s plus 10 s termination grace; the existing
+host writes. Work inside the container has360s plus10s termination grace; this
+does not bound daemon-side creation/startup or a blocked host CLI. The existing
 API smoke 240 s and native 180 s campaign limits are unchanged. By default it runs
 one smoke boot, not state reboot, all Samba campaigns, full image/SBOM/legal regeneration,
 clean build, browser execution or physical qualification. The fixed util-linux
@@ -1667,7 +1668,7 @@ Explicitly add `-IncludeStateReboot` to run the existing state-persistence harne
 after a successful standard smoke boot. One container performs three kernel boots:
 the standard smoke plus independent seed/verify kernels sharing only a newly
 allocated16MiB virtual state disk. Each state boot retains its60s limit; the whole
-preparation/smoke/state run still has the original360s cap and10s kill grace. No
+in-container preparation/smoke/state run still has the original360s cap and10s kill grace. No
 retry, extra image/volume, privilege or port forwarding. A failure at any stage
 fails the whole invocation, even if an earlier boot passed. The new option does
 not reroute default CI or qualify power loss/unclean-shutdown recovery, product

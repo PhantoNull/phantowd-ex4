@@ -517,7 +517,7 @@ button to an unqualified backend simply because the screen exists.
   never qualification evidence.
   The local API overlay's explicit `-IncludeStateReboot` selection now reuses
   the existing seed/verify two-kernel harness after the normal smoke, in one
-  bounded container. Default CI/mode and360s whole/240s smoke/60s-per-state-boot
+  bounded container. Default CI/mode and360s container/240s smoke/60s-per-state-boot
   limits remain unchanged. Actual three-boot success qualifies clean policy/
   credential retention and existing Samba access, not automatic NFS/iSCSI
   activation, unclean recovery, complete firmware or physical power loss.
