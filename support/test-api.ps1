@@ -30,6 +30,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Go static checks failed.' }
     go test -count=1 "-coverprofile=$coverageFile" ./...
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
+    go test -tags=qemu -count=1 ./internal/nfsowner
+    if ($LASTEXITCODE -ne 0) { throw 'Experimental NFS lifetime behavior tests failed.' }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNetworkPolicy|TestQEMUISCSIPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD)$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'QEMU dashboard contract test failed.' }
     go test -tags=qemu -run '^TestQEMUDashboardAssets(HTTPAndTLS|Refusals)$' -count=1 .

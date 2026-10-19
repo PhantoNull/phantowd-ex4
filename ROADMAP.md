@@ -2335,7 +2335,15 @@ storage. No production roster provider or activation path exists.
   this supplies no mount lease, kernel authority or service activation.
   The separate [NFS runtime packet](support/NFS-RUNTIME-PROFILE.md) proposes a
   fixed-backend kernel-service Owner with policy/storage/code retained until
-  verified settlement. Its confirmation is pending; do not expand the generic
+  verified settlement. Host/QEMU implementation is now approved. The new
+  `qemu`-only lifetime captures a typed candidate and trusted fixture backend,
+  serializes transitions, starts once, preserves configured-disabled state and
+  retains terminal review after partial startup, drift or uncertain closure.
+  Its shared six-case guest campaign is memory-only (`kernel_backend=false`),
+  not retained kernel/storage/code authority or a product constructor. Thirteen
+  behavior tests, pinned native race3 and the current standard ARM smoke pass;
+  an earlier session-observer role-bind failure remains unexplained despite a
+  later passing instrumented run. Do not expand the generic
   launcher or copy the clean-reboot fixture into a product constructor. Complete
   kernel/userspace/export/consumer shutdown, NLM/NSM and boot/recovery composition
   remain required alongside physical gates.

@@ -3,9 +3,10 @@
 
 # Dedicated NFS runtime ownership
 
-Status: proposed Owner contract; operator confirmation pending. This is not
-an implemented privileged controller, product bootstrap or permission to operate
-an existing NAS. Initial execution work is limited to disposable host/QEMU tests.
+Status: dedicated Owner work approved for host/disposable QEMU. A `qemu`-tagged
+[lifecycle implementation](../src/phantowd-api/internal/nfsowner/README.md) now
+exists with a trusted synthetic backend. It is not an implemented kernel backend,
+privileged product controller, bootstrap or permission to operate an existing NAS.
 
 ## Existing evidence and the missing boundary
 
@@ -104,8 +105,9 @@ receipt requires `listener_identity=true`; older text-profile-only receipts do
 not establish it. No additional boot, installed package, capability or product
 entry point is added. Samples are sequential, not atomic authority, a retained
 service lease, export/cache completeness or proof of all outstanding I/O/NLM/
-NSM state. The Owner contract remains proposed; host parser tests do not replace
-the actual guest acceptance or qualify the full failure/closure matrix.
+NSM state. Host parser tests do not replace actual guest acceptance or qualify
+the full kernel-backend failure/closure matrix. The separately approved lifetime
+work below does not turn these samples into execution authority.
 
 Local ARMv5 execution now passes the standard smoke and both independent
 clean-state kernels with this mandatory listener-identity receipt, retaining
@@ -142,7 +144,7 @@ snapshots; freshness equality is not provenance. A trusted runtime constructor
 must rebuild/compare from the original policy, identity and storage owners,
 never accept caller-supplied JSON or a prior boot's transient tuples.
 
-## Proposed construction and sole ownership
+## Required kernel-backend construction and sole ownership
 
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.
@@ -166,7 +168,7 @@ never accept caller-supplied JSON or a prior boot's transient tuples.
   filesystem/root is not an ordinary reload; old handles and consumers must be
   accounted for by a separately specified transition.
 
-## Proposed lifecycle and failure matrix
+## Accepted lifecycle and required backend failure matrix
 
 The Owner is single-use within one admitted boot. It has no automatic restart
 or reload loop. A future qualified boot coordinator implements the selected
@@ -201,11 +203,23 @@ No API reports a requested revision active before the complete readiness boundar
    First execute in the existing disposable NFS guest: before/start/I/O/stop,
    requiring the actual loopback listener address as well as version/thread/
    transport state. No extra default boot, capability, mutation, HTTP or product
-   constructor. This neither selects an execution backend nor approves the Owner.
+   constructor. This observation does not select an execution backend; the
+   separate explicit lifecycle approval is not kernel-backend qualification.
 1. Host Owner state machine: normal/disabled paths, fixed backend/inputs, no
    partial publication, cancellation and failed startup, drift/restoration,
    unexpected exit, uncertain stop/close and retained authority, concurrent
    operations and JSON refusal. Test behavior, not only call ordering.
+   The `qemu`-only `nfsowner` now implements this lifecycle against trusted
+   memory-model inputs. Its shared six-case ARM campaign reports
+   `kernel_backend=false`; it neither captures real kernel/source authority nor
+   completes packets2–5. Constructor performs no I/O, and callbacks must honor
+   cooperative fixed deadlines. No production constructor is available.
+   Thirteen external-package behavior tests and pinned native race-count3 pass.
+   The current complete standard ARM smoke executes all six memory lifetimes
+   and existing checks at unchanged budgets. A prior smoke failed later in an
+   existing session-history role-bind fixture; added fixed failure-stage
+   diagnostics do not identify or repair that intermittent failure. Neither
+   successful subchecks nor a subsequent pass erase the original failed run.
 2. Same-Plan handoff: trusted actual owners/leases, exact source tuples and client
    rules, missing/duplicate/changed roots, stale identity/policy/storage and fsid
    rebinding refusal. Keep complete constructor/rollback/close faults explicit.

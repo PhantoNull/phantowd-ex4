@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/passwordhash"
 )
 
@@ -69,6 +70,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only")
+	if err := nfsowner.ExerciseQEMU(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_NFS_OWNER_LIFETIME_READY cases=6 single_start=true disabled=true sticky_review=true retained_inputs=true kernel_backend=false scope=synthetic-memory-only")
 	if err := exerciseQEMUNetworkPolicy(); err != nil {
 		return err
 	}

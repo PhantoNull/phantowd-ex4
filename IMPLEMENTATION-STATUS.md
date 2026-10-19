@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Dedicated NFS lifetime: experimental host/QEMU-only Owner
+
+The approved `qemu`-tagged `internal/nfsowner` now captures one immutable typed
+candidate and one trusted fixture backend. Serialized single-start/disabled,
+fresh-input/readiness checks, verified stop-before-release and terminal retained
+review are implemented. Partial startup attempts bounded compensation once;
+restoration never revives a reviewed lifetime. Late positive callbacks cannot
+override cancellation/deadlines; cleanup has an independent bounded context.
+Copied/nil/zero handles, typed-nil backends, JSON and private formatting refuse.
+
+External-package behavior tests and a shared six-case memory-only guest fixture
+cover this state machine. This is not a retained kernel-domain/backend, actual
+NFSD ownership or a product activation API. The receipt explicitly requires
+`kernel_backend=false`; no existing protocol/access proof is replaced by it.
+Same-Owner source/runtime handoff, complete kernel/userspace/export settlement,
+permanent export bindings and automatic boot recovery remain release gates.
+Complete Windows preflight and pinnedLinuxGo1.26.8 ordinary/tagged API vet plus
+owner/planner race-count3 pass. The current standard ARMv5 smoke passes with the
+mandatory six-case memory-only receipt and every existing check, unchanged
+budgets and1277 matching source/harness witnesses. No extra default guest/job.
+The first run passed the new receipt but failed later at the existing session
+observer role-bind case. Fixed fixture-only failure-stage diagnostics preserve
+its refusal/cleanup checks; the subsequent successful run does not establish
+the earlier failure's cause or a repair. Separate clean-reboot/full-image,
+hosted and physical qualification are not claimed by this increment.
+See the [component contract](src/phantowd-api/internal/nfsowner/README.md).
+
 ## Offline rescue reads: private errors and exact checksum completion
 
 The host inspector now refuses a payload truncated after its size observation,
@@ -54,7 +81,8 @@ iSCSI transport failure. Redacted fixture diagnostics now identify case and
 transport facts without raw errors or private requests; ten subsequent exact
 tagged-group runs and three pinned-Linux TLS runs pass, but no cause or fix is
 claimed. Automatic desired-service recovery after ordinary unclean shutdown
-remains required and unimplemented; the dedicated NFS Owner is still proposed.
+remains required and unimplemented. At that checkpoint the dedicated NFS Owner
+was still proposed; the later approved lifecycle increment is described above.
 No NAS operation or deferred Samba producer work is included.
 
 Exact [host run39262101758](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39262101758)
@@ -153,9 +181,10 @@ Linux API vet/units, tagged vet and planner race tests pass. Actual standard
 ARMv5 smoke verifies the same candidate from existing identity/storage Owners,
 with exact source hashes and unchanged budgets. It does not rerun the separate
 two-boot campaign or full firmware/audits and is not a service lease/activation.
-The [dedicated NFS Owner contract](support/NFS-RUNTIME-PROFILE.md) remains proposed,
-awaiting confirmation; no privileged Owner, endpoint, product boot or NAS change
-is implemented by this increment. The generic launcher remains unchanged.
+At that checkpoint the [dedicated NFS Owner contract](support/NFS-RUNTIME-PROFILE.md)
+was proposed and awaiting confirmation. The later approved lifetime increment
+above does not add a privileged product Owner, endpoint, boot or NAS operation.
+The generic launcher remains unchanged.
 
 Exact [host run39240818599](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39240818599)
 passes all30 steps on `d28ffd9`, including complete ordinary native API/race.

@@ -317,6 +317,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'ARMv5 Owner-backed read-only identity/passdb observation did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_OWNER_LIFETIME_READY cases=6 single_start=true disabled=true sticky_review=true retained_inputs=true kernel_backend=false scope=synthetic-memory-only' "$log_file" >/dev/null; then
+            echo 'NFS owner lifetime proof missing' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             printf 'QEMU typed NFS candidate proof missing\n' >&2
             exit 1
