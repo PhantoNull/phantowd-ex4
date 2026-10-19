@@ -28,6 +28,11 @@ storage-owner composition, exclusive product authority, NLM/NSM and normal/
 unclean product boot recovery remain open. No production constructor, HTTP
 activation, generic-launcher privilege change, NAS operation or flash write.
 
+Exact [host run39328788107](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39328788107)
+passes all30 steps on `0f52d61`, including both actual tagged kernel tests and
+the complete native API/race gate. This is separate from the local ARM smoke/
+two-boot proof, not a remote firmware build or physical/recovery qualification.
+
 ## Dedicated NFS lifetime: experimental host/QEMU-only Owner
 
 The approved `qemu`-tagged `internal/nfsowner` now captures one immutable typed
