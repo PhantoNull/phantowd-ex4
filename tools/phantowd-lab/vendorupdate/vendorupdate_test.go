@@ -6,6 +6,8 @@ package vendorupdate
 import (
 	"bytes"
 	"encoding/binary"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -186,6 +188,56 @@ func TestInspectRescueDetectsCorruptPayload(t *testing.T) {
 	}
 }
 
+func TestInspectRescueRefusesEarlyEOFWithMatchingPrefixXOR(t *testing.T) {
+	fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+	// The missing final zero word leaves XOR unchanged. A file truncated after
+	// its size was observed must not become a valid rescue image.
+	fixture = append(fixture, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(fixture[0x14:], 8)
+	observedSize := int64(len(fixture))
+	report, err := InspectRescueImage(bytes.NewReader(fixture[:len(fixture)-4]), observedSize)
+	if err == nil || report.Valid || report.XORValid {
+		t.Fatal("incomplete payload with matching prefix XOR was accepted")
+	}
+}
+
+func TestInspectRescueRefusesTruncatedRegularFile(t *testing.T) {
+	fixture := append(syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56"), 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(fixture[0x14:], 8)
+	path := filepath.Join(t.TempDir(), "logical-rescue.bin")
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal("cannot create temporary rescue fixture")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal("cannot open temporary rescue fixture read-only")
+	}
+	defer file.Close()
+	observed, err := file.Stat()
+	if err != nil || os.Truncate(path, int64(len(fixture)-4)) != nil {
+		t.Fatal("cannot prepare temporary truncated rescue fixture")
+	}
+	report, err := InspectRescueImage(file, observed.Size())
+	if err == nil || report.Valid || report.XORValid {
+		t.Fatal("regular file truncated after size observation was accepted")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(after, fixture[:len(fixture)-4]) {
+		t.Fatal("inspection changed the truncated fixture")
+	}
+}
+
+func TestInspectLogicalImageRefusesEarlyEOFWithMatchingPrefixXOR(t *testing.T) {
+	fixture := make([]byte, int(LogicalHeaderSize)+8)
+	binary.LittleEndian.PutUint32(fixture, 8)
+	binary.LittleEndian.PutUint32(fixture[4:], binary.LittleEndian.Uint32([]byte("hsqs")))
+	copy(fixture[LogicalHeaderSize:], "hsqs")
+	report, err := InspectLogicalImage(bytes.NewReader(fixture[:len(fixture)-4]), int64(len(fixture)))
+	if err == nil || report.Valid || report.XORValid {
+		t.Fatal("incomplete logical image with matching prefix XOR was accepted")
+	}
+}
+
 func TestInspectRescueRejectsCompatibilityMismatch(t *testing.T) {
 	payload := []byte{1, 2, 3, 4}
 	fixture := make([]byte, int(RescueHeaderSize)+len(payload))
@@ -225,6 +277,23 @@ func FuzzInspect(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = Inspect(bytes.NewReader(data), int64(len(data)))
 		_, _ = InspectRescueImage(bytes.NewReader(data), int64(len(data)))
+		// Preserve the existing arbitrary-input checks above, and exercise a
+		// coherent image whose omitted final zero word does not change XOR.
+		if len(data) <= 64*1024 {
+			rescue := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+			rescue = append(rescue[:RescueHeaderSize], data...)
+			rescue = append(rescue, 0, 0, 0, 0)
+			binary.LittleEndian.PutUint32(rescue[0x14:], uint32(len(data)+4))
+			binary.LittleEndian.PutUint32(rescue[0x18:], xorBytes(data))
+			complete, err := InspectRescueImage(bytes.NewReader(rescue), int64(len(rescue)))
+			if err != nil || !complete.Valid || !complete.XORValid {
+				t.Fatal("coherent rescue control was refused")
+			}
+			partial, err := InspectRescueImage(bytes.NewReader(rescue[:len(rescue)-4]), int64(len(rescue)))
+			if err == nil || partial.Valid || partial.XORValid {
+				t.Fatal("truncated rescue with unchanged XOR was accepted")
+			}
+		}
 	})
 }
 
