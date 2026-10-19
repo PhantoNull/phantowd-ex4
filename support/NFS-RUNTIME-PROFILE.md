@@ -160,6 +160,35 @@ pending I/O, NLM/NSM and product recovery are independent gates. The existing
 fixture's `nolock`/`soft` settings are not product defaults. No physical disk,
 production namespace placement or generic-launcher privilege is authorized.
 
+## Retained actual code: dedicated disposable ARM fixture
+
+`runtimebundle.NewNFSCodeQEMU` now retains the full code-only tree, file objects
+and original mount namespace, with current namespace/fixed-root identity fences
+on a locked OS thread. It requires the explicit VersatilePB/root boot selector,
+independent expected data and a read-only/nosuid/nodev executable tmpfs view.
+Actual ARM32/EABI5 and interpreter checks are prerequisites, not loader execution
+or complete ABI/NSS/module qualification. No descriptor or activation API escapes.
+
+One optional diskless/networkless ARM guest stages9real files from the verified
+base against independently generated cached-target metadata. It proves normal
+FD balance/caller-copy independence, no-child rollback, hash-correct non-ELF
+refusal and byte-identical overmount with retained review after restoration.
+Reviewed original references remain until the fixture process exits. Normal
+Close assumes containing consumer absence; this leaf starts/owns no process.
+Constructor/close/namespace faults are not complete product qualification.
+
+The strict bounded host receipt accepts one LF/CRLF terminator, refuses embedded/
+repeated CR, duplicate/reordered/missing/unknown markers and compares actual
+counts to expected metadata. A QEMU default-temp failure was fixed by using the
+owned RAM scratch, not adding writable mounts. No original proof/budget was
+removed. Later host-only JSON-shape controls replay the exact guest/report bytes.
+
+Use `support/test-nfs-code.ps1` for the optional local lane. Its shell driver
+is ARM-qualified; the Windows entrypoint is syntax-inspected only. No new default
+boot/job, full Buildroot run, host privilege, NFS daemon, product recovery or
+physical operation is implied. Compose the real launcher/loader, policy/identity/
+storage/kernel/state and complete settlement before product service admission.
+
 ## Actual userspace code expectations, not execution authority
 
 `phantowd-lab inspect-nfs-runtime-closure DIRECTORY` inventories once and unions

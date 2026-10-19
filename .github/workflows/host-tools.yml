@@ -43,6 +43,11 @@ on:
       - 'support/tests/test-service-launcher.py'
       - 'support/nfs-reboot-result.py'
       - 'support/tests/test-nfs-reboot-result.py'
+      - 'support/nfs-code-result.py'
+      - 'support/tests/test-nfs-code-result.py'
+      - 'support/tests/test-qemu-nfs-code.sh'
+      - 'support/tests/nfs-code-init.sh'
+      - 'support/test-nfs-code.ps1'
       - 'support/tests/test-nfs-workflow-routing.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
@@ -148,6 +153,11 @@ on:
       - 'support/tests/test-service-launcher.py'
       - 'support/nfs-reboot-result.py'
       - 'support/tests/test-nfs-reboot-result.py'
+      - 'support/nfs-code-result.py'
+      - 'support/tests/test-nfs-code-result.py'
+      - 'support/tests/test-qemu-nfs-code.sh'
+      - 'support/tests/nfs-code-init.sh'
+      - 'support/test-nfs-code.ps1'
       - 'support/tests/test-nfs-workflow-routing.py'
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
@@ -295,6 +305,7 @@ jobs:
         run: |
           python3 -B support/tests/test-service-launcher.py
           python3 -B support/tests/test-nfs-reboot-result.py
+          python3 -B support/tests/test-nfs-code-result.py
 
       - name: Verify runtime-loader comparison refusals
         run: python3 -B support/tests/test-runtime-loader-fixture.py
@@ -382,7 +393,7 @@ jobs:
           go test -count=1 ./...
           go vet -tags=qemu ./...
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
-          go test -tags=qemu -race -count=1 -v -run '^TestNFSExpected' ./internal/runtimebundle
+          go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code)' ./internal/runtimebundle
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
           go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .

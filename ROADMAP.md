@@ -2399,6 +2399,15 @@ storage. No production roster provider or activation path exists.
   module requirements and constructor/drift/close faults, then compose a dedicated
   NFS launcher. Do not broaden the static launcher or reuse Samba privileges;
   unsigned expectations do not qualify provenance, NLM/NSM or product admission.
+  **Retained-code prerequisite:** an explicit diskless ARM fixture now stages
+  the actual9-file set in protected tmpfs and retains original code/root/namespace
+  identities. Normal closure/FD balance, constructor rollback (including a
+  hash-correct non-ELF file) and byte-identical overmount/restoration review pass.
+  Host receipt transport/counts are strict; no inspected ELF executes. Qualify
+  actual loader/symbol/NSS/module requirements, complete namespace/close faults,
+  a descriptor-bound dedicated launcher and verified consumer settlement next.
+  This QEMU-only collector is not product privilege/provenance or exclusive NFSD
+  authority, and it does not implement normal/unclean boot recovery.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Actual NFS code retained in one isolated ARMv5 guest
+
+A dedicated QEMU-only lifetime now captures the expected code tree and original
+mount namespace from a fixed read-only/nosuid/nodev tmpfs view. It retains every
+program/library reference, rechecks hashes/identities/aliases and named-root/
+namespace binding, and validates actual ARM32/EABI5/interpreter prerequisites.
+No descriptor getter, daemon, generic-launcher change or product entrypoint.
+Normal closure releases once after revalidation; drift/uncertainty keeps review
+and original references. Failed no-child construction preserves uncertain rollback.
+
+Native host-refusal/privacy/cancellation race controls and full Windows preflight
+pass. One explicit diskless/networkless ARM guest now stages9real ELF files,
+proves caller-copy independence, normal FD balance, rollback including hash-correct
+non-ELF input, and rejects a byte-identical overmount plus restoration. The base
+image stays unchanged and1355 frozen inputs match before/after the qualified run.
+Initial harness-only snapshot-temp and CRLF receipt failures are corrected without
+writable-profile or timeout expansion. Late host-only JSON-shape hardening is
+tested on Windows/Linux and replayed against the exact captured guest/report.
+
+The optional `support/test-nfs-code.ps1` uses existing image/cache read-only and
+bounded RAM scratch; no default guest/CI job is added. Actual local execution used
+its shell driver in the same bounded owned dev container; the PowerShell entry
+is syntax-inspected, not separately execution-qualified. Actual loader/NSS/modules,
+complete namespace/close faults, consumer settlement, full backend/boot recovery,
+hardware and installation remain open. No inspected NFS ELF or service executes.
+
 ## NFS userspace build expectations: actual artifact-to-plan bridge
 
 The host toolkit now inventories one tree and emits a single fixed three-entry

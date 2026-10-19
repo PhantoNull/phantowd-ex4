@@ -32,6 +32,34 @@ report in a private bounded TMPDIR. Default host CI skips that external artifact
 test but executes the pure decoder/refusal controls; inspect logs before claiming
 generated-artifact coverage. No guest boot or inspected ELF execution is implied.
 
+## Retained NFS code references (dedicated ARMv5 fixture only)
+
+`NewNFSCodeQEMU` admits only root on VersatilePB with the explicit
+`phantowd_nfs_code_fixture=1` boot marker. It consumes independent expected
+metadata and duplicates the caller's O_PATH root at the fixed fixture view.
+The complete tree must be a kernel-read-only, nosuid/nodev, executable tmpfs.
+Original directory/file identities, contents, aliases and the mount namespace
+are retained and rechecked on a locked OS thread. Caller-root closure and copied
+handles cannot release the original lifetime. No descriptor getter exists.
+
+Actual held files must have supported ARM32/EABI5 headers; the three programs
+must be dynamic with the fixed interpreter. This is not instruction-set, symbol,
+actual loader/NSS/dlopen or complete ABI qualification. No inspected ELF runs.
+The source expectation still supplies no signature/model provenance authority.
+
+Normal explicit `Close` rechecks inputs and releases owned references once;
+the containing trusted caller must already have proved consumer absence.
+This leaf starts/owns no child. Drift or uncertain close retains review and
+references without retry/revival. A failed no-child constructor uses the shared
+rollback contract; keep its ORIGINAL retaining error if closure is uncertain.
+No complete namespace/close fault matrix or product service owner is claimed.
+
+The optional `support/test-nfs-code.ps1` lane stages public guest files in RAM,
+checks normal FD balance and constructor rollback, refuses hash-correct non-ELF
+input, and covers a byte-identical overmount with retained review after restore.
+Only its copied/snapshot root image and guest RAM are writable. It never starts
+NFS or normal services, attaches data disks or adds a default CI boot/job.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

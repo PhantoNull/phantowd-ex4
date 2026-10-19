@@ -1,0 +1,85 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+# Optional isolated code-input lane: regular image copy and guest RAM only.
+set -eu
+base=${1:?BASE TARGET GO DEBUGFS SOURCE [FAILURE_LOG]}
+target=${2:?cached Buildroot target required}
+go_binary=${3:?pinned Go required}
+debugfs=${4:?pinned debugfs required}
+source_dir=${5:?source required}
+failure_log=${6:-}
+tmpdir=${TMPDIR:-/tmp}
+case "$base:$target:$go_binary:$debugfs:$source_dir:$failure_log:$tmpdir" in
+    *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
+esac
+case "$tmpdir" in /*) ;; *) exit 1 ;; esac
+awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found=1 } END { exit !found }' /proc/mounts || {
+    echo 'NFS code fixture requires tmpfs scratch' >&2; exit 1
+}
+for name in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
+    [ -f "$base/$name" ] && [ ! -L "$base/$name" ] || exit 1
+done
+[ -d "$target" ] && [ ! -L "$target" ] || exit 1
+(cd "$base" && sha256sum -c SHA256SUMS)
+base_hash=$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')
+scratch=$(mktemp -d "$tmpdir/phantowd-nfs-code.XXXXXX")
+child_pid=
+cleanup() {
+    if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
+        kill "$child_pid" 2>/dev/null || true
+        wait "$child_pid" 2>/dev/null || true
+    fi
+    # Exact newly allocated RAM directory only; never base/source/cache volumes.
+    rm -rf "$scratch"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false' CGO_ENABLED=0
+# An explicitly supplied Go cache may be reused only inside this RAM root.
+GOCACHE=${GOCACHE:-$scratch/go-cache}
+GOPATH=${GOPATH:-$scratch/go-path}
+case "$GOCACHE:$GOPATH" in *[!a-zA-Z0-9_./:-]*) exit 1 ;; esac
+case "$GOCACHE" in "$tmpdir"/*) ;; *) exit 1 ;; esac
+case "$GOPATH" in "$tmpdir"/*) ;; *) exit 1 ;; esac
+export GOCACHE GOPATH
+host_arch=$("$go_binary" env GOHOSTARCH)
+(cd "$source_dir/tools/phantowd-lab" && GOOS=linux GOARCH="$host_arch" "$go_binary" build -trimpath -o "$scratch/lab" ./cmd/phantowd-lab)
+"$scratch/lab" inspect-nfs-runtime-closure "$target" >"$scratch/expected.json"
+(cd "$source_dir/src/phantowd-api" && GOOS=linux GOARCH=arm GOARM=5 "$go_binary" build -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/probe" ./cmd/qemu-nfs-code-fixture)
+cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+"$debugfs" -w -R 'mkdir /usr/lib/phantowd' "$scratch/rootfs.ext2" >/dev/null 2>&1 || true
+install_image_file() {
+    from=$1
+    to=$2
+    mode=$3
+    "$debugfs" -w -R "write $from $to" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $to mode $mode" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $to uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $to gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -R "dump $to $scratch/verify" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    cmp "$from" "$scratch/verify"
+    rm "$scratch/verify"
+}
+install_image_file "$scratch/expected.json" /usr/lib/phantowd/qemu-nfs-code-expected.json 0100444
+install_image_file "$scratch/probe" /usr/sbin/phantowd-nfs-code-fixture 0100555
+install_image_file "$source_dir/support/tests/nfs-code-init.sh" /usr/sbin/phantowd-nfs-code-init 0100555
+# QEMU's default /tmp selection may fall back to /var/tmp for snapshots. Use
+# this exact owned RAM directory; never broaden the container's writable roots.
+TMPDIR="$scratch" timeout --signal=TERM --kill-after=5s 90s qemu-system-arm \
+    -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
+    -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
+    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_nfs_code_fixture=1 init=/usr/sbin/phantowd-nfs-code-init' \
+    -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" >"$scratch/guest.log" 2>&1 &
+child_pid=$!
+status=0
+wait "$child_pid" || status=$?
+child_pid=
+cat "$scratch/guest.log"
+if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/nfs-code-result.py" "$scratch/guest.log" "$scratch/expected.json"; then
+    if [ -n "$failure_log" ]; then cp "$scratch/guest.log" "$failure_log"; fi
+    exit 1
+fi
+[ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
+sha256sum "$scratch/probe" "$scratch/expected.json" "$scratch/rootfs.ext2"
+echo PHANTOWD_NFS_CODE_BASE_UNCHANGED
