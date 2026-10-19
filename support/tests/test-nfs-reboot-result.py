@@ -20,12 +20,17 @@ def log(phase):
     return ("ordinary kernel log\nPHANTOWD_NFS_REBOOT_PHASE_READY phase=" + phase + " boot_id=" + boot +
             " policy_sha256=" + "a" * 64 + " inode=12 data_sha256=" + "b" * 64 +
             " rw=true ro_denied=true client_denied=true uid=101000 gid=101000"
-            " kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true listener_identity=true teardown=true"
+            " kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true listener_identity=true retained_kernel=true teardown=true"
             " scope=clean-qemu-reboot-only\nPHANTOWD_STATE_BOOT_READY phase=" + phase +
             " scope=disposable-qemu-only\n[   1.000] reboot: Restarting system\n").encode()
 
 
 class NFSRebootResult(unittest.TestCase):
+    def test_retained_kernel_proof_is_required(self):
+        for changed in (b"", b" retained_kernel=false"):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                result.validate_log(log("seed").replace(b" retained_kernel=true", changed), "seed")
+
     def test_exact_listener_identity_is_required(self):
         legacy = log("seed").replace(b" listener_identity=true", b"")
         with self.assertRaises(ValueError):

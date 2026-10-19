@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Retained NFSD kernel component: actual two-boot fixture
+
+The guarded ARM-only NFS reboot fixture now starts/stops NFSD directly through
+its original control-filesystem descriptor, rather than invoking `rpc.nfsd`.
+It retains the original network/mount namespace files and unique control-mount
+identity, rechecks them on one OS thread, opens a fresh bounded transaction for
+every operation, and hands the kernel its own IPv4/TCP loopback listener by FD.
+Only two threads on the pinned v3-only kernel are admitted. Startup/stop are
+single-use; uncertain control/close retains references and withholds fixture
+policy/mount release. This is not a complete product control domain/backend.
+
+Windows preflight/cross-compilation, pinned native tagged vet/NFS race-count3,
+eight strict receipt tests and routing/wrapper contracts pass. Actual local ARM
+smoke and both independent clean-state kernels pass at unchanged budgets,
+preserving original policy/data/inode and all RW/RO/UID/GID/client-denial checks.
+The phase/aggregate proof now requires `retained_kernel=true`.1282 inputs match
+before/after ARM. Later host-only selector/contract wiring adds the new native
+tests without a new job; it does not change the tested guest/runtime inputs.
+
+Kernel-component normal-path evidence is separate from complete construction,
+drift, uncertain-stop/close and pending-I/O faults. Userspace/runtime-code and
+storage-owner composition, exclusive product authority, NLM/NSM and normal/
+unclean product boot recovery remain open. No production constructor, HTTP
+activation, generic-launcher privilege change, NAS operation or flash write.
+
 ## Dedicated NFS lifetime: experimental host/QEMU-only Owner
 
 The approved `qemu`-tagged `internal/nfsowner` now captures one immutable typed

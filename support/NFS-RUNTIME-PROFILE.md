@@ -5,8 +5,10 @@
 
 Status: dedicated Owner work approved for host/disposable QEMU. A `qemu`-tagged
 [lifecycle implementation](../src/phantowd-api/internal/nfsowner/README.md) now
-exists with a trusted synthetic backend. It is not an implemented kernel backend,
-privileged product controller, bootstrap or permission to operate an existing NAS.
+exists with a trusted synthetic backend. A separate retained NFSD kernel
+component now executes in the guarded reboot fixture below. These are not yet a
+complete service backend, privileged product controller, bootstrap or permission
+to operate an existing NAS.
 
 ## Existing evidence and the missing boundary
 
@@ -115,6 +117,48 @@ the original policy/data/inode and unchanged source witnesses and budgets.
 Portable negative cases, scoped Linux race tests and strict receipt/routing
 controls also pass. This is separate from the static source audit, full firmware
 reproduction, ordinary unclean boot recovery or physical-hardware qualification.
+
+## Retained kernel component in the actual reboot fixture
+
+The `qemu && linux` component in
+[`nfs_kernel_control_qemu_linux.go`](../src/phantowd-api/nfs_kernel_control_qemu_linux.go)
+is admitted only by the fixed ARM/VersatilePB/synthetic-disk guard. It retains
+network and mount namespace files (NSFS/type/device/inode) and the original NFSD
+directory (filesystem magic and unique mount/device/inode). Complete operations
+are serialized on one OS thread, with original/path namespace/mount rechecks.
+There is one controller construction per fixture process; review cannot be
+erased by constructing another. This is not exclusion against external root.
+
+Startup requires the pinned empty v3-only kernel profile. The component creates
+one IPv4/TCP listener at127.0.0.1:2049, passes its retained socket FD through the
+original `portlist` control and starts exactly two threads. Stop writes zero
+once, closes the original socket once and verifies the stopped profile. Normal
+reference release follows userspace/export/client settlement and the existing
+independent Netlink checks. Every legacy read/write uses a new descriptor opened
+beneath the original NFSD directory with no symlink/magic-link/mount crossing;
+reads cap at4097bytes and reject excess. No seek/reused transaction snapshot.
+
+The pinned Linux implementation accepts a socket descriptor in `portlist`,
+starts/stops via `threads`, and supplies magic0x6e667364 in `nfsd_fill_super`.
+No new binary/libnl, generic launcher or kernel module lookup is added. Control
+errors have fixed phase labels, never raw paths/output; uncertain close is not
+retried. The fixture withholds policy/server-mount release after uncertain
+settlement and keeps original references. Cooperative five-second operation/
+cleanup contexts do not preempt blocked kernel calls or qualify all faults.
+
+Native refusal/transaction tests, race-count3, eight strict receipt controls and
+existing workflow/wrapper contracts pass. Actual standard ARM smoke and both
+clean-state kernels preserve real reads/synced writes, RO EROFS, unauthorized
+client denial, mapping, original inode/policy/data and normal teardown. Both
+phase and aggregate receipts require `retained_kernel=true`; older receipts do
+not qualify this component. Existing budgets/resources and all prior proofs stay.
+
+This is the kernel part of a disposable fixture, not the full fixed-backend
+Owner. Qualified userspace/code closure, same-Owner policy/storage handoff,
+complete namespace/resource ownership, constructor/drift/close fault coverage,
+pending I/O, NLM/NSM and product recovery are independent gates. The existing
+fixture's `nolock`/`soft` settings are not product defaults. No physical disk,
+production namespace placement or generic-launcher privilege is authorized.
 
 ## Typed candidate: no execution authority
 

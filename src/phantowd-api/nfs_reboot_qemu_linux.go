@@ -108,6 +108,7 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	if err != nil {
 		return err
 	}
+	retainPolicy, kernelSettled := false, false
 	var inode uint64
 	var policyHash, dataHash [32]byte
 	bootID, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
@@ -115,9 +116,19 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 		return errors.Join(err, policy.Close())
 	}
 	defer func() {
+		if retainPolicy {
+			qemuNFSKernelRetention.Lock()
+			qemuNFSKernelRetention.policies = append(qemuNFSKernelRetention.policies, policy)
+			qemuNFSKernelRetention.Unlock()
+			result = errors.Join(result, errQEMUNFSKernel)
+			return
+		}
 		result = errors.Join(result, policy.Check(), policy.Close())
+		if !kernelSettled {
+			result = errors.Join(result, errQEMUNFSKernel)
+		}
 		if result == nil {
-			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true listener_identity=true teardown=true scope=clean-qemu-reboot-only\n",
+			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true listener_identity=true retained_kernel=true teardown=true scope=clean-qemu-reboot-only\n",
 				phase, strings.TrimSpace(string(bootID)), policyHash, inode, dataHash)
 		}
 	}()
@@ -140,7 +151,8 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	}
 	var ownedMounts, clientMounts []string
 	var daemons []nfsRebootDaemon
-	exportsLoaded, nfsdStarted := false, false
+	exportsLoaded := false
+	var kernel *qemuNFSKernel
 	defer func() {
 		// Only this fresh, NIC-less guest's known resources. No lazy/forced
 		// unmount, global host operation or retry after uncertain teardown.
@@ -157,24 +169,38 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 				result = errors.Join(result, errors.New("NFS reboot exports not withdrawn"), err)
 			}
 		}
-		if nfsdStarted {
-			_, err := nfsRebootCommand("/usr/sbin/rpc.nfsd", "0")
-			result = errors.Join(result, err)
-			threads, err := os.ReadFile("/proc/fs/nfsd/threads")
-			if err != nil || strings.TrimSpace(string(threads)) != "0" {
-				result = errors.Join(result, errors.New("NFS reboot kernel threads not stopped"), err)
-			}
+		if kernel != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			result = errors.Join(result, kernel.Stop(ctx))
+			cancel()
 		}
 		for i := len(daemons) - 1; i >= 0; i-- {
 			result = errors.Join(result, stopQEMURebootDaemon(daemons[i].command, daemons[i].done))
 		}
-		if nfsdStarted {
+		if kernel != nil {
 			result = errors.Join(result, checkQEMUNFSKernelProfile(false))
+		}
+		if result != nil {
+			retainPolicy = true
+			return
+		}
+		if kernel != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			result = errors.Join(result, kernel.Close(ctx))
+			cancel()
+			if result != nil {
+				retainPolicy = true
+				return
+			}
+			kernelSettled = true
 		}
 		for i := len(ownedMounts) - 1; i >= 0; i-- {
 			if err := unix.Unmount(ownedMounts[i], 0); err != nil {
 				result = errors.Join(result, fmt.Errorf("NFS reboot unmount %s: %w", ownedMounts[i], err))
 			}
+		}
+		if result != nil {
+			retainPolicy = true
 		}
 	}()
 	mount := func(source, target, filesystem string, flags uintptr, options string) error {
@@ -236,9 +262,13 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	if err := start("/usr/sbin/rpcbind", "127.0.0.1:111", "-f"); err != nil {
 		return err
 	}
-	// Mark before invocation so a partially successful command is also stopped.
-	nfsdStarted = true
-	if _, err := nfsRebootCommand("/usr/sbin/rpc.nfsd", "-N", "4", "-V", "3", "-U", "-H", "127.0.0.1", "2"); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	kernel, err = openQEMUNFSKernel(ctx)
+	if err != nil {
+		return err
+	}
+	if err := kernel.Start(ctx); err != nil {
 		return err
 	}
 	if err := start("/usr/sbin/rpc.mountd", "127.0.0.1:20048", "-F", "-N", "2", "-N", "4", "-V", "3", "-u", "-p", "20048"); err != nil {

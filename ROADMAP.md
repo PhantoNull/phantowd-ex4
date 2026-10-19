@@ -2365,6 +2365,15 @@ storage. No production roster provider or activation path exists.
   and client I/O, and after stop. Host controls and actual three-boot ARMv5
   regression pass; strict receipts require both running profile and stopped
   readback. This is not complete quiescence, NLM/NSM recovery or a product Owner.
+  The guarded reboot fixture now owns a retained NFSD kernel component rather
+  than invoking `rpc.nfsd`: original network/mount/control references, fresh
+  descriptor-relative transactions, one loopback socket handed to the kernel,
+  exactly two threads and single-use verified stop/release. Uncertain settlement
+  withholds policy/server-mount release. Native race/strict receipt controls and
+  actual standard ARM plus both clean boots pass; receipts now require
+  `retained_kernel=true`. This is not yet the full service backend or exclusive
+  product authority; qualify retained userspace/code/storage composition and
+  complete constructor/drift/close/pending-I/O/lock-recovery faults next.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

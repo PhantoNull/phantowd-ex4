@@ -385,7 +385,7 @@ jobs:
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
           go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
-          go test -tags=qemu -run '^(TestQEMUNFSReboot|TestQEMURebootShutdown)' -count=1 -v .
+          go test -tags=qemu -run '^(TestQEMUNFS(Reboot|Kernel)|TestQEMURebootShutdown)' -count=1 -v .
           go test -race -count=1 ./...
 
       - name: Verify synthetic dashboard preview boundaries
