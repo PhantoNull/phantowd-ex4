@@ -38,6 +38,57 @@ func TestNFSv3CandidateBindsSamePlanPolicyAndStorage(t *testing.T) {
 	}
 }
 
+func TestNFSv3CandidateMatchesCompleteOriginalStorageOnly(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate, err := plan.NFSv3TCPCandidate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !candidate.FreshAgainstStorage(storage) {
+		t.Fatal("candidate lost its original complete storage tuple")
+	}
+}
+
+func TestNFSv3CandidateStorageMatchRefusesEveryChangedBinding(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate, err := plan.NFSv3TCPCandidate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []func(*StorageSnapshot){
+		func(s *StorageSnapshot) { s.Complete = false },
+		func(s *StorageSnapshot) { s.Generation++ },
+		func(s *StorageSnapshot) { s.OwnerFingerprint[0] ^= 1 },
+		func(s *StorageSnapshot) { s.Volumes = nil },
+		func(s *StorageSnapshot) { s.Volumes[0].MountID++ },
+		func(s *StorageSnapshot) { s.Volumes[0].DeviceMajor++ },
+		func(s *StorageSnapshot) { s.Volumes[0].DeviceMinor++ },
+		func(s *StorageSnapshot) { s.Volumes[0].FilesystemUUID = "66666666-7777-8888-9999-aaaaaaaaaaaa" },
+		func(s *StorageSnapshot) { s.Volumes[0].ReadOnly = !s.Volumes[0].ReadOnly },
+		func(s *StorageSnapshot) { s.Volumes[0].MountPath += "-changed" },
+		func(s *StorageSnapshot) { s.Volumes[0].Compatibility = CompatibilityUnqualified },
+		func(s *StorageSnapshot) { s.Volumes = append(s.Volumes, s.Volumes[0]) },
+	} {
+		altered := storage
+		altered.Volumes = append([]ObservedVolume(nil), storage.Volumes...)
+		change(&altered)
+		if candidate.FreshAgainstStorage(altered) {
+			t.Fatal("changed storage still matched original candidate")
+		}
+	}
+	if (NFSv3Candidate{}).FreshAgainstStorage(storage) {
+		t.Fatal("zero candidate matched storage")
+	}
+}
+
 func TestNFSv3CandidateDoesNotAliasCallerOrReturnedRequests(t *testing.T) {
 	config, active, identity, storage := planInputs(t)
 	plan, err := Build(config, active, identity, storage)

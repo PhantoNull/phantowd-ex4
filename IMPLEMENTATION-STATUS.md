@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## NFS source directories retained from the original mounted roster
+
+The Linux/QEMU-only source lifetime now binds a typed NFS candidate to the
+original complete mounted-roster lease, retaining volume pins and independent
+`O_PATH` export directories. Rechecks compare original mount/device/inode and
+current relative paths. Missing/symlink sources refuse; replacement enters sticky
+review after restoration. The parent lease cannot close while pins remain.
+Capture creates no directories, changes no permissions and exposes no data FD.
+Explicit disposal requires verified consumer stop; uncertain close retains
+remaining references without retry. This is not complete service authority.
+
+Windows preflight/ARM cross-compilation, pinned Linux tagged vet and planner/
+NFS-owner race-count3 pass. Actual standard ARM smoke passes every existing
+check plus the mandatory two-root/whole-volume/refusal/review receipt, at the
+unchanged limits. All1285 frozen inputs match before/after execution. No extra
+guest/job, two-boot rerun, product activation, NAS or flash operation is claimed.
+Full policy/identity/runtime/state composition, close-fault qualification and
+automatic normal/unclean product boot recovery remain open.
+
 ## Retained NFSD kernel component: actual two-boot fixture
 
 The guarded ARM-only NFS reboot fixture now starts/stops NFSD directly through

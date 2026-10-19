@@ -2374,6 +2374,14 @@ storage. No production roster provider or activation path exists.
   `retained_kernel=true`. This is not yet the full service backend or exclusive
   product authority; qualify retained userspace/code/storage composition and
   complete constructor/drift/close/pending-I/O/lock-recovery faults next.
+  **Retained-source prerequisite:** Linux/QEMU now borrows the original complete
+  roster lease, compares candidate storage, and retains per-volume pins plus
+  independent `O_PATH` export directories. Parent closure is blocked while pinned;
+  missing/symlink/replaced roots refuse and restoration cannot erase review.
+  Native/race and standard ARM prove two requested RO/RW roots, whole-volume
+  semantics and verified reference disposal, without a service or data access.
+  Complete policy/identity/runtime/state handoff, consumer-stop authority and
+  injected constructor/close faults remain required before backend activation.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

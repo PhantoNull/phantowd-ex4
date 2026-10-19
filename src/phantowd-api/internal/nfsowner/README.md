@@ -6,7 +6,8 @@
 This package exists only with the `qemu` build tag. It implements the approved
 host/disposable-QEMU lifecycle, **not a kernel backend or product NFS manager**.
 Normal firmware builds cannot construct it. There is no HTTP endpoint, command
-execution, file opener, namespace setup or physical-device operation here.
+execution, namespace setup or physical-device operation here. The Linux/QEMU
+source lifetime below opens directories only through an original mount lease.
 
 ## Fixed inputs and lifecycle
 
@@ -43,6 +44,38 @@ causes are preserved. `Observe` returns the historical lifecycle state, **not**
 a fresh kernel health sample. Backend lifetime retention after a failed release
 is not proof that every descriptor remains open: the backend must retain its
 original uncertain-close state and never retry recycled descriptors.
+
+## Retained export directories (Linux/QEMU only)
+
+`NewExportRootsQEMU` borrows the original complete mounted-roster lease and
+compares its verified storage evidence with the immutable candidate. It retains
+one volume-root pin per selected volume and independent `O_PATH` descriptors for
+each export directory. Whole-volume `.` is supported without reinterpreting it
+as an SMB share. Missing paths, symlinks and mount crossings refuse; capture
+does not create directories, change permissions or open file contents.
+
+`Check` revalidates the entire original roster, held directory identities and
+the same relative paths under the original pins. A replacement directory enters
+sticky review even if the original is restored. Ordinary data/ctime changes are
+not directory replacement evidence. No descriptor getter or service/data-access
+authority is exposed; policy/identity freshness and ACL authorization remain
+the containing backend's responsibility. Checks are sequential observations,
+not protection against an unobserved replace-and-restore between checks.
+
+The parent lease refuses closure while pins remain. Explicit `Close` requires
+the containing consumer to have stopped and closed its copied references; this
+leaf cannot prove consumer settlement. It closes owned references once, never
+the borrowed lease. Verified disposal does not erase review; uncertain close
+retains remaining references without retry. An uncertain constructor rollback
+returns an opaque retained-review error that the caller must keep together with
+the original containing lease. Complete injected close faults remain unqualified.
+
+External-package native tests cover invalid/disabled/canceled admission and
+private handles. The standard ARM fixture verifies two RO/RW-request roots,
+whole-volume capture, missing/symlink refusal, parent-close exclusion and sticky
+replacement/restoration review using real temporary mounted-volume authority.
+It does not start a service or prove effective NFS client access through these
+new references. The mandatory receipt says `service=false`.
 
 ## Tests and remaining integration
 

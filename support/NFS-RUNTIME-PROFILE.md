@@ -160,6 +160,30 @@ pending I/O, NLM/NSM and product recovery are independent gates. The existing
 fixture's `nolock`/`soft` settings are not product defaults. No physical disk,
 production namespace placement or generic-launcher privilege is authorized.
 
+## Retained source directories: original mounted-roster lease
+
+The Linux/QEMU-only `nfsowner.NewExportRootsQEMU` now compares candidate storage
+with evidence freshly verified by the original complete roster lease. It holds
+volume pins and independent `O_PATH` export-directory references; every check
+revalidates the entire roster, original objects and current relative paths.
+Missing directories, symlinks, unexpected mounts and changed identities refuse.
+Restoration does not revive review. Whole-volume `.` remains valid NFS semantics;
+RO/RW requests do not become file-content access or permissions changes.
+
+The parent lease cannot close while pins exist. Explicit source disposal is
+permitted only after the containing consumer's verified stop; this leaf does
+not certify that precondition. Uncertain close retains remaining references,
+and uncertain construction rollback returns an opaque retaining error. There
+is no descriptor getter, policy/identity freshness authority or activation API.
+Sequential checks do not detect every replace-and-restore between observations.
+
+Pinned native tests/race and actual standard ARM smoke pass. The new mandatory
+receipt covers original lease, two requested RO/RW roots, whole-volume capture,
+missing/symlink refusal, parent-close exclusion and sticky replacement review.
+This is source-retention qualification, not the full backend or client access
+through these descriptors. Complete injected close/constructor faults, retained
+runtime/state/identity composition and service settlement remain separate gates.
+
 ## Typed candidate: no execution authority
 
 `Plan.NFSv3TCPCandidate` derives immutable configuration and requests from one
