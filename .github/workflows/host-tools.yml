@@ -45,6 +45,8 @@ on:
       - 'support/tests/test-nfs-reboot-result.py'
       - 'support/nfs-code-result.py'
       - 'support/tests/test-nfs-code-result.py'
+      - 'support/tests/nfs_loader_result.py'
+      - 'support/tests/test-nfs-loader-result.py'
       - 'support/tests/test-qemu-nfs-code.sh'
       - 'support/tests/nfs-code-init.sh'
       - 'support/test-nfs-code.ps1'
@@ -155,6 +157,8 @@ on:
       - 'support/tests/test-nfs-reboot-result.py'
       - 'support/nfs-code-result.py'
       - 'support/tests/test-nfs-code-result.py'
+      - 'support/tests/nfs_loader_result.py'
+      - 'support/tests/test-nfs-loader-result.py'
       - 'support/tests/test-qemu-nfs-code.sh'
       - 'support/tests/nfs-code-init.sh'
       - 'support/test-nfs-code.ps1'
@@ -306,6 +310,7 @@ jobs:
           python3 -B support/tests/test-service-launcher.py
           python3 -B support/tests/test-nfs-reboot-result.py
           python3 -B support/tests/test-nfs-code-result.py
+          python3 -B support/tests/test-nfs-loader-result.py
 
       - name: Verify runtime-loader comparison refusals
         run: python3 -B support/tests/test-runtime-loader-fixture.py
@@ -392,6 +397,7 @@ jobs:
           go vet ./...
           go test -count=1 ./...
           go vet -tags=qemu ./...
+          go test -tags=qemu -count=1 -v ./cmd/qemu-nfs-code-fixture
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
           go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code)' ./internal/runtimebundle
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction

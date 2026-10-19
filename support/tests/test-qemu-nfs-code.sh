@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-# Optional isolated code-input lane: regular image copy and guest RAM only.
+# Optional isolated code/loader lane: regular image copy and guest RAM only.
 set -eu
 base=${1:?BASE TARGET GO DEBUGFS SOURCE [FAILURE_LOG]}
 target=${2:?cached Buildroot target required}
@@ -46,6 +46,12 @@ export GOCACHE GOPATH
 host_arch=$("$go_binary" env GOHOSTARCH)
 (cd "$source_dir/tools/phantowd-lab" && GOOS=linux GOARCH="$host_arch" "$go_binary" build -trimpath -o "$scratch/lab" ./cmd/phantowd-lab)
 "$scratch/lab" inspect-nfs-runtime-closure "$target" >"$scratch/expected.json"
+for entry in rpcbind rpc.mountd exportfs; do
+    "$scratch/lab" inspect-runtime-closure "$target" "usr/sbin/$entry" >"$scratch/$entry.json"
+done
+target_cc="$(dirname "$go_binary")/arm-buildroot-linux-gnueabi-gcc"
+"$target_cc" -std=c11 -O2 -static -Wall -Wextra -Werror \
+    -o "$scratch/launcher" "$source_dir/src/phantowd-service-launcher/launcher.c"
 (cd "$source_dir/src/phantowd-api" && GOOS=linux GOARCH=arm GOARM=5 "$go_binary" build -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/probe" ./cmd/qemu-nfs-code-fixture)
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 "$debugfs" -w -R 'mkdir /usr/lib/phantowd' "$scratch/rootfs.ext2" >/dev/null 2>&1 || true
@@ -63,6 +69,7 @@ install_image_file() {
 }
 install_image_file "$scratch/expected.json" /usr/lib/phantowd/qemu-nfs-code-expected.json 0100444
 install_image_file "$scratch/probe" /usr/sbin/phantowd-nfs-code-fixture 0100555
+install_image_file "$scratch/launcher" /usr/sbin/phantowd-service-launcher 0100555
 install_image_file "$source_dir/support/tests/nfs-code-init.sh" /usr/sbin/phantowd-nfs-code-init 0100555
 # QEMU's default /tmp selection may fall back to /var/tmp for snapshots. Use
 # this exact owned RAM directory; never broaden the container's writable roots.
@@ -76,10 +83,13 @@ status=0
 wait "$child_pid" || status=$?
 child_pid=
 cat "$scratch/guest.log"
-if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/nfs-code-result.py" "$scratch/guest.log" "$scratch/expected.json"; then
+if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/nfs-code-result.py" "$scratch/guest.log" "$scratch/expected.json" || \
+    ! python3 -B "$source_dir/support/tests/nfs_loader_result.py" "$scratch/guest.log" "$scratch/expected.json" \
+        "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json"; then
     if [ -n "$failure_log" ]; then cp "$scratch/guest.log" "$failure_log"; fi
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
-sha256sum "$scratch/probe" "$scratch/expected.json" "$scratch/rootfs.ext2"
+sha256sum "$scratch/probe" "$scratch/launcher" "$scratch/expected.json" "$scratch/rootfs.ext2" \
+    "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json"
 echo PHANTOWD_NFS_CODE_BASE_UNCHANGED

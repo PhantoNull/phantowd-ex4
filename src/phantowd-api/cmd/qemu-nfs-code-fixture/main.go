@@ -17,6 +17,13 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--loader-observer" {
+		if observeLoader() != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_LOADER_CHILD_FAILED")
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) != 1 || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}

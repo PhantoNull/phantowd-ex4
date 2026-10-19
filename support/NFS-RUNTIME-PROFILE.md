@@ -183,10 +183,27 @@ counts to expected metadata. A QEMU default-temp failure was fixed by using the
 owned RAM scratch, not adding writable mounts. No original proof/budget was
 removed. Later host-only JSON-shape controls replay the exact guest/report bytes.
 
+The same guarded guest now also runs the pinned actual ARM loader, solely with
+`--inhibit-cache --list` for the three fixed programs. A static observer reuses
+the unchanged static launcher and the retained code root; UID/GID1000, empty
+groups/capabilities, NNP, private namespace and code-only root are checked.
+The original code gate/objects survive the entire child lifetime. Namespace/root
+and code are checked before a single bounded stop, group-absence verification,
+child-pin closure and final original-code/FD equality. Uncertainty retains the
+original fixture objects until VM disposal, not a restarted/recovered instance.
+
+The host requires each complete actual loader list to equal its independent
+per-entry build graph. All three graphs must have the same inventory digest;
+their hashes/sizes/alias union must exactly equal the staged union. Partial,
+duplicate, unknown, reordered, changed-code and broadened receipts refuse.
+Actual ARM passes with all prior retention/refusal proofs; no daemon entrypoint
+executes. This is not symbol/NSS/module/ISA completeness, full teardown-fault
+coverage, NLM/NSM, kernel/backend composition or product activation/recovery.
+
 Use `support/test-nfs-code.ps1` for the optional local lane. Its shell driver
 is ARM-qualified; the Windows entrypoint is syntax-inspected only. No new default
 boot/job, full Buildroot run, host privilege, NFS daemon, product recovery or
-physical operation is implied. Compose the real launcher/loader, policy/identity/
+physical operation is implied. Compose the real daemon launcher, policy/identity/
 storage/kernel/state and complete settlement before product service admission.
 
 ## Actual userspace code expectations, not execution authority

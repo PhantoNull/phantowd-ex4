@@ -28,7 +28,7 @@ class CodeReceiptTests(unittest.TestCase):
         variants += [self.lines[:i] + [self.lines[i]] + self.lines[i:] for i in range(3)]
         variants += [list(reversed(self.lines)), self.lines + [b"PHANTOWD_NFS_CODE_FAILED"],
                      self.lines + [b"PHANTOWD_NFS_CODE_FAILURE phase=normal-lifetime"],
-                     [self.lines[0], checker.READY.replace(b"execution=false", b"execution=true"), checker.DONE],
+                     [self.lines[0], checker.READY.replace(b"execution=loader-list-only", b"execution=daemon"), checker.DONE],
                      [self.lines[0], checker.READY.replace(b"original_pins", b"original_\rpins"), checker.DONE],
                      [self.lines[0] + b"\r", checker.READY + b"\r\r", checker.DONE],
                      [self.lines[0].replace(b"bytes=400", b"bytes=399"), checker.READY, checker.DONE]]

@@ -44,7 +44,8 @@ handles cannot release the original lifetime. No descriptor getter exists.
 
 Actual held files must have supported ARM32/EABI5 headers; the three programs
 must be dynamic with the fixed interpreter. This is not instruction-set, symbol,
-actual loader/NSS/dlopen or complete ABI qualification. No inspected ELF runs.
+actual loader/NSS/dlopen or complete ABI qualification. This collector executes
+no inspected ELF; the separate loader-list probe below executes only the loader.
 The source expectation still supplies no signature/model provenance authority.
 
 Normal explicit `Close` rechecks inputs and releases owned references once;
@@ -59,6 +60,27 @@ checks normal FD balance and constructor rollback, refuses hash-correct non-ELF
 input, and covers a byte-identical overmount with retained review after restore.
 Only its copied/snapshot root image and guest RAM are writable. It never starts
 NFS or normal services, attaches data disks or adds a default CI boot/job.
+
+The same optional guest now runs the actual loader's fixed `--inhibit-cache
+--list` operation for each of `rpcbind`, `rpc.mountd` and `exportfs`. The static
+probe reuses the unchanged static launcher: pinned executable and root, private
+mount namespace, UID/GID1000, no supplementary groups/capabilities, NNP and a
+minimal environment. The child verifies its restricted read-only tmpfs root;
+no `/proc`, `/dev`, `/etc`, `/run` or `/mnt` is present. Only fixed loader/entry
+paths are accepted; no daemon entrypoint is invoked.
+
+The containing fixture holds the ORIGINAL code gate and references across
+construction/start, checks the child's namespace/root and original code, stops
+and verifies group absence once, then closes child pins and rechecks code and
+FD balance. Failure retains the original code/child/error until VM disposal;
+there is no retry or product activation. The host compares all three complete
+lists with independent per-entry graphs whose hashes/aliases union exactly to
+the staged expectations and whose inventory digests agree. Actual ARM passes;
+the code receipt now explicitly declares `execution=loader-list-only`.
+
+This verifies loader dependency resolution, not all symbols, instruction paths,
+NSS/dlopen, configuration/state, kernel control, daemon readiness, complete
+constructor/namespace/close faults, a product launcher or boot recovery.
 
 ## Existing Samba runtime and observation work
 

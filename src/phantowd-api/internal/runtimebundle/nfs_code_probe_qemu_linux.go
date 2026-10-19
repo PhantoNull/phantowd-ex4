@@ -25,7 +25,8 @@ import (
 var nfsCodeProbeRetainedQEMU *NFSCodeQEMU
 
 // ProbeNFSCodeQEMU stages public guest code into its own bounded RAM mount.
-// No inspected ELF executes, no daemon starts and no data/block device opens.
+// Only the loader's fixed --list mode executes; no daemon entrypoint or data
+// device opens. The separate static child is non-root/capability-free.
 func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 	phase := "guard"
 	defer func() {
@@ -76,6 +77,10 @@ func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 	}
 	if err := caller.Close(); err != nil || code.Check(ctx) != nil {
 		return errors.New("NFS caller closure invalidated retained code")
+	}
+	phase = "isolated-loader"
+	if err := probeNFSLoaderQEMU(ctx, code); err != nil {
+		return err
 	}
 	copyCode := *code
 	if copyCode.Check(ctx) != ErrInvalid || copyCode.Close() != ErrInvalid {
@@ -173,7 +178,7 @@ func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 		return errors.New("NFS reviewed code operations released references")
 	}
 	fmt.Printf("PHANTOWD_NFS_CODE_COUNTS files=%d aliases=%d bytes=%d\n", len(plan.files), len(plan.aliases), plan.bytes)
-	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=false scope=code-retention-only")
+	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-list-only scope=code-retention-and-loader-list")
 	return nil
 }
 

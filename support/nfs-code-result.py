@@ -13,7 +13,7 @@ MAX_REPORT = 128 << 10
 READY = (b"PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true "
          b"caller_copy_closed=true normal_fd_balance=true constructor_rollback=true "
          b"non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true "
-         b"review_retained=true execution=false scope=code-retention-only")
+         b"review_retained=true execution=loader-list-only scope=code-retention-and-loader-list")
 DONE = b"PHANTOWD_NFS_CODE_DONE"
 COUNTS = re.compile(rb"PHANTOWD_NFS_CODE_COUNTS files=([0-9]{1,3}) aliases=([0-9]{1,4}) bytes=([0-9]{1,8})")
 
@@ -90,7 +90,7 @@ def main():
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-retention-only")
+    print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-retention-and-loader-list")
     return 0
 
 

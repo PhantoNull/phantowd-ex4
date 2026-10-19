@@ -2403,8 +2403,12 @@ storage. No production roster provider or activation path exists.
   the actual9-file set in protected tmpfs and retains original code/root/namespace
   identities. Normal closure/FD balance, constructor rollback (including a
   hash-correct non-ELF file) and byte-identical overmount/restoration review pass.
-  Host receipt transport/counts are strict; no inspected ELF executes. Qualify
-  actual loader/symbol/NSS/module requirements, complete namespace/close faults,
+  Host receipt transport/counts are strict. The same isolated guest now also
+  executes the actual loader's fixed list-only mode for all three programs,
+  through an unchanged static launcher/non-root observer in the retained root.
+  Complete per-entry graph/union matching, original code/namespace/root fences,
+  verified child stop/reap and FD balance pass; no daemon entrypoint runs.
+  Qualify remaining symbol/NSS/module/ISA requirements and namespace/close faults,
   a descriptor-bound dedicated launcher and verified consumer settlement next.
   This QEMU-only collector is not product privilege/provenance or exclusive NFSD
   authority, and it does not implement normal/unclean boot recovery.

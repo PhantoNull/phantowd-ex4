@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Actual NFS code retained in one isolated ARMv5 guest
+## Actual NFS code retained and loader lists matched in isolated ARMv5
 
 A dedicated QEMU-only lifetime now captures the expected code tree and original
 mount namespace from a fixed read-only/nosuid/nodev tmpfs view. It retains every
@@ -17,7 +17,8 @@ Native host-refusal/privacy/cancellation race controls and full Windows prefligh
 pass. One explicit diskless/networkless ARM guest now stages9real ELF files,
 proves caller-copy independence, normal FD balance, rollback including hash-correct
 non-ELF input, and rejects a byte-identical overmount plus restoration. The base
-image stays unchanged and1355 frozen inputs match before/after the qualified run.
+image stays unchanged. The initial retention-only qualification froze1355 inputs;
+the latest code/loader guest freezes1362 with exact before/after equality.
 Initial harness-only snapshot-temp and CRLF receipt failures are corrected without
 writable-profile or timeout expansion. Late host-only JSON-shape hardening is
 tested on Windows/Linux and replayed against the exact captured guest/report.
@@ -25,9 +26,16 @@ tested on Windows/Linux and replayed against the exact captured guest/report.
 The optional `support/test-nfs-code.ps1` uses existing image/cache read-only and
 bounded RAM scratch; no default guest/CI job is added. Actual local execution used
 its shell driver in the same bounded owned dev container; the PowerShell entry
-is syntax-inspected, not separately execution-qualified. Actual loader/NSS/modules,
+is syntax-inspected, not separately execution-qualified. The latest guest reuses
+the unchanged static launcher for a non-root/capability-free static observer in
+the original protected code root. Actual `--inhibit-cache --list` output for all
+three fixed programs matches independent per-entry build graphs and their exact
+staged union. Original code/root/namespace checks, verified group stop/reap and
+final FD balance pass before code release. Failure retains original references.
+Native tagged vet/race3 and complete Windows preflight pass. Actual NSS/modules,
 complete namespace/close faults, consumer settlement, full backend/boot recovery,
-hardware and installation remain open. No inspected NFS ELF or service executes.
+hardware and installation remain open. Only loader-list mode executes; no NFS
+daemon entrypoint runs. Full symbol/ISA qualification is not implied.
 
 ## NFS userspace build expectations: actual artifact-to-plan bridge
 

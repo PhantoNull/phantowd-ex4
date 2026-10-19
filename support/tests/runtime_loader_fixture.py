@@ -25,6 +25,7 @@ def validate(report, *, fixed_entry=FIXED_ENTRY):
     if fixed_entry not in (
             FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm",
             "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol",
+            "usr/sbin/rpcbind", "usr/sbin/rpc.mountd", "usr/sbin/exportfs",
             "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
             "usr/lib/libphantowd-pending-handle-qemu.so"):
         raise ValueError("unsupported fixed fixture entry")
