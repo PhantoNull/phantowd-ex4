@@ -1655,13 +1655,28 @@ read-only source/base/workspace and automatic container removal. It reserves
 8 GiB host headroom on the actual Docker data drive, not the full builder's 40 GiB:
 all test writes are confined to RAM scratch. This does not bound unrelated/WSL
 host writes. Entire launcher has 360 s plus 10 s termination grace; the existing
-API smoke 240 s and native 180 s campaign limits are unchanged. It runs one smoke
-boot, not state reboot, all Samba campaigns, full image/SBOM/legal regeneration,
+API smoke 240 s and native 180 s campaign limits are unchanged. By default it runs
+one smoke boot, not state reboot, all Samba campaigns, full image/SBOM/legal regeneration,
 clean build, browser execution or physical qualification. The fixed util-linux
 archive is checked for this pinned workspace but is not rebuilt in reuse mode.
 `support/tests/test-api-overlay-wrapper.ps1` separately verifies command-boundary
 guards, refusals and isolation without a Docker daemon; mocked success is not
 guest evidence. No CI trigger or default lane is changed by the launcher.
+
+Explicitly add `-IncludeStateReboot` to run the existing state-persistence harness
+after a successful standard smoke boot. One container performs three kernel boots:
+the standard smoke plus independent seed/verify kernels sharing only a newly
+allocated16MiB virtual state disk. Each state boot retains its60s limit; the whole
+preparation/smoke/state run still has the original360s cap and10s kill grace. No
+retry, extra image/volume, privilege or port forwarding. A failure at any stage
+fails the whole invocation, even if an earlier boot passed. The new option does
+not reroute default CI or qualify power loss/unclean-shutdown recovery, product
+startup or automatic NFS/iSCSI activation. Existing ordinary policy/credential
+persistence and actual Samba access checks remain unchanged.
+
+Both modes preserve the same container arguments and before-Docker admission.
+Local command tests cover absent dependency, failed run, timeout and OOM refusal
+without retry in both selections; actual three-boot success is separate evidence.
 It rebuilds the Go API with the pinned compiler and injects it, the current
 broker mdev rule, guest readiness script, NFS fixture helper and x/sys license
 into a **temporary copy** of a previously built QEMU filesystem. The original

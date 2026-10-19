@@ -3,6 +3,23 @@
 
 # Implementation status
 
+## Explicit local clean-reboot qualification option
+
+The local API overlay runner now accepts `-IncludeStateReboot`, preserving its
+default single-smoke behavior and every existing resource/deadline boundary.
+The optional invocation runs the unchanged two-kernel state harness only after
+the standard smoke succeeds. An actual pinned Go1.26.8/ARMv5 invocation passes
+all three boots under the original360s whole-run cap: current policy and credentials
+survive, corrupt/pending/stale-policy checks remain, and actual Samba access,
+rotated-password retention and disabled-account behavior pass after clean reboot.
+
+NFS/iSCSI desired references survive too, but their automatic activation is not
+tested. This is not ordinary unclean-shutdown recovery, a new boot coordinator,
+product state placement, physical power loss or installable firmware. Command-
+boundary RED/GREEN tests require the explicit selection, identical container
+arguments and no retry after dependency/run/timeout/OOM failures in both modes.
+No CI job, default campaign, image, volume, privilege or NAS operation is added.
+
 ## Current source: local Linux and standard ARMv5 smoke qualification
 
 Source `38e94ee` passes the existing pinned Go1.26.8 non-root Linux wrapper:

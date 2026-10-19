@@ -4,7 +4,8 @@
 param(
     [string]$BaseArtifactDirectory = (Join-Path $PSScriptRoot '../artifacts/qemu-armv5'),
     [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx'),
-    [switch]$ReuseBaseVolumeProbe
+    [switch]$ReuseBaseVolumeProbe,
+    [switch]$IncludeStateReboot
 )
 $ErrorActionPreference = 'Stop'
 if (-not $ReuseBaseVolumeProbe) {
@@ -53,11 +54,13 @@ test -r /workspace/dl/util-linux/util-linux-2.40.4.tar.xz
 test -d "$buildroot/package/util-linux"
 export PATH="$output/host/bin:$output/host/sbin:$PATH"
 export PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE=1
-export PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=1
+export PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=__PHANTOWD_SMOKE_ONLY__
 sh /src/support/container/test-qemu-api-overlay.sh /base "$output/host/bin/go" /src \
     /workspace/dl/util-linux/util-linux-2.40.4.tar.xz \
     "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" "$buildroot/package/util-linux"
 '@
+$smokeOnly = if ($IncludeStateReboot) { '0' } else { '1' }
+$linuxScript = $linuxScript.Replace('__PHANTOWD_SMOKE_ONLY__', $smokeOnly)
 $linuxScript = $linuxScript.Replace("`r`n","`n")
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript))
 $command = "printf '%s' '$encoded' | base64 -d > /tmp/phantowd-api-overlay.sh; exec timeout --signal=TERM --kill-after=10s 360s /bin/sh /tmp/phantowd-api-overlay.sh"

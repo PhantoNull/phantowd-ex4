@@ -221,6 +221,10 @@ runs one ARMv5 smoke boot in disposable RAM scratch. It uses read-only caches,
 never builds/pulls images or creates volumes, and has its own bounded resource
 profile; it does not replace the full build's 40 GiB headroom requirement.
 
+Add `-IncludeStateReboot` to run the existing two independent clean-reboot
+state/credential checks after that smoke boot, in the same bounded disposable
+run. This does not test unclean-shutdown recovery or automatic NFS/iSCSI startup.
+
 ### Build and boot QEMU
 
 With Docker Desktop running **Linux containers**, run from the repository root:

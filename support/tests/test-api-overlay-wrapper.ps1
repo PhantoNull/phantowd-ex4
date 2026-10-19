@@ -44,6 +44,18 @@ try {
     foreach($line in @('export PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE=1','export PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=1')){
         if($line -notin ($linux -split "`n")){throw 'Fixed API-only scope changed'}
     }
+    $state.Calls.Clear()
+    & $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe -IncludeStateReboot
+    $rebootRuns=@($state.Calls | Where-Object {$_[0] -eq 'run'})
+    if($rebootRuns.Count -ne 1){throw 'Explicit state reboot must use one disposable run'}
+    if($rebootRuns[0].Count -ne $runs[0].Count){throw 'Explicit reboot changed container admission'}
+    for($i=0;$i -lt $runs[0].Count-1;$i++){
+        if($rebootRuns[0][$i] -ne $runs[0][$i]){throw 'Explicit reboot changed an original container option'}
+    }
+    $rebootCommand=$rebootRuns[0][-1]
+    if($rebootCommand -notmatch "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d"){throw 'Missing explicit reboot command'}
+    $rebootLinux=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
+    if('export PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=0' -notin ($rebootLinux -split "`n")){throw 'Explicit reboot did not select existing two-boot lane'}
     $state.Calls.Clear();$refused=$false
     try{& $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk}catch{$refused=$true}
     if(!$refused -or $state.Calls.Count -ne 0){throw 'Probe-reuse acknowledgement required before Docker'}
@@ -53,16 +65,18 @@ try {
         if(!$refused -or $state.Calls.Count -ne 0){throw 'Insufficient headroom must refuse before Docker'}
     }
     $state.Free=32GB
-    foreach($failure in @('info','image inspect','volume inspect','run')){
+    foreach($includeReboot in @($false,$true)){
+      foreach($failure in @('info','image inspect','volume inspect','run')){
         $state.Calls.Clear();$state.Failure=$failure;$refused=$false
-        try{& $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe}catch{$refused=$true}
+        try{& $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe -IncludeStateReboot:$includeReboot}catch{$refused=$true}
         if(!$refused){throw 'Dependency/run failure was accepted'}
         if(@($state.Calls|Where-Object {$_[0] -eq 'run'}).Count -ne [int]($failure -eq 'run')){throw 'Refusal ran/retried a container'}
-    }
-    foreach($code in @(124,137)){
+      }
+      foreach($code in @(124,137)){
         $state.Calls.Clear();$state.Failure='run';$state.FailureCode=$code;$refused=$false
-        try{& $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe}catch{$refused=$true}
+        try{& $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe -IncludeStateReboot:$includeReboot}catch{$refused=$true}
         if(!$refused -or @($state.Calls|Where-Object {$_[0] -eq 'run'}).Count -ne 1){throw 'Timeout/OOM accepted or retried'}
+      }
     }
     $state.Failure='';$state.FailureCode=1;$state.Free=8GB;$state.Calls.Clear()
     & $wrapper -BaseArtifactDirectory $base -DockerDataVhdxPath $disk -ReuseBaseVolumeProbe
@@ -76,6 +90,7 @@ try {
         if(!$refused -or $state.Calls.Count -ne 0){throw 'Missing input must refuse before Docker'}
     }
     'PHANTOWD_API_OVERLAY_WRAPPER_TESTS_READY scope=mock-boundary-only actual_qemu=false'
+    'PHANTOWD_API_OVERLAY_REBOOT_OPTION_READY default_smoke=true explicit_reboot=true unchanged_limits=true no_retry=true scope=mock-boundary-only'
 } finally {
     Remove-Variable phantowdOverlayWrapperTest -Scope Global
     $global:LASTEXITCODE=$previousExit

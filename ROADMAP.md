@@ -515,6 +515,13 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  The local API overlay's explicit `-IncludeStateReboot` selection now reuses
+  the existing seed/verify two-kernel harness after the normal smoke, in one
+  bounded container. Default CI/mode and360s whole/240s smoke/60s-per-state-boot
+  limits remain unchanged. Actual three-boot success qualifies clean policy/
+  credential retention and existing Samba access, not automatic NFS/iSCSI
+  activation, unclean recovery, complete firmware or physical power loss.
+  Keep command-boundary isolation/no-retry controls for both selections.
   Cached-full INT/TERM diagnostics now preserve an active Samba log prefix
   (1 MiB artifact/16 KiB console) before tmpfs cleanup. Only the caller declaring
   the existing bounded group timeout defers controller exit until foreground
