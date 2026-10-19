@@ -21,6 +21,10 @@ The [dedicated NFS Owner contract](support/NFS-RUNTIME-PROFILE.md) remains propo
 awaiting confirmation; no privileged Owner, endpoint, product boot or NAS change
 is implemented by this increment. The generic launcher remains unchanged.
 
+Exact [host run39240818599](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39240818599)
+passes all30 steps on `d28ffd9`, including complete ordinary native API/race.
+This is separate from the actual local ARM candidate proof, not a hosted boot.
+
 ## Actual NFS access across two clean QEMU boots
 
 The dedicated two-kernel state fixture now starts real NFSv3/TCP services from
