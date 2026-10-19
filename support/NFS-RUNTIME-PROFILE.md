@@ -15,6 +15,21 @@ It proves normal access and teardown, not a fault-complete service Owner or
 ordinary unclean-shutdown recovery. Its `nolock`/`soft` client settings are test
 bounds, not product defaults or NLM/NSM recovery evidence.
 
+That fixture also checks the pinned guest's kernel-control readback: `versions`
+must be exactly NFSv3, `threads` must match its fixed two-thread running profile,
+and `portlist` must contain exactly one TCP/2049 listener. Before startup and
+after teardown it requires zero threads and an empty listener list. Each of the
+three reads is capped at 4,097 bytes and unexpected/truncated profiles refuse.
+The version/transport profile is rechecked after actual client I/O; the strict
+two-boot receipt checker requires both profile and stopped-state evidence.
+
+This is deliberately specific to the pinned QEMU kernel with NFSv2/v4 disabled,
+not a general production-kernel parser. In Linux 6.18.55, `svc_one_xprt_name`
+reports only transport and port: these checks cannot identify address/family,
+export-cache completeness, remaining clients, NLM/NSM state or pending I/O.
+Sequential readbacks are not an atomic retained service authority or complete
+quiescence proof. No kernel control API, privilege or generic launcher is changed.
+
 The generic [process owner](../src/phantowd-api/internal/processowner/README.md)
 owns userspace children. Its static/non-root launcher must not gain arbitrary
 kernel controls, root commands or NFS authority. Kernel threads, exports,

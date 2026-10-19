@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Kernel-NFS profile readback in the clean-reboot fixture
+
+The existing two-boot NFS fixture now requires the pinned guest's actual kernel
+profile before startup, after export startup, after client I/O and after stop.
+It accepts only the fixture's two threads, NFSv3 and one TCP/2049 listener while
+running, then zero threads and no NFSD listeners on teardown. Bounded reads and
+exact comparison reject partial, unknown, broadened or residual state. The host
+receipt checker refuses older access-only receipts and missing/false new fields.
+
+Pinned Go1.26.8 complete ordinary Linux API vet/units, tagged vet and focused
+NFS/daemon tests pass. Six receipt tests and the workflow contracts pass. Actual
+ARMv5 execution passes the existing smoke plus two independent clean-state boots
+under unchanged limits, retaining original policy/data/inode and every old access
+check. No image build/pull, new volume or default guest campaign is added.
+
+Kernel `portlist` reports transport/port, not address or family. Sequential reads
+are not a retained census or complete quiescence proof. NLM/NSM recovery, pending
+I/O, complete constructor/stop faults, product automatic recovery and physical
+qualification remain required. The dedicated Owner is still proposed; no generic
+launcher, product startup, HTTP activation, NAS or deferred producer change occurs.
+
 ## Same-Plan typed NFS candidate
 
 The internal file-service Plan now supplies an immutable TCP/NFSv3/AUTH_SYS

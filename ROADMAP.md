@@ -2337,6 +2337,11 @@ storage. No production roster provider or activation path exists.
   launcher or copy the clean-reboot fixture into a product constructor. Complete
   kernel/userspace/export/consumer shutdown, NLM/NSM and boot/recovery composition
   remain required alongside physical gates.
+  The existing disposable clean-reboot fixture additionally reads back the pinned
+  kernel's exact version/thread/listener profile before startup, after startup
+  and client I/O, and after stop. Host controls and actual three-boot ARMv5
+  regression pass; strict receipts require both running profile and stopped
+  readback. This is not complete quiescence, NLM/NSM recovery or a product Owner.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

@@ -19,12 +19,22 @@ def log(phase):
     boot = ("11111111" if phase == "seed" else "aaaaaaaa") + "-2222-3333-4444-555555555555"
     return ("ordinary kernel log\nPHANTOWD_NFS_REBOOT_PHASE_READY phase=" + phase + " boot_id=" + boot +
             " policy_sha256=" + "a" * 64 + " inode=12 data_sha256=" + "b" * 64 +
-            " rw=true ro_denied=true client_denied=true uid=101000 gid=101000 teardown=true"
+            " rw=true ro_denied=true client_denied=true uid=101000 gid=101000"
+            " kernel_profile=v3-tcp-only kernel_stopped=true teardown=true"
             " scope=clean-qemu-reboot-only\nPHANTOWD_STATE_BOOT_READY phase=" + phase +
             " scope=disposable-qemu-only\n[   1.000] reboot: Restarting system\n").encode()
 
 
 class NFSRebootResult(unittest.TestCase):
+    def test_kernel_profile_and_stopped_readback_are_required(self):
+        wire = log("seed")
+        result.validate_log(wire, "seed")
+        for removed in (b" kernel_profile=v3-tcp-only", b" kernel_stopped=true",
+                        b" kernel_profile=v3-tcp-only kernel_stopped=true"):
+            # Legacy access-only receipts cannot establish the new readbacks.
+            with self.subTest(removed=removed), self.assertRaises(ValueError):
+                result.validate_log(wire.replace(removed, b""), "seed")
+
     def test_two_complete_boots_match_policy_and_original_data(self):
         first = result.validate_log(log("seed"), "seed")
         second = result.validate_log(log("verify").replace(b"\n", b"\r\n"), "verify")
@@ -44,6 +54,8 @@ class NFSRebootResult(unittest.TestCase):
                                   (b"rw=true", b"rw=false"), (b"ro_denied=true", b"ro_denied=false"),
                                   (b"client_denied=true", b"client_denied=false"),
                                   (b"teardown=true", b"teardown=false"), (b"uid=101000", b"uid=0"),
+                                  (b"kernel_profile=v3-tcp-only", b"kernel_profile=unknown"),
+                                  (b"kernel_stopped=true", b"kernel_stopped=false"),
                                   (b"inode=12", b"inode=18446744073709551616"),
                                   (b"inode=12", b"inode=012"),
                                   (b"data_sha256=" + b"b" * 64, b"data_sha256=" + b"b" * 63)):

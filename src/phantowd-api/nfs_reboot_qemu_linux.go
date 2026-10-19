@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -25,6 +26,38 @@ import (
 const nfsRebootRuntime = "/run/phantowd-nfs-reboot"
 const nfsRebootAnchor = "/srv/phantowd/volumes/" + qemuNFSVolumeID
 const nfsRebootPayload = "persistent-qemu-nfs-data\n"
+
+// Exact disposable-kernel profile, not a product census or stop/lease proof.
+// The pinned guest has CONFIG_NFSD_V2 and CONFIG_NFSD_V4 disabled; kernel
+// svc_one_xprt_name reports transport/port, not listener address or family.
+func validateQEMUNFSKernelProfile(threads, versions, ports []byte, running bool) error {
+	wantThreads, wantPorts := "0\n", ""
+	if running {
+		wantThreads, wantPorts = "2\n", "tcp 2049\n"
+	}
+	if !bytes.Equal(threads, []byte(wantThreads)) || !bytes.Equal(versions, []byte("+3\n")) ||
+		!bytes.Equal(ports, []byte(wantPorts)) {
+		return errors.New("NFS reboot kernel profile mismatch")
+	}
+	return nil
+}
+
+func checkQEMUNFSKernelProfile(running bool) error {
+	var values [3][]byte
+	for index, name := range []string{"threads", "versions", "portlist"} {
+		file, err := os.Open("/proc/fs/nfsd/" + name)
+		if err != nil {
+			return err
+		}
+		// The pinned kernel uses a bounded transaction buffer. Detect excess
+		// rather than silently interpreting a truncated observation.
+		values[index], err = io.ReadAll(io.LimitReader(file, 4097))
+		if err = errors.Join(err, file.Close()); err != nil {
+			return err
+		}
+	}
+	return validateQEMUNFSKernelProfile(values[0], values[1], values[2], running)
+}
 
 type nfsRebootDaemon struct {
 	command *exec.Cmd
@@ -81,7 +114,7 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	defer func() {
 		result = errors.Join(result, policy.Check(), policy.Close())
 		if result == nil {
-			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 teardown=true scope=clean-qemu-reboot-only\n",
+			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 kernel_profile=v3-tcp-only kernel_stopped=true teardown=true scope=clean-qemu-reboot-only\n",
 				phase, strings.TrimSpace(string(bootID)), policyHash, inode, dataHash)
 		}
 	}()
@@ -129,6 +162,9 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 		for i := len(daemons) - 1; i >= 0; i-- {
 			result = errors.Join(result, stopQEMURebootDaemon(daemons[i].command, daemons[i].done))
 		}
+		if nfsdStarted {
+			result = errors.Join(result, checkQEMUNFSKernelProfile(false))
+		}
 		for i := len(ownedMounts) - 1; i >= 0; i-- {
 			if err := unix.Unmount(ownedMounts[i], 0); err != nil {
 				result = errors.Join(result, fmt.Errorf("NFS reboot unmount %s: %w", ownedMounts[i], err))
@@ -160,9 +196,8 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	if err := mount("nfsd", "/proc/fs/nfsd", "nfsd", 0, ""); err != nil {
 		return err
 	}
-	threads, err := os.ReadFile("/proc/fs/nfsd/threads")
-	if err != nil || strings.TrimSpace(string(threads)) != "0" {
-		return errors.New("NFS reboot fixture found existing kernel server")
+	if err := checkQEMUNFSKernelProfile(false); err != nil {
+		return err
 	}
 	active, err := nfsRebootCommand("/usr/sbin/exportfs", "-s")
 	if err != nil || len(bytes.TrimSpace(active)) != 0 {
@@ -207,6 +242,9 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	if _, err := nfsRebootCommand("/usr/sbin/exportfs", "-r"); err != nil {
 		return err
 	}
+	if err := checkQEMUNFSKernelProfile(true); err != nil {
+		return err
+	}
 	for _, spec := range []struct{ relative, client string }{{qemuNFSWritablePath, "rw-client"}, {"read-only", "ro-client"}, {"denied-client", "denied-client"}} {
 		target := nfsRebootRuntime + "/" + spec.client
 		output, err := nfsRebootCommand("/sbin/mount.nfs", "127.0.0.1:"+nfsRebootAnchor+"/"+spec.relative, target,
@@ -225,6 +263,9 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	}
 	inode, dataHash, err = exerciseQEMUNFSRebootIO(phase)
 	if err != nil {
+		return err
+	}
+	if err := checkQEMUNFSKernelProfile(true); err != nil {
 		return err
 	}
 	current, err := os.ReadFile(qemuStateAnchor + "/nfs-reboot/policy/nas-services.json")

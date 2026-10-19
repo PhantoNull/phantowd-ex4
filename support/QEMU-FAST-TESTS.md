@@ -2131,6 +2131,16 @@ closure/reboot. Missing/duplicate/changed/reordered/failed/bounded-log controls
 run in `support/tests/test-nfs-reboot-result.py`. These positive lifecycle checks
 are not complete constructor/stop-fault or product-admission qualification.
 
+The NFS fixture additionally reads back its pinned kernel's exact protocol,
+thread and listener profile before startup, after export startup, after actual
+I/O and after teardown. Running means NFSv3 only, two threads and one TCP/2049
+listener; stopped means zero threads and no NFSD listeners. The bounded reads
+refuse missing, partial, broadened or unexpected results. Complete receipts must
+include `kernel_profile=v3-tcp-only kernel_stopped=true`; older access-only
+receipts cannot qualify those new observations. Portlist does not report address
+or family, and these checks do not prove lock recovery, pending-I/O settlement
+or a product-level NFS ownership boundary. No additional guest boot is added.
+
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, production account management,
 WD configuration migration or a production-qualified writable management API. The temporary disk is discarded

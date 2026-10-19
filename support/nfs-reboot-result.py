@@ -16,6 +16,7 @@ ROW = re.compile(
     r"policy_sha256=(?P<policy_sha256>[0-9a-f]{64}) inode=(?P<inode>[1-9][0-9]{0,19}) "
     r"data_sha256=(?P<data_sha256>[0-9a-f]{64}) "
     r"rw=true ro_denied=true client_denied=true uid=101000 gid=101000 "
+    r"kernel_profile=v3-tcp-only kernel_stopped=true "
     r"teardown=true scope=clean-qemu-reboot-only")
 
 
@@ -59,7 +60,8 @@ def main(args):
         raise ValueError("two boot logs required")
     compare(validate_log(read_log(args[0]), "seed"), validate_log(read_log(args[1]), "verify"))
     print("PHANTOWD_NFS_REBOOT_READY boots=2 distinct_kernels=true policy_retained=true data_retained=true "
-          "rw=true ro_denied=true client_denied=true uid=101000 gid=101000 teardown=true scope=clean-qemu-reboot-only")
+          "rw=true ro_denied=true client_denied=true uid=101000 gid=101000 "
+          "kernel_profile=v3-tcp-only kernel_stopped=true teardown=true scope=clean-qemu-reboot-only")
 
 
 if __name__ == "__main__":
