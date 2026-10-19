@@ -117,6 +117,31 @@ rejected inputs, unchanged source bytes, and identical public reports for
 four different slot contents. They do not qualify real-device encoding or
 prove arbitrary data cannot be placed in otherwise public fields.
 
+### Standalone rescue-input dispatch
+
+The same final updater already receives a file at its dispatch entry `0xbe80`.
+It loads that file through `0xbd44`, then classifies the returned bytes at
+`0x9dc0`: the normal magic is compared at offset `0x30`, while the rescue magic
+is compared at `0x32`; a rescue match returns type2. The rescue branch retains
+the original pathname rather than using the normal-update branch's separate
+configuration pointer.
+
+| Static edge | Observed responsibility |
+| --- | --- |
+| `0xc0f8–0xc164`, then `0xc370` | Rescue-type prefix/checksum/selector checks before the dedicated file validator |
+| `0xc39c -> 0xd2b4` | Validate the supplied rescue file; this is not construction of its body or qualification of that legacy validator's unchecked-I/O paths |
+| `0xc424–0xc428 -> 0xdabc`, then `0xdb24–0xdb28 -> 0xd544` | Pass the same pathname to the legacy writer and its header merger |
+
+The classifier's two12-byte magic literals and712 instruction/literal words
+across these regions and two dispatch callers match the original file-backed
+ELF load mappings. This is static GNU-report/ELF evidence, not target execution,
+REA-native Evidence or a proof of every direct/indirect producer. It narrows the
+boundary: this traced path consumes an already rescue-classified input; it does
+not explain how that input's body was originally generated. Do not derive its
+layout from the normal update container or the separate `0x501000` reader.
+The actual rescue body producer, selector-register writer and stock bootloader
+handoff remain unresolved; no extractor, writer or installer is added.
+
 ## `mtd_check` is not a diagnostic command
 
 The final helper is 14,175 bytes, SHA-256

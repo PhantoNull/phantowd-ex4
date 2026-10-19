@@ -3781,6 +3781,10 @@ equipment/media; not ordinary software work.
   Acceptance still needs an independently evidenced rescue body producer/
   payload, register writer, exact-unit capture design and recovery drill;
   no new payload parser, legacy-helper execution or installer is authorized.
+  A further final-updater trace now anchors the standalone rescue-input consumer:
+  type2 classifier, separate file validation and same-path writer/header merger;
+  712 instruction/literal words match the original ELF. This is not the body
+  producer, register writer or bootloader handoff, which remain explicit gates.
 
 **Start in:** [EX4 board research](board/wd/ex4/README.md),
 `board/wd/ex4/`, `configs/`, `tools/phantowd-lab/mcuproto/`,
