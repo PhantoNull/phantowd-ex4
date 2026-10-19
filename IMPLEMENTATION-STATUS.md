@@ -20,6 +20,11 @@ vet, tagged vet and focused race tests pass; five strict host receipt tests and
 the original command-boundary controls pass. A shell-lint warning was corrected
 before the guest run; no timer increase or unmount retry was introduced.
 
+Exact [host run39237745481](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39237745481)
+passes all30 steps on `9b75c23`, including pinnedGo1.26.8 complete ordinary API
+vet/units/race, the new tagged NFS/daemon controls and strict receipt tests.
+The successful ARM kernel execution is separate local evidence, not a host mock.
+
 The fixture holds the actual policy Store/flock through normal consumer cleanup;
 its existing tests preserve missing/pending/foreign/corrupt evidence and sticky
 refusal. It never activates the other deliberately uncertain state samples.
