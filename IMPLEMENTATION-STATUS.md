@@ -24,6 +24,11 @@ I/O, complete constructor/stop faults, product automatic recovery and physical
 qualification remain required. The dedicated Owner is still proposed; no generic
 launcher, product startup, HTTP activation, NAS or deferred producer change occurs.
 
+Exact [host run39244700084](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39244700084)
+passes all30 steps on `fd113c7`, including the new routing/profile/receipt tests
+and complete ordinary native API/race. Actual ARM execution remains separate
+local evidence; this host job does not boot a guest.
+
 ## Same-Plan typed NFS candidate
 
 The internal file-service Plan now supplies an immutable TCP/NFSv3/AUTH_SYS
