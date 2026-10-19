@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Known pre-effect configuration refusal and retained drafts
+
+The development combined-policy API now distinguishes an exact candidate/
+transition refusal from storage failure: retained NFS source rebinds return
+redacted422 without changing current/pending state, while corrupt saved state
+still returns503 on GET and PUT. A real-store regression exposed the shared
+error identity; Commit now preserves corruption provenance without changing
+`errors.Is(ErrInvalid)` compatibility. Wrapped/mixed errors cannot become the
+new exact known-rejection marker.
+
+The browser accepts refusal only after the complete bounded fixed error body,
+original deadline/generation and successful reader release. It retains the
+submitted draft privately for correction, requiring another explicit preview;
+unknown replies still require reconciliation, never automatic retry.
+
+Complete Windows/pinned Linux checks, scoped race tests, all five real browser
+modes and actual ARMv5 smoke plus both clean state boots pass. HTTP/HTTPS guest
+refusal rereads the unchanged policy; the required receipt includes
+`rejected_write=true`. Existing deadlines remain unchanged. No new image/volume,
+schema, endpoint, product activation/recovery, physical NAS or producer work is
+included. Permanent export retirement and automatic boot recovery remain open.
+
 ## Retained NFS bindings at policy publication
 
 The Linux combined SMB/NFS and NAS stores now reject a retained export ID changing
@@ -23,8 +45,8 @@ client access, preserving nonempty edit coverage and the stable source binding.
 Existing time/resource bounds and all prior checks remain unchanged.
 
 This is an adjacent-document guard, not permanent retirement/history. Removed-ID
-reuse, explicit format migration, full lifetime/consumer handoff and management
-error classification remain work before product activation. No schema, endpoint,
+reuse, explicit format migration and full lifetime/consumer handoff remain work
+before product activation. Management refusal handling is qualified above. No schema, endpoint,
 privileged service Owner, automatic recovery, NAS or producer change is added.
 
 Exact [host run39249529764](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39249529764)

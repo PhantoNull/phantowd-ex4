@@ -506,7 +506,7 @@ function boundedDiagnosticStructure(text, maxContainers = 1024) {
   return !quoted && depth === 0;
 }
 
-async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024) {
+async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024, exactDocument = null) {
   const invalid = () => new Error("diagnostic body unavailable");
   const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
   let reader;
@@ -539,6 +539,9 @@ async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024)
     }
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
     if (!boundedDiagnosticStructure(text, maxContainers)) throw invalid();
+    // Fixed status documents can require canonical bytes as well as JSON
+    // validity: duplicate or escaped keys must not manufacture a known outcome.
+    if (exactDocument !== null && text.trim() !== exactDocument) throw invalid();
     const value = JSON.parse(text);
     if (signal?.aborted) throw canceled();
     complete = true;

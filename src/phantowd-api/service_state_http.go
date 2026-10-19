@@ -19,6 +19,7 @@ const serviceStatePath = "/api/v1/file-services/configuration"
 var (
 	errServiceStateConflict  = errors.New("service state conflict")
 	errServiceStateUncertain = errors.New("service state requires reconciliation")
+	errServiceStateRejected  = errors.New("service state request rejected before effects")
 )
 
 // Backend methods return independent validated snapshots. A nil Load result
@@ -143,6 +144,10 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 			return
 		}
 		if err := backend.commit(c.Revision-1, c); err != nil {
+			if err == errServiceStateRejected {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "invalid_service_configuration"})
+				return
+			}
 			serviceStateError(w, err)
 			return
 		}

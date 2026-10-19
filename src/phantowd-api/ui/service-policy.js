@@ -17,8 +17,14 @@ const serviceResponseLimits = Object.freeze({
   "POST /api/v1/file-services/preview": 4 * 1024 * 1024,
   "POST /api/v1/file-services/restore-preview": 4 * 1024 * 1024,
 });
-const serviceState = { baseline: undefined, candidate: null, attempted: null, busy: false, generation: 0, controller: null };
+const serviceState = { baseline: undefined, candidate: null, attempted: null, rejected: null, busy: false, generation: 0, controller: null };
 const policyCopy = (value) => JSON.parse(JSON.stringify(value));
+
+function clearRejectedServiceDraft() {
+  serviceState.rejected = null;
+  setText("service-rejected-document", "");
+  byId("service-rejected").hidden = true;
+}
 
 function syncServiceControls() {
   byId("service-load").disabled = serviceState.busy;
@@ -54,6 +60,7 @@ function clearServicePolicy() {
 // operation/controller until auth status settles or that lifetime is retired.
 function clearServicePolicyData() {
   Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null });
+  clearRejectedServiceDraft();
   byId("service-restore-file").value = "";
   invalidateServiceDraft();
   byId("service-current").hidden = true;
@@ -481,7 +488,8 @@ async function serviceOperation(action) {
       if (failure?.name === "AbortError") throw failure;
       throw new Error("Configuration service could not be reached.");
     }
-    if (!current() || controller.signal.aborted || !response.ok) {
+    const possibleRejection = path === servicePath && options.method === "PUT" && response.status === 422;
+    if (!current() || controller.signal.aborted || (!response.ok && !possibleRejection)) {
       try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* preserve refusal */ }
     }
     if (!live()) throw new Error("superseded");
@@ -490,7 +498,18 @@ async function serviceOperation(action) {
         "The saved revision changed. Reload and review before another save." : response.status === 422 ?
         "Policy rejected. Check paths, identities, grants, client networks and existing overlaps." : response.status === 403 ?
         "Session security check failed. Reload and sign in again." : "Configuration service unavailable, disabled or busy. Reload when available.");
-      failure.status = response.status; throw failure;
+      failure.status = response.status;
+      if (possibleRejection) {
+        try {
+          await readDiagnosticJSON(response, limit, controller.signal, 1, '{"error":"invalid_service_configuration"}');
+          if (live()) failure.knownServiceRejection = true;
+        } catch (readFailure) {
+          if (readFailure?.name === "AbortError") throw readFailure;
+          // Headers, malformed/late bodies and failed stream cleanup do not
+          // establish a known outcome. Keep the unknown-save boundary.
+        }
+      }
+      throw failure;
     }
     let body;
     try {
@@ -548,6 +567,12 @@ async function serviceOperation(action) {
           current: () => current() && !controller.signal.aborted,
           notice: "Session expired. Reload saved state after signing in; a pending save may have committed." });
       } catch { if (current()) showAuthUnavailable(); }
+    } else if (serviceState.attempted !== null && failure?.knownServiceRejection === true) {
+      serviceState.rejected = policyCopy(serviceState.attempted);
+      serviceState.attempted = null;
+      setText("service-rejected-document", JSON.stringify(serviceState.rejected, null, 2));
+      byId("service-rejected").hidden = false;
+      setText("service-status", "Save rejected. This request did not change the saved configuration; submitted draft retained below. Correct it, preview again, then save explicitly. No automatic retry will occur.");
     } else {
       setText("service-status", serviceState.attempted !== null ? failure?.status === 409 ?
         "Revision conflict: this save was refused. Use Load / reconcile, review current state and prepare again; no automatic retry will occur." :
@@ -608,6 +633,7 @@ function showServiceCandidate(c, preview, summary) {
   const overlaps = describeServiceOverlaps(serviceState.baseline, c);
   renderServiceChanges(changes);
   renderServiceOverlaps(overlaps);
+  clearRejectedServiceDraft();
   serviceState.candidate = c;
   setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
   setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");
@@ -705,8 +731,9 @@ async function saveServiceChange() {
     const c = serviceState.candidate;
     const headers = await session();
     if (serviceState.candidate !== c) { setText("service-status", "Form changed. Preview again before saving."); return; }
-    // Once PUT begins any failure may hide a completed commit. Block further
-    // saves until an explicit GET reconciles the entire document.
+    // Unverified PUT failures may hide a commit. Only a complete fixed rejection
+    // reply can release that uncertainty; no failed candidate is replayed.
+    clearRejectedServiceDraft();
     serviceState.attempted = c; invalidateServiceDraft();
     setText("service-status", "Saving the reviewed revision. A timeout will require reconciliation, not retry.");
     const reply = await request(servicePath, { method: "PUT", headers, body: JSON.stringify(c) });

@@ -88,6 +88,31 @@ export async function exerciseServicePolicy({ evaluate, clickVisible, replaceInp
   assert.deepEqual(third.nfs.exports, standalone.nfs.exports, "selected removal changed unrelated NFS");
   assert.deepEqual(third.shares, { ...second.shares, revision: 4 }, "NFS removal changed SMB");
   assert.equal(third.revision, 4);
+  const rejected = structuredClone(third);
+  rejected.revision = rejected.shares.revision = rejected.nfs.revision = rejected.nfs.volume_revision = 5;
+  rejected.nfs.exports[0].relative_path = "unrelated-root";
+  // File is synthetic and memory-only; exercise the visible restore/review/save
+  // path rather than altering the page's private candidate or request handler.
+  await evaluate(`(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([${JSON.stringify(JSON.stringify({ format: "phantowd-file-service-backup", schema_version: 1, configuration: rejected }))}], 'synthetic-policy.json', { type: 'application/json' }));
+    const input = document.getElementById('service-restore-file');
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await clickVisible("service-restore-preview");
+  await until(() => evaluate("!document.getElementById('service-review').hidden && !document.getElementById('service-save').disabled"), browser, "rejected draft explicit restore preview");
+  await clickVisible("service-save");
+  await until(() => evaluate("!document.getElementById('service-load').disabled && !document.getElementById('service-rejected').hidden"), browser, "known pre-effect rejection");
+  assert.match(await evaluate("document.getElementById('service-status').textContent"), /Save rejected.*did not change.*draft retained/);
+  assert.deepEqual(await evaluate("JSON.parse(document.getElementById('service-rejected-document').textContent)"), rejected);
+  assert.equal(await evaluate("document.getElementById('service-save').disabled"), true);
+  assert.equal(await evaluate("document.getElementById('service-editor').disabled"), false);
+  await inspectLayout("rejected");
+  await load(4);
+  assert.deepEqual(await saved(), third, "rejected source change modified saved policy");
+  assert.equal(await evaluate("document.getElementById('service-rejected').hidden"), false, "reload must preserve the private rejected reference");
   return { revisions: 4, independent_nfs_first: true, combined_addition_preserves_nfs: true, smb_grant_edit: true,
-    nfs_removal_preserves_smb: true, nfs_removal_preserves_other_export: true, persistence_qualified: false, activation_qualified: false };
+    nfs_removal_preserves_smb: true, nfs_removal_preserves_other_export: true, known_rejection_draft_preserved: true,
+    rejected_save_preserves_saved_policy: true, persistence_qualified: false, activation_qualified: false };
 }

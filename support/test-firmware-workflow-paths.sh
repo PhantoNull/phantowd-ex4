@@ -594,6 +594,17 @@ if ! grep -Fx "          go test -tags=qemu -run '^TestHistoryViewDrafts' -count
     printf 'host CI must execute pure history-view fixture contracts before ARM qualification\n' >&2
     exit 1
 fi
+required_native_service_command="\"\$go_binary\" test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v ."
+for runner in "$repo_root/support/test-api-linux.ps1" "$repo_root/support/container/test-api.sh"; do
+    if ! grep -Fx "$required_native_service_command" "$runner" >/dev/null; then
+        printf 'native preflight must execute real service-store HTTP refusal controls: %s\n' "$runner" >&2
+        exit 1
+    fi
+done
+if ! grep -Fx "          go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v ." "$host_workflow" >/dev/null; then
+    printf 'host CI must execute real service-store HTTP refusal controls before ARM qualification\n' >&2
+    exit 1
+fi
 for command in '          node --check support/test-dashboard-browser.mjs' \
     '          node support/tests/test-dashboard-preview.mjs' \
     '          node support/test-dashboard-ui.mjs' \

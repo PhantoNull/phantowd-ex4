@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
 // Test-binary-only desired policy. Nothing survives process exit, no appliance
@@ -42,6 +44,15 @@ func newBrowserServicePolicyBackend() *serviceStateBackend {
 			}
 			if expected == ^uint64(0) || c.Revision != expected+1 || c.Validate() != nil {
 				return fileservice.ErrConfig
+			}
+			if stored != nil {
+				current, err := fileservice.DecodeConfig(bytes.NewReader(stored))
+				if err != nil {
+					return err
+				}
+				if fileservice.ValidateRetainedNFSBindings(current, c) != nil {
+					return errServiceStateRejected
+				}
 			}
 			data, err := json.Marshal(c)
 			if err != nil {
@@ -116,5 +127,29 @@ func TestBrowserPolicyFixtureActualHTTPRoundTrip(t *testing.T) {
 		if stale := request("PUT", serviceStatePath, string(data), token.CSRF); stale.Code != 409 {
 			t.Fatal("fixture accepted a stale revision")
 		}
+	}
+	base := serviceConfigFixture(3)
+	base.Shares.Volumes = []shareconfig.Volume{{ID: "bulk", FilesystemUUID: "11111111-2222-4333-8444-555555555555"}}
+	base.NFS.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "bulk", RelativePath: "books",
+		Clients: []nfsconfig.Client{{Network: "192.0.2.1/32", Access: "ro", Squash: "all", AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}}
+	data, err := json.Marshal(base)
+	if err != nil || base.Validate() != nil {
+		t.Fatal("invalid browser fixture policy", err)
+	}
+	if reply := request("PUT", serviceStatePath, string(data), token.CSRF); reply.Code != 200 {
+		t.Fatal("fixture NFS seed failed", reply.Code)
+	}
+	before := request("GET", serviceStatePath, "", "").Body.String()
+	base.Revision, base.Shares.Revision, base.NFS.Revision, base.NFS.VolumeRevision = 4, 4, 4, 4
+	base.NFS.Exports[0].RelativePath = "unrelated-root"
+	data, err = json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply := request("PUT", serviceStatePath, string(data), token.CSRF); reply.Code != 422 || reply.Body.String() != "{\"error\":\"invalid_service_configuration\"}\n" {
+		t.Fatal("browser fixture accepted retained export rebinding", reply.Code, reply.Body.String())
+	}
+	if after := request("GET", serviceStatePath, "", ""); after.Code != 200 || after.Body.String() != before {
+		t.Fatal("rejected browser save changed policy")
 	}
 }

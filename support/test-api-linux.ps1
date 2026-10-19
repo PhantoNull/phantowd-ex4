@@ -58,6 +58,7 @@ cd /external/src/phantowd-api
 "$go_binary" test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
 "$go_binary" test -tags=qemu -run '^(TestQEMUNFSReboot|TestQEMURebootShutdown)' -count=1 -v .
 "$go_binary" test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
+"$go_binary" test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
 printf 'PHANTOWD_LINUX_API_TESTS_READY buildroot=%s scope=all-api-packages-qemu-vet-and-proc-diagnostic host=linux-amd64 network=none\n' "$BUILDROOT_VERSION"
 '@
 $linuxScript = $linuxScript.Replace("`r`n", "`n")

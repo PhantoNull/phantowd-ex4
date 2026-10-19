@@ -42,6 +42,15 @@ func openDevelopmentServiceState(directory string) (*serviceStateBackend, func()
 			}
 			return &c, nil
 		},
-		commit: func(expected uint64, c fileservice.Config) error { return translate(s.Commit(expected, c)) },
+		commit: func(expected uint64, c fileservice.Config) error {
+			err := s.Commit(expected, c)
+			// Only this exact pre-effect Commit refusal is known rejection.
+			// Load corruption, wrapped/mixed errors and unknown I/O stay unavailable
+			// or uncertain; never classify them as an unchanged-state guarantee.
+			if err == fileservicestore.ErrInvalid {
+				return errServiceStateRejected
+			}
+			return translate(err)
+		},
 	}, s.Close, nil
 }

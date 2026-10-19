@@ -307,6 +307,11 @@
               <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
             </fieldset>
           </div>
+          <div id="service-rejected" class="saved-policy" hidden>
+            <h3>Rejected submitted draft — not saved</h3>
+            <p class="policy-help">This request was rejected before any configuration write. Keep this private copy for correction; it is not the current saved state. Prepare and review a new draft before saving again. A new reviewed draft, a new save attempt or session clearing discards the copy. It is never persisted in browser storage.</p>
+            <pre id="service-rejected-document" class="policy-diff-scroll" role="region" aria-label="Rejected submitted configuration, not saved" tabindex="0"></pre>
+          </div>
           <div id="service-review" hidden>
             <p id="service-change" class="policy-help"></p>
             <p class="pill pill-warning">SAVE ONLY / NO SERVICE ACTIVATION</p>

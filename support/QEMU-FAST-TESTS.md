@@ -2089,7 +2089,11 @@ servers, with a synthetic administrator session and test certificate. The
 fixture checks unauthenticated and missing-CSRF refusal, strict TLS cookie
 naming, full revision commits, replay conflicts, GET and explicit store reopen.
 The second kernel must recover the exact policy and commit subsequent revisions.
-`PHANTOWD_SERVICE_HTTP_READY` is required in the verification log. Nothing is
+Both transports in both boots also refuse a same-ID NFS source rebind with the
+exact known pre-effect422 response and reread the unchanged saved document.
+`PHANTOWD_SERVICE_HTTP_READY` with `rejected_write=true` is required in the
+verification log. The native preflight executes the same transport fixture plus
+real-store corruption/refusal controls before guest qualification. Nothing is
 forwarded to the host; this policy API never activates services.
 
 Administrator fixtures cover both native version-2 state and the exact former

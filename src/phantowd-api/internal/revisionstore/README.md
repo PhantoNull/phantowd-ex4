@@ -18,6 +18,12 @@ previous document and does not call it. The callback must not mutate inputs,
 perform I/O, reenter the store or infer recovery/activation authority. Codecs
 without it retain their existing behavior. It is not a historical identity ledger.
 
+The exact `Commit` result `ErrInvalid` is reserved for candidate/transition
+refusal before pending-file effects. A decode error in the current saved file
+returns a wrapped `ErrInvalid`, preserving `errors.Is` compatibility but not
+that exact identity. `Load` still reports corruption as before. Adapters must
+not turn load failures or wrapped/mixed errors into a known request rejection.
+
 ## Read-only policy-directory bootstrap observation
 
 `OpenBootstrapAuthorityWithCodec` optionally retains one directory/flock/

@@ -245,7 +245,8 @@ try {
     }
   };
   const clickVisible = async (id) => {
-    assert.ok(pointerControls.length < 32, "visible pointer action budget exceeded");
+    // Add only restore-preview/save/reload to the original 32-action campaign.
+    assert.ok(pointerControls.length < (serviceMode ? 35 : 32), "visible pointer action budget exceeded");
     const point = await evaluate(`(() => {
       const e = document.getElementById(${JSON.stringify(id)});
       if (!e || e.disabled || e.closest('[hidden]')) return null;
@@ -343,7 +344,7 @@ try {
       await writeFile(join(artifacts, `policy-${phase}-320.png`), Buffer.from(shot.data, "base64"));
     };
     const inspectLayout = async (phase) => {
-      assert.ok(["draft", "review-1", "review-2", "review-3"].includes(phase), "unknown policy layout phase");
+      assert.ok(["draft", "review-1", "review-2", "review-3", "rejected"].includes(phase), "unknown policy layout phase");
       const actionWidth = await evaluate("innerWidth");
       for (const width of [1365, 390, 320]) {
         await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -358,7 +359,8 @@ try {
         })()`);
         layout.phase = phase;
         policyLayouts.push(layout);
-        assert.ok(policyLayouts.length <= 12, "policy layout observation bound exceeded");
+        // Original twelve observations plus three widths for the new refusal card.
+        assert.ok(policyLayouts.length <= 15, "policy layout observation bound exceeded");
         await writeFile(join(artifacts, "policy-layouts.json"), JSON.stringify(policyLayouts, null, 2) + "\n");
         if (width === 320 && phase === "draft") {
           await evaluate("document.getElementById('policy-form').scrollIntoView({ block: 'start', behavior: 'instant' })");
@@ -369,6 +371,21 @@ try {
         assert.ok(layout.document <= layout.client && layout.body <= layout.client, `policy horizontal overflow: ${JSON.stringify({ phase, ...layout })}`);
         assert.deepEqual(layout.escaped_controls, [], "policy input escaped the visible page");
         assert.deepEqual(layout.unlabeled_inputs, [], "policy input has no associated label");
+        if (phase === "rejected" && width === 320) {
+          let tabs = 0;
+          while (!await evaluate("document.activeElement === document.getElementById('service-rejected-document')") && tabs < 64) {
+            await key("Tab", "Tab", 9); tabs++;
+          }
+          assert.equal(await evaluate("document.activeElement === document.getElementById('service-rejected-document')"), true, "rejected draft is not keyboard reachable");
+          const region = await evaluate("(() => { const e = document.activeElement; return { height: e.clientHeight, full_height: e.scrollHeight, top: e.scrollTop, outline: getComputedStyle(e).outlineStyle }; })()");
+          assert.ok(region.height <= 600 && region.full_height > region.height, "rejected draft needs bounded vertical scrolling");
+          assert.notEqual(region.outline, "none", "rejected draft keyboard focus is invisible");
+          await key("ArrowDown", "ArrowDown", 40);
+          await until(() => evaluate(`document.getElementById('service-rejected-document').scrollTop > ${region.top}`), browser, "rejected draft keyboard scrolling");
+          layout.rejected_keyboard_scroll_verified = true;
+          await writeFile(join(artifacts, "policy-layouts.json"), JSON.stringify(policyLayouts, null, 2) + "\n");
+          await policyScreenshot(phase);
+        }
         if (phase === "review-2" && width === 320) {
           layout.keyboard_regions = [];
           for (const id of ["service-diff", "service-overlaps"]) {
@@ -407,7 +424,7 @@ try {
     await send("Emulation.setDeviceMetricsOverride", { width: 320, height: 900, deviceScaleFactor: 1, mobile: false });
     servicePolicyResult = { ...await exerciseServicePolicy({ evaluate, clickVisible, replaceInput, key, until, browser, inspectLayout }), form_action_width: 320, layouts: policyLayouts };
     await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
-    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 4);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/file-services/configuration" && r.method === "PUT").length, 5, "four saved revisions plus one refused request, never an automatic retry");
   }
   if (apiFixture && !networkMode && !serviceMode && !iscsiEditMode) {
     await clickVisible("iscsi-document");

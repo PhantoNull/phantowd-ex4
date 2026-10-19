@@ -284,7 +284,7 @@ async function createHarness(respond, timing = {}) {
     ...markupIDs.filter(id => id.startsWith("iscsi-edit-")),
     ...["fields", "add", "mode", "target-id", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map(id => `iscsi-draft-${id}`),
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview", "rejected", "rejected-document"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const document = { activeElement: null, focusCalls: [], downloads: [], blobs: [], revokedURLs: [] };
@@ -1382,6 +1382,92 @@ async function testServiceFormEditsAndReconcileFailure() {
   assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
 }
 
+async function testServiceKnownRejectionPreservesSubmittedDraft() {
+  let submitted;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") {
+      submitted = JSON.parse(options.body);
+      return jsonResponse({ error: "invalid_service_configuration" }, 422);
+    }
+    return jsonResponse(serviceReply(null));
+  });
+  fillPolicy(h.elements);
+  await h.context.loadServicePolicy();
+  await h.context.prepareServiceAddition();
+  await h.context.saveServiceChange();
+  assert.match(h.elements["service-status"].textContent, /Save rejected.*did not change.*draft retained/i);
+  assert.equal(h.elements["service-save"].disabled, true, "a rejected candidate requires a new explicit preview");
+  assert.equal(h.elements["service-prepare"].disabled, false, "known rejection must allow correcting the form");
+  assert.equal(h.elements["service-rejected"].hidden, false);
+  assert.deepEqual(JSON.parse(h.elements["service-rejected-document"].textContent), submitted);
+  await h.context.saveServiceChange();
+  assert.equal(h.requests.filter(r => r.options?.method === "PUT").length, 1, "never replay the rejected candidate");
+  h.context.invalidateServiceDraft();
+  assert.equal(h.elements["service-rejected"].hidden, false, "editing must not destroy the submitted copy");
+  await h.context.prepareServiceAddition();
+  assert.equal(h.elements["service-rejected"].hidden, true, "a newly reviewed draft replaces the rejected copy");
+  assert.equal(h.requests.filter(r => r.options?.method === "PUT").length, 1);
+  h.context.clearServicePolicy();
+  assert.equal(h.elements["service-rejected-document"].textContent, "", "private rejected data clears with policy/session state");
+}
+await testServiceKnownRejectionPreservesSubmittedDraft();
+async function testServiceUnverifiedRejectionRemainsUnknown() {
+  const canonical = '{"error":"invalid_service_configuration"}';
+  const textReply = (text) => ({ ok: false, status: 422, body: new ReadableStream({
+    start(controller) { controller.enqueue(new TextEncoder().encode(text)); controller.close(); },
+  }) });
+  for (const make of [
+    () => jsonResponse({}, 422), () => jsonResponse({ error: "other" }, 422),
+    () => jsonResponse({ error: "invalid_service_configuration", saved: false }, 422),
+    () => textReply('{"error":"other","error":"invalid_service_configuration"}'),
+    () => textReply('{"error":"invalid_service_configuration","error":"invalid_service_configuration"}'),
+    () => textReply('{"\\u0065rror":"invalid_service_configuration"}'),
+    () => textReply(canonical.slice(0, -1)), () => textReply(canonical + "x"),
+    () => textReply(canonical + " ".repeat(16385 - canonical.length)),
+    () => {
+      let sent = false;
+      return { ok: false, status: 422, body: { getReader: () => ({
+        read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(canonical) }),
+        cancel: async () => {}, releaseLock: () => { throw new Error("private cleanup"); },
+      }) } };
+    },
+  ]) {
+    const h = await serviceHarness(options => options.method === "PUT" ? make() : jsonResponse(serviceReply(null)));
+    fillPolicy(h.elements); await h.context.loadServicePolicy(); await h.context.prepareServiceAddition(); await h.context.saveServiceChange();
+    assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/);
+    assert.equal(h.elements["service-rejected"].hidden, true);
+    assert.equal(h.elements["service-prepare"].disabled, true);
+    assert.equal(h.elements["service-save"].disabled, true);
+    await h.context.saveServiceChange();
+    assert.equal(h.requests.filter(r => r.options?.method === "PUT").length, 1);
+  }
+  for (const suffix of ["\n", " ".repeat(16384 - canonical.length)]) {
+    const h = await serviceHarness(options => options.method === "PUT" ? textReply(canonical + suffix) : jsonResponse(serviceReply(null)));
+    fillPolicy(h.elements); await h.context.loadServicePolicy(); await h.context.prepareServiceAddition(); await h.context.saveServiceChange();
+    assert.match(h.elements["service-status"].textContent, /Save rejected/);
+  }
+  // The original deadline and retirement fence also own the rejection body.
+  for (const boundary of ["abort", "retire"]) {
+    let settleBody;
+    const h = await serviceHarness(options => options.method === "PUT" ? { ok: false, status: 422,
+      body: { getReader: () => ({ read: () => new Promise(resolve => { settleBody = resolve; }),
+        cancel: async () => {}, releaseLock: () => {}, }) } } : jsonResponse(serviceReply(null)));
+    fillPolicy(h.elements); await h.context.loadServicePolicy(); await h.context.prepareServiceAddition();
+    const operation = h.context.saveServiceChange();
+    await new Promise(resolve => setImmediate(resolve));
+    if (boundary === "retire") h.context.clearServicePolicy();
+    else new Script("serviceState.controller.abort()").runInContext(h.context);
+    await operation;
+    settleBody({ done: false, value: new TextEncoder().encode(canonical) });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.elements["service-rejected"].hidden, true, "late body cannot repopulate rejected state");
+    assert.equal(h.elements["service-rejected-document"].textContent, "");
+    assert.equal(h.requests.filter(r => r.options?.method === "PUT").length, 1);
+    if (boundary === "abort") assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/);
+  }
+}
+await testServiceUnverifiedRejectionRemainsUnknown();
+console.log("Service save rejection controls passed: canonical-complete-only=true draft-retained=true corrupt-or-late-unknown=true cleanup-required=true explicit-repreview=true no-retry=true.");
 await testServiceAddAndPreserve();
 await testServiceUncertainAndConflict();
 await testServiceRefusalsAndInvalidation();

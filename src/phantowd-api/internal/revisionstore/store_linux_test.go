@@ -98,6 +98,26 @@ func TestInitializeReopenAndRevision(t *testing.T) {
 	}
 }
 
+func TestCommitInvalidCurrentIsNotCandidateRefusal(t *testing.T) {
+	s, dir := openTest(t)
+	if err := s.Commit(0, policy(1)); err != nil {
+		t.Fatal(err)
+	}
+	const corrupt = "{private corrupt current policy"
+	if err := os.WriteFile(filepath.Join(dir, currentName), []byte(corrupt), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Commit(1, policy(2)); !errors.Is(err, ErrInvalid) || err == ErrInvalid {
+		t.Fatal("current corruption lost provenance or became candidate refusal", err)
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, currentName)); err != nil || string(data) != corrupt {
+		t.Fatal("commit changed corrupt current evidence", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, pendingName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("commit against corruption touched pending state", err)
+	}
+}
+
 func TestConcurrentUpdatesAndExclusiveOpen(t *testing.T) {
 	s, dir := openTest(t)
 	if second, err := Open(dir); !errors.Is(err, ErrBusy) {

@@ -655,13 +655,20 @@ uncertain rename/sync returns 503 `service_configuration_reconciliation_required
 and poisons the store until explicit close/reopen and reconciliation. Paths,
 raw storage errors and configuration contents are not echoed in errors.
 
+A retained export-ID source change is also a known pre-effect422 refusal.
+Only an exact candidate/transition rejection from Commit receives that outcome;
+corrupt current state (including during PUT), mixed errors and unknown failures
+remain503. Refusal preserves the current document and creates no pending file;
+a later valid revision may still commit to a healthy store.
+
 After a timeout/lost reply, do not automatically retry: GET the stored revision
 and reconcile the **full document** with the attempted change. A revision alone
 does not identify which concurrent client's change committed. The UI supports
 this reread; poisoned-store reopen and administrative recovery remain external
 development operations, not UI controls. All responses are no-store.
 Host tests and the two-boot QEMU fixture exercise real loopback HTTP/HTTPS,
-authentication/CSRF refusals, stale-write refusal and store reopen. The fixture
+authentication/CSRF refusals, stale-write and retained-source refusal with
+unchanged saved revision, and store reopen. The fixture
 uses a synthetic session and test certificate; it does not qualify credential
 provisioning, power-loss durability, a product state volume or LAN exposure.
 
@@ -1658,8 +1665,8 @@ reviewed snapshot, not later form edits, is the attempted transaction. The
 server still performs independent validation and compare-and-swap. There is no
 automatic PUT, retry, merge, activation or local/session browser storage.
 
-Any failed or unreadable PUT response blocks another save until an explicit
-Load / reconcile. The full attempted document is compared with the new read,
+An unverified failed or unreadable PUT response blocks another save until an
+explicit Load / reconcile. The full attempted document is compared with the new read,
 ignoring object-key order, not using revision alone. A match confirms the
 desired state is currently saved; a mismatch displays current state and asks
 for a fresh review, without claiming the attempt never committed historically.
@@ -1667,6 +1674,17 @@ If reconciliation itself fails, saves remain blocked. Logout/auth loss clears
 documents and aborts local requests; cancelling a request cannot undo a server
 commit. A new session must reread state. Late responses cannot restore cleared
 configuration. Network errors never include raw backend response contents.
+
+The sole known-rejection exception requires the complete canonical422
+`invalid_service_configuration` document, within the original operation's
+deadline and16KiB body limit, with successful reader release. Headers alone,
+duplicate/escaped keys, extra fields, truncated/oversized/late replies or cleanup
+failure do not establish refusal. A verified rejection retains the complete
+submitted draft privately in a keyboard-scrollable panel, without claiming it
+is the current saved state. Editing is allowed, but Save remains disabled until
+a new explicit preview. A successful new preview, new save attempt or session
+clearing discards that private reference. No browser persistence or automatic
+mutation retry is introduced.
 
 DOM tests exercise addition/edit/removal isolation, stable-ID selection,
 multi-user/client preservation, reference reuse, request/CSRF shape,
@@ -1958,7 +1976,16 @@ The independent NFS-first step adds one explicit reviewed HTTP save and reread,
 without another fixture process or increased deadline, pointer or layout budget.
 It uses the same320px visible controls; the12 layout observations still cover the
 original combined-addition, SMB-edit and selected-NFS-removal reviews.
-The fixture's revision comparison refuses stale saves and decodes independent
+The campaign also restores a synthetic same-ID/different-source backup, previews
+it explicitly and verifies a refused fifth PUT. Saved revision4 remains unchanged
+and the complete rejected draft remains available for correction. This adds only
+three visible actions (restore-preview/save/reload) and three refusal-card layout
+observations; the campaign is bounded at35 pointer actions and15 policy layouts,
+with the existing90s driver/80s fixture deadlines unchanged. The card must be
+keyboard reachable, visibly focused and vertically scrollable at320px; a third
+fixed narrow screenshot accompanies the report. Four successful revisions remain
+four, not five; no automatic retry occurs.
+The fixture's revision/source comparison refuses stale or rebound saves and decodes independent
 bounded snapshots. The ordinary authentication fixture still has no policy
 backend unless this separate mode is selected.
 

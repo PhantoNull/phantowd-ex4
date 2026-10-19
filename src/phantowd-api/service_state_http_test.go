@@ -154,6 +154,31 @@ func TestServiceStateReadAndErrors(t *testing.T) {
 	}
 }
 
+func TestServiceStateKnownRejectionIsCommitOnlyAndExact(t *testing.T) {
+	auth, cookie := newTestAuth(t)
+	for _, spec := range []struct {
+		failure error
+		status  int
+	}{{errServiceStateRejected, 422}, {errors.Join(errServiceStateRejected, errServiceStateUncertain), 503},
+		{errors.Join(errServiceStateRejected, errors.New("private I/O")), 503}} {
+		backend := &serviceStateBackend{load: func() (*fileservice.Config, error) { return nil, spec.failure },
+			commit: func(uint64, fileservice.Config) error { return spec.failure }}
+		h := newHandlerWithServiceState(nil, nil, nil, nil, auth, nil, backend)
+		write := httptest.NewRecorder()
+		h.ServeHTTP(write, serviceWriteRequest(auth, cookie, serviceConfigFixture(1)))
+		if write.Code != spec.status || strings.Contains(write.Body.String(), "private") {
+			t.Fatal("ambiguous commit classified as known rejection", write.Code, write.Body.String())
+		}
+		read := httptest.NewRecorder()
+		request := shareReadRequest(cookie)
+		request.URL.Path = serviceStatePath
+		h.ServeHTTP(read, request)
+		if read.Code != 503 || strings.Contains(read.Body.String(), "invalid_service_configuration") {
+			t.Fatal("load failure inherited commit-only rejection", read.Code, read.Body.String())
+		}
+	}
+}
+
 func TestServiceStateReadBoundary(t *testing.T) {
 	auth, cookie := newTestAuth(t)
 	for _, spec := range []struct {

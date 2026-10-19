@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -283,6 +284,11 @@ func (s *Store[T]) Commit(expected uint64, next T) (result error) {
 		current, err = s.load()
 	}
 	if err != nil && !errors.Is(err, ErrNotInitialized) {
+		if err == ErrInvalid {
+			// Keep errors.Is compatibility without confusing corrupt saved state
+			// with the exact pre-effect candidate/transition refusal below.
+			return fmt.Errorf("current configuration unavailable: %w", err)
+		}
 		return err
 	}
 	currentRevision := uint64(0)

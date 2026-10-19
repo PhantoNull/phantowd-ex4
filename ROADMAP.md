@@ -2363,8 +2363,12 @@ storage. No production roster provider or activation path exists.
   filehandle handoff. No adjacent-revision check completes this release gate.
   Management must distinguish this known pre-effect rejection from I/O or an
   uncertain save, with a redacted actionable response and no automatic retry.
-  The current development adapter still maps it to generic unavailability;
-  qualify the real store-backed HTTP path, not only an in-memory backend.
+  The development adapter now returns a known422 refusal, with real-store
+  unchanged-policy/no-pending tests and HTTP/HTTPS guest proof in both clean
+  boots. Corrupt current state remains503 on GET and PUT. The browser retains
+  rejected drafts only after a complete bounded fixed reply and requires fresh
+  preview; unknown outcomes retain reconciliation/no-retry. This does not close
+  permanent retirement, product recovery or live service admission gates.
   The combined desired-policy preview flags equal or ancestor/descendant
   SMB/NFS relative paths on the same logical volume for focused review. This is
   consultative only and does not block, mount or activate services. It is

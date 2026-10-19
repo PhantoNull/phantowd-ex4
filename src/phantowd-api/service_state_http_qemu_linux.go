@@ -162,6 +162,22 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 	if err := checkRead(next); err != nil {
 		return err
 	}
+	// A retained export ID cannot silently acquire a different source. This
+	// must be a known, pre-effect refusal on both transports and both boots,
+	// leaving the saved revision available without recovery or retry.
+	rebound := qemuPersistentServices(next + 1)
+	rebound.NFS.Exports[0].RelativePath = "unrelated-root"
+	reboundData, err := json.Marshal(rebound)
+	if err != nil {
+		return err
+	}
+	status, body, err = request(http.MethodPut, reboundData, true, true)
+	if err != nil || status != http.StatusUnprocessableEntity || string(body) != "{\"error\":\"invalid_service_configuration\"}\n" {
+		return errors.New("wire retained export binding refusal unavailable")
+	}
+	if err := checkRead(next); err != nil {
+		return errors.New("wire rejected save changed current policy")
+	}
 	status, body, err = requestAt(http.MethodGet, serviceBackupPath, nil, true, false, nil)
 	if err != nil || status != 200 || !bytes.Equal(body, backup) {
 		return errors.New("wire backup does not match saved policy")
@@ -205,7 +221,7 @@ func exerciseQEMUServiceHTTPPersistence(root, phase string) error {
 		return err
 	}
 	if phase == "verify" {
-		fmt.Println("PHANTOWD_SERVICE_HTTP_READY protocols=http,https authenticated=true csrf=true stale_write_denied=true after_reboot=true activation=false scope=disposable-qemu-only")
+		fmt.Println("PHANTOWD_SERVICE_HTTP_READY protocols=http,https authenticated=true csrf=true stale_write_denied=true rejected_write=true after_reboot=true activation=false scope=disposable-qemu-only")
 	}
 	return nil
 }
