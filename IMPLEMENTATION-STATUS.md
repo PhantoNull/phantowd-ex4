@@ -27,6 +27,11 @@ reuse, explicit format migration, full lifetime/consumer handoff and management
 error classification remain work before product activation. No schema, endpoint,
 privileged service Owner, automatic recovery, NAS or producer change is added.
 
+Exact [host run39249529764](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39249529764)
+passes all30 steps on `1a6ddf0`, including the new pure history-view preflight,
+NFS refusal controls and complete ordinary native API/race. Actual ARM proof is
+the separate local smoke/two-boot execution, not this host job.
+
 ## Kernel-NFS profile readback in the clean-reboot fixture
 
 The existing two-boot NFS fixture now requires the pinned guest's actual kernel
