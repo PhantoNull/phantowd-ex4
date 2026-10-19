@@ -316,6 +316,23 @@ func TestInventoryRootfsCommandDoesNotExposeHostRoot(t *testing.T) {
 	}
 }
 
+func TestNFSRuntimeClosureCommandRefusesPartialPlansAndExtraPaths(t *testing.T) {
+	root := t.TempDir()
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-nfs-runtime-closure", root}, &output)
+	if err != nil || code != 2 || strings.Contains(output.String(), filepath.ToSlash(root)) ||
+		!strings.Contains(output.String(), `"execution_authorized": false`) ||
+		!strings.Contains(output.String(), `"runtime_qualified": false`) || strings.Contains(output.String(), `"objects"`) {
+		t.Fatal("partial NFS runtime escaped", code, err, output.String())
+	}
+	for _, args := range [][]string{{"inspect-nfs-runtime-closure"}, {"inspect-nfs-runtime-closure", root, "usr/sbin/rpcbind"}} {
+		output.Reset()
+		if code, err := run(args, &output); code != 1 || err == nil || output.Len() != 0 {
+			t.Fatal("caller-selected role accepted", code, err)
+		}
+	}
+}
+
 func TestRuntimeClosureCommandRefusesPartialPlanAndHostPaths(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "non-elf"), []byte("not executable"), 0600); err != nil {

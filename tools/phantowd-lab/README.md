@@ -45,6 +45,7 @@ phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab inspect-runtime-closure DIRECTORY IMAGE-RELATIVE-ELF
+phantowd-lab inspect-nfs-runtime-closure DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
 phantowd-lab plan-storage-inventory FILE
@@ -74,6 +75,21 @@ The command writes no file, payload, image or device and publishes no release.
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
 and `1` for usage, I/O, or structural errors. Results are JSON.
+
+`inspect-nfs-runtime-closure` inventories the directory once and resolves the
+current three-entry NFSv3 fixture userspace graph (`rpcbind`, `rpc.mountd`,
+`exportfs`). It emits one deterministic `phantowd-nfs-runtime-candidate` with
+unique objects, canonical/alias bindings and whole-set limits of256objects,
+1024bindings and64MiB. Per-program success is insufficient: any missing,
+unsupported or over-budget member discards the entire object/byte result and
+returns status2. Shared objects are counted once. Inspected ELF is never run.
+
+This report is unsigned static build evidence, not an approved runtime manifest
+or an assertion of NFSD/loader/protocol/NLM/NSM compatibility. The QEMU-only
+[expected-code reader](../../src/phantowd-api/internal/runtimebundle/README.md#nfs-userspace-code-expectations-qemu-only-consumer)
+accepts only bounded, complete fixed-profile data; it grants no execution,
+retained-reference or device authority. Source/build provenance, actual ELF
+verification, immutable code, modules, state and service ownership remain gates.
 
 `inspect-runtime-closure` reuses the extracted-tree inventory to derive a
 **research-only** ARM32 little-endian ELF dependency candidate. The entry is a

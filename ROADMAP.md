@@ -2390,6 +2390,15 @@ storage. No production roster provider or activation path exists.
   detection to original mounted-roster pins, but only a synthetic consumer.
   Complete real-daemon/kernel fault supervision, retained policy/code/state and
   automatic boot recovery remain required; do not treat model stop as quiescence.
+  **Userspace code expectations:** one inventory now produces a bounded union
+  for the three current fixture programs, and a strict QEMU-only consumer builds
+  the existing code Plan. Actual cached Buildroot metadata (9objects/12bindings)
+  reaches that consumer under pinned native race3; no inspected ELF executes.
+  Next stage the closed code-only tree independently from mutable state/data,
+  retain original read-only code/alias identities, verify actual ELF/loader/NSS/
+  module requirements and constructor/drift/close faults, then compose a dedicated
+  NFS launcher. Do not broaden the static launcher or reuse Samba privileges;
+  unsigned expectations do not qualify provenance, NLM/NSM or product admission.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

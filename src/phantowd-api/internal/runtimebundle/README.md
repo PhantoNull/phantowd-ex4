@@ -3,6 +3,37 @@
 
 # Internal code-only runtime bundle inspection
 
+## NFS userspace code expectations (QEMU-only consumer)
+
+The host toolkit's `inspect-nfs-runtime-closure DIRECTORY` resolves the current
+three-entry NFSv3 fixture userspace graph from one inventory: `rpcbind`,
+`rpc.mountd` and `exportfs`. Shared objects and canonical/alias bindings are
+deduplicated, sorted and bounded across the whole set. Any failed entry discards
+all object/byte output. This is unsigned static evidence, not a product manifest,
+full NFSD runtime, NLM/NSM qualification or actual loader execution.
+
+`NFSExpectedPlanQEMU` converts independently supplied evidence into the existing
+code-only `Plan`, without opening files. Its 128 KiB/depth8 JSON boundary rejects
+duplicate/unknown/non-exact keys, nulls, trailing documents, missing required
+booleans, partial/resolved-state contradictions and claims of execution/runtime
+qualification. The exact fixed entry roster, loader binding, lower-case nonzero
+hashes, canonical materialization, unique aliases and whole-set size/budgets are
+required. All expected code files use the existing0555 code mode; this function
+does not change source permissions. The result is not serializable authority.
+
+The inventory digest is diagnostic input, not signed provenance or a live
+identity. Trusted product composition must independently bind model/build,
+retain protected original files, verify actual ELF/loader/module closure, and
+coordinate policy, identity, storage, state and verified consumer settlement.
+No generic launcher, privilege, namespace or execution API is broadened.
+
+An opt-in host integration test consumes the build tool's actual generated
+report in a private bounded TMPDIR. Default host CI skips that external artifact
+test but executes the pure decoder/refusal controls; inspect logs before claiming
+generated-artifact coverage. No guest boot or inspected ELF execution is implied.
+
+## Existing Samba runtime and observation work
+
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact
 fixed credential-handoff stderr protocol. Any additional byte, even with exit
 zero and decodable JSON, clears the output and retains review; other commands

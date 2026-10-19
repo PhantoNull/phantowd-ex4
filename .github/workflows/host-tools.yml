@@ -382,6 +382,7 @@ jobs:
           go test -count=1 ./...
           go vet -tags=qemu ./...
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
+          go test -tags=qemu -race -count=1 -v -run '^TestNFSExpected' ./internal/runtimebundle
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
           go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .

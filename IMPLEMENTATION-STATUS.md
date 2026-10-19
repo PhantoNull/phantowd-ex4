@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## NFS userspace build expectations: actual artifact-to-plan bridge
+
+The host toolkit now inventories one tree and emits a single fixed three-entry
+NFS code candidate for `rpcbind`, `rpc.mountd` and `exportfs`. Shared objects and
+canonical/alias bindings are deduplicated and bounded across the entire set;
+any failed program discards all object/byte results. The QEMU-only expected-code
+reader converts complete unsigned data into the existing code-only Plan, with
+strict bounded JSON, required false authority claims, exact roles, loader,
+hashes, bindings and totals. It opens/retains/executes no inspected code.
+
+Complete Windows API/toolkit preflights, focused refinements and pinned Linux
+toolkit/vet/race checks pass. The actual cached Buildroot target yields9objects,
+12bindings and2,483,340unique bytes. The generated report is accepted by the
+runtime reader three times with race detection, not skipped.1346 frozen source/
+harness inputs match before/after. Host-only CI wiring now includes the pure
+reader/refusal tests; its generated-artifact test is opt-in and skips by default.
+No new guest, firmware build, protected code-root retention, actual loader/NFS
+execution, kernel/daemon ownership, boot recovery or physical device is qualified.
+
 ## Exclusive NFS supervision connected to retained source references
 
 The experimental Owner now supervises one running/disabled lifetime exclusively.

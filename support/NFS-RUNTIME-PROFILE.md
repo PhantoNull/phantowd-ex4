@@ -160,6 +160,29 @@ pending I/O, NLM/NSM and product recovery are independent gates. The existing
 fixture's `nolock`/`soft` settings are not product defaults. No physical disk,
 production namespace placement or generic-launcher privilege is authorized.
 
+## Actual userspace code expectations, not execution authority
+
+`phantowd-lab inspect-nfs-runtime-closure DIRECTORY` inventories once and unions
+the fixed `rpcbind`/`rpc.mountd`/`exportfs` dependency graphs. It preserves the
+existing ARM32/EABI5/header/search refusals, adds whole-set object/byte/binding
+bounds, and discards partial output on any failed member. Canonical names count
+toward the materialization budget alongside aliases; shared files count once.
+
+`runtimebundle.NFSExpectedPlanQEMU` converts independently supplied complete
+unsigned evidence into the existing code-only Plan. Its strict128KiB/depth8
+JSON boundary refuses ambiguity, missing/contradictory scope flags, changed
+roles, missing loader/canonical bindings and incorrect hashes/totals. Expected
+code mode0555 does not change source files. Neither function grants provenance,
+retained roots, a live namespace, capabilities or execution authority.
+
+Actual cached Buildroot metadata has9ELF objects,12bindings and2,483,340unique
+bytes. Complete Windows checks and pinned Linux toolkit/vet/race controls pass;
+the real generated report reaches the consumer three times under race detection.
+This is not the actual loader or permission/NSS/module/state/daemon protocol.
+Stage and retain the independent closed code root, qualify its ELF/runtime
+closure and faults, and compose original policy/identity/storage/kernel/state
+authority before constructing a real backend. NLM/NSM and boot recovery stay open.
+
 ## Exclusive source supervision (host/disposable QEMU)
 
 The experimental Owner's `Supervise` holds one exclusive lifecycle gate for

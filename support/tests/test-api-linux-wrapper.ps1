@@ -70,6 +70,7 @@ try {
     foreach ($check in @('"$go_binary" vet ./...', '"$go_binary" test -count=1 ./...',
         '"$go_binary" vet -tags=qemu ./...',
         '"$go_binary" test -tags=qemu -race -count=1 ./internal/nfsowner',
+        '"$go_binary" test -tags=qemu -race -count=1 -run ''^TestNFSExpected'' ./internal/runtimebundle',
         '"$go_binary" test -tags=qemu -run ''^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$'' -count=1 .',
         '"$go_binary" test -tags=qemu -run ''^(TestQEMUNFS(Reboot|Kernel)|TestQEMURebootShutdown)'' -count=1 -v .',
         '"$go_binary" test -tags=qemu -run ''^TestHistoryViewDrafts'' -count=1 -v ./internal/policytransaction',
