@@ -160,6 +160,25 @@ pending I/O, NLM/NSM and product recovery are independent gates. The existing
 fixture's `nolock`/`soft` settings are not product defaults. No physical disk,
 production namespace placement or generic-launcher privilege is authorized.
 
+## Exclusive source supervision (host/disposable QEMU)
+
+The experimental Owner's `Supervise` holds one exclusive lifecycle gate for
+serial complete checks after a fixed idle interval of one second through one
+hour. Scans never overlap or catch up. Existing five-second cooperative check
+and independent settlement budgets stay unchanged. Pre-canceled admission has
+no effects; accepted idle cancellation stops a running service independently
+and retains inputs for explicit closure. Disabled policy does not start/stop.
+An admitted-check cancellation, drift or uncertain stop retains terminal review,
+never automatic restart or input release. Polling is not continuous authority.
+
+Native behavior/race checks cover normal cancellation, exclusion, drift and
+uncertainty. Standard ARM smoke connects the real Owner to original mounted
+volume pins and fresh identity/storage planning. A directory replacement is
+detected automatically, the synthetic consumer stops once, and references remain
+retained after restoration. The mandatory receipt says `kernel_backend=false`:
+there is no real daemon/kernel or retained policy/code/state authority in this
+composition. It does not qualify product service supervision or boot recovery.
+
 ## Retained source directories: original mounted-roster lease
 
 The Linux/QEMU-only `nfsowner.NewExportRootsQEMU` now compares candidate storage

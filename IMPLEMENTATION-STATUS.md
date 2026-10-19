@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## Exclusive NFS supervision connected to retained source references
+
+The experimental Owner now supervises one running/disabled lifetime exclusively.
+Complete checks run serially after fixed idle intervals; concurrent operations
+refuse busy. Accepted idle cancellation verifies stop with an independent
+context and retains inputs for explicit closure. Drift, canceled admitted checks
+or uncertain stop retain review without retry/restart. Disabled policy never
+starts/stops a service. Existing check/settlement budgets are unchanged.
+
+Windows preflight, pinned native tagged vet/race and actual standard ARM smoke
+pass. The guest now detects a real fixture-directory replacement automatically,
+stops its synthetic consumer once and retains original volume pins through
+restoration. A mandatory receipt distinguishes that model from a kernel backend.
+All1287 frozen inputs match before/after ARM; a later host-only test additionally
+checks repeated healthy scans without changing executable/harness inputs.
+No additional default guest or CI job definition, NFS daemon activation through
+this composition, NAS operation or product boot recovery is claimed. Full
+retained policy/identity/code/state and
+kernel/userspace composition remain required; the firmware is not installable.
+
 ## NFS source directories retained from the original mounted roster
 
 The Linux/QEMU-only source lifetime now binds a typed NFS candidate to the

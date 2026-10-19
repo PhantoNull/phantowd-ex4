@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
@@ -125,6 +126,16 @@ func exerciseQEMUNFSSourceRoots(ctx context.Context, base fileservice.Config, id
 	if err != nil {
 		return err
 	}
+	// Real source references, synthetic consumer only. The original lifecycle
+	// must detect loss itself and retain these pins after verified model stop.
+	backend := &qemuNFSSourceConsumer{roots: roots, config: config, identity: identity, roster: set}
+	supervised, err := nfsowner.NewQEMU(candidate, backend)
+	if err != nil {
+		return err
+	}
+	if err := supervised.Start(ctx); err != nil {
+		return err
+	}
 	one, saved := filepath.Join(anchor, "one"), filepath.Join(anchor, "saved")
 	if err := os.Rename(one, saved); err != nil {
 		return err
@@ -132,8 +143,11 @@ func exerciseQEMUNFSSourceRoots(ctx context.Context, base fileservice.Config, id
 	if err := os.Mkdir(one, 0700); err != nil {
 		return err
 	}
-	if !errors.Is(roots.Check(ctx), nfsowner.ErrReviewRequired) {
-		return errors.New("NFS replacement directory retained source authority")
+	if !errors.Is(supervised.Supervise(ctx, time.Second), nfsowner.ErrReviewRequired) || backend.running || backend.stops != 1 || backend.releases != 0 {
+		return errors.New("NFS supervised source loss did not retain stopped original authority")
+	}
+	if err := lease.Close(); !errors.Is(err, mountowner.ErrBusy) {
+		return errors.New("NFS reviewed supervised source pins were released")
 	}
 	if err := os.Remove(one); err != nil {
 		return err
@@ -144,6 +158,11 @@ func exerciseQEMUNFSSourceRoots(ctx context.Context, base fileservice.Config, id
 	if !errors.Is(roots.Check(ctx), nfsowner.ErrReviewRequired) {
 		return errors.New("NFS restored source erased lifetime review")
 	}
+	if !errors.Is(supervised.Supervise(ctx, time.Second), nfsowner.ErrReviewRequired) ||
+		!errors.Is(supervised.Close(ctx), nfsowner.ErrReviewRequired) || backend.stops != 1 || backend.releases != 0 {
+		return errors.New("NFS restored supervised source revived or released authority")
+	}
+	// Explicit no-consumer fixture disposal only, not reviewed-Owner recovery.
 	if !errors.Is(roots.Close(), nfsowner.ErrReviewRequired) {
 		return errors.New("NFS explicit source disposal erased review")
 	}
@@ -153,7 +172,55 @@ func exerciseQEMUNFSSourceRoots(ctx context.Context, base fileservice.Config, id
 		return err
 	}
 	fmt.Println("PHANTOWD_NFS_SOURCE_ROOTS_READY roots=2 roster=original_lease mixed_roles=true whole_volume=true absent_refused=true symlink_refused=true replacement_review=true restored_refused=true parent_close_blocked=true capture_writes=false service=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NFS_SUPERVISION_READY exclusive_owner=true source=original_roster roots=retained automatic_loss_detection=true model_stop_once=true review_pins_retained=true restored_refused=true policy=synthetic kernel_backend=false restart=false scope=disposable-qemu-only")
 	return nil
 }
 
 func sharePlanAnchor() string { return "/srv/phantowd/volumes/" + string(qemuPlannerVolumeID) }
+
+// Fixture backend only: fresh identity/storage planning and real root checks,
+// but no retained policy owner, code, daemon, kernel or data-access authority.
+type qemuNFSSourceConsumer struct {
+	roots           *nfsowner.ExportRootsQEMU
+	config          fileservice.Config
+	identity        *identityowner.Owner
+	roster          *mountowner.MountedVolumeSet
+	running         bool
+	stops, releases int
+}
+
+func (b *qemuNFSSourceConsumer) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
+	plan, err := fileserviceplan.BuildFromOwners(ctx, b.config, 0, b.identity, b.roster)
+	if err != nil || !candidate.FreshAgainst(plan.Freshness()) {
+		return nfsowner.ErrReviewRequired
+	}
+	return b.roots.Check(ctx)
+}
+func (b *qemuNFSSourceConsumer) VerifyStopped(context.Context) error {
+	if b.running {
+		return nfsowner.ErrReviewRequired
+	}
+	return nil
+}
+func (b *qemuNFSSourceConsumer) Start(context.Context) error { b.running = true; return nil }
+func (b *qemuNFSSourceConsumer) VerifyReady(context.Context) error {
+	if !b.running {
+		return nfsowner.ErrReviewRequired
+	}
+	return nil
+}
+func (b *qemuNFSSourceConsumer) Stop(ctx context.Context) error {
+	if ctx.Err() != nil {
+		return nfsowner.ErrReviewRequired
+	}
+	b.stops++
+	b.running = false
+	return nil
+}
+func (b *qemuNFSSourceConsumer) Release(context.Context) error {
+	b.releases++
+	if b.running {
+		return nfsowner.ErrReviewRequired
+	}
+	return b.roots.Close()
+}

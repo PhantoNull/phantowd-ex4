@@ -329,6 +329,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'NFS retained source-root proof missing' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_SUPERVISION_READY exclusive_owner=true source=original_roster roots=retained automatic_loss_detection=true model_stop_once=true review_pins_retained=true restored_refused=true policy=synthetic kernel_backend=false restart=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'NFS retained source-supervision proof missing' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1

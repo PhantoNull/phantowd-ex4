@@ -45,6 +45,31 @@ a fresh kernel health sample. Backend lifetime retention after a failed release
 is not proof that every descriptor remains open: the backend must retain its
 original uncertain-close state and never retry recycled descriptors.
 
+## Exclusive supervision
+
+`Supervise(ctx, interval)` holds the original Owner gate for the entire loop;
+other operations, including another supervisor, refuse busy. Only running or
+configured-disabled lifetimes are admitted. One complete `Check` follows each
+fixed idle interval (one second through one hour); the timer is reset only
+after completion, so scans neither overlap nor catch up. Existing five-second
+check and independent settlement budgets are unchanged. Cooperative deadlines
+cannot preempt a blocking backend; polling does not detect every transient fault.
+
+Pre-admission cancellation has no effects. Accepted cancellation while idle
+stops a running service with an independent context, retaining inputs until
+explicit `Close`. Disabled policy never starts/stops a service. Cancellation
+during a check, input/readiness drift or uncertain stop retains review and
+authority without retry, automatic restart or release. Normal stopped lifetimes
+are not restartable either. Automatic normal/unclean product boot recovery is
+still a separate required coordinator, not this loop.
+
+The guest source fixture connects this real Owner to original mounted-roster
+pins and live identity/storage planning, but its consumer remains a memory
+model. Automatic root-replacement detection must stop that model once and
+retain pins through restoration; this is not daemon/kernel supervision proof.
+No policy-owner/runtime-code authority or effective NFS access is supplied by
+the model. Its mandatory receipt explicitly says `kernel_backend=false`.
+
 ## Retained export directories (Linux/QEMU only)
 
 `NewExportRootsQEMU` borrows the original complete mounted-roster lease and

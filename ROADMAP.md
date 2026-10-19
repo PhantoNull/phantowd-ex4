@@ -2382,6 +2382,14 @@ storage. No production roster provider or activation path exists.
   semantics and verified reference disposal, without a service or data access.
   Complete policy/identity/runtime/state handoff, consumer-stop authority and
   injected constructor/close faults remain required before backend activation.
+  **Supervision prerequisite:** the NFS Owner now holds one exclusive loop over
+  running/disabled state, with serial complete scans after fixed idle intervals
+  and independent verified stop on accepted idle cancellation. Drift/admitted
+  cancellation/uncertain stop retain authority and review without restart.
+  Native behavior/race checks and standard ARM bind automatic directory-loss
+  detection to original mounted-roster pins, but only a synthetic consumer.
+  Complete real-daemon/kernel fault supervision, retained policy/code/state and
+  automatic boot recovery remain required; do not treat model stop as quiescence.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

@@ -132,6 +132,10 @@ func (o *Owner) Check(ctx context.Context) error {
 		return err
 	}
 	defer s.unlock()
+	return s.check(ctx)
+}
+
+func (s *lifetime) check(ctx context.Context) error {
 	if s.state == ReviewRequired {
 		return ErrReviewRequired
 	}
