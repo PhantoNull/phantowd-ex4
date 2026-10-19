@@ -36,6 +36,32 @@ func qemuNFSRebootConfig() naspolicy.Config {
 			VolumeRevision: 1, Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
 }
 
+// Attempt only invalid transitions on the fixture's original held Store.
+// Both attempts must refuse before publication; no repair/retry is permitted.
+func verifyQEMUNFSRebootBindingRefusal(policy *qemuNFSRebootPolicy) error {
+	if err := policy.Check(); err != nil {
+		return err
+	}
+	for _, kind := range []string{"root", "filesystem"} {
+		next := qemuNFSRebootConfig()
+		next.Revision, next.FileServices.Revision, next.FileServices.Shares.Revision = 2, 2, 2
+		next.FileServices.NFS.Revision, next.FileServices.NFS.VolumeRevision = 2, 2
+		next.ISCSI.Revision, next.ISCSI.VolumeRevision = 2, 2
+		if kind == "root" {
+			next.FileServices.NFS.Exports[0].RelativePath = "unrelated-root"
+		} else {
+			next.FileServices.Shares.Volumes[0].FilesystemUUID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
+		}
+		if next.Validate() != nil || !errors.Is(policy.store.Commit(1, next), naspolicystore.ErrInvalid) {
+			return errors.New("NFS reboot retained export rebinding not refused")
+		}
+		if err := policy.Check(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func prepareQEMUNFSRebootPolicy(root, phase string) (*qemuNFSRebootPolicy, error) {
 	if phase != "seed" && phase != "verify" {
 		return nil, errors.New("unknown NFS reboot policy phase")

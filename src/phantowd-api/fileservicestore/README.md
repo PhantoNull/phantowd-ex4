@@ -30,6 +30,12 @@ The [share-store contract](../sharestore/README.md) also applies: corruption
 is not empty state, pending files are never promoted, and rename/sync
 uncertainty poisons the instance until close/reopen and reconciliation.
 
+The fixed codec also refuses a retained NFS export ID changing its logical
+volume, filesystem UUID or root between committed revisions. This pure refusal
+precedes pending-file cleanup/publication and preserves the original policy.
+It does not reserve removed IDs; see the
+[identity-continuity scope](../nfsconfig/README.md#export-identity-continuity).
+
 The directory is separately provisioned by a future state owner. The original
 `shares.json` adapter, filename and API remain unchanged. No existing state is
 automatically imported, renamed, deleted, or treated as an initialized combined

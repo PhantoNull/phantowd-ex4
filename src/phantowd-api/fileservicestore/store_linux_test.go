@@ -28,6 +28,63 @@ func policy(revision uint64) fileservice.Config {
 				Clients: []nfsconfig.Client{{Network: "192.0.2.10/32", Access: "ro", Squash: "all", AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}}}}
 }
 
+func TestCombinedStoreRejectsRetainedNFSBindingChangesBeforePublication(t *testing.T) {
+	for _, kind := range []string{"root", "filesystem", "logical-volume"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.Chmod(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			store, err := Open(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			if err := store.Commit(0, policy(1)); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(filepath.Join(dir, "file-services.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			next := policy(2)
+			switch kind {
+			case "root":
+				next.NFS.Exports[0].RelativePath = "unrelated"
+			case "filesystem":
+				next.Shares.Volumes[0].FilesystemUUID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
+			case "logical-volume":
+				next.Shares.Volumes[0].ID = "other"
+				next.Shares.Shares[0].VolumeID = "other"
+				next.NFS.Exports[0].VolumeID = "other"
+			}
+			if err := store.Commit(1, next); !errors.Is(err, ErrInvalid) {
+				t.Fatal("retained NFS binding changed", err)
+			}
+			if after, err := os.ReadFile(filepath.Join(dir, "file-services.json")); err != nil || !bytes.Equal(before, after) {
+				t.Fatal("refused binding update changed policy", err)
+			}
+			if _, err := os.Lstat(filepath.Join(dir, ".file-services.pending")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("refused binding update created pending state", err)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := Open(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reopened.Close()
+			if got, err := reopened.Load(); err != nil || !reflect.DeepEqual(got, policy(1)) {
+				t.Fatal("refusal not preserved on reopen", err)
+			}
+			if err := reopened.Commit(1, policy(2)); err != nil {
+				t.Fatal("valid successor blocked after pure refusal", err)
+			}
+		})
+	}
+}
+
 func TestCombinedStorePublishesWholePolicy(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0700); err != nil {

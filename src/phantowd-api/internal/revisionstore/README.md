@@ -9,6 +9,15 @@ trusted codecs, file sync, one rename and directory sync. It never imports old
 formats, promotes pending state or treats corruption as empty configuration.
 `Store` remains the original snapshot/transaction API.
 
+Trusted codecs may capture an optional pure `ValidateTransition(current, next)`
+comparison. `Commit` supplies the independently decoded documents under its
+existing lock after successful revision comparison, before touching the reserved
+pending file. A rejection is the constant `ErrInvalid`, with no publication or
+pending cleanup; it does not poison a healthy instance. Initialization has no
+previous document and does not call it. The callback must not mutate inputs,
+perform I/O, reenter the store or infer recovery/activation authority. Codecs
+without it retain their existing behavior. It is not a historical identity ledger.
+
 ## Read-only policy-directory bootstrap observation
 
 `OpenBootstrapAuthorityWithCodec` optionally retains one directory/flock/

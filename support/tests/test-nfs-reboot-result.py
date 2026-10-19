@@ -20,7 +20,7 @@ def log(phase):
     return ("ordinary kernel log\nPHANTOWD_NFS_REBOOT_PHASE_READY phase=" + phase + " boot_id=" + boot +
             " policy_sha256=" + "a" * 64 + " inode=12 data_sha256=" + "b" * 64 +
             " rw=true ro_denied=true client_denied=true uid=101000 gid=101000"
-            " kernel_profile=v3-tcp-only kernel_stopped=true teardown=true"
+            " kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true teardown=true"
             " scope=clean-qemu-reboot-only\nPHANTOWD_STATE_BOOT_READY phase=" + phase +
             " scope=disposable-qemu-only\n[   1.000] reboot: Restarting system\n").encode()
 
@@ -30,6 +30,7 @@ class NFSRebootResult(unittest.TestCase):
         wire = log("seed")
         result.validate_log(wire, "seed")
         for removed in (b" kernel_profile=v3-tcp-only", b" kernel_stopped=true",
+                        b" fsid_rebind_refused=true",
                         b" kernel_profile=v3-tcp-only kernel_stopped=true"):
             # Legacy access-only receipts cannot establish the new readbacks.
             with self.subTest(removed=removed), self.assertRaises(ValueError):
@@ -56,6 +57,7 @@ class NFSRebootResult(unittest.TestCase):
                                   (b"teardown=true", b"teardown=false"), (b"uid=101000", b"uid=0"),
                                   (b"kernel_profile=v3-tcp-only", b"kernel_profile=unknown"),
                                   (b"kernel_stopped=true", b"kernel_stopped=false"),
+                                  (b"fsid_rebind_refused=true", b"fsid_rebind_refused=false"),
                                   (b"inode=12", b"inode=18446744073709551616"),
                                   (b"inode=12", b"inode=012"),
                                   (b"data_sha256=" + b"b" * 64, b"data_sha256=" + b"b" * 63)):

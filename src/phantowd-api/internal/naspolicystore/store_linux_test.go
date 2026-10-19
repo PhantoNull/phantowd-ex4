@@ -32,6 +32,48 @@ func emptyPolicy(revision uint64) naspolicy.Config {
 			Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
 }
 
+func nfsBindingPolicy(revision uint64) naspolicy.Config {
+	base := emptyPolicy(revision)
+	base.FileServices.Shares.Volumes = []shareconfig.Volume{{ID: "bulk", FilesystemUUID: "11111111-2222-3333-4444-555555555555"}}
+	base.FileServices.NFS.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "bulk", RelativePath: "original",
+		Clients: []nfsconfig.Client{{Network: "192.0.2.1/32", Access: "ro", Squash: "all", AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}}
+	return base
+}
+
+func TestNASPolicyRejectsRetainedNFSExportRebinding(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	store, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	base := nfsBindingPolicy(1)
+	if err := store.Commit(0, base); err != nil {
+		t.Fatal(err)
+	}
+	next := emptyPolicy(2)
+	next.FileServices.Shares.Volumes = append([]shareconfig.Volume{}, base.FileServices.Shares.Volumes...)
+	next.FileServices.NFS.Exports = append([]nfsconfig.Export{}, base.FileServices.NFS.Exports...)
+	next.FileServices.NFS.Exports[0].RelativePath = "unrelated"
+	before, err := os.ReadFile(filepath.Join(dir, "nas-services.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Commit(1, next); !errors.Is(err, ErrInvalid) {
+		t.Fatal("retained NFS export identity was rebound to another root", err)
+	}
+	after, err := os.ReadFile(filepath.Join(dir, "nas-services.json"))
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("refused transition changed current policy", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, ".nas-services.pending")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("refused transition started a pending write", err)
+	}
+}
+
 func TestNASBootstrapUsesFixedSchemaWithoutImportOrInitialization(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0700); err != nil {

@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyepochjournal"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
@@ -58,7 +59,10 @@ func rootOpen(parent int, name string, resolve uint64) (*os.File, error) {
 }
 func policyCodec() revisionstore.Codec[naspolicy.Config] {
 	return revisionstore.Codec[naspolicy.Config]{CurrentName: "nas-services.json", PendingName: ".nas-services.pending", MaxBytes: naspolicy.MaxInputBytes,
-		Decode: naspolicy.Decode, Validate: naspolicy.Config.Validate, Revision: func(c naspolicy.Config) uint64 { return c.Revision }}
+		Decode: naspolicy.Decode, Validate: naspolicy.Config.Validate, Revision: func(c naspolicy.Config) uint64 { return c.Revision },
+		ValidateTransition: func(current, next naspolicy.Config) error {
+			return fileservice.ValidateRetainedNFSBindings(current.FileServices, next.FileServices)
+		}}
 }
 func operationCodec() revisionstore.Codec[bundle] {
 	return revisionstore.Codec[bundle]{CurrentName: "operation.json", PendingName: ".operation.pending", MaxBytes: maxBundleBytes,

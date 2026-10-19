@@ -115,6 +115,12 @@ initial enrollment and overflow refuse. No request chooses an operation ID,
 digest or entropy provider. The trusted future Owner supplies its captured
 installation ID and actual base; this function cannot prove their provenance.
 
+Preparation also refuses retained NFS IDs whose logical volume/filesystem/root
+changes, before entropy acquisition or any admitted intent. This prevents the
+experimental writers from turning a known-invalid transition into uncertain
+operation evidence. It is an adjacent-document check, not lifetime ID reservation;
+see the [complete scope](../../nfsconfig/README.md#export-identity-continuity).
+
 Keep an owned copy of **exact** base bytes, including whitespace, not merely a
 digest. Encode the candidate with the same `encoding/json` contract used by the
 current transaction engine, independently decode it, and bind both hashes and

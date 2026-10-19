@@ -84,6 +84,13 @@ publication enters permanent review. It does not migrate formats or prove live
 consumer/session teardown. See the [owner contract](../revisionstore/README.md).
 No device operation is authorized by this adapter.
 
+The fixed NAS store codec additionally checks retained NFS export bindings before
+publication, including the retained-policy Owner path. A source change under the
+same export ID refuses without poisoning otherwise unchanged state. Standalone
+desired previews/edit helpers are not historical validators or permission to
+publish. Removed-ID reservation and the full release requirement remain in the
+[NFS identity contract](../../nfsconfig/README.md#export-identity-continuity).
+
 ## Verification and remaining work
 
 Windows strict-model/DOM/API checks and ARMv5 cross-compilation pass. Pinned

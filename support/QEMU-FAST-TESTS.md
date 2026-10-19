@@ -2141,6 +2141,12 @@ receipts cannot qualify those new observations. Portlist does not report address
 or family, and these checks do not prove lock recovery, pending-I/O settlement
 or a product-level NFS ownership boundary. No additional guest boot is added.
 
+Before NFS startup, both state kernels also attempt root/filesystem rebinding
+under a retained export ID through the original fixture Store. Both must refuse
+and leave its policy usable; the receipt requires `fsid_rebind_refused=true`.
+These are adjacent-revision refusal tests, not a permanent retired-ID ledger or
+remove/recreate/reboot qualification.
+
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, production account management,
 WD configuration migration or a production-qualified writable management API. The temporary disk is discarded

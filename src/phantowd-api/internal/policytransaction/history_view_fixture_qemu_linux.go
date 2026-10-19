@@ -38,7 +38,14 @@ func draftViewFixture(base naspolicy.Config, revision uint64, files bool) (naspo
 	fixtureRevision(&c, revision)
 	if files {
 		c.FileServices.Shares.Shares[0].RelativePath = fmt.Sprintf("books-revision-%d", revision)
-		c.FileServices.NFS.Exports[0].RelativePath = fmt.Sprintf("books-revision-%d", revision)
+		// Exercise a real NFS definition edit without reassigning its stable
+		// export identity to another root. Rebinding is a separate refusal case.
+		client := &c.FileServices.NFS.Exports[0].Clients[0]
+		if client.Access == "ro" {
+			client.Access = "rw"
+		} else {
+			client.Access = "ro"
+		}
 	} else {
 		c.ISCSI.Backings[0].RelativePath = fmt.Sprintf("luns/reference-revision-%d.img", revision)
 	}

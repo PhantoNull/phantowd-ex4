@@ -14,6 +14,7 @@ import (
 	"io"
 	"math"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 )
 
@@ -46,6 +47,9 @@ func prepare(installation string, base []byte, next naspolicy.Config, entropy fu
 	}
 	previous, err := naspolicy.Decode(bytes.NewReader(base))
 	if err != nil || previous.Revision == math.MaxUint64 || next.Validate() != nil || next.Revision != previous.Revision+1 {
+		return Prepared{}, ErrInvalid
+	}
+	if fileservice.ValidateRetainedNFSBindings(previous.FileServices, next.FileServices) != nil {
 		return Prepared{}, ErrInvalid
 	}
 	candidate, err := json.Marshal(next)

@@ -583,6 +583,17 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
 fi
 
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
+required_native_view_command="\"\$go_binary\" test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction"
+for runner in "$repo_root/support/test-api-linux.ps1" "$repo_root/support/container/test-api.sh"; do
+    if ! grep -Fx "$required_native_view_command" "$runner" >/dev/null; then
+        printf 'native preflight must execute pure history-view fixture contracts: %s\n' "$runner" >&2
+        exit 1
+    fi
+done
+if ! grep -Fx "          go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction" "$host_workflow" >/dev/null; then
+    printf 'host CI must execute pure history-view fixture contracts before ARM qualification\n' >&2
+    exit 1
+fi
 for command in '          node --check support/test-dashboard-browser.mjs' \
     '          node support/tests/test-dashboard-preview.mjs' \
     '          node support/test-dashboard-ui.mjs' \

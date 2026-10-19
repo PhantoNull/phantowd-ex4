@@ -2346,6 +2346,25 @@ storage. No production roster provider or activation path exists.
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
   separate protocol/identity/recovery qualification, not an assumed feature.
+  **M4.3a — export identity continuity:** the Linux combined/NAS stores now compare
+  consecutive committed policies under the original store lock after CAS and
+  before pending-file operations. A retained export UUID must keep its logical
+  VolumeID, expected filesystem UUID and relative root. Pure operation preparation
+  applies the same check before operation-ID allocation/intent admission. Access
+  changes, additions/removals and a genuinely new export ID remain valid desired
+  edits. Refusal must preserve current/pending evidence and a healthy Owner.
+  This is not a permanent registry: before product activation, persist complete
+  binding/retirement history in the single authoritative configuration with
+  explicit schema migration. Qualify removal/reappearance across multiple edits,
+  reboot, restore, rollback/checkpoint changes, missing/ambiguous history and
+  interrupted migration. Bound resource use without silently dropping retired
+  IDs or treating absent history as permission to reassign them. Preserve source
+  identity independently of bay/path and require separately qualified consumer/
+  filehandle handoff. No adjacent-revision check completes this release gate.
+  Management must distinguish this known pre-effect rejection from I/O or an
+  uncertain save, with a redacted actionable response and no automatic retry.
+  The current development adapter still maps it to generic unavailability;
+  qualify the real store-backed HTTP path, not only an in-memory backend.
   The combined desired-policy preview flags equal or ancestor/descendant
   SMB/NFS relative paths on the same logical volume for focused review. This is
   consultative only and does not block, mount or activate services. It is

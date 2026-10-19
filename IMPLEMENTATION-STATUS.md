@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Retained NFS bindings at policy publication
+
+The Linux combined SMB/NFS and NAS stores now reject a retained export ID changing
+its logical volume, filesystem UUID or root between two committed revisions.
+A trusted optional codec comparison runs under the store lock after CAS and
+before pending-file operations, using decoded documents. Pure refusal preserves
+current/pending evidence and does not quarantine an otherwise healthy Owner.
+Private operation preparation applies the same check before entropy/intent; the
+experimental writer's fixed codec retains the publication check too.
+
+Portable/model, real-store, Owner, decoded-candidate and pending-preservation
+tests pass, alongside full Windows and pinned Linux API checks and focused race
+campaigns. Actual ARM smoke plus both clean-state kernels pass root/filesystem
+rebinding refusals followed by original-policy NFS access and normal teardown.
+The first ARM run exposed an invalid positive history-view fixture; a native
+regression now catches it before QEMU. The corrected fixture still changes NFS
+client access, preserving nonempty edit coverage and the stable source binding.
+Existing time/resource bounds and all prior checks remain unchanged.
+
+This is an adjacent-document guard, not permanent retirement/history. Removed-ID
+reuse, explicit format migration, full lifetime/consumer handoff and management
+error classification remain work before product activation. No schema, endpoint,
+privileged service Owner, automatic recovery, NAS or producer change is added.
+
 ## Kernel-NFS profile readback in the clean-reboot fixture
 
 The existing two-boot NFS fixture now requires the pinned guest's actual kernel

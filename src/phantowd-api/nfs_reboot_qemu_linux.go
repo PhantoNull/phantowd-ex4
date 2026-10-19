@@ -114,10 +114,13 @@ func exerciseQEMUNFSReboot(phase string) (result error) {
 	defer func() {
 		result = errors.Join(result, policy.Check(), policy.Close())
 		if result == nil {
-			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 kernel_profile=v3-tcp-only kernel_stopped=true teardown=true scope=clean-qemu-reboot-only\n",
+			fmt.Printf("PHANTOWD_NFS_REBOOT_PHASE_READY phase=%s boot_id=%s policy_sha256=%x inode=%d data_sha256=%x rw=true ro_denied=true client_denied=true uid=101000 gid=101000 kernel_profile=v3-tcp-only kernel_stopped=true fsid_rebind_refused=true teardown=true scope=clean-qemu-reboot-only\n",
 				phase, strings.TrimSpace(string(bootID)), policyHash, inode, dataHash)
 		}
 	}()
+	if err := verifyQEMUNFSRebootBindingRefusal(policy); err != nil {
+		return err
+	}
 	data := qemuStateAnchor + "/nfs-reboot/data"
 	if err := prepareQEMUNFSRebootData(data, phase); err != nil {
 		return err

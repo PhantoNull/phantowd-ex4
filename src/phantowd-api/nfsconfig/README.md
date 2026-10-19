@@ -40,8 +40,24 @@ The policy rejects unrestricted /0 rules, wildcards, DNS/netgroup selectors,
 multicast/reserved IPv4 ranges, mapped IPv6 forms, noncanonical prefixes and
 overlapping client rules. Export paths must be relative and non-overlapping
 on each volume. UUID fsids exclude the special NFSv4 root/0 identity. The
-future store must preserve fsid bindings across revisions, not recycle an ID
-for an unrelated export or filesystem.
+product must preserve fsid bindings across revisions, not recycle an ID
+for an unrelated export or filesystem; the implemented scope is below.
+
+## Export identity continuity
+
+`fileservice.ValidateRetainedNFSBindings` compares two fully validated desired
+documents. An ID retained in both must keep its logical VolumeID, filesystem
+UUID and relative root. Access/client changes and export additions/removals are
+allowed; changing the source requires a new export ID. The Linux combined
+SMB/NFS and NAS stores run this comparison under their existing lock, after CAS
+and before pending-file operations. Private operation preparation also checks
+it before allocating an operation ID or admitting a journal intent.
+
+This compares the current and next documents only. It does **not** reserve IDs
+after removal, across omitted history/checkpoints or a remove/recreate/reboot
+sequence. A permanent binding/retirement ledger, explicit format migration and
+complete runtime/client handoff remain release requirements. No current guard
+authorizes activation, proves filehandle stability or makes ID reuse safe.
 
 ## Rendering and access boundaries
 

@@ -47,6 +47,26 @@ func TestHistoryViewDraftsRespectModelLimits(t *testing.T) {
 	}
 }
 
+func TestHistoryViewDraftsPreserveRetainedNFSBindings(t *testing.T) {
+	base, err := naspolicy.Decode(strings.NewReader(testPolicy))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range []struct {
+		revision uint64
+		files    bool
+	}{{2, true}, {3, false}, {4, true}, {5, false}} {
+		next, err := draftViewFixture(base, step.revision, step.files)
+		if err != nil || fileservice.ValidateRetainedNFSBindings(base.FileServices, next.FileServices) != nil {
+			t.Fatal("valid history-view fixture redirected a retained NFS identity", err)
+		}
+		if step.files && base.FileServices.NFS.Exports[0].Clients[0].Access == next.FileServices.NFS.Exports[0].Clients[0].Access {
+			t.Fatal("fixture lost its nonempty NFS edit coverage")
+		}
+		base = next
+	}
+}
+
 func TestHistoryViewEditsUseOriginalWriter(t *testing.T) {
 	c, err := naspolicy.Decode(strings.NewReader(testPolicy))
 	if err != nil {

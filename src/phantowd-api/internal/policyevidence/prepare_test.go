@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 )
 
 func nextPolicy(t testing.TB, revision uint64) naspolicy.Config {
@@ -29,6 +30,27 @@ func fixedEntropy(b []byte) (int, error) {
 		b[i] = byte(i + 1)
 	}
 	return len(b), nil
+}
+
+func TestPreparationRefusesRetainedNFSRebindingBeforeOperationIdentity(t *testing.T) {
+	base, next := nextPolicy(t, 1), nextPolicy(t, 2)
+	export := nfsconfig.Export{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: base.FileServices.Shares.Volumes[0].ID,
+		RelativePath: "original", Clients: []nfsconfig.Client{{Network: "192.0.2.1/32", Access: "ro", Squash: "all",
+			AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}
+	base.FileServices.NFS.Exports = []nfsconfig.Export{export}
+	next.FileServices.NFS.Exports = []nfsconfig.Export{export}
+	next.FileServices.NFS.Exports[0].RelativePath = "unrelated"
+	if base.Validate() != nil || next.Validate() != nil {
+		t.Fatal("both transition endpoints must be valid")
+	}
+	wire, err := json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := prepare(installation, wire, next, func([]byte) (int, error) { return 0, ErrPreparation })
+	if !errors.Is(err, ErrInvalid) || !reflect.DeepEqual(p, Prepared{}) {
+		t.Fatal("invalid binding reached operation-ID preparation", err)
+	}
 }
 
 func TestPreparationRetainsExactBaseAndStoreEncodedWholeCandidate(t *testing.T) {

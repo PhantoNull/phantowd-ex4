@@ -68,6 +68,17 @@ func TestQEMUNFSRebootRuntimeRefusesHost(t *testing.T) {
 	}
 }
 
+func TestQEMUNFSRebootBindingRefusalsKeepOriginalPolicyUsable(t *testing.T) {
+	policy, err := prepareQEMUNFSRebootPolicy(t.TempDir(), "seed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer policy.Close()
+	if err := verifyQEMUNFSRebootBindingRefusal(policy); err != nil {
+		t.Fatal("fixture binding refusal did not preserve its current policy", err)
+	}
+}
+
 func TestQEMUNFSRebootPolicy(t *testing.T) {
 	root := t.TempDir()
 	first, err := prepareQEMUNFSRebootPolicy(root, "seed")
