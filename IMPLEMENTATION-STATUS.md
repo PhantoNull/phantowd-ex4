@@ -22,6 +22,11 @@ guest/job, two-boot rerun, product activation, NAS or flash operation is claimed
 Full policy/identity/runtime/state composition, close-fault qualification and
 automatic normal/unclean product boot recovery remain open.
 
+Exact [host run39332413253](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39332413253)
+passes all30 steps on `59bc7cd`, including both new Linux source-lifetime tests
+and complete native API/race qualification. This host result does not replace
+the local ARM proof or qualify product activation, recovery or physical disks.
+
 ## Retained NFSD kernel component: actual two-boot fixture
 
 The guarded ARM-only NFS reboot fixture now starts/stops NFSD directly through
