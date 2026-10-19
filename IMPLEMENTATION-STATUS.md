@@ -29,6 +29,11 @@ claimed. Automatic desired-service recovery after ordinary unclean shutdown
 remains required and unimplemented; the dedicated NFS Owner is still proposed.
 No NAS operation or deferred Samba producer work is included.
 
+Exact [host run39262101758](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39262101758)
+passes all30 steps on `ea9ddf6`, including all eight new tagged NFS controls and
+the complete native API/race gate. This is not another guest run or a full-image
+qualification; the actual ARMv5 smoke/two-boot evidence remains separate.
+
 ## Known pre-effect configuration refusal and retained drafts
 
 The development combined-policy API now distinguishes an exact candidate/
