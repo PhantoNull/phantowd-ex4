@@ -2325,6 +2325,18 @@ storage. No production roster provider or activation path exists.
   Native/race and eight-case ARMv5 regressions pass in the existing Owner guest
   without broader timers or an extra boot. This does not repair or explain the
   intermittent Samba admission failure; exact-head full/hosted gates stay open.
+  **NFS typed-input prerequisite:** `Plan.NFSv3TCPCandidate` now retains exact
+  per-export/client rules and root/storage tuples with the complete Plan
+  freshness, caller-independent copies and JSON refusal. Empty configured policy
+  is disabled, missing/zero state refuses, and GSS never falls back to AUTH_SYS.
+  Host/native planner race and actual same-Owner ARMv5 candidate checks pass;
+  this supplies no mount lease, kernel authority or service activation.
+  The separate [NFS runtime packet](support/NFS-RUNTIME-PROFILE.md) proposes a
+  fixed-backend kernel-service Owner with policy/storage/code retained until
+  verified settlement. Its confirmation is pending; do not expand the generic
+  launcher or copy the clean-reboot fixture into a product constructor. Complete
+  kernel/userspace/export/consumer shutdown, NLM/NSM and boot/recovery composition
+  remain required alongside physical gates.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

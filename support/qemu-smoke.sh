@@ -317,6 +317,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'ARMv5 Owner-backed read-only identity/passdb observation did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            printf 'QEMU typed NFS candidate proof missing\n' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1

@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Same-Plan typed NFS candidate
+
+The internal file-service Plan now supplies an immutable TCP/NFSv3/AUTH_SYS
+candidate: exact export/client rules, relative roots, observed volume/mount/
+device tuples and all six freshness fields stay bound together. Returned nested
+slices do not alias caller data. A configured empty policy is disabled, not
+missing; zero Plans refuse. Kerberos/mixed GSS policies refuse this profile
+without modifying the general preview or falling back to AUTH_SYS. JSON refuses.
+
+Six portable tests pass on Windows and pinnedGo1.26.8 Linux; complete ordinary
+Linux API vet/units, tagged vet and planner race tests pass. Actual standard
+ARMv5 smoke verifies the same candidate from existing identity/storage Owners,
+with exact source hashes and unchanged budgets. It does not rerun the separate
+two-boot campaign or full firmware/audits and is not a service lease/activation.
+The [dedicated NFS Owner contract](support/NFS-RUNTIME-PROFILE.md) remains proposed,
+awaiting confirmation; no privileged Owner, endpoint, product boot or NAS change
+is implemented by this increment. The generic launcher remains unchanged.
+
 ## Actual NFS access across two clean QEMU boots
 
 The dedicated two-kernel state fixture now starts real NFSv3/TCP services from
