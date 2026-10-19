@@ -40,6 +40,45 @@ on lock/state; this is why stopping a PID is not a complete NFS stop.
 The exact pinned kernel/nfs-utils implementation must still be checked before
 selecting a product control API; this older overview is not that qualification.
 
+## Pinned control-interface audit
+
+Static inspection of Linux6.18.55 and nfs-utils2.8.6 establishes the constraints
+below. Nine relevant built source files match the corresponding members of
+the hash-verified upstream archives. This is source evidence, not a new kernel
+execution, implemented backend or complete shutdown qualification.
+
+| Interface | Observed behavior | Implementation consequence |
+| --- | --- | --- |
+| `nfsd` control filesystem | Its superblock is keyed to the network namespace captured by the filesystem context; final superblock teardown shuts down that namespace's NFSD threads | Retain the original namespace and control-filesystem authority; a path or mount in another namespace is not an interchangeable controller |
+| Legacy `threads`, `versions`, `portlist` transaction files | The first read captures a response in the opened file's private transaction buffer; seeking does not request a new observation. A second transaction on the same open can return EBUSY | Retain a qualified directory/namespace, but open a fresh transaction file for every observation or command; do not repeatedly read a held snapshot as liveness proof |
+| Legacy `portlist` | Reports transport and port, without address/family. Listeners may exist with zero NFSD threads | Zero threads cannot establish an unused control domain or complete stop |
+| Generic Netlink `nfsd`, version1 | THREADS_GET, VERSION_GET and LISTENER_GET lack the administrative flag required by the corresponding SET operations; getters use the socket's network namespace | A fixed read-only observer is a candidate prerequisite, not permission to add SET commands or broaden an existing launcher |
+| THREADS_GET | Repeats the thread attribute for each service pool; also returns grace, lease and private scope metadata | Bound and sum legitimate repeated pool counts; do not reject all repetition or expose raw scope data in HTTP |
+| VERSION_GET | Returns supported major/minor pairs, with an empty enabled flag only when enabled | Preserve unsupported versus supported-disabled; reject duplicate pairs, malformed flags or incomplete results |
+| LISTENER_GET | Returns repeated nested listener records with transport plus a full `sockaddr_storage` | Validate the exact address/family/port and nested record, not only the text `tcp 2049`; unsupported transport/address data must not become a partial positive result |
+| Named Generic Netlink family lookup | Looking up a missing family by name can call `request_module` when module support is enabled | Read-only discovery must not send a name-based lookup that can autoload code. First enumerate registered families with a bounded complete controller dump, then use/recheck the observed ID |
+| `rpc.nfsd` | If any listener is already present, it skips version/socket configuration and goes directly to the thread operation. Its legacy in-use helper treats an unreadable ports file as not in use | Command success or requested flags do not prove sole ownership, listener identity or the absence of foreign resources |
+
+Each Netlink getter holds the NFSD mutex for its own response, not across the
+three requests or subsequent startup. Error/overflow paths discard the reply;
+they must remain unavailable, never an empty/disabled server. A matching sample
+does not establish continued freshness, namespace provenance, export/cache
+completeness, process ownership, NLM/NSM recovery or pending-I/O quiescence.
+
+The selected cached kernel has NFSD built in, with v2/v4 disabled, but module
+support remains enabled. The cached Buildroot nfs-utils recipe explicitly
+disables `nfsdctl`; its source directory is not an installed executable. Do not
+silently add that binary/libnl or change the runtime closure. A direct bounded
+observer could reuse the existing syscall dependency, but is not implemented
+or qualified by this audit.
+
+Relevant pinned sources: Linux `fs/nfsd/{nfsctl,nfssvc,netlink}.c`,
+`net/sunrpc/svc_xprt.c`, `fs/libfs.c`, `net/netlink/genetlink.c` and
+`include/uapi/linux/nfsd_netlink.h`; nfs-utils `utils/nfsd/{nfsd,nfssvc}.c`.
+The Linux archive lock is in [versions.env](../versions.env); the selected
+Buildroot nfs-utils recipe checks archive SHA256
+`2bd7b34e809a7eff2f4bc5fc5fd96ebcd66a5458b471a270cbd2dc169b011550`.
+
 ## Typed candidate: no execution authority
 
 `Plan.NFSv3TCPCandidate` derives immutable configuration and requests from one
@@ -118,6 +157,16 @@ No API reports a requested revision active before the complete readiness boundar
 
 ## Acceptance packets
 
+0. Read-only kernel-observation prerequisite: fixed GET-only commands and a
+   bounded complete registered-family census (no autoloading name lookup),
+   original namespace lifetime, kernel sender/sequence/port correlation and
+   complete reply settlement. Test legitimate pool repetition, nested listener
+   identities, compiled/disabled versions, truncation, duplicates, unknown data,
+   errors, cancellation and overflow without publishing partial observations.
+   First execute in the existing disposable NFS guest: before/start/I/O/stop,
+   requiring the actual loopback listener address as well as version/thread/
+   transport state. No extra default boot, capability, mutation, HTTP or product
+   constructor. This neither selects an execution backend nor approves the Owner.
 1. Host Owner state machine: normal/disabled paths, fixed backend/inputs, no
    partial publication, cancellation and failed startup, drift/restoration,
    unexpected exit, uncertain stop/close and retained authority, concurrent

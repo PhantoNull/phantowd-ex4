@@ -2337,6 +2337,12 @@ storage. No production roster provider or activation path exists.
   launcher or copy the clean-reboot fixture into a product constructor. Complete
   kernel/userspace/export/consumer shutdown, NLM/NSM and boot/recovery composition
   remain required alongside physical gates.
+  Pinned source audit now identifies legacy transaction-file snapshot/EBUSY
+  behavior, namespace-keyed controls and zero-thread listeners. A GET-only
+  Netlink observation prerequisite can expose actual listener addresses, but
+  must avoid name-based family lookup/module autoload, handle per-pool thread
+  attributes and refuse incomplete replies. Source inspection is not runtime
+  qualification or approval of a backend; the packet records exact acceptance.
   The existing disposable clean-reboot fixture additionally reads back the pinned
   kernel's exact version/thread/listener profile before startup, after startup
   and client I/O, and after stop. Host controls and actual three-boot ARMv5
