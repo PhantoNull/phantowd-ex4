@@ -299,6 +299,15 @@ input. This does not establish cryptographic semantics. The inspector does not
 decode or expose that slot. Synthetic success/refusal/error tests check JSON
 and formatted-report redaction plus unchanged input bytes; differing slot
 contents produce identical public reports. No real per-unit material is used.
+Header/payload reader failures return fixed messages without retaining the raw
+reader error or its unwrap chain. Checksum observation must consume the full
+declared range: early EOF is an I/O error even when omitted zero bytes preserve
+XOR. A complete read ending in ordinary EOF remains supported; an additional
+read error is not a completion certificate. The exact-read checks also cover the
+shared logical-image checksum path; raw-error redaction above is rescue-specific.
+Neither guarantees that files cannot change during inspection. The existing
+bounded `FuzzInspect` campaign additionally tests
+coherent rescue images with generated data up to64KiB plus a missing zero-word tail.
 These tests do not qualify an inner rescue payload or authorize restoration;
 see the [board recovery research](../../board/wd/ex4/NAND-RECOVERY-RESEARCH.md).
 

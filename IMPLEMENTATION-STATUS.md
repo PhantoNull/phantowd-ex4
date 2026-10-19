@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Offline rescue reads: private errors and exact checksum completion
+
+The host inspector now refuses a payload truncated after its size observation,
+even when a missing zero-word tail leaves XOR unchanged. Header reads no longer
+discard a non-EOF error just because the buffer filled; checksum reads distinguish
+ordinary terminal EOF from an additional wrapped/joined failure and require the
+entire declared range. Complete reads ending in ordinary EOF remain supported.
+Shared exact-read/checksum guards also protect the logical-image inspector.
+
+Rescue header/payload reader failures return fixed errors without retaining raw
+reader details or their unwrap chain. Deterministic regressions reproduce the
+original privacy/false-valid outcomes before correction. A real temporary file
+truncated after stat is refused and unchanged by inspection. These are no longer
+limited to malformed bytes whose reported and available sizes already agree.
+
+Complete Windows/pinnedGo1.26.8 toolkit vet/units, vendorupdate race-count3 and
+the existing10,000-execution fuzz campaign pass. That campaign retains its old
+arbitrary-input checks and additionally compares coherent complete/truncated
+rescue controls. No new campaign/stage, image, volume, device operation or target
+firmware behavior is added. This is not source immutability, arbitrary public-
+field redaction, physical NAND/ECC compatibility or qualified rescue/installation.
+
 ## Exact NFS listener observation in disposable ARMv5 boots
 
 The existing guarded NFS reboot fixture now adds fixed GET-only Generic Netlink

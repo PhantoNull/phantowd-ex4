@@ -117,6 +117,15 @@ rejected inputs, unchanged source bytes, and identical public reports for
 four different slot contents. They do not qualify real-device encoding or
 prove arbitrary data cannot be placed in otherwise public fields.
 
+The host rescue inspector also returns fixed header/payload read errors without
+retaining raw reader details or an unwrap chain. Shared exact-read/checksum
+guards now refuse incomplete declared ranges, including a zero-word truncation
+that preserves XOR, and additional read errors joined with EOF. Complete reads
+ending in ordinary EOF remain supported. Synthetic controls, an actually
+truncated temporary regular file, pinned native race and the existing bounded
+fuzz campaign cover this software behavior. They do not make a mutable source
+immutable, identify the rescue body or qualify a physical archive/restore.
+
 ### Standalone rescue-input dispatch
 
 The same final updater already receives a file at its dispatch entry `0xbe80`.
