@@ -25,6 +25,12 @@ rescue controls. No new campaign/stage, image, volume, device operation or targe
 firmware behavior is added. This is not source immutability, arbitrary public-
 field redaction, physical NAND/ECC compatibility or qualified rescue/installation.
 
+The isolated [PR140](https://github.com/PhantoNull/phantowd-ex4/pull/140) is now
+integrated as `75bb945` on `develop`; its whole tree matches the qualified topic.
+Exact PR and post-merge host jobs pass all25steps, including actual toolkit race/
+fuzz. This host-only integration does not qualify the other feature-branch API/
+firmware work. Its temporary topic is retired; no unrelated draft is included.
+
 ## Exact NFS listener observation in disposable ARMv5 boots
 
 The existing guarded NFS reboot fixture now adds fixed GET-only Generic Netlink
