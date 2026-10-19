@@ -69,7 +69,8 @@ try {
     $linux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
     foreach ($check in @('"$go_binary" vet ./...', '"$go_binary" test -count=1 ./...',
         '"$go_binary" vet -tags=qemu ./...',
-        '"$go_binary" test -tags=qemu -run ''^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$'' -count=1 .')) {
+        '"$go_binary" test -tags=qemu -run ''^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$'' -count=1 .',
+        '"$go_binary" test -tags=qemu -run ''^TestQEMUNFSRebootPolicy'' -count=1 -v .')) {
         if ($check -notin ($linux -split "`n")) { throw 'A previous Go qualification command was removed or changed.' }
     }
     foreach ($failure in @('info', 'image inspect', 'volume inspect', 'run')) {

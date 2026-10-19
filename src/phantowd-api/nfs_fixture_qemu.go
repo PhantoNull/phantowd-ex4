@@ -24,6 +24,11 @@ const qemuNFSWritablePath = `RW #1 "quoted"`
 // Fixed synthetic inputs only: no caller-selected paths, policy, or commands.
 // This renderer does not install exports; the guest-only shell harness does.
 func qemuNFSFixture() (nfsconfig.Preview, error) {
+	volumes, policy := qemuNFSFixturePolicy()
+	return nfsconfig.Build(policy, volumes)
+}
+
+func qemuNFSFixturePolicy() (shareconfig.Config, nfsconfig.Policy) {
 	volumes := shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
 		Volumes: []shareconfig.Volume{{ID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID}},
 		Users:   []shareconfig.User{}, Shares: []shareconfig.Share{}}
@@ -39,7 +44,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 			Clients: []nfsconfig.Client{{Network: spec.network, Access: spec.access, Squash: "all",
 				AnonymousUID: 101000, AnonymousGID: 101000, Security: "sys"}}})
 	}
-	return nfsconfig.Build(policy, volumes)
+	return volumes, policy
 }
 
 func runQEMUNFSTest(mode string) error {

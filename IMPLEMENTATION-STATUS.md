@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Confirmed NFS reboot policy — native fixture prerequisite
+
+A QEMU-tagged, Linux-only fixture prepares a dedicated coherent SMB/NFS/iSCSI
+policy containing the existing three synthetic NFS exports. Verification opens
+only that exact confirmed policy, retains its real store lock and does not
+initialize missing state. Pending/unknown evidence is refused before opening
+the writer; corrupt or different policy is preserved and refused. Lifetime
+checks retain refusal after a change, even if original bytes are restored.
+
+Six native tests, including the race detector, cover clean reopen without
+policy rewrite, lock retention, closed/missing/unknown state and preserved
+pending/foreign/corrupt evidence. The bounded local Linux wrapper and existing
+host CI explicitly select these tests; the original qualification commands and
+limits remain unchanged. No new job, image, volume or privilege is introduced.
+
+This is not yet connected to the two-boot guest: it starts no NFS daemon,
+mount or export and proves no NFS data access after reboot. Actual guest
+activation/access/teardown is the next acceptance step. Automatic product
+recovery/restart remains required but unimplemented; neither physical storage
+nor the deferred Samba status-producer experiment is touched.
+
 ## Explicit local clean-reboot qualification option
 
 The local API overlay runner now accepts `-IncludeStateReboot`, preserving its
