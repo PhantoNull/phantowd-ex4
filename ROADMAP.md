@@ -2512,6 +2512,12 @@ stop conditions and suitable equipment/media; not ordinary software work.
   its serial-derived field labelled "key" does not establish cryptography or
   explain the inner rescue body. Synthetic host inspector tests retain this
   field's opacity through success/refusal/errors without mutating input.
+  Host rescue read errors now discard private reader text/unwrap chains; shared
+  checksum guards require full declared consumption and refuse mixed EOF/error
+  outcomes. Actual REDs cover privacy and XOR-preserving truncation; Windows/
+  pinned Linux toolkit, focused race3 and the existing10,000-case fuzz campaign
+  pass, including a real temporary file truncated after stat. This does not
+  establish source immutability or qualify physical rescue/installation.
   Static `mtd_check` main can select destructive UBIFS config reinitialization
   and return zero without verified remount; its stock init invocation is
   conditional on USB detection/retry state. Never execute it as a diagnostic.

@@ -7,10 +7,93 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
+
+type rescueReadFailure struct {
+	source io.ReaderAt
+	offset int64
+	err    error
+	prefix int
+}
+
+func (r rescueReadFailure) ReadAt(p []byte, offset int64) (int, error) {
+	if offset == r.offset {
+		n, _ := r.source.ReadAt(p[:min(len(p), r.prefix)], offset)
+		return n, r.err
+	}
+	return r.source.ReadAt(p, offset)
+}
+
+func TestInspectRescueRedactsHeaderReaderFailure(t *testing.T) {
+	const private = "synthetic-rescue-private-reader-detail"
+	fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+	reader := rescueReadFailure{bytes.NewReader(fixture), 0, errors.New(private), 0}
+	report, err := InspectRescueImage(reader, int64(len(fixture)))
+	if err == nil || report.Valid || !report.IdentityRedacted {
+		t.Fatal("reader failure did not refuse redacted inspection")
+	}
+	if strings.Contains(fmt.Sprintf("%v %+v %#v", err, err, err), private) || errors.Unwrap(err) != nil {
+		t.Fatal("reader failure escaped through inspection error")
+	}
+}
+
+func TestInspectRescueRedactsPayloadReaderFailure(t *testing.T) {
+	const private = "synthetic-rescue-private-payload-reader-detail"
+	fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+	reader := rescueReadFailure{bytes.NewReader(fixture), RescueHeaderSize, errors.New(private), 0}
+	report, err := InspectRescueImage(reader, int64(len(fixture)))
+	if err == nil || report.Valid || !report.IdentityRedacted {
+		t.Fatal("payload reader failure did not refuse redacted inspection")
+	}
+	if strings.Contains(fmt.Sprintf("%v %+v %#v", err, err, err), private) || errors.Unwrap(err) != nil {
+		t.Fatal("payload reader failure escaped through inspection error")
+	}
+}
+
+func TestInspectRescueRefusesPayloadErrorJoinedWithEOF(t *testing.T) {
+	fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+	reader := rescueReadFailure{bytes.NewReader(fixture), RescueHeaderSize,
+		errors.Join(io.EOF, errors.New("synthetic-private-read-failure")), 4}
+	report, err := InspectRescueImage(reader, int64(len(fixture)))
+	if err == nil || report.Valid || report.XORValid {
+		t.Fatal("full payload with mixed read failure was accepted")
+	}
+}
+
+func TestInspectRescueRefusesFullHeaderReadError(t *testing.T) {
+	fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+	reader := rescueReadFailure{bytes.NewReader(fixture), 0,
+		errors.Join(io.EOF, errors.New("synthetic-private-header-read-failure")), int(RescueHeaderSize)}
+	report, err := InspectRescueImage(reader, int64(len(fixture)))
+	if err == nil || report.Valid || report.XORValid {
+		t.Fatal("header read failure was ignored after a full buffer")
+	}
+}
+
+func TestInspectRescueAcceptsCompleteReadEndingInEOF(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		offset int64
+		length int
+	}{
+		{"header", 0, int(RescueHeaderSize)},
+		{"payload", RescueHeaderSize, 4},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56")
+			reader := rescueReadFailure{bytes.NewReader(fixture), test.offset, io.EOF, test.length}
+			report, err := InspectRescueImage(reader, int64(len(fixture)))
+			if err != nil || !report.Valid || !report.XORValid {
+				t.Fatal("complete valid read with terminal EOF was refused")
+			}
+		})
+	}
+}
 
 // The stock merger copies a per-unit 64-byte field labelled "key" to 0x100.
 // Its serial-derived source does not establish cryptographic key semantics.
