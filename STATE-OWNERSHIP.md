@@ -132,3 +132,31 @@ Require confirmed old/new state, disabled-service preservation, no fallback writ
 no ambiguous-disk admission, and no startup after failed/uncertain recovery.
 Actual power-loss durability, physical EX4 placement, cooling and demonstrated
 recovery remain separate hardware/release gates. No NAS operation is authorized.
+
+## Required boot/recovery acceptance matrix
+
+This is the minimum product acceptance matrix, not an implemented coordinator,
+complete per-role recovery algorithm or permission to reinterpret a diagnostic
+match as admission. All rows require independently trusted installation/medium
+identity and the complete role census under original locks. Missing prerequisites
+cannot be supplied by a digest, previous boot receipt or caller-selected backend.
+
+| Observed boot state | Required product outcome | Required evidence before integration |
+| --- | --- | --- |
+| Confirmed coherent state after a normal shutdown; service desired-enabled | Reconstruct fresh dependencies and start automatically, once for the admitted transition; publish running only after readiness | Different kernel boot IDs; actual SMB/NFS/iSCSI access from retained policy/data, original identities and verified cleanup; no panel enable action |
+| Same confirmed coherent state after an ordinary unclean shutdown, with an open prior session but no unresolved operation | Execute the explicitly qualified recovery transition and start automatically; missing clean closure alone must not force routine manual confirmation | Loss after stable publication and during ordinary service use, then a new kernel; preserved original state/data and real service access; do not relabel the previous session clean or invent old successful syscall returns |
+| Coherent state with a service desired-disabled | Preserve disabled state, regardless of an earlier boot's process/listener claims | Normal and unclean reboot controls with no service listener, process, target or backing consumer for that disabled service |
+| Interrupted policy/identity/credential or recovery step covered by a specified recovery rule | Apply only that rule under original authority, preserving original evidence and recording new durable progress before dependent startup | Interruption at every rule's durable boundary; repeated interruption cannot allocate a replacement operation, erase the original evidence or duplicate effects; real old/new state and readiness checks |
+| Pending, inconsistent, foreign, restored/cloned, incomplete or unsupported evidence without a qualified recovery rule | Withhold affected admission and expose a redacted diagnosis/remediation path; no implicit adoption, enrollment, promotion, rollback or retry | Missing/duplicate/unknown-role and history/checkpoint controls; no writer/backend/service effects from a matching partial diagnosis; unaffected services continue only with proven isolation |
+| Stable-volume, array/filesystem, permissions, network, code or credential dependency is missing, changed or ambiguous | Keep the affected service unavailable instead of using another bay, empty directory, stale mount or credential | Clone/missing/reordered-disk, replaced mount/root, stale authority, invalid access and credential faults; unchanged data and no fallback writes |
+| Recovery cannot establish its required durable boundary because of ENOSPC, read-only medium, I/O/cancellation or uncertain closure | Preserve existing evidence and the containing recovery fence; no running publication or authority release from an uncertain outcome | Injected returning and process-loss faults, including failure to persist an additional diagnostic; verify retained inputs and bounded cleanup, not a fabricated durable-success marker |
+
+The current clean two-boot fixtures cover only selected normal-path prerequisites;
+they do not satisfy the unclean/recovery rows. A new synchronization can establish
+a new tested boundary, never prove the previous boot's lost return values.
+Recovered services need fresh process, mount, identity, credential and runtime
+authority; previous boot observations are historical evidence only. In-lifetime
+review remains terminal under the existing Owner contracts, not permission to
+close/reopen until a failure disappears. Installation/checkpoint provenance,
+per-role allowed mutations, lock order, state-medium selection and interrupted
+recovery handoff must still be specified and qualified before product startup.

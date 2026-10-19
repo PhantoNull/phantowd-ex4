@@ -41,9 +41,12 @@ Record absence never proves pristine or permits enrollment.
 
 No runtime collector, writer, durable review marker, state namespace/file role,
 new HTTP route, recovery, boot admission or service restart is added. Do not insert
-these records into existing fixed-census policy/history directories. The first-
-release unclean-restart operator policy is a separate product decision; both
-manual and automatic recovery require qualified retained state and medium behavior.
+these records into existing fixed-census policy/history directories. The selected
+first-release requirement is automatic recovery/restart after ordinary unclean
+shutdown, not routine manual confirmation; see the
+[boot recovery contract](../../../../STATE-OWNERSHIP.md#first-release-automatic-recovery-requirement).
+That requirement does not make these diagnostic results admission authority or
+change the need for qualified retained state, explicit recovery and medium behavior.
 The existing standard ARM self-test exercises eight synthetic comparisons plus
 malformed/private controls, before/after its API restart; no extra boot or I/O.
 A separate [fresh-role journal component](../policyepochjournal/README.md) now

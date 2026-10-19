@@ -146,5 +146,9 @@ Portable Windows units, pinned Linux Go1.26.8 vet/actual-I/O/fixture/race-count3
 and the actual standard ARMv5 overlay pass this slice. The final guest requires
 two exact journal receipts with `private_copies=true`, plus all prior checks;
 the earlier pre-hardening I/O-only guest is not final-source qualification.
-The first-release manual versus qualified automatic recovery decision remains
-separate. No product bootstrap, activation, EX4/NAND or release follows here.
+The selected first-release behavior is qualified automatic recovery/restart after
+ordinary unclean shutdown, not routine manual confirmation; see the
+[boot recovery contract](../../../../STATE-OWNERSHIP.md#first-release-automatic-recovery-requirement).
+This declaration journal neither implements that coordinator nor grants recovery
+or admission from a matching record. No product bootstrap, activation, EX4/NAND
+or release follows here.

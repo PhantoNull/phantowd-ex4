@@ -1385,8 +1385,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   does not imply failure or success. Preserve orphaned publications; compare
   fresh observed state before any authorized recovery. No blind replay/deletion.
   **M1.3e — Automatic boot recovery and service restart (required; not implemented).**
-  Ordinary unclean shutdown must not require routine panel confirmation. Specify
-  the complete installation/role/history/identity/storage/credential/action matrix,
+  Ordinary unclean shutdown must not require routine panel confirmation. Use
+  the [boot/recovery acceptance matrix](STATE-OWNERSHIP.md#required-bootrecovery-acceptance-matrix),
+  retaining the distinction between an open confirmed session and unresolved
+  effects. Specify the complete installation/role/history/identity/storage/credential/action matrix,
   independently trusted checkpoints, durable recovery progress and lock order
   before adding mutations. Reacquire fresh qualified authorities and start only
   desired-enabled services after coherent dependencies/readiness checks; never

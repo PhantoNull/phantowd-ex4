@@ -200,11 +200,14 @@ history/checkpoint and medium semantics; never infer them from the new strings.
 Neither declaration absence nor a matching pair authorizes initialization,
 reopening, replay or service activation.
 
-The first-release behavior after unclean/uncertain restart remains an explicit
-product choice: diagnostic-only/manual reconciliation, or separately qualified
-automatic recovery. No default is silently selected by this codec. Physical
-placement/EX4 writes, runtime admission and all existing recovery gates remain
-unchanged while that decision is pending.
+The first-release product choice is resolved: desired-enabled services must
+recover/restart automatically after ordinary unclean shutdown, without routine
+manual confirmation. See the
+[required boot matrix](../../../../STATE-OWNERSHIP.md#required-bootrecovery-acceptance-matrix).
+This selects the required outcome, not a recovery algorithm or permission from
+this codec. Unsupported/uncertain interrupted effects remain fenced until a
+separately qualified reconciliation protocol applies; physical placement/EX4
+writes, runtime admission and current diagnostic/Owner gates are unchanged.
 
 Policy evidence is only one role. Product admission must also account for admin
 credentials, installation identity, volume registry, native account ledger and
@@ -233,6 +236,7 @@ the legacy configuration partition nor prescribes EX4 writes.
 | M1.3c | Explicit writer protocol on disposable media | Intent-before-effects, preserved base, exact readback/receipt; every write/sync/rename/close/return boundary interrupted; no retry/admission on uncertainty |
 | M1.3d | Authorized reconciliation | Fresh complete role/consumer state; stale/concurrent requests refuse; original evidence preserved; process restart cannot clear unresolved work |
 | M1.2c | Product bootstrap/state-bundle coordinator | Distinguish unprovisioned/partial/confirmed/review/corrupt/incompatible/unavailable; no automatic adoption; retain authority into admission |
+| M1.3e | Required automatic boot recovery and service restart | Normal and ordinary unclean boots start desired-enabled services without a manual action; disabled services stay off; explicit interrupted-recovery rules, durable progress and fresh retained dependencies; no reviewed-Owner reset or blind replay |
 
 For b.1/b.2, begin with fast no-Docker host tests, then pinned Linux vet/unit/race
 and a bounded actual ARMv5 run in the existing optional fixture. Cross-compilation
