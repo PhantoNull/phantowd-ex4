@@ -40,6 +40,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Synthetic front-panel text contract test failed.' }
     go test -tags=qemu -run '^TestQEMUPolicyEvidence$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'Synthetic policy-operation evidence contract test failed.' }
+    go test -tags=qemu -run '^TestQEMUNFSRebootNetlink' -count=1 -v .
+    if ($LASTEXITCODE -ne 0) { throw 'Read-only NFS wire/profile fixture contracts failed.' }
 
     $env:GOOS = 'linux'
     $env:GOARCH = 'arm'

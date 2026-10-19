@@ -2142,8 +2142,15 @@ listener; stopped means zero threads and no NFSD listeners. The bounded reads
 refuse missing, partial, broadened or unexpected results. Complete receipts must
 include `kernel_profile=v3-tcp-only kernel_stopped=true`; older access-only
 receipts cannot qualify those new observations. Portlist does not report address
-or family, and these checks do not prove lock recovery, pending-I/O settlement
-or a product-level NFS ownership boundary. No additional guest boot is added.
+or family. The same guarded fixture now additionally uses fixed read-only
+Generic Netlink requests to require the actual127.0.0.1/TCP/2049 listener and
+complete version/per-pool-thread replies, with original namespace retention,
+kernel sender/correlation checks and bounded registered-family dumps without
+autoloading name lookups. Complete phase/aggregate receipts additionally require
+`listener_identity=true`. Its shared three-second sample budget does not change
+the existing guest/work deadlines. These observations do not prove lock recovery,
+pending-I/O settlement or a product-level NFS ownership boundary. No additional
+guest boot is added; see the [exact fixture contract](NFS-RUNTIME-PROFILE.md#qemu-only-read-only-kernel-observation).
 
 Before NFS startup, both state kernels also attempt root/filesystem rebinding
 under a retained export ID through the original fixture Store. Both must refuse

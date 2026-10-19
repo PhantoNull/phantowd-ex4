@@ -961,6 +961,18 @@ policies to a newly created virtual ext2 disk; it is not exposed through HTTP
 and refuses non-Versatile PB machines. See the
 [fast QEMU testing lane](../../support/QEMU-FAST-TESTS.md) and its limits.
 
+The existing NIC-less clean-reboot NFS fixture also checks its exact kernel
+listener identity through a QEMU-only GET-only Netlink observer. Registered
+families are enumerated without a module-autoloading name lookup; correlated
+complete replies validate v3-only/two-thread state and the actual IPv4 loopback
+TCP/2049 listener, then zero threads/no listeners after stop. Original namespace
+and descriptors are retained for one bounded sample and closed before success.
+The shared three-second sample budget and byte/record limits never permit partial
+positive results. The phase/aggregate receipt requires `listener_identity=true`.
+These sequential snapshots are not a production Owner, atomic authority,
+export-cache/NLM/NSM quiescence proof or automatic boot recovery. No new endpoint,
+installed program, capability or product build path is introduced.
+
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a
   TLS certificate/key pair and one exact HTTPS origin. Certificate PEM input is

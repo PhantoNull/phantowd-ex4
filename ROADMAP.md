@@ -2343,6 +2343,13 @@ storage. No production roster provider or activation path exists.
   must avoid name-based family lookup/module autoload, handle per-pool thread
   attributes and refuse incomplete replies. Source inspection is not runtime
   qualification or approval of a backend; the packet records exact acceptance.
+  The read-only prerequisite now executes in the guarded QEMU fixture: complete
+  non-autoloading catalogs, correlated fixed GETs, original namespace lifetime
+  and the actual loopback listener identity. Native negative/race and strict
+  receipt controls pass; local ARM smoke and both clean-state boots pass without
+  another boot or larger budget. Receipts require `listener_identity=true`.
+  This is test-only observation, not an implemented Owner, atomic census,
+  complete stop proof, NLM/NSM recovery or automatic product restart.
   The existing disposable clean-reboot fixture additionally reads back the pinned
   kernel's exact version/thread/listener profile before startup, after startup
   and client I/O, and after stop. Host controls and actual three-boot ARMv5

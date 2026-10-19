@@ -68,9 +68,9 @@ completeness, process ownership, NLM/NSM recovery or pending-I/O quiescence.
 The selected cached kernel has NFSD built in, with v2/v4 disabled, but module
 support remains enabled. The cached Buildroot nfs-utils recipe explicitly
 disables `nfsdctl`; its source directory is not an installed executable. Do not
-silently add that binary/libnl or change the runtime closure. A direct bounded
-observer could reuse the existing syscall dependency, but is not implemented
-or qualified by this audit.
+silently add that binary/libnl or change the runtime closure. A separate
+QEMU-only observer now uses the existing syscall dependency; its implementation
+and acceptance below are distinct from this earlier static source audit.
 
 Relevant pinned sources: Linux `fs/nfsd/{nfsctl,nfssvc,netlink}.c`,
 `net/sunrpc/svc_xprt.c`, `fs/libfs.c`, `net/netlink/genetlink.c` and
@@ -78,6 +78,41 @@ Relevant pinned sources: Linux `fs/nfsd/{nfsctl,nfssvc,netlink}.c`,
 The Linux archive lock is in [versions.env](../versions.env); the selected
 Buildroot nfs-utils recipe checks archive SHA256
 `2bd7b34e809a7eff2f4bc5fc5fd96ebcd66a5458b471a270cbd2dc169b011550`.
+
+## QEMU-only read-only kernel observation
+
+The guarded NIC-less reboot fixture additionally samples registered families,
+NFSD threads, versions and listener identities. Requests are fixed and contain
+no attributes: controller discovery is a complete dump, not a name lookup;
+only NFSD GET commands3/5/7 are encoded. The original network namespace is held
+while one socket performs discovery, the three GETs and a confirming discovery.
+Kernel sender, sequence, port, command/version, complete framing and bounds are
+required. Descriptors close once; failed closure, changed namespace, cancellation
+or an expired shared three-second observation budget cannot report success.
+
+The exact running profile is v3-only, two threads summed across legitimate
+pool attributes and one AF_INET/TCP listener at127.0.0.1:2049. Stopped requires
+zero threads and no listeners. Duplicate/unknown/incomplete records, different
+listener addresses, UDP/IPv6 or unsupported versions refuse this fixed fixture.
+This does not disable IPv6 elsewhere or qualify a production protocol profile.
+Catalogs cap at256families/1MiB, datagrams at64KiB and pool attributes at256;
+private scope metadata is validated but not returned or logged.
+
+The legacy control-file readbacks remain mandatory. Both checks run before
+startup, after startup/client I/O and after stop. The existing phase/aggregate
+receipt requires `listener_identity=true`; older text-profile-only receipts do
+not establish it. No additional boot, installed package, capability or product
+entry point is added. Samples are sequential, not atomic authority, a retained
+service lease, export/cache completeness or proof of all outstanding I/O/NLM/
+NSM state. The Owner contract remains proposed; host parser tests do not replace
+the actual guest acceptance or qualify the full failure/closure matrix.
+
+Local ARMv5 execution now passes the standard smoke and both independent
+clean-state kernels with this mandatory listener-identity receipt, retaining
+the original policy/data/inode and unchanged source witnesses and budgets.
+Portable negative cases, scoped Linux race tests and strict receipt/routing
+controls also pass. This is separate from the static source audit, full firmware
+reproduction, ordinary unclean boot recovery or physical-hardware qualification.
 
 ## Typed candidate: no execution authority
 

@@ -14,6 +14,7 @@ cd "$module_dir"
 "$go_binary" vet -tags=qemu ./...
 "$go_binary" test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
 "$go_binary" test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
+"$go_binary" test -tags=qemu -run '^TestQEMUNFSRebootNetlink' -count=1 -v .
 "$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBEffectiveFixture|TestQEMUSMBDenialEvidence|TestQEMUSMBProvisionParser|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUCollisionFixture|TestQEMUStatePersistence|TestQEMUServiceStateBackend|TestQEMUIdentityOwnerServiceHostGuard|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD|TestQEMUNetworkPolicy|TestQEMUNetworkInventory)$' -count=1 .
 "$go_binary" test -tags=qemu -run '^TestQEMUThermalReport$' -count=1 .
 "$go_binary" test -tags=qemu -run '^TestQEMUFrontPanelText$' -count=1 .

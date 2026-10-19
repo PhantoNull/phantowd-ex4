@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Exact NFS listener observation in disposable ARMv5 boots
+
+The existing guarded NFS reboot fixture now adds fixed GET-only Generic Netlink
+observations to its legacy control-file checks. It retains the original network
+namespace, uses complete registered-family dumps rather than autoloading name
+lookups, and validates kernel sender, correlation, bounded framing, per-pool
+threads, versions and the actual AF_INET/TCP127.0.0.1:2049 listener. Cancellation,
+expired observations and uncertain descriptor closure cannot report success.
+This is QEMU-only test code, not a production service Owner or activation API.
+
+Portable negative/parser tests, scoped Linux race tests and strict receipt/
+routing controls pass. Actual local ARMv5 smoke and both independent clean-state
+boots pass with unchanged source witnesses and original time/resource limits;
+both phases retain the original policy/data/inode and require
+`listener_identity=true`. No additional default boot, package, capability,
+image or volume is introduced. Sequential samples are not an atomic census,
+export-cache completeness, pending-I/O settlement or NLM/NSM recovery proof.
+
+One Windows preflight reproduced the previously recorded intermittent HTTPS/
+iSCSI transport failure. Redacted fixture diagnostics now identify case and
+transport facts without raw errors or private requests; ten subsequent exact
+tagged-group runs and three pinned-Linux TLS runs pass, but no cause or fix is
+claimed. Automatic desired-service recovery after ordinary unclean shutdown
+remains required and unimplemented; the dedicated NFS Owner is still proposed.
+No NAS operation or deferred Samba producer work is included.
+
 ## Known pre-effect configuration refusal and retained drafts
 
 The development combined-policy API now distinguishes an exact candidate/

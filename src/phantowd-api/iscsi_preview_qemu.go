@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"strings"
+	"syscall"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
 )
@@ -27,7 +30,7 @@ const qemuISCSIPreviewFixture = `{"format":"phantowd-nas-service-config","schema
 "initiators":[{"name":"iqn.2001-04.com.example:peer","authentication":{"mode":"chap","initiator_user":"private-user","initiator_secret_ref":"private-ref"},"grants":[{"lun_id":"lun","access":"ro"}]}]}]}}`
 
 func exerciseQEMUISCSIPreviewHTTP(client *http.Client, origin, csrf string) error {
-	for _, spec := range []struct {
+	for index, spec := range []struct {
 		method, origin, csrf, body string
 		status                     int
 	}{
@@ -48,7 +51,13 @@ func exerciseQEMUISCSIPreviewHTTP(client *http.Client, origin, csrf string) erro
 		}
 		response, err := client.Do(request)
 		if err != nil {
-			return errors.New("iSCSI preview request failed")
+			var networkError net.Error
+			var errno syscall.Errno
+			timedOut := errors.As(err, &networkError) && networkError.Timeout()
+			_ = errors.As(err, &errno)
+			// Fixed facts only: never print the URL, request or raw error.
+			return fmt.Errorf("iSCSI preview request failed (case=%d timeout=%t eof=%t unexpected_eof=%t errno=%d)",
+				index, timedOut, errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF), uint64(errno))
 		}
 		data, err := readSelfTestResponse(response, iscsipreview.MaxOutputBytes)
 		if err != nil || response.StatusCode != spec.status {

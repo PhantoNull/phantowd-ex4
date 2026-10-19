@@ -6,12 +6,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestQEMUNFSRebootKernelProfileAcceptsExactRunningAndStoppedStates(t *testing.T) {
@@ -64,6 +66,37 @@ func TestQEMUNFSRebootRuntimeRefusesHost(t *testing.T) {
 	for _, phase := range []string{"unknown", "seed", "verify"} {
 		if err := exerciseQEMUNFSReboot(phase); err == nil {
 			t.Fatal("native host admitted as the disposable NFS reboot guest", phase)
+		}
+	}
+}
+
+func TestQEMUNFSRebootNetlinkCollectorRefusesHost(t *testing.T) {
+	if runtime.GOARCH == "arm" {
+		t.Skip("native-host refusal is distinct from the guarded ARM fixture")
+	}
+	for _, running := range []bool{false, true} {
+		if checkQEMUNFSNetlinkProfile(running) == nil {
+			t.Fatal("native host admitted as the NFS reboot fixture")
+		}
+	}
+}
+
+func TestQEMUNFSRebootNetlinkReaderRefusesInvalidLifetimes(t *testing.T) {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, spec := range []struct {
+		ctx    context.Context
+		reader qemuNFSNetlinkReader
+	}{
+		{nil, qemuNFSNetlinkReader{fd: -1, port: 1, deadline: time.Now().Add(time.Second)}},
+		{canceled, qemuNFSNetlinkReader{fd: -1, port: 1, deadline: time.Now().Add(time.Second)}},
+		{context.Background(), qemuNFSNetlinkReader{fd: -1, port: 1, deadline: time.Now().Add(time.Second)}},
+		{context.Background(), qemuNFSNetlinkReader{fd: 0, port: 0, deadline: time.Now().Add(time.Second)}},
+		{context.Background(), qemuNFSNetlinkReader{fd: 0, port: 1, deadline: time.Now().Add(-time.Second)}},
+		{context.Background(), qemuNFSNetlinkReader{fd: 0, port: 1, sequence: ^uint32(0), deadline: time.Now().Add(time.Second)}},
+	} {
+		if family, data, err := spec.reader.query(spec.ctx, 42, 3); err == nil || family != 0 || data != nil {
+			t.Fatal("unavailable reader lifetime published a response")
 		}
 	}
 }

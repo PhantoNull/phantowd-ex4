@@ -605,6 +605,11 @@ if ! grep -Fx "          go test -tags=qemu -run '^TestQEMUServiceStateBackend' 
     printf 'host CI must execute real service-store HTTP refusal controls before ARM qualification\n' >&2
     exit 1
 fi
+if ! grep -Fx "    go test -tags=qemu -run '^TestQEMUNFSRebootNetlink' -count=1 -v ." "$repo_root/support/test-api.ps1" >/dev/null ||
+    ! grep -Fx "\"\$go_binary\" test -tags=qemu -run '^TestQEMUNFSRebootNetlink' -count=1 -v ." "$repo_root/support/container/test-api.sh" >/dev/null; then
+    printf 'portable/full native preflight must execute read-only NFS wire contracts\n' >&2
+    exit 1
+fi
 for command in '          node --check support/test-dashboard-browser.mjs' \
     '          node support/tests/test-dashboard-preview.mjs' \
     '          node support/test-dashboard-ui.mjs' \
