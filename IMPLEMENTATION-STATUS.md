@@ -50,9 +50,16 @@ guest now pass, as does a 1.5-CPU control; these do not demonstrate a timing fix
 A single 0.75-CPU control fails an identity worker's post-admission deadline:
 startup 35,108 ms, data 20,050 ms. The inner runtime-cost row is absent, which
 does not distinguish a failed pre-check from a failed post-check after a
-successful inner probe. That stage boundary remains to be measured. No further
-sample or complete/hosted qualification is inferred, and all budgets remain
-unchanged; simply taking five seconds from startup would exclude this sample.
+successful inner probe; that particular sample remains ambiguous. A subsequent
+single complete Samba attempt, with a fixed typed stage observer, passes
+service/native/candidate/lifecycle/fault/data/exit, then fails held at
+`after-runtime`: the inner data probe returned success, but fresh identity
+verification encounters a worker pre-admission deadline. Startup is 31,253 ms,
+data-to-return 20,067 ms. Held is not qualified; file/file-source are unreached.
+Independent captured-log replay accepts the seven passing guests and refuses
+held and the incomplete union. This is not a reproduced cause or repair of
+the old hosted native180 failure. All budgets remain unchanged; taking five
+seconds from startup would exclude the earlier 35,108-ms sample.
 
 No product activation, artifact name, installability or flashability is changed.
 

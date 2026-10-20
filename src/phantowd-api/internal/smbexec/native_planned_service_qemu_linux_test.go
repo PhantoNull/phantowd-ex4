@@ -8,6 +8,7 @@ package smbexec
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,38 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
+
+func TestNativePlannedDataBoundaryPreservesCauseAndOnlyFixedStages(t *testing.T) {
+	private := errors.New("private-credential/path\nFAKE_READY")
+	for _, stage := range []string{"before-runtime", "runtime", "after-runtime"} {
+		cause := errors.Join(private, context.DeadlineExceeded, runtimebundle.ErrReviewRequired)
+		failure := &nativePlannedDataFailureQEMU{stage: stage, cause: cause}
+		wrapped := errors.Join(errors.New("outer-private-context"), failure)
+		if got := ObserveNativePlannedDataStageQEMU(wrapped); got != stage {
+			t.Fatal("fixed boundary not observed", got)
+		}
+		if !errors.Is(wrapped, private) || !errors.Is(wrapped, context.DeadlineExceeded) || !errors.Is(wrapped, runtimebundle.ErrReviewRequired) || strings.Contains(failure.Error(), "private") {
+			t.Fatal("annotation changed or disclosed cause")
+		}
+	}
+	for _, invalid := range []error{nil, private, (*nativePlannedDataFailureQEMU)(nil),
+		&nativePlannedDataFailureQEMU{stage: "runtime"},
+		&nativePlannedDataFailureQEMU{stage: private.Error(), cause: private},
+	} {
+		if got := ObserveNativePlannedDataStageQEMU(invalid); got != "" {
+			t.Fatal("missing or arbitrary stage accepted", got)
+		}
+	}
+	first := &nativePlannedDataFailureQEMU{stage: "before-runtime", cause: private}
+	second := &nativePlannedDataFailureQEMU{stage: "after-runtime", cause: context.Canceled}
+	if got := ObserveNativePlannedDataStageQEMU(errors.Join(first, second)); got != "before-runtime" {
+		t.Fatal("later cleanup displaced first boundary", got)
+	}
+	var absent *NativePlannedServiceQEMU
+	if err := absent.VerifyDataAccess(context.Background()); !errors.Is(err, ErrInvalid) || ObserveNativePlannedDataStageQEMU(err) != "" {
+		t.Fatal("unadmitted service invented a data boundary", err)
+	}
+}
 
 func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *testing.T) {
 	ctx := context.Background()

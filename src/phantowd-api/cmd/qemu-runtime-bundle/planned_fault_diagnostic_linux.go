@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 )
 
 // Diagnostics identify a fixed fixture boundary, never prove qualification or
@@ -23,7 +24,27 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
-	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+	return output + plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedAccessStageDiagnosticQEMU(stage string) string {
+	row := "PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE stage=" + stage + " scope=diagnostic-only"
+	if !validPlannedAccessStageDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedAccessStageDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 3 || fields[0] != "PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE" || fields[2] != "scope=diagnostic-only" {
+		return false
+	}
+	switch fields[1] {
+	case "stage=before-runtime", "stage=runtime", "stage=after-runtime":
+		return true
+	default:
+		return false
+	}
 }
 
 func plannedDataCostDiagnosticQEMU(c runtimebundle.PlannedDataCostObservationQEMU) string {
@@ -134,7 +155,7 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
-		if (validPlannedDataCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
+		if (validPlannedAccessStageDiagnosticQEMU(fields) || validPlannedDataCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)
 			output.WriteByte('\n')

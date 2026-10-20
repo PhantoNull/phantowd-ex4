@@ -2,6 +2,22 @@
 
 ## Failure-only planned data costs
 
+Admitted planned-data failures also carry a fixed
+`PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE` stage: `before-runtime`, `runtime` or
+`after-runtime`. The private wrapper preserves the original cause and existing
+quarantine/stop behavior; an unadmitted operation, missing typed error, unknown
+stage or success cannot manufacture this row. Parent relay validates/deduplicates
+it without accepting it as proof or changing the 1024-byte child-output cap.
+Linux cause/redaction/strict-proof controls and targeted race pass. One complete
+Samba attempt passes seven guests, then held reports `after-runtime` and an
+identity worker pre-admission deadline at data20 (startup31253/data20067 ms).
+Thus the inner probe returned nil before the final identity verification failed;
+it does not establish final identity/service authority or a qualified held guest.
+The last two guests were not reached. Captured-log replay independently refuses
+the failed guest and incomplete union. Failure relay is unit-tested; this actual
+ARM stage observation is from the direct held path, not a failed fault child.
+No original budget, daemon fence, identity recheck or complete gate is waived.
+
 The existing QEMU `data`/`fault` paths retain all original guards, thirteen
 daemon checks and six fixed clients. On a failed inner data probe, a typed,
 cause-preserving annotation can emit `PHANTOWD_QEMU_PLANNED_DATA_COSTS`:

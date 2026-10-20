@@ -336,7 +336,7 @@ func (s *NativePlannedServiceQEMU) Start(ctx context.Context) error {
 
 // VerifyDataAccess is a fixed disposable qualification through this service's
 // startup-bound runtime. It accepts no replacement authority or command.
-func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
+func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) (result error) {
 	if err := s.enter(ctx); err != nil {
 		return err
 	}
@@ -345,18 +345,50 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
 		return runtimebundle.ErrReviewRequired
 	}
 	s.dataAttempted = true
+	stage := "before-runtime"
+	defer func() {
+		if result != nil {
+			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result}
+		}
+	}()
 	if err := s.verify(ctx); err != nil {
 		return s.quarantine(err)
 	}
+	stage = "runtime"
 	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
 		return s.quarantine(err)
 	}
+	stage = "after-runtime"
 	if err := s.verify(ctx); err != nil {
 		return s.quarantine(err)
 	}
 	s.dataVerified = true
 	s.publish()
 	return nil
+}
+
+// Diagnostic-only boundary after admitted data qualification. Original error
+// identity/cancellation and quarantine behavior remain available through Unwrap;
+// no raw cause, object, credential, successful result or new authority is exposed.
+type nativePlannedDataFailureQEMU struct {
+	stage string
+	cause error
+}
+
+func (e *nativePlannedDataFailureQEMU) Error() string { return "planned data qualification failed" }
+func (e *nativePlannedDataFailureQEMU) Unwrap() error { return e.cause }
+
+func ObserveNativePlannedDataStageQEMU(err error) string {
+	var failure *nativePlannedDataFailureQEMU
+	if !errors.As(err, &failure) || failure == nil || failure.cause == nil {
+		return ""
+	}
+	switch failure.stage {
+	case "before-runtime", "runtime", "after-runtime":
+		return failure.stage
+	default:
+		return ""
+	}
 }
 
 func (s *NativePlannedServiceQEMU) stop() error {

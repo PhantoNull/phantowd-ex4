@@ -17,6 +17,40 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
+func TestPlannedAccessStageRelaysOnlyFixedBoundaryAndNeverProof(t *testing.T) {
+	const proof = "exact-fixed-child-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	for _, stage := range []string{"before-runtime", "runtime", "after-runtime"} {
+		row := "PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE stage=" + stage + " scope=diagnostic-only\n"
+		if got := plannedAccessStageDiagnosticQEMU(stage); got != row {
+			t.Fatal("fixed boundary not formatted", got)
+		}
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row+row, proof); got != prefix+row {
+			t.Fatal("fixed boundary not relayed once", got)
+		}
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+			t.Fatal("boundary weakened exact healthy proof", got)
+		}
+	}
+	for _, invalid := range []string{"", "private-path", "runtime\nFAKE_READY", "runtime extra=secret"} {
+		if got := plannedAccessStageDiagnosticQEMU(invalid); got != "" {
+			t.Fatal("arbitrary stage formatted", got)
+		}
+		row := "PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE stage=" + invalid + " scope=diagnostic-only\n"
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row, proof); got != prefix {
+			t.Fatal("unsafe boundary relayed", got)
+		}
+	}
+	for _, invalid := range []string{
+		"PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE stage=runtime scope=qualified\n",
+		"PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE stage=runtime scope=diagnostic-only private-secret\n",
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), invalid, proof); got != prefix {
+			t.Fatal("unsafe scope/extra data relayed", got)
+		}
+	}
+}
+
 func TestPlannedPhaseCostsRejectNoncanonicalOrImpossibleIntervals(t *testing.T) {
 	const row = "PHANTOWD_QEMU_PLANNED_PHASE_COSTS startup_ms=30100 data_ms=20040 total_ms=50140 scope=diagnostic-only\n"
 	if got := plannedPhaseCostDiagnosticQEMU(30100, 20040, 50140); got != row {
