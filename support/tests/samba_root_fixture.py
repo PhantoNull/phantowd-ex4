@@ -303,6 +303,7 @@ def check_campaign(log, phase):
                    if row.startswith(
                        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
     access = tuple(row for row in MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",

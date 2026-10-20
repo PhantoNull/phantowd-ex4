@@ -276,6 +276,28 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			return err
 		}
 		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
+		if campaign == nativePlannedDataCampaignQEMU {
+			// This independent descriptor profile needs the genuinely enrolled
+			// peer, not the native guest's unrelated live-revocation history.
+			// Keep both data profiles in this existing fresh data guest, with
+			// every original assertion and unchanged phase/guest deadline.
+			if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
+				return fmt.Errorf("native data descriptor profile: %w", err)
+			}
+			after, err := os.ReadDir("/proc/self/fd")
+			if err != nil || len(after) != len(before) {
+				return errors.New("native data descriptor prerequisite leaked descriptors")
+			}
+			// Only empty scaffolding CREATED by that successful, fully stopped
+			// disposable profile. Rmdir cannot unlink files/symlinks or recurse;
+			// uncertainty refuses without cleanup retry. The next profile must
+			// create its OWN empty launcher destinations, not reuse these.
+			for _, path := range []string{root + "/shares/readonly", root + "/shares/writable", root + "/shares"} {
+				if err := unix.Rmdir(path); err != nil {
+					return fmt.Errorf("native data empty scaffolding release: %w", err)
+				}
+			}
+		}
 		scenario := ""
 		if campaign == nativePlannedHeldCampaignQEMU {
 			scenario = "held"
@@ -300,6 +322,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			fmt.Println(plannedHeldCloseMarkerQEMU)
 			return nil
 		}
+		fmt.Println(nativeDataDescriptorMarkerQEMU)
 		fmt.Println(plannedStartupMarkerQEMU)
 		fmt.Println(plannedDataMarkerQEMU)
 		fmt.Println(plannedSupervisionMarkerQEMU)
@@ -555,10 +578,6 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return err
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
-	if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
-		return fmt.Errorf("native data descriptor profile: %w", err)
-	}
-	reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(after) != len(before) {
 		return errors.New("native credential descriptor leak")
@@ -567,7 +586,6 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true original_pair_rechecked=true revoked_pair_refused=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only")
 	return nil
 }
 
