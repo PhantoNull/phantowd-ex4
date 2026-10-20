@@ -16,6 +16,24 @@ spec.loader.exec_module(checker)
 
 
 class CodeReceiptTests(unittest.TestCase):
+    def test_server_bind_refusal_requires_original_daemons_and_retained_claims(self):
+        lines=[b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",checker.SOURCE_POLICY,
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_ARMED original_owner=true original_claims=true independent_bound_socket=true foreign_listening=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SERVER_FAILURE phase=kernel-start",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_READY owned_unattached_socket_closed=true original_daemons_stopped=true exports_never_activated=true original_stopped_observation=true original_claims_retained=true source_refs_retained=true independent_socket_unchanged=true review_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_DONE"]
+        for ending in (b"\n",b"\r\n"):
+            checker.verify_source_owner_kernel_bind(ending.join(lines)+ending,self.report)
+        variants=[lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)),lines+[b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_FAILED"]]
+        for old,new in ((b"original_daemons_stopped=true",b"original_daemons_stopped=false"),(b"release=false",b"release=true"),
+                        (b"owned_unattached_socket_closed=true",b"owned_unattached_socket_closed=false"),(b"independent_socket_unchanged=true",b"independent_socket_unchanged=false")):
+            variants.append([line.replace(old,new) for line in lines])
+        for variant in variants:
+            with self.assertRaises(ValueError):
+                checker.verify_source_owner_kernel_bind(b"\n".join(variant),self.report)
+
     def test_kernel_socket_component_receipt_is_exact_and_separate(self):
         lines=[b"PHANTOWD_NFS_KERNEL_SOCKET_ARMED foreign_bound=true foreign_listening=false original_prepared=true scope=qemu-only",
                b"PHANTOWD_NFS_KERNEL_SOCKET_READY actual_bind_refused=true owned_socket_closed=true original_control_retained=true foreign_socket_unchanged=true kernel_never_attached=true kernel_never_started=true review_retained=true no_retry=true no_restart=true release=false product=false scope=kernel-component-only",
@@ -327,6 +345,22 @@ class CodeReceiptTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
 class ShellModeTests(unittest.TestCase):
+    def test_source_kernel_bind_init_dispatches_only_dedicated_name(self):
+        init=self.dispatch_init()
+        stubs='''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner*) return 1;; esac; }
+cat() { printf '%s\\n' 'phantowd_nfs_code_fixture=1 phantowd_nfs_source_fixture=1 init=/usr/sbin/phantowd-nfs-kernel-bind-init'; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-kernel-bind-refusal; }
+'''
+        completed=subprocess.run(["sh","-c",stubs+init],capture_output=True,timeout=2)
+        self.assertEqual(completed.returncode,0,completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_DONE",completed.stdout)
+        self.assertNotIn(b"FAILED",completed.stdout)
+
     def test_kernel_socket_init_is_component_only_and_failure_is_explicit(self):
         actual=(Path(__file__).parent/"nfs-kernel-socket-init.sh").read_text()
         for failure in ("none","mount","probe"):

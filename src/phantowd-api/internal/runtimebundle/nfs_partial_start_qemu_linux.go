@@ -61,7 +61,8 @@ func (v *nfsServerQEMU) ownsReadyPartialDaemon(d *nfsDaemonQEMU, mountd bool) bo
 }
 
 func (v *nfsServerQEMU) partialStartStoppedProof() bool {
-	if !v.rpcOnlyStartBoundary() && !v.daemonsOnlyStartBoundary() || !v.stopAttempted || !v.rpcbind.stopped || !v.rpcbind.stoppedProof {
+	if !v.rpcOnlyStartBoundary() && !v.daemonsOnlyStartBoundary() && !(v.kernelBindStartBoundaryQEMU() && v.kernelBindStopped) ||
+		!v.stopAttempted || !v.rpcbind.stopped || !v.rpcbind.stoppedProof {
 		return false
 	}
 	return v.mountd == nil || v.mountd.stopped && v.mountd.stoppedProof

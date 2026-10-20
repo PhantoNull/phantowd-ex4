@@ -22,6 +22,9 @@ func (o *NFSSourceAccessQEMU) reviewedServerOperation(ctx context.Context, opera
 	if v != nil && (v.rpcOnlyStartRefused || v.kernelConstructionRefused) {
 		return o.reviewedPartialStartOperation(ctx, operation)
 	}
+	if v.kernelBindReviewRouteQEMU() {
+		return o.reviewedKernelBindOperationQEMU(ctx, operation)
+	}
 	if !o.review || o.cause == nil || o.closed || o.sourceLoss || o.daemonLoss || !o.consumed || o.settled || v == nil ||
 		v.source != o || v.code == nil || v.kernel == nil || !v.mountd.valid() || !v.rpcbind.valid() ||
 		!v.mountd.mountd || v.rpcbind.mountd || v.stopped || o.capture != nil || o.heldClient != nil || len(o.mounts) != 0 ||

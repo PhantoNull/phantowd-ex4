@@ -18,6 +18,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"golang.org/x/sys/unix"
 )
 
 // Original independently prepared controller survives any fixture error.
@@ -25,7 +26,7 @@ import (
 var partialStartOriginalController *nfskernel.ControllerQEMU
 
 func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRuntimeQEMU, authority *sourcePolicyFixture,
-	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease, kernelRefusal bool) (result error) {
+	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease, fault sourceOwnerFault) (result error) {
 	phase := "owner-construction"
 	defer func() {
 		if result != nil {
@@ -36,7 +37,26 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	if err != nil {
 		return err
 	}
-	if kernelRefusal {
+	if fault == ownerKernelBindRefusal {
+		phase = "independent-bound-socket"
+		fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, unix.IPPROTO_TCP)
+		if err != nil {
+			return err
+		}
+		kernelSocketFixtureRetained.foreign = os.NewFile(uintptr(fd), "nfs-source-independent-bound-socket")
+		if err := unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+			return err
+		}
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_ARMED original_owner=true original_claims=true independent_bound_socket=true foreign_listening=false product=false scope=qemu-only")
+	}
+	foreign := kernelSocketForeignObservation{}
+	if fault == ownerKernelBindRefusal {
+		foreign, err = observeKernelSocketForeign(kernelSocketFixtureRetained.foreign)
+		if err != nil {
+			return err
+		}
+	}
+	if fault == ownerKernelConstructRefusal {
 		phase = "original-controller-reservation"
 		partialStartOriginalController, err = nfskernel.OpenCodeQEMU(ctx)
 		if err != nil {
@@ -85,7 +105,15 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if kernelRefusal {
+	if fault == ownerKernelBindRefusal {
+		phase = "independent-socket-unchanged"
+		if after, err := observeKernelSocketForeign(kernelSocketFixtureRetained.foreign); err != nil || after != foreign {
+			return errors.New("independent bound socket changed during owned compensation")
+		}
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_READY owned_unattached_socket_closed=true original_daemons_stopped=true exports_never_activated=true original_stopped_observation=true original_claims_retained=true source_refs_retained=true independent_socket_unchanged=true review_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only")
+		return nil
+	}
+	if fault == ownerKernelConstructRefusal {
 		phase = "original-controller-still-prepared"
 		if err := partialStartOriginalController.CheckPreparedQEMU(ctx); err != nil {
 			return err

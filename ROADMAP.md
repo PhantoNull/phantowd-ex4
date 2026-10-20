@@ -66,10 +66,13 @@ The new `kernel-socket` component case additionally qualifies actual bind-
 EADDRINUSE before attachment: original unbound socket closed once, fresh empty
 NFSD profile and unchanged independent bound socket, review/cause/refs retained.
 There are no NFSD transaction writes, retries, release or restart. A separate
-read-only original witness records absence; ten optional profiles and API smoke/
-two clean state-reboot kernels pass. This is component-only: integrate it with
-the original server Owner/daemon/identity/storage/code/input authority before
-claiming attempted-kernel-start compensation. Other frontiers remain in item1.
+read-only original witness records absence. The separate original-server bind-
+refusal case now composes that exact frontier with original Owner/daemon/identity/
+storage/code/input authority: pending observation, once-only original socket stop,
+fresh stopped proof, then acquired-daemon reverse settlement. Review/causes/refs
+remain retained, with no retry/restart/release and no export activation. Eleven
+profiles plus API smoke/two clean state-reboot kernels pass. Other Kernel.Start
+frontiers, complete domain authority and product boot remain in item1 below.
 
 1. Other pre-dispatch/reference/admission failures during explicit Stop,
    other partial-start/failed-readiness/uncertain-constructor settlement, hard

@@ -38,6 +38,24 @@ func (k *ControllerQEMU) originalReviewedReservationQEMU() bool {
 	return kernelRetention.active == k && len(kernelRetention.objects) == 1 && kernelRetention.objects[0] == k
 }
 
+// Read-only classification of THIS original known bind refusal before cleanup.
+// A successful observation is not a lease, release or independent stop authority.
+func (k *ControllerQEMU) CheckUnattachedPendingQEMU(ctx context.Context) error {
+	if err := k.enter(ctx, true); err != nil {
+		return err
+	}
+	defer k.leave()
+	u := k.unattached
+	if u == nil || !errors.Is(u.bindCause, unix.EADDRINUSE) || !k.review || k.started || k.stopped || k.socket < 0 ||
+		k.uncertain != nil || u.attempted || u.closed || u.verified || u.closeCause != nil || !k.originalReviewedReservationQEMU() {
+		return ErrRefused
+	}
+	if k.profile(ctx, false) != nil || checkUnattachedSocketQEMU(k.socket, k.socketIdentity) != nil || k.check(ctx) != nil {
+		return k.retain()
+	}
+	return ctx.Err()
+}
+
 // The original controller gate and OS thread are held. The only mutation is
 // one close of its original unbound socket. No NFSD write, foreign socket stop,
 // namespace/control release, retry or review reset is admitted.

@@ -34,7 +34,17 @@ prepare() {
     ip link set lo up || return 1
 }
 if prepare; then
-    if grep -Eq '(^| )phantowd_nfs_source_owner_kernel_construct_refusal_fixture=1( |$)' /proc/cmdline; then
+    case " $(cat /proc/cmdline) " in
+      *' init=/usr/sbin/phantowd-nfs-kernel-bind-init '*) kernel_bind_case=1 ;;
+      *) kernel_bind_case=0 ;;
+    esac
+    if [ "$kernel_bind_case" = 1 ]; then
+        if /usr/sbin/phantowd-nfs-code-fixture --source-owner-kernel-bind-refusal; then
+            echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_DONE
+        else
+            echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_FAILED
+        fi
+    elif grep -Eq '(^| )phantowd_nfs_source_owner_kernel_construct_refusal_fixture=1( |$)' /proc/cmdline; then
         if /usr/sbin/phantowd-nfs-code-fixture --source-owner-kernel-refusal; then
             echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_DONE
         else

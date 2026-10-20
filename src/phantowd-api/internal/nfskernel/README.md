@@ -50,9 +50,15 @@ empty-profile check establishes absence, but Stop still returns reviewed failure
 `CheckUnattachedStoppedQEMU` is the separate read-only original-lifetime witness;
 it cannot release references, clear review or restart. An independently held
 bound non-listening socket in the same process remains unchanged. Other bind/
-listen/attachment/thread/close faults are not qualified by this case. The upper
-source-server Owner still refuses attempted-kernel-start partial compensation;
-this component result does not authorize server/product activation.
+listen/attachment/thread/close faults are not qualified by this case.
+
+`CheckUnattachedPendingQEMU` separately classifies that same original reviewed
+bind refusal before cleanup. It rechecks the original reservation, references,
+fresh empty profile and original unbound socket without mutation. Its result is
+not a lease or independent stop authority. The optional original-server bind-
+refusal case uses it, one reviewed Stop and a fresh original stopped witness
+before stopping the original acquired daemons. This does not authorize general
+attempted-start compensation, product activation, retry, restart or release.
 
 `CheckPreparedQEMU` is a distinct read-only observation of an original reserved
 but never-started controller. It verifies held namespace/control references,

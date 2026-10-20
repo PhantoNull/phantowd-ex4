@@ -119,6 +119,33 @@ server compensation or product activation. Ten optional modes/eleven NFS guests
 plus API smoke/two clean state-reboot kernels pass with unchanged90/60/360/5s
 NFS caps, caches, role privileges and no new default guest/job or image build.
 
+## Optional original-server kernel bind-refusal compensation
+
+```powershell
+.\support\test-nfs-code.ps1 -FixtureMode source-owner-kernel-bind-refusal
+```
+
+The same source init script is installed at the dedicated guest-only path
+`/usr/sbin/phantowd-nfs-kernel-bind-init`. Exact code/source selectors and that
+single init select the scenario; mixed, duplicate, malformed or unknown NFS
+selectors refuse. No new NFS fault word or lower process/C role ABI is added.
+Never execute the guest init on a host or NAS.
+
+After original Owner/claims construction, a separately held same-process bound
+non-listening socket provokes actual kernel bind-EADDRINUSE. The original server
+must classify that precise original pending state, close its own unattached
+socket once, obtain fresh stopped proof and only then stop acquired mountd and
+rpcbind in reverse order. Fresh original stopped observations, retained claims/
+refs/cause/review and an unchanged independent socket are mandatory. No exports
+were activated; retry/restart/release refuse. Normal reviewed stopped servers
+retain their existing route, covered by a real native regression and old guests.
+
+Cached and ordinary wrappers plus all ten previous profiles pass: twelve NFS
+guests/eleven modes,34 receipt/shell and three loader groups. API smoke and two
+clean state boots also pass. Existing90/60/360/5s bounds, privileges, caches and
+default jobs remain unchanged. Other startup/close faults, domain/client
+quiescence, product startup/recovery, full images and EX4 remain unqualified.
+
 ## Optional retained NFS table consumer
 
 `support/test-nfs-code.ps1` keeps the existing90s guest/60s helper/360s work

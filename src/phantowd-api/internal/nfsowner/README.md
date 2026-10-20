@@ -278,6 +278,19 @@ Ten fresh guests cover this case twice and eight prior profiles once, with29
 receipt/shell and three loader groups at unchanged budgets. The reservation is
 process-local, not sole OS-wide NFSD authority or product recovery.
 
+The distinct `source-owner-kernel-bind-refusal` case exercises actual original
+Kernel.Start bind-EADDRINUSE after both acquired daemons are ready. Original
+policy/identity/storage/code/input refs remain mandatory. A read-only original
+pending witness establishes the exact never-attached socket frontier; one
+reviewed kernel Stop and separate fresh original stopped observation precede
+mountd/rpcbind reverse stop. Fresh kernel/daemon/source observations are required
+again before recording absence. The independent bound non-listening socket is
+unchanged; exports were never activated. Original review/cause/claims/refs remain
+held, with no retry/restart/release. This separate route does not capture normal
+reviewed stopped servers or expand the constructor-conflict cleanup above.
+Cached and ordinary wrappers plus ten previous profiles pass in twelve NFS
+guests; API smoke and two clean state boots add three, not product qualification.
+
 Other pre-dispatch/reference/admission failures, other partial-start/readiness/
 uncertain-constructor/close outcomes,
 hard crashes, complete faults, domain/client quiescence and product bootstrap/

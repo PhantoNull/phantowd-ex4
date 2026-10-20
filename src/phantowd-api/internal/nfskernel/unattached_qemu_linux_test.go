@@ -15,7 +15,7 @@ import (
 func TestUnattachedWitnessRefusesMissingOriginalController(t *testing.T) {
 	for _, k := range []*ControllerQEMU{nil, {}} {
 		for _, ctx := range []context.Context{nil, context.Background()} {
-			if !errors.Is(k.CheckUnattachedStoppedQEMU(ctx), ErrRefused) {
+			if !errors.Is(k.CheckUnattachedStoppedQEMU(ctx), ErrRefused) || !errors.Is(k.CheckUnattachedPendingQEMU(ctx), ErrRefused) {
 				t.Fatal("invalid controller represented as settled")
 			}
 		}

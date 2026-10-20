@@ -18,8 +18,8 @@ observations establish absence without clearing review or releasing authority.
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
 targeted race-count3 and strict C-selector/receipt/dispatch tests pass. The latest
-campaign covers all ten optional profiles: the kernel-socket component through
-cached and ordinary wrappers plus the nine previous code/source profiles.
+campaign covers all eleven optional profiles: original server bind-refusal
+compensation through cached and ordinary wrappers plus ten previous profiles.
 
 `source-owner-daemon-stop-loss` performs no Check or supervision between the
 controlled mountd exit and explicit Stop. The original Stop precheck previously
@@ -48,8 +48,8 @@ as no acquired/hidden resources; an explicit kernel-start-attempt marker exclude
 partial listener/thread effects from this cleanup frontier. Review/causes/claims
 and descriptors remain held, with no retry/restart/release.
 
-Eleven actual NFS guests share one tested helper and unchanged source/base images;
-32 receipt/shell and three loader groups pass with unchanged deadlines.
+Twelve actual NFS guests share one tested helper and unchanged source/base images;
+34 receipt/shell and three loader groups pass with unchanged deadlines.
 
 The controller now captures the original socket's SOCKFS device/inode and
 nonzero kernel cookie, requiring IPv4 TCP/CLOEXEC. Startup, running observations
@@ -71,10 +71,22 @@ and rechecks the empty profile without NFSD writes. Stop still returns reviewed
 failure with the original cause; a separate fresh original-lifetime witness
 records absence without retry/restart/release. Pre-cancel and copied/premature
 witness refusal, unchanged independent socket and retained original references
-are verified. The upper server Owner is deliberately not wired to this path.
-All ten modes plus API smoke/two clean state-reboot kernels pass: fourteen
+are verified. The separate original-server case below composes this exact frontier.
+All eleven modes plus API smoke/two clean state-reboot kernels pass: fifteen
 successful guest boots. Other bind/listen/partial-thread/close/cancellation
 frontiers, full controller FD races and product startup remain unqualified.
+
+The optional `source-owner-kernel-bind-refusal` case now carries that actual bind
+failure through the original server Owner, policy/identity/storage claims and
+retained code/inputs. A real baseline guest fails at the original stopped proof.
+Compensation now requires a fresh original pending witness, one reviewed kernel
+Stop, then a separate fresh stopped witness before reverse-order settlement of
+the acquired mountd/rpcbind. Exports were never activated; the independent bound
+socket remains unchanged. Review/cause/claims/references stay held; no retry,
+restart or release is admitted. A native regression also reproduces overly broad
+routing of normal reviewed stopped servers; the corrected dedicated route and
+all ten previous actual guest modes pass. This is not other Kernel.Start faults,
+complete control-domain ownership, product service activation or recovery.
 
 The dedicated process fault/withdrawal guards previously accepted sibling flags
 that the main CLI already refused. Real Go and compiled native C parser tests

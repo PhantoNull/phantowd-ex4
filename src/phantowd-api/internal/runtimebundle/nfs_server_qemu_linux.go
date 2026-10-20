@@ -38,6 +38,7 @@ type nfsServerQEMU struct {
 	rpcOnlyStartRefused                          bool
 	kernelConstructionRefused                    bool
 	kernelStartAttempted                         bool
+	kernelBindStopped                            bool
 }
 
 type nfsServerTableQEMU struct {
@@ -212,8 +213,8 @@ func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCo
 	err := unix.Fstatat(int(s.state.root.Fd()), "nfs/etab", &named, unix.AT_SYMLINK_NOFOLLOW)
 	if err != nil {
 		// A consumed partial-start can legitimately have NO export table:
-		// only an established pre-kernel-start boundary with actual acquired-
-		// child stopped proof may admit absence. Never infer it from nils.
+		// only an established no-export boundary with actual acquired-child
+		// and (where acquired) kernel stopped proof admits absence, never nils.
 		partial := reviewed && o.server.partialStartStoppedProof()
 		if !errors.Is(err, unix.ENOENT) || o.consumed && !partial {
 			return err
