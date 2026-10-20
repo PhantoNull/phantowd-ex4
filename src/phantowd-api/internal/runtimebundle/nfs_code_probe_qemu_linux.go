@@ -177,6 +177,19 @@ func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 	if after, err := retainedFixtureFDCount(); err != nil || after != retained {
 		return errors.New("NFS reviewed code operations released references")
 	}
+	phase = "retained-configuration-state"
+	inputCaller, err := openRoot()
+	if err != nil {
+		return err
+	}
+	// The input probe owns this fresh fixture caller, never the retained code
+	// root above. Independent collectors cannot settle or revive older review.
+	if err := probeNFSInputsQEMU(ctx, expected, inputCaller); err != nil {
+		return err
+	}
+	if !errors.Is(code.Check(ctx), ErrReviewRequired) || !errors.Is(code.Close(), ErrReviewRequired) {
+		return errors.New("independent input capture erased earlier code review")
+	}
 	fmt.Printf("PHANTOWD_NFS_CODE_COUNTS files=%d aliases=%d bytes=%d\n", len(plan.files), len(plan.aliases), plan.bytes)
 	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-list-only scope=code-retention-and-loader-list")
 	return nil

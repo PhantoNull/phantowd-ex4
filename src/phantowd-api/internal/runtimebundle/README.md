@@ -82,6 +82,38 @@ This verifies loader dependency resolution, not all symbols, instruction paths,
 NSS/dlopen, configuration/state, kernel control, daemon readiness, complete
 constructor/namespace/close faults, a product launcher or boot recovery.
 
+## NFS configuration and mutable-directory inputs (QEMU only)
+
+`NFSFixtureConfigurationQEMU` renders nine bounded documents from one valid
+enabled IPv4/TCP/AUTH_SYS candidate. Exports are copied from that candidate;
+state location, protocol and files-only lookup settings are explicit. Unsupported
+IPv6 and disabled/invalid candidates do not gain runtime documents. Returned
+data is neither identity/policy freshness authority nor a product configuration.
+Synthetic root/daemon/nobody records are not imported identities or a selected
+product daemon privilege profile.
+
+`NewNFSInputsQEMU` captures original code, immutable configuration and fresh
+mutable-state directory references together under the existing private gate.
+The configuration view is read-only/nosuid/nodev/noexec; the separate state
+tmpfs is writable/nosuid/nodev/noexec and contains only root-owned0700 `.` and
+`nfs` directories initially. The constructor explicitly verifies end-of-directory:
+a nonempty `ReadDir` result need not carry EOF. It never initializes or recovers
+existing state, launches a child, opens export data or exposes descriptors.
+
+Checks retain named-root/namespace/code/configuration identities and original
+mutable DIRECTORY objects, not hashes/identities of legitimately replaced etab
+files. Caller closure/copies cannot release the originals. Normal explicit
+closure assumes consumer absence; uncertain rollback/close keeps the original
+error/reference chain without retry. Drift retains review after restoration.
+Independent input collectors cannot clear another instance's review or certify
+exclusive state writers, policy/identity provenance, storage or NFSD admission.
+
+Actual ARM proves constructor rollback, nonfresh-state refusal, normal mutation/
+rename/FD closure and separate configuration-overmount/state-directory faults,
+with all earlier loader/code proofs. Mutable test bytes are not an etab parser,
+health or service proof. Product persistent state, ordinary unclean boot recovery,
+daemon bootstrap/privileges and fault-complete backend composition remain open.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

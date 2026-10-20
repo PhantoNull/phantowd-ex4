@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## NFS candidate configuration and mutable-directory inputs retained
+
+The QEMU-only input constructor now retains original code, nine immutable
+configuration files and two fresh mutable directory objects under one private
+gate. Documents come from the same fixed enabled IPv4 candidate, not captured
+filesystem hashes; mutable table replacement is allowed while directory or
+configuration replacement enters retained review. No daemon or activation API.
+
+Complete Windows/pinned native checks and focused race3 pass. Actual ARM passes
+constructor rollback/nonfresh refusal, caller independence, normal mutable rename/
+closure/FD balance and separate config-overmount/state-directory restoration
+faults, preserving all earlier code/loader proofs and1368unchanged inputs.
+The first guest caught an incorrect EOF assumption on a nonempty Go ReadDir;
+native observation reproduced it. Explicit final EOF verification fixes it
+without removing checks or expanding guest/helper/work limits. Input captures
+are not policy/identity/source authority, exclusive writers, config/NSS or state
+format qualification. Product daemon privileges, startup/recovery and installation
+remain open; the selected build's rpcbind-root default is not product approval.
+
 ## Actual NFS code retained and loader lists matched in isolated ARMv5
 
 A dedicated QEMU-only lifetime now captures the expected code tree and original
@@ -18,7 +37,7 @@ pass. One explicit diskless/networkless ARM guest now stages9real ELF files,
 proves caller-copy independence, normal FD balance, rollback including hash-correct
 non-ELF input, and rejects a byte-identical overmount plus restoration. The base
 image stays unchanged. The initial retention-only qualification froze1355 inputs;
-the latest code/loader guest freezes1362 with exact before/after equality.
+the preceding code/loader-only guest froze1362 with exact before/after equality.
 Initial harness-only snapshot-temp and CRLF receipt failures are corrected without
 writable-profile or timeout expansion. Late host-only JSON-shape hardening is
 tested on Windows/Linux and replayed against the exact captured guest/report.

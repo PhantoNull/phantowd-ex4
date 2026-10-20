@@ -2412,6 +2412,17 @@ storage. No production roster provider or activation path exists.
   a descriptor-bound dedicated launcher and verified consumer settlement next.
   This QEMU-only collector is not product privilege/provenance or exclusive NFSD
   authority, and it does not implement normal/unclean boot recovery.
+  **Configuration/state prerequisite:** the guarded input constructor now binds
+  nine independently rendered configuration documents and two original fresh
+  mutable directories to retained code under the same private gate. Native/race
+  and actual ARM prove rollback/nonfresh refusal, mutable atomic file replacement,
+  normal FD closure and separate configuration/state replacement review after
+  restoration. An explicit final EOF fixes the first real constructor regression.
+  This supplies no sole-writer/role/source authority, actual NFS config/NSS or
+  state-format verification, product persistence or daemon privilege choice.
+  Next construct the dedicated service view/bootstrap from these SAME inputs
+  with policy/identity/source/kernel authorities and verify actual startup,
+  I/O and all consumers' settlement; preserve ordinary unclean-boot recovery.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

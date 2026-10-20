@@ -32,7 +32,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
     go test -tags=qemu -count=1 ./internal/nfsowner
     if ($LASTEXITCODE -ne 0) { throw 'NFS lifetime tests failed.' }
-    go test -tags=qemu -count=1 -run '^TestNFS(Expected|Code)' ./internal/runtimebundle
+    go test -tags=qemu -count=1 -run '^TestNFS(Expected|Code|Configuration|Inputs)' ./internal/runtimebundle
     if ($LASTEXITCODE -ne 0) { throw 'NFS expected-code metadata tests failed.' }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNetworkPolicy|TestQEMUISCSIPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD)$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'QEMU dashboard contract test failed.' }

@@ -206,6 +206,33 @@ boot/job, full Buildroot run, host privilege, NFS daemon, product recovery or
 physical operation is implied. Compose the real daemon launcher, policy/identity/
 storage/kernel/state and complete settlement before product service admission.
 
+## Selected build's configuration and mutable paths
+
+Cached compiled settings/source, not a new clean-source or service qualification:
+
+| Input | Observed selected build | Ownership implication |
+| --- | --- | --- |
+| nfs-utils2.8.6 configuration | `support/include/config.h`: `/etc/nfs.conf`, default state `/run/nfs` | Pin explicit configuration/state; volatile defaults do not qualify product persistence |
+| State-directory override | mountd reads `[mountd] state-directory-path`; exportfs reads the same key before its exportd fallback | One immutable document must keep both programs on the same retained directory |
+| Mutable NFS tables | `etab`, `rmtab`, their `.tmp` files and `.etab.lock`/`.rmtab.lock` | Keep original directories; legitimate atomic file replacement must not be mistaken for directory drift |
+| rpcbind1.2.7 | Configured `rpcuser=root`; warmstart/libwrap/systemd not enabled in this build | This is not a product least-privilege decision; a dedicated reviewed bootstrap/profile remains required |
+| rpcbind paths | Lock `/var/run/rpcbind.lock`, libtirpc socket `/run/rpcbind.sock`; target `/var/run -> ../run` | Future service views must bind consistent original state, not inherit broad host `/var` or `/run` access |
+
+The new QEMU-only input lifetime binds nine independently rendered configuration
+documents to the fixed candidate and retains code/configuration plus two original
+fresh mutable directory objects. It does not create state in its constructor.
+Only the explicit disposable fixture materializes RAM trees; existing/nonempty
+state refuses rather than being reset or adopted. The filesystem census verifies
+an explicit final empty EOF, not an assumed EOF on a nonempty Go ReadDir result.
+
+Actual ARM passes normal mutable-file replacement and FD balance, wrong-candidate
+and nonfresh rollback, same-byte configuration overmount and original-state
+directory replacement with review retained after restoration. All previous code
+and actual loader proofs remain required at unchanged90/60/360guest/helper/work
+budgets. This is input retention, not actual config parsing/NSS, state-format
+integrity, sole writer/NFSD ownership, daemon startup or product boot recovery.
+No production state schema or privilege profile is selected by this fixture.
+
 ## Actual userspace code expectations, not execution authority
 
 `phantowd-lab inspect-nfs-runtime-closure DIRECTORY` inventories once and unions

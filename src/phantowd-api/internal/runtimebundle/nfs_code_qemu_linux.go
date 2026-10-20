@@ -38,6 +38,9 @@ type nfsCodeLifetimeQEMU struct {
 	review    bool
 	closed    bool
 	cause     error
+	// Present together only for the separate complete input constructor.
+	configuration *retainedConfiguration
+	state         *retainedNFSStateQEMU
 }
 
 // NewNFSCodeQEMU admits only the explicit ARMv5 disposable code fixture, its
@@ -199,6 +202,25 @@ func (s *nfsCodeLifetimeQEMU) revalidate(ctx context.Context) error {
 	if err := s.code.revalidate(ctx); err != nil {
 		return err
 	}
+	if s.configuration != nil || s.state != nil {
+		if s.configuration == nil || s.state == nil {
+			return ErrMismatch
+		}
+		if err := s.configuration.revalidate(ctx); err != nil {
+			return err
+		}
+		if err := s.state.revalidate(ctx); err != nil {
+			return err
+		}
+		configuration := s.configuration.contents.metadata["."]
+		if err := nfsInputNamedRootQEMU(nfsConfigViewQEMU, configuration.Ino, configuration.Mnt_id, configuration.Dev_major, configuration.Dev_minor); err != nil {
+			return err
+		}
+		state := s.state.identity["."]
+		if err := nfsInputNamedRootQEMU(nfsStateViewQEMU, state.inode, state.mount, state.major, state.minor); err != nil {
+			return err
+		}
+	}
 	return s.binding(ctx)
 }
 
@@ -256,6 +278,12 @@ func (o *NFSCodeQEMU) Close() error {
 
 // Constructor-only no-child rollback, also used by verified normal closure.
 func (s *nfsCodeLifetimeQEMU) releaseUnstarted() error {
+	if err := s.state.release(); err != nil {
+		return err
+	}
+	if err := s.configuration.release(); err != nil {
+		return err
+	}
 	if s.code != nil {
 		if err := s.code.release(); err != nil {
 			return err

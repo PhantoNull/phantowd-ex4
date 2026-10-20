@@ -15,6 +15,11 @@ READY = (b"PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true "
          b"non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true "
          b"review_retained=true execution=loader-list-only scope=code-retention-and-loader-list")
 DONE = b"PHANTOWD_NFS_CODE_DONE"
+INPUTS = (b"PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_dirs=2 "
+          b"original_code=true caller_copies_closed=true normal_fd_balance=true "
+          b"wrong_candidate_refused=true nonfresh_refused=true mutable_updates=true "
+          b"config_overmount_review=true state_replacement_review=true restored_refused=true "
+          b"original_refs_retained=true service=false recovery=false scope=qemu-only")
 COUNTS = re.compile(rb"PHANTOWD_NFS_CODE_COUNTS files=([0-9]{1,3}) aliases=([0-9]{1,4}) bytes=([0-9]{1,8})")
 
 
@@ -50,6 +55,11 @@ def verify(log, report):
         # The serial transport adds ONE terminal CR. Embedded/repeated CR is
         # not stripped and therefore cannot manufacture an accepted marker.
         line = raw[:-1] if raw.endswith(b"\r") else raw
+        if line.startswith(b"PHANTOWD_NFS_INPUTS_"):
+            if line != INPUTS:
+                raise ValueError("unknown or failed input receipt")
+            seen.append("inputs")
+            continue
         if not line.startswith(b"PHANTOWD_NFS_CODE_"):
             continue
         match = COUNTS.fullmatch(line)
@@ -63,7 +73,7 @@ def verify(log, report):
             seen.append("done")
         else:
             raise ValueError("unknown or failed code receipt")
-    if seen != ["counts", "ready", "done"]:
+    if seen != ["inputs", "counts", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered receipt")
 
 
