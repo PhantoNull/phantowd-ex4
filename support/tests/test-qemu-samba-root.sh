@@ -30,6 +30,9 @@ case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpd
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
+# shellcheck source=support/container/build-phase-clock.sh
+. "$source_dir/support/container/build-phase-clock.sh"
+phantowd_phase_begin samba-stage
 pending_profile=0
 case "$selection" in pending|pending-peer-exit|pending-handle) pending_profile=1 ;; esac
 if [ "$pending_profile" -eq 1 ]; then
@@ -188,9 +191,11 @@ sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
 # Default remains the complete qualification. Explicit local selection narrows
 # only which fresh guest is run, never its guards or assertions. Ordinary native
 # has the reviewed common-clock/reserve cap; every other guest keeps180s.
+phantowd_phase_end 0
 for campaign in $campaigns; do
     guest_seconds=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" guest-timeout "$campaign")
     if [ "$diagnostics" = status-source ]; then guest_seconds=90; fi
+    phantowd_phase_begin "samba-$campaign"
     timeout --signal=TERM --kill-after=5 "$guest_seconds" qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
@@ -204,6 +209,7 @@ child_pid=$!
 status=0
 wait "$child_pid" || status=$?
 child_pid=
+phantowd_phase_end "$status"
 if [ "$diagnostics" = diagnostic ] || [ "$diagnostics" = status-source ]; then
     # Escaped, bounded telemetry only. Emitted before verification even for a
     # timeout; never a success marker or substitute for original acceptance.

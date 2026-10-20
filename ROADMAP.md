@@ -16,6 +16,14 @@ then reaches its unchanged 1,800-second outer limit. File/file-source, the union
 later SMART lanes and the audit remain unqualified. This supersedes the earlier
 `0beb01e` seven-campaign/held failure without repairing its intermittent cause.
 Focused passing components cannot qualify that failed complete run.
+The full/Samba drivers now have host-tested fixed-label boot-relative phase
+timing without command wrappers, signal traps, acceptance or timer changes.
+Unknown clock data stays unknown; an unmatched BEGIN is incomplete evidence.
+70actual-helper/stub-driver,83fixture and8CPU-budget controls pass. Genuine
+full-run timing is still required: static Samba guest maxima sum1980s inside
+the shared1800s cached cap, but that is not observed runtime or causal proof.
+Next collect one sealed-source instrumented run with original statuses/logs/
+source witnesses, then make a measured, separately justified execution decision.
 Require causal diagnosis/calibrated fixture decisions, complete qualification
 and audit; never replace failed results with selected passes or relax proofs.
 See [implementation status](IMPLEMENTATION-STATUS.md) and the

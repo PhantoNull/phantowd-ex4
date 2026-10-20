@@ -1,5 +1,27 @@
 # Fast API and file-service integration checks
 
+## Full-build phase diagnostics
+
+The full build emits `PHANTOWD_BUILD_PHASE_BEGIN`/`END` rows for20 fixed serial
+phases. The Samba controller emits its own staging and per-guest rows outside
+the guest log, so receipt parsers remain unchanged. `elapsed_cs` is Linux boot-
+relative uptime in centiseconds (includes suspend), not guest CPU or realtime.
+The guest END records command exit status BEFORE strict receipt verification;
+zero is not a campaign pass. Missing END means incomplete/interrupted evidence.
+
+Every row is `qualifying=false`. Missing/malformed/backward clock data is
+`unknown`, never a zero-duration substitution. No paths, arbitrary command lines
+or supplied labels are logged. The sourced helper executes no wrapped command,
+sets no traps/timers, does not catch original errors and creates no files.
+Existing compiler/guest/work/worker/cleanup/outer limits and required receipts
+are unchanged. Timing rows neither authorize retries nor replace a full audit.
+
+`support/tests/test-qemu-build-feedback.py` exercises the actual sourced helper
+and Samba driver with disposable command stubs, including failure, interruption,
+clock unavailability, nested phases and full diagnostic sinks. These host tests
+do not boot QEMU or measure real firmware performance. Collect an exact-source
+full run before attributing a timeout or proposing budget/suite changes.
+
 ## Independent mountd-loss reviewed compensation
 
 `support/test-nfs-code.ps1 -FixtureMode source-owner-daemon-loss` now requires

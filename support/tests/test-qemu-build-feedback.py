@@ -41,6 +41,27 @@ def make_target_position(script, target):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_complete_build_declares_fixed_serial_timing_phases(self):
+        script = (ROOT / 'support/container/build-qemu.sh').read_text()
+        phases = re.findall(r'^phantowd_phase_begin ([a-z-]+)$', script, re.M)
+        self.assertEqual(phases, [
+            'preflight', 'source-prepare', 'host-sdk', 'host-api', 'host-lab',
+            'target-build', 'legal-info', 'volume-probe', 'qemu-smoke',
+            'qemu-md', 'qemu-state', 'artifact-export', 'service-launcher',
+            'runtime-owner', 'runtime-loader', 'atomic-dispatch', 'samba-all',
+            'smart-staging', 'smart-report', 'smart-replay'])
+        self.assertIn('. "$external_dir/support/container/'
+                      'build-phase-clock.sh"',
+                      script)
+        self.assertIn('build-phase-clock.sh', (ROOT / 'support/'
+                      'test-firmware-workflow-paths.sh').read_text())
+        target = script.split('phantowd_phase_begin target-build\n', 1)[1]
+        target, legal = target.split('phantowd_phase_begin legal-info\n', 1)
+        self.assertIn('PARALLEL_JOBS="$build_jobs" -j"$build_jobs"\n', target)
+        self.assertIn('installed_mdev_conf=', target)
+        self.assertIn('    legal-info\n', legal.split(
+            'phantowd_phase_begin volume-probe\n', 1)[0])
+
     def test_runtime_owner_staging_qualifies_supplied_physical_tmpfs(self):
         tests = ROOT / "support/tests"
         staging = (tests / "test-samba-root-staging.sh").read_text()
@@ -926,7 +947,8 @@ class BuildFeedbackTests(unittest.TestCase):
                              'OriginalCauseAndBalancesDescriptors (0.00s)')
         constructor_nested = ('--- PASS: TestConstructorNestedReviewPreserves'
                               'UnattemptedContainingReferences (0.00s)')
-        constructor_cross = ('--- PASS: TestConstructorCrossDomainReviewRetains'
+        constructor_cross = ('--- PASS: '
+                             'TestConstructorCrossDomainReviewRetains'
                              'ContainingReferences (0.00s)')
         lines += [constructor_close, constructor_clean, constructor_nested,
                   constructor_cross] * 3
@@ -1252,6 +1274,125 @@ class BuildFeedbackTests(unittest.TestCase):
             self.assertIn("did not create its log", result.stderr)
 
 
+@unittest.skipUnless(os.name == 'posix', 'POSIX diagnostic clock contract')
+class PhaseClockTests(unittest.TestCase):
+    """Exercise the sourced diagnostic interface, not a replacement driver."""
+
+    def run_clock(self, body):
+        helper = ROOT / 'support/container/build-phase-clock.sh'
+        return subprocess.run(
+            ['sh', '-ec', '. ' + shlex.quote(str(helper)) + '\n' + body],
+            text=True, capture_output=True, timeout=3)
+
+    def test_reports_monotonic_elapsed_without_qualification(self):
+        result = self.run_clock(
+            'phantowd_phase_begin host-api\n'
+            'phantowd_phase_end 0\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stdout,
+                         r'PHANTOWD_BUILD_PHASE_BEGIN phase=host-api '
+                         r'start_cs=[0-9]+ clock=linux-uptime '
+                         r'qualifying=false\n')
+        self.assertRegex(result.stdout,
+                         r'PHANTOWD_BUILD_PHASE_END phase=host-api '
+                         r'elapsed_cs=[0-9]+ command_status=0 '
+                         r'clock=linux-uptime qualifying=false\n')
+        self.assertEqual(result.stderr, '')
+
+    def test_nested_begin_keeps_original_phase_without_false_pair(self):
+        result = self.run_clock(
+            'phantowd_phase_begin host-api\n'
+            'phantowd_phase_begin target-build\n'
+            'phantowd_phase_end 0\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('reason=nested-begin qualifying=false', result.stdout)
+        self.assertIn('PHANTOWD_BUILD_PHASE_END phase=host-api ',
+                      result.stdout)
+        self.assertNotIn('phase=target-build', result.stdout)
+
+    def test_clock_failure_malformed_or_reversal_is_unknown_not_zero(self):
+        for sample in ('return 1', 'printf invalid', 'printf 08',
+                       'printf 9999999999999', 'printf 99'):
+            with self.subTest(sample=sample):
+                result = self.run_clock(
+                    'phantowd_phase_clock() { printf 100; }\n'
+                    'phantowd_phase_begin host-api\n'
+                    'phantowd_phase_clock() { ' + sample + '; }\n'
+                    'phantowd_phase_end 7\n')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('elapsed_cs=unknown command_status=7 '
+                              'clock=unavailable qualifying=false',
+                              result.stdout)
+                self.assertNotIn('elapsed_cs=0 ', result.stdout)
+
+    def test_failed_command_is_not_wrapped_or_promoted_by_clock(self):
+        for status in (7, 124, 143):
+            with self.subTest(status=status):
+                result = self.run_clock(
+                    'phantowd_phase_begin host-api\n'
+                    f'sh -c "exit {status}"\n'
+                    'phantowd_phase_end 0\n')
+                self.assertEqual(result.returncode, status, result.stderr)
+                self.assertIn('PHANTOWD_BUILD_PHASE_BEGIN ', result.stdout)
+                self.assertNotIn('PHANTOWD_BUILD_PHASE_END ', result.stdout)
+
+    def test_begin_failure_and_invalid_fields_are_bounded_diagnostics(self):
+        result = self.run_clock(
+            'phantowd_phase_clock() { return 1; }\n'
+            'phantowd_phase_begin "bad label"\n'
+            'phantowd_phase_end 0\n'
+            'phantowd_phase_begin host-api\n'
+            'phantowd_phase_end "secret\\n0"\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('reason=invalid-label qualifying=false', result.stdout)
+        self.assertIn('reason=unpaired-end qualifying=false', result.stdout)
+        self.assertIn('start_cs=unknown clock=unavailable', result.stdout)
+        self.assertIn('elapsed_cs=unknown command_status=unknown ',
+                      result.stdout)
+        self.assertNotIn('bad label', result.stdout)
+        self.assertNotIn('secret', result.stdout)
+        self.assertLess(len(result.stdout), 768)
+        self.assertEqual(result.stderr, '')
+
+    def test_exact_elapsed_and_command_status_are_not_qualification(self):
+        result = self.run_clock(
+            'phantowd_phase_clock() { printf 100; }\n'
+            'phantowd_phase_begin host-api\n'
+            'phantowd_phase_clock() { printf 109; }\n'
+            'phantowd_phase_end 7\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('elapsed_cs=9 command_status=7 clock=linux-uptime '
+                      'qualifying=false', result.stdout)
+        self.assertNotIn('READY', result.stdout)
+
+    def test_sourcing_installs_no_signal_or_exit_traps(self):
+        result = self.run_clock('trap\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '')
+
+    def test_kernel_uptime_fractions_are_decimal_and_malformed_refuse(self):
+        # Replace the read syscall boundary; execute the real clock parser.
+        samples = [(f'12.{i:02}', str(1200 + i)) for i in range(100)]
+        samples += [('0.00', '0'), ('9999999999.99', '999999999999')]
+        body = []
+        for sample, expected in samples:
+            body += ['read() { _phantowd_uptime=' + sample + '; }',
+                     'test "$(phantowd_phase_clock)" = ' + expected]
+        for sample in ('00.00', '1', '1.1', '1.001', '-1.00',
+                       '10000000000.00', '1.0x'):
+            body += ['read() { _phantowd_uptime=' + sample + '; }',
+                     'if phantowd_phase_clock; then exit 9; fi']
+        result = self.run_clock('\n'.join(body))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_unwritable_diagnostic_sink_does_not_change_command_failure(self):
+        result = self.run_clock(
+            'phantowd_phase_begin host-api > /dev/full\n'
+            'sh -c "exit 7"\n')
+        self.assertEqual(result.returncode, 7)
+        self.assertNotIn('PHANTOWD_BUILD_PHASE_END ', result.stdout)
+
+
 @unittest.skipUnless(os.name == 'posix', 'POSIX process-group signal contract')
 class SambaSignalRetentionTests(unittest.TestCase):
     """Actual driver cleanup with stub compiler, image and QEMU commands."""
@@ -1264,6 +1405,10 @@ class SambaSignalRetentionTests(unittest.TestCase):
         self.source = self.directory / 'source'
         tests = self.source / 'support/tests'
         tests.mkdir(parents=True)
+        container = self.source / 'support/container'
+        container.mkdir()
+        shutil.copyfile(ROOT / 'support/container/build-phase-clock.sh',
+                        container / 'build-phase-clock.sh')
         for relative in ('tools/phantowd-lab', 'src/phantowd-api'):
             (self.source / relative).mkdir(parents=True)
         for name in ('test-samba-root-staging.sh',
@@ -1425,6 +1570,10 @@ class SambaSignalRetentionTests(unittest.TestCase):
         self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
         self.assertNotIn(b'PHANTOWD_SAMBA_ROOT_BASE_UNCHANGED', stdout)
         self.assertIn(b'qualifying=false', stderr)
+        self.assertIn(b'PHANTOWD_BUILD_PHASE_BEGIN phase=samba-service ',
+                      stdout)
+        self.assertNotIn(b'PHANTOWD_BUILD_PHASE_END phase=samba-service ',
+                         stdout)
 
     def test_parent_term_preserves_settled_active_log(self):
         self.check_interrupted(False)
@@ -1479,6 +1628,9 @@ class SambaSignalRetentionTests(unittest.TestCase):
         self.assertEqual(self.failure.read_bytes(),
                          (self.directory / 'expected').read_bytes())
         self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertIn(b'PHANTOWD_BUILD_PHASE_END phase=samba-service ', stdout)
+        self.assertIn(b'command_status=7 clock=linux-uptime qualifying=false',
+                      stdout)
 
     def test_success_does_not_replace_stale_failure_artifact(self):
         status, stdout, stderr = self.run_driver('pass')
@@ -1486,6 +1638,30 @@ class SambaSignalRetentionTests(unittest.TestCase):
         self.assertEqual(self.failure.read_bytes(), b'stale-before-this-run\n')
         self.assertIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
         self.assertNotIn(b'qualifying=false', stderr)
+
+    def test_actual_driver_reports_staging_guest_with_original_receipt(self):
+        status, stdout, stderr = self.run_driver('pass')
+        self.assertEqual(status, 0, stderr)
+        for phase in ('samba-stage', 'samba-service'):
+            self.assertEqual(stdout.count(
+                f'PHANTOWD_BUILD_PHASE_BEGIN phase={phase} '.encode()), 1)
+            self.assertEqual(stdout.count(
+                f'PHANTOWD_BUILD_PHASE_END phase={phase} '.encode()), 1)
+        self.assertIn(b'command_status=0 clock=linux-uptime qualifying=false',
+                      stdout)
+        self.assertIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertEqual(self.failure.read_bytes(), b'stale-before-this-run\n')
+
+    def test_actual_driver_clock_failure_keeps_original_success_receipt(self):
+        helper = self.source / 'support/container/build-phase-clock.sh'
+        with helper.open('a') as stream:
+            stream.write('\nphantowd_phase_clock() { return 1; }\n')
+        status, stdout, stderr = self.run_driver('pass')
+        self.assertEqual(status, 0, stderr)
+        self.assertEqual(stdout.count(
+            b'elapsed_cs=unknown command_status=0 '), 2)
+        self.assertIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertEqual(self.failure.read_bytes(), b'stale-before-this-run\n')
 
 
 if __name__ == "__main__":

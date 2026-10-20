@@ -394,6 +394,7 @@ board/qemu/armv5/**
 configs/phantowd_qemu_armv5_defconfig
 support/container/test-api.sh
 support/container/build-qemu.sh
+support/container/build-phase-clock.sh
 support/container/build_jobs.py
 support/tests/test-build-jobs.py
 support/container/save-qemu-failure-log.sh
@@ -541,6 +542,7 @@ require_triggered_path "$host_workflow" support/tests/test-qemu-build-feedback.p
 require_triggered_path "$host_workflow" support/container/build_jobs.py
 require_triggered_path "$host_workflow" support/tests/test-build-jobs.py
 require_triggered_path "$host_workflow" support/container/save-qemu-failure-log.sh
+require_triggered_path "$host_workflow" support/container/build-phase-clock.sh
 
 stage_b3_build_inputs='
 board/wd/ex4/stage-b3/**

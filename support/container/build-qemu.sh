@@ -10,6 +10,9 @@ if [ "${PHANTOWD_OUTER_GROUP_TIMEOUT:-0}" = 1 ]; then
 fi
 
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
+# shellcheck source=support/container/build-phase-clock.sh
+. "$external_dir/support/container/build-phase-clock.sh"
+phantowd_phase_begin preflight
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
 compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
@@ -41,6 +44,7 @@ mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 sh "$external_dir/support/test-firmware-workflow-paths.sh"
 
 shellcheck -s sh \
+	"$external_dir/support/container/build-phase-clock.sh" \
 	"$external_dir/support/compare-build-artifacts.sh" \
 	"$external_dir/support/test-compare-build-artifacts.sh" \
 	"$external_dir/support/container/apply-buildroot-samba-json-patch.sh" \
@@ -109,6 +113,8 @@ python3 -B -m flake8 "$external_dir/support/tests/test-perl-configure-date.py"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
+phantowd_phase_end 0
+
 download_verified() {
     url="$1"
     destination="$2"
@@ -124,6 +130,7 @@ download_verified() {
     printf '%s  %s\n' "$expected_sha256" "$destination" | sha256sum --check --status
 }
 
+phantowd_phase_begin source-prepare
 download_verified \
     "$BUILDROOT_SIGNING_KEY_URL" \
     "$key_file" \
@@ -241,6 +248,7 @@ grep -Fx "sha256  $OPENSSL_ARCHIVE_SHA256  openssl-$OPENSSL_VERSION.tar.gz" \
 # Board-only research builds need the same verified sources, not the much
 # larger QEMU root filesystem, Go packages and smoke-test output.
 if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
+    phantowd_phase_end 0
     printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
     exit 0
 fi
@@ -403,6 +411,8 @@ fi
 
 # Obtain the selected host tools first. Linux lifecycle/race failures
 # must fail before the expensive kernel/Samba/target build, not an hour later.
+phantowd_phase_end 0
+phantowd_phase_begin host-sdk
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -415,16 +425,22 @@ sh "$external_dir/support/container/check-buildroot-go-sdk.sh" \
 sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
     "$output_dir/host" "$OPENSSL_VERSION"
 
+phantowd_phase_end 0
+phantowd_phase_begin host-api
 GOCACHE="$workspace_dir/api-host-cache" \
     sh "$external_dir/support/container/test-api.sh" \
     "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
     "$output_dir/api-host-tests"
 
+phantowd_phase_end 0
+phantowd_phase_begin host-lab
 GOCACHE="$workspace_dir/lab-tools-host-cache" \
     sh "$external_dir/support/container/test-lab-tools.sh" \
     "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
     "$output_dir/lab-tools-host-tests"
 
+phantowd_phase_end 0
+phantowd_phase_begin target-build
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -516,6 +532,8 @@ if ! awk '
     exit 1
 fi
 
+phantowd_phase_end 0
+phantowd_phase_begin legal-info
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -530,24 +548,30 @@ sh "$external_dir/support/container/collect-buildroot-source.sh" \
     "$workspace_dir/$buildroot_archive" "$output_dir/legal-info" \
     "$BUILDROOT_VERSION" "$BUILDROOT_ARCHIVE_SHA256"
 
+phantowd_phase_end 0
+phantowd_phase_begin volume-probe
 # Native generated-image tests use the same hash-checked libblkid source as
 # the target package. No host devices, mounts or privileged mode are needed.
 sh "$external_dir/support/container/test-volume-probe.sh" \
     "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
     "$buildroot_source/package/util-linux" "$output_dir/host/bin"
 
+phantowd_phase_end 0
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 save_qemu_failure_log() {
     sh "$external_dir/support/container/save-qemu-failure-log.sh" \
         "$artifact_dir/$1" "$2"
 }
 
+phantowd_phase_begin qemu-smoke
 if ! "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"; then
     save_qemu_failure_log qemu-smoke-failure.log "$output_dir/qemu-smoke.log"
     echo "Preserved failed QEMU smoke diagnostics at $artifact_dir/qemu-smoke-failure.log" >&2
     exit 1
 fi
+phantowd_phase_end 0
+phantowd_phase_begin qemu-md
 if ! TMPDIR=/phantowd-qemu-fixture-tmp \
     GOCACHE="$workspace_dir/lab-tools-host-cache" \
     sh "$external_dir/support/qemu-md-v10-fixture.sh" \
@@ -557,6 +581,8 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp \
     echo "Preserved failed MD v1.0 diagnostics at $artifact_dir/qemu-md-v10-failure.log" >&2
     exit 1
 fi
+phantowd_phase_end 0
+phantowd_phase_begin qemu-state
 if ! sh "$external_dir/support/qemu-state-reboot.sh" \
     "$output_dir/images" "$output_dir/qemu-state-reboot.log"; then
     save_qemu_failure_log qemu-state-reboot-failure.log "$output_dir/qemu-state-reboot.log"
@@ -564,6 +590,8 @@ if ! sh "$external_dir/support/qemu-state-reboot.sh" \
     exit 1
 fi
 
+phantowd_phase_end 0
+phantowd_phase_begin artifact-export
 install -d -m 0755 "$artifact_dir"
 make --no-print-directory -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
@@ -612,11 +640,15 @@ install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantow
 
 # Isolated native launcher test reuses this exact qualified QEMU baseline.
 # Its static probe/helper live only in a temporary copy, not the firmware image.
+phantowd_phase_end 0
+phantowd_phase_begin service-launcher
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
     "$output_dir/host/sbin/debugfs" "$external_dir" \
     "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
 
+phantowd_phase_end 0
+phantowd_phase_begin runtime-owner
 # Verify retained code ownership separately from Samba to avoid its entropy/
 # network readiness waits hiding or inflating static lifecycle test feedback.
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
@@ -628,6 +660,8 @@ fi
 
 # Compare only the just-built public Samba dependencies with the real loader.
 # This does not start smbd or approve a daemon-root/privilege profile.
+phantowd_phase_end 0
+phantowd_phase_begin runtime-loader
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-loader.sh" \
     "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
     "$output_dir/host/sbin/debugfs" "$external_dir" \
@@ -637,6 +671,8 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
 fi
 
 # Memory-only actual IFUNC calls on ARM926; aggregate ISA tags are not a gate.
+phantowd_phase_end 0
+phantowd_phase_begin atomic-dispatch
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-atomic-dispatch.sh" \
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
     "$output_dir/host/sbin/debugfs" "$output_dir/target" "$external_dir" \
@@ -646,6 +682,8 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
 fi
 
 # Fixed multi-user Samba experiment, not a product helper/profile installation.
+phantowd_phase_end 0
+phantowd_phase_begin samba-all
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-samba-root.sh" \
     "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
     "$output_dir/host/sbin/debugfs" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
@@ -655,13 +693,19 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
 fi
 
 # Pure report interpretation only: no SMART executable or device commands.
+phantowd_phase_end 0
+phantowd_phase_begin smart-staging
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-smart-report-staging.sh" \
     "$output_dir/host/sbin/debugfs" "$external_dir"
+phantowd_phase_end 0
+phantowd_phase_begin smart-report
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
     "$external_dir" "$artifact_dir/qemu-smart-report-failure.log"
 
 # Real ARM producer, invented stdin ATA replies and no hardware backend/disks.
+phantowd_phase_end 0
+phantowd_phase_begin smart-replay
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-replay.sh" \
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-g++" \
     "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" "$external_dir" \
@@ -670,4 +714,5 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
     exit 1
 fi
 
+phantowd_phase_end 0
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

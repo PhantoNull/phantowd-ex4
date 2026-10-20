@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Full-build phase timing: host-qualified instrumentation
+
+The full driver now emits bounded fixed-label BEGIN/END diagnostics around20
+major phases, and the Samba driver separately reports staging and each guest's
+command duration/status. Linux boot-relative uptime supplies centiseconds;
+unavailable, malformed or backward readings remain unknown, never zero.
+Every row says `qualifying=false`: guest exit zero does not prove its receipt,
+and a missing END is incomplete evidence, not success or a duration estimate.
+
+The helper wraps no commands and installs no traps, timers, retries or cleanup.
+All original nontelemetry driver lines, arguments, proofs and budgets remain
+unchanged.70 feedback tests cover the actual helper/driver with disposable
+command stubs, including failure/signal/clock/sink/nested-phase controls;83
+Samba fixture and8 CPU-budget controls, lint/path and Windows wrapper checks pass.
+This is NOT genuine QEMU timing, a complete-image pass or a causal timeout fix.
+Next: exact-head hosted checks and one sealed-source instrumented full run,
+then use measured phase costs before changing budgets or suite architecture.
+
 ## Verified NFS compensation frontiers in disposable QEMU
 
 The optional `source-owner-daemon-loss` fixture now passes. After synthetic NFS
