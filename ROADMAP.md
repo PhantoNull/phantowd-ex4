@@ -2443,8 +2443,20 @@ storage. No production roster provider or activation path exists.
   The pinned TCP path ignores `-h`: require its exact wildcard profile only with
   lo as sole UP interface and a NIC-none guest. Product address/interface policy
   remains unqualified; do not copy this fixture's network or privilege choice.
-  Next compose retained mountd and original kernel/export/source authority, full
-  stop/fault coverage and normal/unclean automatic recovery before activation.
+  **Real mountd/channel prerequisite:** actual foreground mountd is now composed
+  within that same original gate and live rpcbind lifetime. Exactly three
+  original kernel cache-channel O_PATH references feed fixed private file mounts;
+  metadata collection never consumes kernel messages. Require actual O_RDWR FDs
+  bound to the original identities/private mount IDs, accepted MOUNTv3 NULL,
+  owned PID/listener, UID/GID0/caps0/NNP and verified group/listener/FD settlement.
+  Unknown output refuses. Uncertain mountd settlement retains rpcbind/inputs.
+  The real ARM regression catches proc-network forced revalidation invalidating
+  retained source dentries; check held metadata without named source rewalks.
+  This is not fresh named-registry completeness or kernel sole ownership.
+  Next compose original kernel/export/source authority, actual data/permission
+  access, full stop/fault coverage and normal/unclean automatic recovery before
+  activation. Do not infer NFSD startup, exports or a product privilege design
+  from this root/capability-zero, lo-only/NIC-none fixture.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

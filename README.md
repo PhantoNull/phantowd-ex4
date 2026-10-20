@@ -52,10 +52,10 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
-The optional NFS lane runs retained `exportfs -s` and a foreground rpcbind
-lifetime against synthetic state in descriptor-bound private views. It checks
-RPC replies, process identity and verified stop, not a complete NFS backend or
-product startup/recovery.
+The optional NFS lane runs retained `exportfs -s`, rpcbind and mountd against
+synthetic state in descriptor-bound private views. It verifies RPC replies,
+original kernel cache-channel handles, process identity and stop. This is not
+a complete NFS backend or product startup/recovery.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

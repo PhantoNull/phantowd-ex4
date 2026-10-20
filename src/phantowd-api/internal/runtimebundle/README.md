@@ -182,6 +182,40 @@ fresh fixture socket/lock leaves may be removed. No NFSD or export data is
 provided; full NFS backend/domain composition, fault coverage, product privilege
 selection and normal/unclean-boot recovery remain outside this fixture.
 
+## Composed foreground mountd and kernel cache channels (QEMU only)
+
+The same original input gate and live rpcbind now enclose a fixed foreground
+`rpc.mountd -F -N 2 -N 4 -V 3 -u -p 20048` lifetime. An opaque collector holds
+the original network/mount namespaces, RPC directory and exactly three O_PATH
+channel references: `auth.unix.ip`, `nfsd.export` and `nfsd.fh`. Collection and
+checks observe metadata only; they never read, dequeue or write kernel messages.
+Constructor traversal is fixed, BENEATH, no-symlink/no-magic-link/no-XDEV.
+
+The dedicated bootstrap clones only those three file mounts into a sealed
+synthetic `/proc/net/rpc` view, with no `/proc/fs`, flush/content files or general
+proc mount. Actual mountd runs UID/GID0, no groups, zero capabilities/bounding
+set and NNP. This is a guarded disposable profile, not a hostile-root sandbox
+or selected product privilege design. Existing rpcbind/table and generic
+launcher profiles remain unchanged; only lo is UP and the guest has no NIC.
+
+RPC NULL readiness alone is insufficient: mountd's cache_open silently ignores
+channel-open failure. Positive observations require the actual original ELF,
+owned listener/PID, private roots and all three original channel identities
+opened O_RDWR by that same process, including each private-view mount ID.
+Exact source-derived startup/normal-stop notices are required; warnings and
+unknown bytes refuse. Mountd's verified group/listener stop and descriptor
+closure precede rpcbind teardown. Uncertain mountd settlement retains both
+daemons and their original inputs until disposable-guest destruction.
+
+Linux inherits PROC_ENTRY_FORCE_LOOKUP throughout `/proc/PID/net`. Reopening
+those source names invalidates retained dentries; detached file attachment then
+fails with ENOENT in d_set_mounted. Checks therefore validate held namespace,
+root and channel metadata without rewalking source names. This does NOT prove
+a fresh named registry, sole-writer ownership or complete kernel admission.
+The real ARM composition is the regression seam for this failure; host refusal
+tests cannot reproduce it. No NFSD threads, exports, data roots, product service
+backend/boot recovery, HTTP activation or physical operations are added.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

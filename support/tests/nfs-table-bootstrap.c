@@ -7,6 +7,7 @@
 #include <linux/capability.h>
 #include <linux/magic.h>
 #include <linux/mount.h>
+#include <linux/nsfs.h>
 #include <net/if.h>
 #include <sched.h>
 #include <signal.h>
@@ -23,7 +24,8 @@
 #include <unistd.h>
 
 /* Disposable QEMU-only fixed ABI: bootstrap=3, code/config/state roots=4/5/6,
- * original role target=7. Only table-v1 or rpcbind-v1 selects a fixed program;
+ * original role target=7; mountd additionally has channels=8..10/netns=11.
+ * Only table-v1, rpcbind-v1 or mountd-v1 selects a fixed program;
  * no arbitrary command, path, UID or capability selector.
  * UID 0/capability-zero is NOT the product privilege design or an isolation
  * boundary against hostile guest-root code. No PID/user/network isolation. */
@@ -164,21 +166,44 @@ static int bind_input(int tree, int fd, const char *target, unsigned long flags)
     if (syscall(SYS_move_mount, tree, "", AT_FDCWD, target, MOVE_MOUNT_F_EMPTY_PATH) ||
         fstat(fd, &original) || stat(target, &view) ||
         original.st_dev != view.st_dev || original.st_ino != view.st_ino ||
-        fstatfs(fd, &fs) || fs.f_type != TMPFS_MAGIC ||
+        fstatfs(fd, &fs) || fs.f_type != (fd >= 8 ? PROC_SUPER_MAGIC : TMPFS_MAGIC) ||
         statfs(target, &fs) || (fs.f_flags & flags) != flags || close(tree))
         return -1;
     return 0;
 }
 
-static int private_view(void)
+static const char *channel_names[] = {"auth.unix.ip", "nfsd.export", "nfsd.fh"};
+
+static int channel_inputs(void)
+{
+    struct stat st, current;
+    struct statfs fs;
+    for (int fd = 8; fd <= 10; ++fd)
+        if (fstat(fd, &st) || st.st_mode != (S_IFREG | 0600) || st.st_uid || st.st_gid ||
+            !(fcntl(fd, F_GETFL) & O_PATH) || fstatfs(fd, &fs) || fs.f_type != PROC_SUPER_MAGIC)
+            return -1;
+    if (fstat(11, &st) || fstatfs(11, &fs) || fs.f_type != NSFS_MAGIC ||
+        (fcntl(11, F_GETFL) & (O_PATH | O_ACCMODE)) != O_RDONLY ||
+        ioctl(11, NS_GET_NSTYPE) != CLONE_NEWNET ||
+        stat("/proc/thread-self/ns/net", &current) || st.st_ino != current.st_ino || st.st_dev != current.st_dev)
+        return -1;
+    return 0;
+}
+
+static int private_view(int mountd)
 {
     struct stat before, after;
     unsigned long common = MS_NOSUID | MS_NODEV;
     int code = clone_input(4, common | MS_RDONLY);
     int configuration = clone_input(5, common | MS_RDONLY | MS_NOEXEC);
     int state = clone_input(6, common | MS_NOEXEC);
+    int channels[3] = {-1, -1, -1};
     if (code < 0 || configuration < 0 || state < 0)
         return -1;
+    if (mountd)
+        for (int i = 0; i < 3; ++i)
+            if ((channels[i] = clone_input(8 + i, common | MS_NOEXEC)) < 0)
+                return -1;
     if (stat("/proc/self/ns/mnt", &before) || unshare(CLONE_NEWNS) ||
         stat("/proc/self/ns/mnt", &after) || before.st_ino == after.st_ino ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
@@ -192,6 +217,19 @@ static int private_view(void)
         symlink("code/usr", "/run/root/usr") ||
         symlink("../run", "/run/root/var/run"))
         return -1;
+    if (mountd) {
+        if (mkdir("/run/root/proc", 0755) || mkdir("/run/root/proc/net", 0755) || mkdir("/run/root/proc/net/rpc", 0755))
+            return -1;
+        for (int i = 0; i < 3; ++i) {
+            char path[128];
+            if (snprintf(path, sizeof(path), "/run/root/proc/net/rpc/%s", channel_names[i]) <= 0 || mkdir(path, 0755))
+                return -1;
+            strcat(path, "/channel");
+            int placeholder = open(path, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0000);
+            if (placeholder < 0 || close(placeholder) || bind_input(channels[i], 8 + i, path, common | MS_NOEXEC))
+                return -1;
+        }
+    }
     if (bind_input(code, 4, "/run/root/code", common | MS_RDONLY) ||
         bind_input(configuration, 5, "/run/root/etc", common | MS_RDONLY | MS_NOEXEC) ||
         bind_input(state, 6, "/run/root/run", common | MS_NOEXEC) ||
@@ -199,7 +237,7 @@ static int private_view(void)
         chdir("/run/root") || chroot(".") || chdir("/"))
         return -1;
     for (size_t i = 0; i < 3; ++i) {
-        const char *missing[] = {"/proc", "/dev", "/srv"};
+        const char *missing[] = {mountd ? "/proc/fs" : "/proc", "/dev", "/srv"};
         errno = 0;
         if (!lstat(missing[i], &after) || errno != ENOENT)
             return -1;
@@ -258,16 +296,17 @@ static int reset_signals(void)
 int main(int argc, char **argv)
 {
     int daemon = argc == 2 && !strcmp(argv[1], "rpcbind-v1");
-    if (argc != 2 || (!daemon && strcmp(argv[1], "table-v1")) ||
+    int mountd = argc == 2 && !strcmp(argv[1], "mountd-v1");
+    if (argc != 2 || (!daemon && !mountd && strcmp(argv[1], "table-v1")) ||
         getuid() || geteuid() || getgid() || getegid() || getpgrp() != getpid())
         return refuse();
     if (fixture_guard())
         return refuse();
-    if (descriptors(daemon))
+    if (descriptors(daemon || mountd) || (mountd && channel_inputs()))
         return refuse();
-    if (daemon && loopback_only())
+    if ((daemon || mountd) && loopback_only())
         return refuse();
-    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) || private_view())
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) || private_view(mountd))
         return refuse();
     if (syscall(SYS_close_range, 3U, 6U, 0) ||
         syscall(SYS_close_range, 8U, ~0U, 0) ||
@@ -283,11 +322,13 @@ int main(int argc, char **argv)
     umask(0077);
     char *args[] = {"/usr/sbin/exportfs", "-s", NULL};
     char *daemon_args[] = {"/usr/sbin/rpcbind", "-f", "-s", "-h", "127.0.0.1", NULL};
+    char *mountd_args[] = {"/usr/sbin/rpc.mountd", "-F", "-N", "2", "-N", "4", "-V", "3", "-u", "-p", "20048", NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin", "LC_ALL=C", NULL};
-    fputs(daemon ? "PHANTOWD_NFS_RPCBIND_HANDOFF private_view=true initial_caps=bind-setuid-setgid active_interfaces=lo fixed_rpcbind=true\n" :
+    fputs(mountd ? "PHANTOWD_NFS_MOUNTD_HANDOFF private_view=true capabilities_zero=true channels=3 active_interfaces=lo fixed_mountd=true\n" :
+          daemon ? "PHANTOWD_NFS_RPCBIND_HANDOFF private_view=true initial_caps=bind-setuid-setgid active_interfaces=lo fixed_rpcbind=true\n" :
           "PHANTOWD_NFS_TABLE_HANDOFF private_view=true capabilities_zero=true fixed_exportfs=true\n", stderr);
     if (fflush(stderr))
         return refuse();
-    syscall(SYS_execveat, 7, "", daemon ? daemon_args : args, environment, AT_EMPTY_PATH);
+    syscall(SYS_execveat, 7, "", mountd ? mountd_args : daemon ? daemon_args : args, environment, AT_EMPTY_PATH);
     return refuse();
 }

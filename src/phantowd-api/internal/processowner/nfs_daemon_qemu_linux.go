@@ -27,6 +27,10 @@ func NewNFSRPCBindPinnedQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os
 		spec.Process.ReadyTimeout != 5*time.Second || spec.Process.ProbeInterval != 20*time.Millisecond || spec.Process.StopTimeout != time.Second {
 		return nil, ErrInvalid
 	}
+	return newNFSFixedDaemonQEMU(spec, bootstrap, objects, nil)
+}
+
+func newNFSFixedDaemonQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os.File, channels []*os.File) (_ *PinnedSet, result error) {
 	s, err := NewPinnedSet([]MemberSpec{spec}, []*os.File{bootstrap})
 	if err != nil {
 		return nil, err
@@ -52,6 +56,16 @@ func NewNFSRPCBindPinnedQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os
 		pin := os.NewFile(uintptr(fd), "fixed-nfs-rpcbind-input")
 		s.pins = append(s.pins, pin)
 		if !nfsTableObjectQEMU(pin, index) {
+			return nil, ErrInvalid
+		}
+	}
+	for index, source := range channels {
+		pin, err := duplicateNFSKernelInputQEMU(source)
+		if err != nil {
+			return nil, err
+		}
+		s.pins = append(s.pins, pin)
+		if !nfsKernelInputQEMU(pin, index == 3) {
 			return nil, ErrInvalid
 		}
 	}

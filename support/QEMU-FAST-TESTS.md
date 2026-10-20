@@ -48,6 +48,25 @@ keeps original references/review without restart. No mountd/NFSD/export data,
 atomic network lease, complete faults or normal/unclean recovery is qualified.
 The guest/helper/work limits remain90/60/360seconds; no extra guest/job is added.
 
+## Optional retained mountd/channel lifetime
+
+The same optional NFS lane now keeps original rpcbind and the input gate live
+through actual foreground mountd start, accepted MOUNTv3 NULL and verified stop.
+Only three original kernel cache files are cloned into a synthetic proc tree;
+the collector retains O_PATH metadata without consuming channel messages.
+Readiness additionally proves all three actual daemon FDs O_RDWR and matching
+original inode/device plus private-view mount ID. Missing channels can silently
+pass mountd startup, so RPC success alone is not a channel-readiness proof.
+Require original code/roots, exact notices, PID/listener identity, UID/GID0,
+zero caps/bounding/NNP, group/listener/FD settlement; uncertainty retains both
+lifetimes. All old proofs and90/60/360bounds remain mandatory, no extra boot/job.
+
+Linux forces revalidation for proc-network descendants. Named source rechecks
+invalidate the held dentry ancestry and fail detached attachment with ENOENT;
+validate original held namespace/root/channel metadata, without claiming a fresh
+named registry or sole kernel authority. No general proc mount, NFSD controls,
+exports/data roots, product privilege/boot recovery or hardware operation.
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:

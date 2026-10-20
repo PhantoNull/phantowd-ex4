@@ -25,9 +25,20 @@ import (
 var nfsRPCBindRetainedQEMU any
 
 func rpcBindNullQEMU(ctx context.Context) (ready bool, result error) {
+	return nfsRPCNullQEMU(ctx, false)
+}
+
+func nfsRPCNullQEMU(ctx context.Context, mountd bool) (ready bool, result error) {
 	operation, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	conn, err := (&net.Dialer{}).DialContext(operation, "tcp4", "127.0.0.1:111")
+	address := "127.0.0.1:111"
+	program, version := uint32(100000), uint32(2)
+	if mountd {
+		address = "127.0.0.1:20048"
+		program = 100005
+		version = 3
+	}
+	conn, err := (&net.Dialer{}).DialContext(operation, "tcp4", address)
 	if err != nil {
 		if errors.Is(err, unix.ECONNREFUSED) {
 			return false, nil
@@ -39,7 +50,7 @@ func rpcBindNullQEMU(ctx context.Context) (ready bool, result error) {
 	if err := conn.SetDeadline(deadline); err != nil {
 		return false, err
 	}
-	words := [...]uint32{0x80000028, 0x50484e01, 0, 2, 100000, 2, 0, 0, 0, 0, 0}
+	words := [...]uint32{0x80000028, 0x50484e01, 0, 2, program, version, 0, 0, 0, 0, 0}
 	var request [44]byte
 	for index, value := range words {
 		binary.BigEndian.PutUint32(request[index*4:], value)
@@ -73,7 +84,15 @@ func nfsRPCBindReadQEMU(path string) (data []byte, result error) {
 // Fixed guest observation only. Connections are not listeners and are not
 // used as absence/quiescence evidence. No proc-network API is exposed.
 func nfsRPCBindListenerQEMU() (string, error) {
+	return nfsRPCListenerQEMU(false)
+}
+
+func nfsRPCListenerQEMU(mountd bool) (string, error) {
 	found := ""
+	wantedPort := "006F"
+	if mountd {
+		wantedPort = "4E50"
+	}
 	for _, kind := range []string{"tcp", "tcp6", "udp", "udp6"} {
 		data, err := nfsRPCBindReadQEMU("/proc/net/" + kind)
 		if err != nil {
@@ -89,7 +108,7 @@ func nfsRPCBindListenerQEMU() (string, error) {
 				return "", ErrMismatch
 			}
 			address, port, _ := strings.Cut(fields[1], ":")
-			if port != "006F" || (strings.HasPrefix(kind, "tcp") && fields[3] != "0A") {
+			if port != wantedPort || (strings.HasPrefix(kind, "tcp") && fields[3] != "0A") {
 				continue
 			}
 			inode, err := strconv.ParseUint(fields[9], 10, 64)
@@ -108,6 +127,10 @@ func nfsRPCBindListenerQEMU() (string, error) {
 }
 
 func nfsRPCBindProcessQEMU(pid int, code *nfsCodeLifetimeQEMU, program *os.File, inode string) error {
+	return nfsRPCProcessQEMU(pid, code, program, inode, false)
+}
+
+func nfsRPCProcessQEMU(pid int, code *nfsCodeLifetimeQEMU, program *os.File, inode string, mountd bool) error {
 	root := fmt.Sprintf("/proc/%d", pid)
 	status, err := nfsRPCBindReadQEMU(root + "/status")
 	if err != nil {
@@ -116,6 +139,11 @@ func nfsRPCBindProcessQEMU(pid int, code *nfsCodeLifetimeQEMU, program *os.File,
 	expected := map[string]string{"Uid:": "1 1 1 1", "Gid:": "1 1 1 1", "Groups:": "", "CapInh:": "0000000000000000",
 		"CapPrm:": "0000000000000000", "CapEff:": "0000000000000000", "CapAmb:": "0000000000000000",
 		"CapBnd:": "00000000000004c0", "NoNewPrivs:": "1"}
+	if mountd {
+		expected["Uid:"] = "0 0 0 0"
+		expected["Gid:"] = "0 0 0 0"
+		expected["CapBnd:"] = "0000000000000000"
+	}
 	for _, line := range strings.Split(string(status), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
@@ -262,9 +290,16 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 		if err != nil || observed.State != processowner.StateReady || observed.Generation != 1 || len(observed.Members) != 1 || observed.Members[0].Process.PID != member.PID {
 			return errors.Join(ErrMismatch, err)
 		}
-		return s.revalidate(ctx)
+		if err := s.revalidate(ctx); err != nil {
+			return err
+		}
+		phase = "mountd-composition"
+		return probeNFSMountdQEMU(ctx, s, bootstrap)
 	}()
 	checkPhase := phase
+	if nfsMountdUnsettledQEMU {
+		return errors.Join(ErrReviewRequired, checkErr)
+	} // Retain BOTH original services until VM disposal.
 	phase = "stop"
 	cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	stopped, stopErr := child.Stop(cleanup)

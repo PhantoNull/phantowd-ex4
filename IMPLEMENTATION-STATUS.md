@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Composed retained mountd and kernel channels in ARMv5 QEMU
+
+The optional NFS lane composes actual foreground mountd while the original
+rpcbind and code/config/state gate remain held. Exactly three original kernel
+cache channels are collected as metadata-only O_PATH references, then exposed
+as file mounts in a synthetic proc tree. Readiness requires accepted MOUNTv3
+NULL RPC, original code/private roots, owned PID/listener, UID/GID0, zero
+capabilities/bounding set/NNP, and all three actual original channel FDs O_RDWR.
+The source silently tolerates missing channels, so RPC alone is insufficient.
+Normal group/listener stop, input revalidation and FD equality precede rpcbind
+teardown. Uncertain mountd settlement retains both original lifetimes.
+
+Actual ARM regression caught ENOENT during detached channel attachment: Linux
+forces revalidation throughout proc-network descendants, and a named recheck
+invalidates the original dentry ancestry. The collector checks held namespace,
+root and channel metadata without rewalking source names. This is not a fresh
+named-registry census or sole-writer/domain authority. Generic launchers, old
+rpcbind privilege profile, lo-only/NIC-none isolation, all prior receipts and
+90/60/360-second bounds remain unchanged. No NFSD threads, exports/data roots,
+complete kernel backend, boot recovery, product activation or NAS operation.
+
 ## Real retained rpcbind lifetime qualified in ARMv5 QEMU
 
 The dedicated optional NFS guest now starts the original pinned rpcbind in a

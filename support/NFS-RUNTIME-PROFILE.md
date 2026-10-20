@@ -381,6 +381,26 @@ snapshots; freshness equality is not provenance. A trusted runtime constructor
 must rebuild/compare from the original policy, identity and storage owners,
 never accept caller-supplied JSON or a prior boot's transient tuples.
 
+## Retained mountd/cache-channel prerequisite (QEMU only)
+
+The optional code/input fixture composes actual foreground mountd within the
+same original input gate and live rpcbind lifetime. It grants only the three
+original kernel cache channel file mounts in a synthetic proc tree; the
+collector uses O_PATH metadata, never consuming kernel messages. Actual daemon
+FDs must prove all three originals open O_RDWR, not merely successful RPC NULL.
+The pinned cache_open silently tolerates missing channels. The fixed guest uses
+UID/GID0/capabilities0/NNP, lo-only active interfaces and NIC-none; this is not
+product privilege/network admission. Original group/listener/FD settlement is
+required before input release, and uncertain mountd settlement retains rpcbind.
+
+Linux PROC_ENTRY_FORCE_LOOKUP invalidates relooked-up proc-network dentries,
+including descendants. Retained references must not be invalidated by a named
+"freshness" check before detached channel attachment. This fixture validates
+held namespace/root/channel identities, not current named-registry completeness
+or sole ownership. It does not expose `/proc/fs/nfsd`, flush/content files,
+publish exports, start NFSD or compose the existing kernel controller with a
+product Owner. Kernel admission, sources, faults and boot recovery remain below.
+
 ## Required kernel-backend construction and sole ownership
 
 - Fix the trusted kernel/backend implementation at construction. Operations take
