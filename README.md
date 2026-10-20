@@ -67,6 +67,11 @@ client quiescence, product recovery or hardware qualification.
 The optional `source-daemon-loss` mode additionally checks an original mountd
 exit after that source fault, with reviewed stop and retained references.
 
+Internal candidate planning can also read desired file services from an original
+NAS policy lease, with retained identity and mounted-roster observations. The
+existing ARM API fixture requires revision/release/drift refusals without
+activating NFS; this is not a product policy-to-service coordinator.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.

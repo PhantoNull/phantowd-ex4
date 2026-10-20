@@ -325,6 +325,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             printf 'QEMU typed NFS candidate proof missing\n' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_LEASED_POLICY_PLAN_READY policy=original_nas_lease identity=original_retained_owner storage=mounted_roster policy_bracketed=true candidate=readonly parent_policy_close_blocked=true commit_blocked=true caller_leases_retained=true canceled_unchanged=true released_policy_refused=true released_identity_refused=true same_text_new_revision=true policy_drift_review=true restored_refused=true identity_unchanged=true policy_mutations=fixture_only activation=false endpoint=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'NAS-leased policy/identity/storage plan proof missing' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_SOURCE_ROOTS_READY roots=2 roster=original_lease mixed_roles=true whole_volume=true absent_refused=true symlink_refused=true replacement_review=true restored_refused=true parent_close_blocked=true capture_writes=false service=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'NFS retained source-root proof missing' >&2
             exit 1

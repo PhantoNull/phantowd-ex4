@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Retained NAS policy, identity and storage planning
+
+`BuildFromLeasedNASOwners` takes the original NAS policy lease and identity
+lease, not a caller-supplied file-service configuration or replacement backend.
+It reads the complete desired policy, derives under the established storage →
+identity locks, then verifies the SAME policy lease again. No policy mutex is
+nested through those callbacks. Failures return no partial Plan and preserve
+the original refusal/context cause alongside `ErrNotReady`.
+
+The existing ARM API fixture uses the actual identity/passdb Owner and mounted
+roster plus a separately provisioned disposable NAS policy Owner. It requires
+matching NFS candidates, unchanged policy/identity evidence, parent commit/close
+fences, canceled admission, released-lease refusals, equal text/new revision and
+sticky review after byte-identical policy replacement/restoration.
+
+The adapter opens/recovers no writer, acquires/releases no lease and activates
+nothing. Its bracketed observations are not atomic three-owner admission or a
+retained service lifetime. A returned Plan still cannot establish policy-Owner
+provenance, applied revision, product history/boot admission or kernel authority;
+the containing coordinator must retain/recheck its original resources.
+
 ## Original export roots and real NFS access: QEMU-only fixture
 
 An internal typed join now reserves the original mounted-roster export roots

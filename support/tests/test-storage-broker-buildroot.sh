@@ -395,4 +395,13 @@ nfs_typed_candidate_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_NFS_TYPED_CAND
 grep -F "$nfs_typed_candidate_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU driver must require the exact typed NFS candidate proof'
 
+nas_leased_plan_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_NFS_LEASED_POLICY_PLAN_READY[^\"]*\)").*/\1/p' \
+    "$repo_root/src/phantowd-api/file_service_policy_plan_qemu_linux.go")
+[ -n "$nas_leased_plan_marker" ] || fail 'NAS-leased planner fixture must declare its complete proof'
+grep -F "$nas_leased_plan_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU driver must require the exact NAS-leased planner proof'
+grep -F 'exerciseQEMUOwnerNASLeaseNFSPlan(ctx, config, owner, mountedSet, candidate)' \
+    "$repo_root/src/phantowd-api/file_service_owner_plan_qemu_linux.go" >/dev/null ||
+    fail 'NAS-leased planner proof must use the original Owner/storage fixture'
+
 printf 'Read-only storage broker Buildroot contracts passed\n'

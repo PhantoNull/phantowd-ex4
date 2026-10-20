@@ -30,6 +30,17 @@ provisioning, all later startup failures, rollback or recovery.
 | Network and system settings | Desired models and proposal diagnostics; [roadmap M6](ROADMAP.md#m6-network-and-system-services) | Qualified persistent role ownership/publication, live trial/confirmation/rollback, time and administration integration remain required. Do not invent filenames or classify an unimplemented role as optional/ready. |
 | TLS identity and trust | Development/fixture HTTPS exists; [roadmap M5](ROADMAP.md#m5-product-web-management-and-security) | Product private-key ownership, issuance/renewal, trust, backup/recovery and retained listener composition remain required. A development certificate is not a provisioned appliance identity. |
 
+## Retained desired-policy candidate observations
+
+The separate internal `BuildFromLeasedNASOwners` adapter can derive file-service
+candidates from an already admitted NAS policy lease, retained identity lease
+and mounted roster, bracketing the existing storage → identity calculation with
+checks of the same policy claim. It opens/recovers no writer and acquires/releases
+no lease. Its output is data, not a new role owner, history-backed boot admission,
+atomic appliance generation or permission to activate services. The disposable
+policy Owner used by its ARM test does not select product state placement or
+replace the history writer/coordinator requirements above.
+
 ## Read-only credential observations
 
 The fixed `OpenAdministratorCredentials` / `OpenCHAPCredentials` constructors

@@ -2204,6 +2204,16 @@ storage. No production roster provider or activation path exists.
   compatibility for the combined Owner/mount tuple, not product activation.
   The production storage inventory-to-roster provider, legacy identity import,
   product service owner, HTTP route and transactional activation are absent.
+  `BuildFromLeasedNASOwners` additionally reads the original retained NAS policy
+  lease, derives with the retained identity lease and mounted roster, and
+  rechecks the same policy claim after the storage → identity locked work.
+  The existing ARM API fixture requires commit/close fences, canceled/released
+  claim refusals, equal text/new revision and sticky policy replacement review,
+  with unchanged identity evidence. The helper opens/recovers no writer,
+  acquires/releases no lease and returns candidate data only. Bracketed samples
+  are not atomic three-owner admission, policy-Owner provenance, applied state
+  or the product history/boot/service coordinator. Callers must keep/recheck
+  their original authorities through independently verified settlement.
   M4.1 remains incomplete until fresh storage and identity evidence are
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service

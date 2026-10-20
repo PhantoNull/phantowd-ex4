@@ -225,6 +225,9 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 		}
 		fmt.Println("PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only")
 		fmt.Println("PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only")
+		if err := exerciseQEMUOwnerNASLeaseNFSPlan(ctx, config, owner, mountedSet, candidate); err != nil {
+			return err
+		}
 		if err := exerciseQEMUNFSSourceRoots(ctx, config, owner, mountedSet); err != nil {
 			return err
 		}

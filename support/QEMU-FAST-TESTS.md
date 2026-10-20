@@ -138,6 +138,18 @@ completion; normal/loss-only/mixed receipts cannot claim this campaign. Keep
 This combined source plus graceful out-of-lifecycle daemon exit is not an
 independent daemon-only failure, hard crash, in-flight I/O or product recovery.
 
+## Retained NAS-policy candidate planning
+
+The standard API overlay also requires a retained-NAS-policy planner proof:
+actual identity/passdb and mounted-roster Owners, original NAS/identity leases,
+parent commit/close fences, cancellation/released-claim refusals, same NFS text
+at a new revision and sticky policy replacement/restoration review. Preparation
+and intentional policy faults occur only in a separate fresh guest RAM role;
+the adapter itself only reads and derives candidate data. It does not initialize
+product state, retain a complete service authority or activate NFS. Use the
+existing `support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` after qualifying
+unchanged helper sources. No extra default boot/job or timeout is introduced.
+
 ## Original NFS input reservation
 
 The same optional code guest also checks an unstarted typed input reservation:

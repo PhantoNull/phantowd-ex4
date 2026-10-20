@@ -77,6 +77,30 @@ storage generation/canonical volume-set fingerprint.
   marshaling and unmarshaling. There is deliberately no apply/activate
   operation and no product HTTP exposure.
 
+## Retained NAS desired-policy input
+
+`BuildFromLeasedNASOwners` additionally reads the complete desired NAS document
+from the caller's original `naspolicystore.Lease`, rather than accepting a
+separately supplied file-service policy. It validates that document, reuses
+`BuildFromRetainedOwners` with the original identity lease and mounted roster,
+then verifies the SAME NAS lease again before returning data. Every refusal
+returns an empty Plan with `ErrNotReady` and its original error/context cause.
+
+The policy mutex is released before storage → identity locking and checked
+again afterwards: no I/O is added to pure callbacks or new nested lock order.
+These are bracketed samples, not atomic three-owner admission or protection from
+an unobserved change after return. The helper opens/recovers no writer and
+neither acquires, releases nor transfers a caller lease. The coordinator must
+retain/revalidate all original authorities through service lifetime/settlement.
+
+The existing ARM fixture composes actual identity/passdb and mounted-roster
+Owners with a separately provisioned disposable NAS policy Owner. It checks
+unchanged desired bytes/identity evidence, caller-lease retention and parent
+commit/close fences, canceled/released claims, equal NFS text at a different
+revision, and policy replacement/restoration review. This is candidate-only:
+Plan equivalence is not policy-Owner provenance, `activeRevision` is still a
+trusted caller assertion, and product history/boot/service admission is absent.
+
 ## Candidate Samba NSS
 
 A separate guarded ARMv5 admission fixture now uses `BuildFromOwners` with the
