@@ -2224,6 +2224,17 @@ storage. No production roster provider or activation path exists.
   references. This does not establish atomic admission, continuous in-flight
   monitoring, managed/passdb account coverage, product history/boot or a complete
   policy/identity fault matrix. Those remain required for product activation.
+  Normal source execution additionally uses separate server Start/Check/I/O/Stop
+  calls, keeping the original two daemon lifetimes, NFSD controller and exports
+  alive between calls. The join rederives original policy/identity/storage
+  evidence around running checks; a private bounded export-table observation
+  detects changed identity, metadata or bytes. Explicit normal stop withdraws
+  exports, verifies/stops NFSD, then mountd/rpcbind and FD/reference closure under
+  one combined independent five-second budget. Old fault profiles and their
+  budgets remain separate. No runtime gate spans identity/storage callbacks.
+  The generic supervised Owner/backend connection, complete partial-start/live
+  fault compensation, client quiescence, domain census and boot/recovery remain
+  required; the split fixture is not product service activation or persistence.
   M4.1 remains incomplete until fresh storage and identity evidence are
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service

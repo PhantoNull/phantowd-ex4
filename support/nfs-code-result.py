@@ -60,6 +60,10 @@ SOURCE_READY = (b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_p
                 b"parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true "
                 b"mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true "
                 b"original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only")
+SOURCE_SERVER = (b"PHANTOWD_NFS_SOURCE_SERVER_READY split_calls=true original_policy_identity=true original_daemons=true "
+                 b"kernel_verified=true exports_verified=true owner_ready_checks=2 copied_refused=true early_close_refused=true "
+                 b"pre_cancel_unchanged=true start_once=true stop_once=true io=true stopped=true original_parents_retained=true "
+                 b"product=false scope=qemu-only")
 
 
 def expected_counts(report):
@@ -167,13 +171,15 @@ def verify_source(log, report):
             seen.append("mountd")
         elif line == SOURCE_RPCBIND:
             seen.append("rpcbind")
+        elif line == SOURCE_SERVER:
+            seen.append("server")
         elif line == SOURCE_READY:
             seen.append("ready")
         elif line == b"PHANTOWD_NFS_SOURCE_DONE":
             seen.append("done")
         else:
             raise ValueError("unknown failed or broadened source receipt")
-    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "ready", "done"]:
+    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "server", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered source receipt")
 
 

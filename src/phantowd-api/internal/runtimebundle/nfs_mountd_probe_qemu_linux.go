@@ -86,15 +86,15 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	}
 	phase := "channels"
 	var channels *NFSMountdChannelsQEMU
-	var child *processowner.PinnedSet
+	var daemon *nfsDaemonQEMU
 	defer func() {
 		if result != nil {
 			s.review, s.cause = true, result
 			nfsMountdRetainedQEMU = struct {
 				channels *NFSMountdChannelsQEMU
-				child    *processowner.PinnedSet
+				daemon   *nfsDaemonQEMU
 				err      error
-			}{channels, child, result}
+			}{channels, daemon, result}
 			if !nfsSourceLossExpectedQEMU(s, result) {
 				fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_MOUNTD_FAILURE phase=%s\n", phase)
 			}
@@ -122,28 +122,8 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	if copyChannels.Check(ctx) != ErrInvalid || copyChannels.Close() != ErrInvalid {
 		return ErrMismatch
 	}
-	program := s.code.files["usr/sbin/rpc.mountd"]
-	for _, alias := range s.code.plan.aliases {
-		if alias.Path == "usr/sbin/rpc.mountd" {
-			program = s.code.files[alias.Target]
-		}
-	}
-	if program == nil {
-		return ErrMismatch
-	}
 	phase = "construct"
-	spec := processowner.MemberSpec{Name: "nfs-mountd", Process: processowner.Spec{
-		Executable: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{"mountd-v1"}, RunAs: &processowner.Credentials{UID: 0, GID: 0},
-		Ready: func(ctx context.Context) (bool, error) { return nfsRPCNullQEMU(ctx, true) }, ReadyTimeout: 5 * time.Second, ProbeInterval: 20 * time.Millisecond, StopTimeout: time.Second,
-	}}
-	if s.sourceAccess != nil {
-		a := s.sourceAccess
-		spec.Name = "nfs-source-mountd"
-		spec.Process.Args = []string{"mountd-source-v1"}
-		child, err = processowner.NewNFSSourceMountdPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, [4]*os.File{channels.files[0], channels.files[1], channels.files[2], channels.namespaces[0]}, [6]*os.File{a.data[0], a.data[1], a.data[2], a.filehandle, a.features, a.volume})
-	} else {
-		child, err = processowner.NewNFSMountdPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, [4]*os.File{channels.files[0], channels.files[1], channels.files[2], channels.namespaces[0]})
-	}
+	daemon, err = newNFSDaemonQEMU(ctx, s, bootstrap, channels, true)
 	if err != nil {
 		return err
 	}
@@ -152,50 +132,21 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	}
 	phase = "start"
 	nfsMountdUnsettledQEMU = true
-	started, err := child.Start(ctx)
-	if err != nil {
+	if err := daemon.start(ctx); err != nil {
 		return err
 	}
-	pid := 0
-	if len(started.Members) == 1 {
-		pid = started.Members[0].Process.PID
+	copyDaemon := *daemon
+	if copyDaemon.start(ctx) == nil || copyDaemon.check(ctx) == nil || copyDaemon.stop(ctx) == nil || copyDaemon.close() == nil ||
+		daemon.start(ctx) == nil || daemon.close() == nil {
+		return ErrMismatch
 	}
 	checkErr := func() error {
-		phase = "ready-handoff"
-		if started.State != processowner.StateReady || started.Generation != 1 || len(started.Members) != 1 || pid <= 0 || started.Members[0].Process.DiagnosticsTruncated || nfsMountdHandoffForInputsQEMU(ctx, s, child, false) != nil {
-			return ErrMismatch
-		}
-		phase = "ready-listener"
-		inode, err := nfsRPCListenerQEMU(true)
-		if err != nil || inode == "" {
-			return errors.Join(ErrMismatch, err)
-		}
-		phase = "ready-process"
-		if err := nfsRPCProcessQEMU(pid, s, program, inode, true); err != nil {
+		phase = "ready"
+		if err := daemon.check(ctx); err != nil {
 			return err
-		}
-		phase = "ready-original-channels"
-		if err := observeNFSMountdChannelsQEMU(pid, channels); err != nil {
-			return err
-		}
-		if s.sourceAccess != nil {
-			if err := s.sourceAccess.checkView(pid); err != nil {
-				return err
-			}
-		}
-		if channels.Check(ctx) != nil || s.revalidate(ctx) != nil {
-			return ErrMismatch
-		}
-		phase = "ready-null-rpc"
-		if ok, err := nfsRPCNullQEMU(ctx, true); err != nil || !ok {
-			return errors.Join(ErrMismatch, err)
-		}
-		observed, err := child.Observe(ctx)
-		if err != nil || observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
-			return errors.Join(ErrMismatch, err)
 		}
 		phase = "kernel-composition"
-		return probeNFSDKernelQEMU(ctx, s, channels, [2]nfsCompanionQEMU{rpcbind, {child, pid}})
+		return probeNFSDKernelQEMU(ctx, s, channels, [2]nfsCompanionQEMU{rpcbind, {daemon.child, daemon.pid}})
 	}()
 	checkPhase := phase
 	if nfsKernelUnsettledQEMU {
@@ -203,9 +154,9 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	} // The kernel may still consume its original mountd/rpcbind inputs.
 	phase = "stop"
 	cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	stopped, stopErr := child.Stop(cleanup)
+	stopErr := daemon.stop(cleanup)
 	cancel()
-	if stopErr != nil || stopped.State != processowner.StateStopped || stopped.Generation != 1 || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 || stopped.Members[0].Process.DiagnosticsTruncated || pid <= 0 || !errors.Is(unix.Kill(-pid, 0), unix.ESRCH) {
+	if stopErr != nil {
 		return errors.Join(ErrReviewRequired, checkErr, stopErr)
 	}
 	nfsMountdUnsettledQEMU = false
@@ -213,17 +164,20 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 		phase = checkPhase
 		return checkErr
 	}
-	if inode, err := nfsRPCListenerQEMU(true); err != nil || inode != "" {
-		return errors.Join(ErrMismatch, err)
+	if !errors.Is(daemon.close(), ErrUnavailable) {
+		return ErrMismatch
 	}
-	if nfsMountdHandoffForInputsQEMU(ctx, s, child, true) != nil {
+	if err := daemon.checkStopped(ctx); err != nil {
+		return err
+	}
+	if daemon.stop(ctx) == nil {
 		return ErrMismatch
 	}
 	phase = "normal-close"
-	if err := child.Close(); err != nil {
+	if err := daemon.close(); err != nil {
 		return err
 	}
-	child = nil
+	daemon = nil
 	if channels.Check(ctx) != nil || s.revalidate(ctx) != nil {
 		return ErrMismatch
 	}

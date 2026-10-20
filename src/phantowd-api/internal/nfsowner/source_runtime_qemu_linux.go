@@ -31,6 +31,7 @@ type SourceRuntimeQEMU struct {
 	access                         *runtimebundle.NFSSourceAccessQEMU
 	accessVolume                   *os.File
 	accessAttempted, accessSettled bool
+	accessServer                   bool
 	closed, review                 bool
 	cause                          error
 }
@@ -151,6 +152,14 @@ func (o *SourceRuntimeQEMU) verify(ctx context.Context, s *exportRoots) error {
 			return ErrBusy
 		}
 		return o.fail(err)
+	}
+	if o.accessServer {
+		if o.access == nil {
+			return o.fail(ErrInvalid)
+		}
+		if err := o.access.CheckServerFixtureQEMU(ctx); err != nil {
+			return o.fail(err)
+		}
 	}
 	if err := s.verify(ctx); err != nil {
 		s.review = true

@@ -34,6 +34,7 @@ class CodeReceiptTests(unittest.TestCase):
                   b"PHANTOWD_NFS_SOURCE_KERNEL_READY original_control=true original_namespaces=true original_daemons_live=true threads=2 stop_verified=true fd_balance=true exports_withdrawn=true owner_backend=false product=false scope=qemu-only",
                   b"PHANTOWD_NFS_SOURCE_MOUNTD_READY original_channels=3 original_sources=3 filehandle_view=true private_view=true uid_gid=0 caps=dac-read-search listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only",
                   b"PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only",
+                  checker.SOURCE_SERVER,
                   b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only",
                   b"PHANTOWD_NFS_SOURCE_DONE"]
         for ending in (b"\n", b"\r\n"):
@@ -56,6 +57,10 @@ class CodeReceiptTests(unittest.TestCase):
                          (b"released_claims_refused=true", b"released_claims_refused=false"),
                          (b"mismatch_refused=true", b"mismatch_refused=false"),
                          (b"no_claim_release=true", b"no_claim_release=false"),
+                         (b"split_calls=true", b"split_calls=false"),
+                         (b"owner_ready_checks=2", b"owner_ready_checks=1"),
+                         (b"exports_verified=true", b"exports_verified=false"),
+                         (b"stopped=true", b"stopped=false"),
                          (b"product=false", b"product=true")):
             variants.append([line.replace(old, new) for line in source])
         variants += [[source[0], source[2]], source + [source[1]], list(reversed(source)), self.lines,

@@ -114,7 +114,46 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 		fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_ACCESS_FAILURE phase=constructor")
 		return o.fail(err)
 	}
-	runErr := o.access.Run(ctx)
+	var runErr error
+	if sourceLoss {
+		runErr = o.access.Run(ctx)
+	} else {
+		runErr = func() error {
+			if err := o.access.StartServerFixtureQEMU(ctx); err != nil {
+				return err
+			}
+			o.accessServer = true
+			copyAccess := *o.access
+			if copyAccess.StartServerFixtureQEMU(ctx) == nil || copyAccess.CheckServerFixtureQEMU(ctx) == nil ||
+				copyAccess.ExerciseServerIOFixtureQEMU(ctx) == nil || copyAccess.StopServerFixtureQEMU(ctx) == nil ||
+				o.access.StartServerFixtureQEMU(ctx) == nil || o.access.Close(ctx) == nil {
+				return ErrInvalid
+			}
+			canceled, cancel := context.WithCancel(ctx)
+			cancel()
+			if !errors.Is(o.access.CheckServerFixtureQEMU(canceled), context.Canceled) ||
+				!errors.Is(o.access.StopServerFixtureQEMU(canceled), context.Canceled) {
+				return ErrInvalid
+			}
+			if err := o.verify(ctx, s); err != nil {
+				return err
+			}
+			if err := o.access.ExerciseServerIOFixtureQEMU(ctx); err != nil {
+				return err
+			}
+			if err := o.verify(ctx, s); err != nil {
+				return err
+			}
+			if err := o.access.StopServerFixtureQEMU(ctx); err != nil {
+				return err
+			}
+			o.accessServer = false
+			if o.access.StopServerFixtureQEMU(ctx) == nil || o.access.CheckServerFixtureQEMU(ctx) == nil || o.access.ExerciseServerIOFixtureQEMU(ctx) == nil {
+				return ErrInvalid
+			}
+			return nil
+		}()
+	}
 	if sourceLoss {
 		if !errors.Is(runErr, runtimebundle.ErrReviewRequired) {
 			return o.fail(errors.Join(ErrInvalid, runErr))
@@ -134,5 +173,8 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 		return o.fail(err)
 	}
 	o.accessVolume = nil
+	if !sourceLoss {
+		fmt.Println("PHANTOWD_NFS_SOURCE_SERVER_READY split_calls=true original_policy_identity=true original_daemons=true kernel_verified=true exports_verified=true owner_ready_checks=2 copied_refused=true early_close_refused=true pre_cancel_unchanged=true start_once=true stop_once=true io=true stopped=true original_parents_retained=true product=false scope=qemu-only")
+	}
 	return o.verify(ctx, s)
 }

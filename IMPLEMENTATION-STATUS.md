@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Split real-NFS server calls in disposable QEMU
+
+The normal source fixture separates server Start, Check, fixed I/O and Stop.
+Original rpcbind/mountd lifetime objects and the existing NFSD controller stay
+alive between calls. Runtime gates are not held across those intervals, so the
+join can rederive from original policy/identity/storage claims while running.
+Exports survive the I/O probe until explicit withdrawal; readiness also compares
+a bounded read-only observation of the original private export table.
+
+Normal stop verifies export withdrawal, kernel/listener absence, original
+daemon stop/reap/handoff and per-component FD balance in reverse dependency
+order before source references can close. Cleanup uses one independent combined
+five-second budget. The older code/loss/combined-fault campaigns reuse the same
+daemon lifetime implementation while retaining their existing proof and budgets.
+Copied, duplicate-start/stop, canceled pre-admission and early-close controls are
+required; host workflow selectors include the new pure refusal/table tests.
+
+This is not a persistent product service, generic Owner supervision, full
+partial-start/stop/policy/identity fault coverage, sole domain authority, client
+quiescence, boot/recovery or physical-device qualification. Any admitted failure
+retains original resources/review without retry or a fabricated clean teardown.
+
 ## Original policy and identity claims in the NFS source runtime
 
 The QEMU-only `NewLeasedSourceRuntimeQEMU` joins the existing original-source

@@ -149,6 +149,15 @@ The original code-only mode and all time/resource budgets remain unchanged.
 This is not product state initialization, a managed/passdb account campaign,
 continuous admission or physical-device operation.
 
+Normal `source` now requires a split server-call proof as well: original daemons,
+NFSD and exports live across Start/Check/fixed-I/O/Stop, with original policy and
+identity rechecks between operations. Its explicit normal stop has one combined
+independent five-second cleanup budget; the old source-loss/combined fault
+profiles keep their existing independent cleanup and guest/wrapper limits.
+There is no extra default boot/job, timer increase, product supervision or
+reboot-persistence claim. Failed/uncertain new lifetimes retain original refs;
+complete partial-start/stop and policy/identity faults remain unqualified.
+
 The standard API overlay also requires a retained-NAS-policy planner proof:
 actual identity/passdb and mounted-roster Owners, original NAS/identity leases,
 parent commit/close fences, cancellation/released-claim refusals, same NFS text

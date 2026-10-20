@@ -119,13 +119,10 @@ func sourceClientStatQEMU(path string, st *unix.Statx_t) error {
 	return nil
 }
 
-func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetimeQEMU) (result error) {
-	phase := "activate"
-	defer func() {
-		if result != nil && !(o.sourceLoss && o.lossTriggered && errors.Is(result, errNFSSourceLossQEMU)) {
-			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SOURCE_IO_FAILURE phase=%s\n", phase)
-		}
-	}()
+func (o *NFSSourceAccessQEMU) activateExports(ctx context.Context, s *nfsCodeLifetimeQEMU) error {
+	if o.exportsLoaded || o.faultFile != nil {
+		return ErrUnavailable
+	}
 	o.exportsLoaded = true // Any uncertain command keeps kernel, daemons and sources.
 	if err := o.export(ctx, s, processowner.NFSSourceActivateQEMU); err != nil {
 		return err
@@ -136,8 +133,27 @@ func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetime
 	if err != nil {
 		return err
 	}
+	o.faultFile = rmtab
 	if err := rmtab.Close(); err != nil {
 		return err
+	}
+	o.faultFile = nil
+	return ctx.Err()
+}
+
+func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetimeQEMU) (result error) {
+	phase := "activate"
+	defer func() {
+		if result != nil && !(o.sourceLoss && o.lossTriggered && errors.Is(result, errNFSSourceLossQEMU)) {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SOURCE_IO_FAILURE phase=%s\n", phase)
+		}
+	}()
+	if o.server == nil {
+		if err := o.activateExports(ctx, s); err != nil {
+			return err
+		}
+	} else if !o.server.running || !o.exportsLoaded {
+		return ErrUnavailable
 	}
 	if err := os.Mkdir(nfsSourceClientsQEMU, 0700); err != nil {
 		return err
@@ -226,20 +242,41 @@ func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetime
 		o.mounts = o.mounts[:index]
 	}
 	phase = "withdraw-exports"
+	if o.server != nil {
+		o.accessComplete = true
+		return ctx.Err() // Server remains exported/live until explicit Stop.
+	}
+	if err := o.withdrawExports(ctx, s); err != nil {
+		return err
+	}
+	o.accessComplete = true
+	emitNFSSourceIOReadyQEMU()
+	return nil
+}
+
+func (o *NFSSourceAccessQEMU) withdrawExports(ctx context.Context, s *nfsCodeLifetimeQEMU) error {
 	if err := o.export(ctx, s, processowner.NFSSourceWithdrawQEMU); err != nil {
 		return err
 	}
 	if err := o.export(ctx, s, processowner.NFSSourceFlushQEMU); err != nil {
 		return err
 	}
-	table, err := os.ReadFile(nfsStateViewQEMU + "/nfs/etab")
-	if err != nil || len(table) != 0 {
-		return ErrMismatch
+	if o.server != nil {
+		if _, count, err := o.server.observeTable(ctx); err != nil || count != 0 {
+			return errors.Join(ErrMismatch, err)
+		}
+	} else {
+		table, err := os.ReadFile(nfsStateViewQEMU + "/nfs/etab")
+		if err != nil || len(table) != 0 {
+			return ErrMismatch
+		}
 	}
 	o.exportsLoaded = false
-	o.accessComplete = true
+	return ctx.Err()
+}
+
+func emitNFSSourceIOReadyQEMU() {
 	fmt.Println("PHANTOWD_NFS_SOURCE_IO_READY original_sources=true private_0700=true rw=true ro_read=true ro_erofs=true denied_client=true anon_uid_gid=1000 fsynced=true clients_unmounted=true exports_withdrawn=true product=false scope=qemu-only")
-	return nil
 }
 
 func (o *NFSSourceAccessQEMU) checkView(pid int) error {

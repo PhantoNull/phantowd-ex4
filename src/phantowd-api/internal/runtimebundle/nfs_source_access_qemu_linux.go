@@ -33,6 +33,7 @@ type NFSSourceAccessQEMU struct {
 	filehandle, features              *os.File
 	controlMetadata                   [3]unix.Statx_t
 	channels                          *NFSMountdChannelsQEMU
+	server                            *nfsServerQEMU
 	bootstrap, input                  *os.File
 	clientCode                        *os.File
 	capture                           *processowner.CaptureOwner

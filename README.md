@@ -75,6 +75,9 @@ The optional real-NFS source fixtures also join original policy/identity claims
 to the retained runtime and recheck their candidate around operations. Their
 new state and Unix test identity exist only in disposable guest RAM; they do not
 enable product startup, continuous request admission or recovery.
+The normal source campaign uses separate server start/check/I/O/stop calls,
+keeping original processes and exports alive between them. This is an internal
+QEMU lifecycle prerequisite, not reboot persistence or product supervision.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

@@ -137,6 +137,18 @@ release. Current names are additionally compared under the original volume with
 the original directory tuples; held metadata alone cannot detect replacement.
 Observed loss or uncertain validation retains first-cause review and both parents.
 
+The normal source campaign now uses distinct server Start, Check, fixed I/O and
+Stop calls. The same original rpcbind/mountd objects, NFSD controller, exports
+and private export-table observation survive between calls, without retaining
+runtime gates across policy/storage/identity callbacks. The containing join
+rechecks its original policy and identity claims around two running observations.
+After I/O, exports and daemons remain live until the explicit stop; withdrawal
+precedes kernel stop, then mountd and rpcbind stop/reap and reference closure.
+Normal cleanup has one independent combined five-second budget; fault campaigns
+keep their existing separate profile and budgets. Admitted uncertainty retains
+review and originals; complete partial-start/live-fault settlement and connection
+to the generic supervised Owner are not qualified. No product boot is enabled.
+
 `ProbeSourceLossFixtureQEMU` is a fault TEST, not a running/healthy state reply.
 It requires the separate source-loss guest selector. Success means same-payload
 directory substitution was detected with a real NFS file open, restoration could

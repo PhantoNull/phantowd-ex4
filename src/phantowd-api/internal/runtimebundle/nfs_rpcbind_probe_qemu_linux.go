@@ -214,7 +214,7 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 }
 
 func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nfsCodeLifetimeQEMU) (result error) {
-	var child *processowner.PinnedSet
+	var daemon *nfsDaemonQEMU
 	var bootstrap *os.File
 	phase := "inputs"
 	defer func() {
@@ -222,10 +222,10 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 			s.review, s.cause = true, result
 			nfsRPCBindRetainedQEMU = struct {
 				inputs    *NFSInputsQEMU
-				child     *processowner.PinnedSet
+				daemon    *nfsDaemonQEMU
 				bootstrap *os.File
 				err       error
-			}{inputs, child, bootstrap, result}
+			}{inputs, daemon, bootstrap, result}
 			if !nfsSourceLossExpectedQEMU(s, result) {
 				fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_RPCBIND_FAILURE phase=%s\n", phase)
 			}
@@ -245,21 +245,8 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 	if err != nil {
 		return err
 	}
-	program := s.code.files["usr/sbin/rpcbind"]
-	for _, alias := range s.code.plan.aliases {
-		if alias.Path == "usr/sbin/rpcbind" {
-			program = s.code.files[alias.Target]
-		}
-	}
-	if program == nil {
-		return ErrMismatch
-	}
-	spec := processowner.MemberSpec{Name: "nfs-rpcbind", Process: processowner.Spec{
-		Executable: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{"rpcbind-v1"}, RunAs: &processowner.Credentials{UID: 0, GID: 0},
-		Ready: rpcBindNullQEMU, ReadyTimeout: 5 * time.Second, ProbeInterval: 20 * time.Millisecond, StopTimeout: time.Second,
-	}}
 	phase = "construct"
-	child, err = processowner.NewNFSRPCBindPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program})
+	daemon, err = newNFSDaemonQEMU(ctx, s, bootstrap, nil, false)
 	if err != nil {
 		return err
 	}
@@ -267,49 +254,21 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 		return err
 	}
 	phase = "start"
-	started, err := child.Start(ctx)
-	if err != nil {
+	if err := daemon.start(ctx); err != nil {
 		return err
 	} // Original Owner/error retained, never retry start/stop.
-	pid := 0
-	if len(started.Members) == 1 {
-		pid = started.Members[0].Process.PID
+	copyDaemon := *daemon
+	if copyDaemon.start(ctx) == nil || copyDaemon.check(ctx) == nil || copyDaemon.stop(ctx) == nil || copyDaemon.close() == nil ||
+		daemon.start(ctx) == nil || daemon.close() == nil {
+		return ErrMismatch
 	}
 	phase = "ready"
 	checkErr := func() error {
-		if started.State != processowner.StateReady || started.Generation != 1 || len(started.Members) != 1 {
-			return ErrMismatch
-		}
-		member := started.Members[0].Process
-		phase = "ready-handoff"
-		if member.PID <= 0 || member.DiagnosticsTruncated || child.CheckNFSRPCBindHandoffQEMU(ctx) != nil {
-			return ErrMismatch
-		}
-		phase = "ready-listener"
-		inode, err := nfsRPCBindListenerQEMU()
-		if err != nil || inode == "" {
-			return errors.Join(ErrMismatch, err)
-		}
-		phase = "ready-process"
-		if err := nfsRPCBindProcessQEMU(member.PID, s, program, inode); err != nil {
-			return err
-		}
-		phase = "ready-null-rpc"
-		if ready, err := rpcBindNullQEMU(ctx); err != nil || !ready {
-			return errors.Join(ErrMismatch, err)
-		}
-		if again, err := nfsRPCBindListenerQEMU(); err != nil || again != inode {
-			return errors.Join(ErrMismatch, err)
-		}
-		observed, err := child.Observe(ctx)
-		if err != nil || observed.State != processowner.StateReady || observed.Generation != 1 || len(observed.Members) != 1 || observed.Members[0].Process.PID != member.PID {
-			return errors.Join(ErrMismatch, err)
-		}
-		if err := s.revalidate(ctx); err != nil {
+		if err := daemon.check(ctx); err != nil {
 			return err
 		}
 		phase = "mountd-composition"
-		return probeNFSMountdQEMU(ctx, s, bootstrap, nfsCompanionQEMU{child, member.PID})
+		return probeNFSMountdQEMU(ctx, s, bootstrap, nfsCompanionQEMU{daemon.child, daemon.pid})
 	}()
 	checkPhase := phase
 	if nfsMountdUnsettledQEMU {
@@ -317,27 +276,28 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 	} // Retain BOTH original services until VM disposal.
 	phase = "stop"
 	cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	stopped, stopErr := child.Stop(cleanup)
+	stopErr := daemon.stop(cleanup)
 	cancel()
-	if stopErr != nil || stopped.State != processowner.StateStopped || stopped.Generation != 1 || len(stopped.Members) != 1 ||
-		stopped.Members[0].Process.PID != 0 || stopped.Members[0].Process.DiagnosticsTruncated ||
-		pid <= 0 || !errors.Is(unix.Kill(-pid, 0), unix.ESRCH) {
+	if stopErr != nil {
 		return errors.Join(ErrReviewRequired, checkErr, stopErr)
 	}
 	if checkErr != nil {
 		phase = checkPhase
 		return checkErr
 	}
-	if inode, err := nfsRPCBindListenerQEMU(); err != nil || inode != "" {
-		return errors.Join(ErrMismatch, err)
-	}
-	if child.CheckNFSRPCBindHandoffQEMU(ctx) != nil {
+	if !errors.Is(daemon.close(), ErrUnavailable) {
 		return ErrMismatch
 	}
-	if err := child.Close(); err != nil {
+	if err := daemon.checkStopped(ctx); err != nil {
 		return err
 	}
-	child = nil
+	if daemon.stop(ctx) == nil {
+		return ErrMismatch
+	}
+	if err := daemon.close(); err != nil {
+		return err
+	}
+	daemon = nil
 	if err := bootstrap.Close(); err != nil {
 		return err
 	}
@@ -349,7 +309,19 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 	if after, err := retainedFixtureFDCount(); err != nil || after != before {
 		return ErrMismatch
 	}
-	// root-owned fixture leaves only, after verified daemon/reference absence.
+	if err := cleanNFSRPCBindStateQEMU(); err != nil {
+		return err
+	}
+	if s.sourceAccess != nil {
+		fmt.Println("PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only")
+	} else {
+		fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true product=false scope=qemu-only")
+	}
+	return nil
+}
+
+// Fixed private RAM leaves, only after independently verified daemon absence.
+func cleanNFSRPCBindStateQEMU() error {
 	for name, kind := range map[string]uint32{"rpcbind.lock": unix.S_IFREG, "rpcbind.sock": unix.S_IFSOCK} {
 		path := filepath.Join(nfsStateViewQEMU, name)
 		var st unix.Stat_t
@@ -363,11 +335,6 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 	entries, err := os.ReadDir(nfsStateViewQEMU)
 	if err != nil || len(entries) != 1 || entries[0].Name() != "nfs" {
 		return errors.Join(ErrMismatch, err)
-	}
-	if s.sourceAccess != nil {
-		fmt.Println("PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only")
-	} else {
-		fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true product=false scope=qemu-only")
 	}
 	return nil
 }
