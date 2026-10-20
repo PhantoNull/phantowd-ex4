@@ -22,11 +22,25 @@ seeking a reused control FD would return an old transaction snapshot.
 Startup requires the exact v3-only empty profile, retains an IPv4 loopback
 TCP/2049 socket, attaches its FD through portlist and starts two NFSD threads.
 `CheckRunning` rechecks original authority, the exact profile and that retained
-socket's actual address and accepting state. Stop attempts zero threads/socket
+socket's original identity, actual address and accepting state. Stop attempts zero threads/socket
 closure once and verifies the stopped profile; normal Close follows verified
 consumer settlement. Copies/invalid handles refuse. Uncertain transactions or
 closure retain review and original references; a second constructor cannot
 erase the first lifetime. JSON is refused and formatting is private.
+
+At allocation, a private read-only observation records SOCKFS device/inode and
+the kernel's nonzero socket cookie, requiring IPv4 TCP and CLOEXEC. Identity is
+rechecked around readiness observations, before attachment, after the running
+profile, before the stop transaction and before socket close. Equal endpoints
+alone cannot substitute for the original socket. Host tests use real sockets
+to reject a replacement listener without changing it; valid ARMv5 fixtures and
+clean synthetic reboot/teardown retain their existing contracts.
+
+This is not an atomic FD-table lease or independent close authority. It does
+not exclude unrelated concurrent descriptor-table writers, qualify controller-
+level descriptor substitution/close faults, or admit cleanup of an allocated
+but never-attached socket: Stop still refuses an unstarted controller. Such
+partial-start settlement needs its own original-resource and uncertainty proof.
 
 `CheckPreparedQEMU` is a distinct read-only observation of an original reserved
 but never-started controller. It verifies held namespace/control references,

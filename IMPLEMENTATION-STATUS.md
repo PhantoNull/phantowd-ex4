@@ -18,8 +18,9 @@ observations establish absence without clearing review or releasing authority.
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
 targeted race-count3 and strict C-selector/receipt/dispatch tests pass. The latest
-campaign covers all nine optional profiles: the kernel-constructor reservation
-conflict through cached and ordinary wrappers plus eight previous profiles.
+socket-identity campaign covers all nine optional profiles: the kernel-
+constructor reservation conflict plus eight other profiles, without duplicating
+the unchanged wrapper lane.
 
 `source-owner-daemon-stop-loss` performs no Check or supervision between the
 controlled mountd exit and explicit Stop. The original Stop precheck previously
@@ -48,8 +49,20 @@ as no acquired/hidden resources; an explicit kernel-start-attempt marker exclude
 partial listener/thread effects from this cleanup frontier. Review/causes/claims
 and descriptors remain held, with no retry/restart/release.
 
-Ten actual guests share one tested helper and unchanged source/base images;
+Nine actual NFS guests share one tested helper and unchanged source/base images;
 30 receipt/shell and three loader groups pass with unchanged deadlines.
+
+The controller now captures the original socket's SOCKFS device/inode and
+nonzero kernel cookie, requiring IPv4 TCP/CLOEXEC. Startup, running observations
+and stop/close boundaries recheck that identity. A real host-socket test first
+reproduces replacement admission at the extracted legacy endpoint-check seam;
+the corrected check refuses an independent listener on the same endpoint
+without mutating it. Native race-count3, all nine NFS profiles, standard API/
+dashboard smoke and two clean state-reboot kernels pass: twelve guest boots
+total, with synthetic NFS policy/data persistence, access denial and teardown.
+This is not a full controller FD-table replacement/race proof or an atomic
+descriptor lease. Allocated-but-unattached startup cleanup remains unqualified;
+Stop still refuses an unstarted controller. No product activation is added.
 
 The dedicated process fault/withdrawal guards previously accepted sibling flags
 that the main CLI already refused. Real Go and compiled native C parser tests

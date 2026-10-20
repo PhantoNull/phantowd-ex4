@@ -56,6 +56,13 @@ or replace the remaining kernel Start and product-lifecycle acceptance below.
 
 Remaining acceptance before complete service/product qualification:
 
+Prerequisite now verified: private original socket identity (SOCKFS device/inode,
+kernel cookie, IPv4 TCP/CLOEXEC) is captured and rechecked before attachment,
+around readiness and before stop/close. Real endpoint-seam replacement refuses;
+nine NFS profiles and API smoke/two clean state-reboot kernels pass. This is not
+an atomic FD lease, controller-level substitution/close-fault qualification or
+allocated-but-unattached cleanup; those remain part of item1 below.
+
 1. Other pre-dispatch/reference/admission failures during explicit Stop,
    other partial-start/failed-readiness/uncertain-constructor settlement, hard
    crashes, kernel Start listener/thread effects and independent rpcbind/kernel

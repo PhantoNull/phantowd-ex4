@@ -36,6 +36,7 @@ type ControllerQEMU struct {
 	root                             unix.Statx_t
 	ns                               [2]unix.Stat_t
 	socket                           int
+	socketIdentity                   nfsSocketIdentityQEMU
 	started, stopped, closed, review bool
 	uncertain                        *os.File
 	phase                            string // Fixed fixture label only; no paths or source data.
@@ -236,7 +237,14 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 		return k.retain()
 	}
 	k.socket = fd
+	k.socketIdentity, err = readNFSSocketIdentityQEMU(fd)
+	if err != nil {
+		return k.retain()
+	}
 	if unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: [4]byte{127, 0, 0, 1}}) != nil || unix.Listen(fd, 64) != nil {
+		return k.retain()
+	}
+	if checkNFSSocketQEMU(fd, k.socketIdentity) != nil {
 		return k.retain()
 	}
 	request, err := SocketRequestQEMU(fd)
@@ -253,7 +261,10 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 		return err
 	}
 	k.phase = "running-profile"
-	return k.profile(ctx, true)
+	if k.profile(ctx, true) != nil || checkNFSSocketQEMU(fd, k.socketIdentity) != nil {
+		return k.retain()
+	}
+	return nil
 }
 
 func (k *ControllerQEMU) Stop(ctx context.Context) error {
@@ -261,7 +272,7 @@ func (k *ControllerQEMU) Stop(ctx context.Context) error {
 		return err
 	}
 	defer k.leave()
-	if !k.started || k.stopped {
+	if !k.started || k.stopped || k.socket < 0 || !matchesNFSSocketIdentityQEMU(k.socket, k.socketIdentity) {
 		return k.retain()
 	}
 	k.stopped = true // One attempt only, including errors/cancellation.
@@ -271,6 +282,9 @@ func (k *ControllerQEMU) Stop(ctx context.Context) error {
 	}
 	if k.socket >= 0 {
 		k.phase = "socket-close"
+		if !matchesNFSSocketIdentityQEMU(k.socket, k.socketIdentity) {
+			return k.retain()
+		}
 		fd := k.socket
 		k.socket = -1
 		if unix.Close(fd) != nil {
@@ -365,10 +379,7 @@ func (k *ControllerQEMU) CheckRunning(ctx context.Context) error {
 	if !k.started || k.stopped || k.socket < 0 || k.profile(ctx, true) != nil {
 		return k.retain()
 	}
-	address, err := unix.Getsockname(k.socket)
-	ipv4, ok := address.(*unix.SockaddrInet4)
-	accepting, acceptErr := unix.GetsockoptInt(k.socket, unix.SOL_SOCKET, unix.SO_ACCEPTCONN)
-	if err != nil || !ok || ipv4.Port != 2049 || ipv4.Addr != [4]byte{127, 0, 0, 1} || acceptErr != nil || accepting != 1 || k.check(ctx) != nil {
+	if checkNFSSocketQEMU(k.socket, k.socketIdentity) != nil || k.check(ctx) != nil {
 		return k.retain()
 	}
 	return nil
