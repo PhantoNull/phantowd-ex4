@@ -68,7 +68,7 @@ class BuildFeedbackTests(unittest.TestCase):
             ["/phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m"],
         )
 
-    def test_qemu_qualification_is_not_canceled_by_next_commit(self):
+    def test_qemu_running_and_single_pending_configuration_contract(self):
         workflow = (ROOT / ".github/workflows/qemu-armv5.yml").read_text()
         concurrency = re.search(r"(?m)^concurrency:\n((?:[ \t]+[^\n]*\n)+)",
                                 workflow)

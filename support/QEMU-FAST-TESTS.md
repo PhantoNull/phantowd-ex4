@@ -1,5 +1,15 @@
 # Fast API and file-service integration checks
 
+## Running qualification and pending queue are different evidence
+
+The static concurrency test checks configuration, not GitHub execution.
+`cancel-in-progress: false` protects the active run; the default single-pending
+queue may still replace an obsolete waiting run. For the two-commit acceptance
+test, record the first run as `in_progress` before the second push, then retain
+both SHAs/run IDs through terminal status. That runtime test remains unrun.
+Do not infer its success from the unit test or broaden the queue to retain a
+build backlog. See [GitHub's concurrency reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
 ## Failure-only planned data costs
 
 Admitted planned-data failures also carry a fixed
