@@ -152,10 +152,13 @@ unqualified. No product boot is enabled.
 
 The normal real-source campaign uses one private fixed backend for the
 experimental Owner, with its original candidate, policy/identity claims,
-mounted-roster sources and runtime references. It does not expose a backend
-factory, replacement inputs, HTTP or a product constructor. Both containing
-join/root gates remain held throughout this finite campaign; runtime gates
-still return before callbacks enter storage/identity domains.
+mounted-roster sources and runtime references. `NewServerOwnerFixtureQEMU`
+returns only that original Owner, with no backend/path/replacement input,
+HTTP or product constructor. Join/root gates cover each backend operation;
+runtime gates still return before callbacks enter storage/identity domains.
+Fixed synthetic I/O is serialized through `Owner.ExerciseSourceIOFixtureQEMU`.
+After service stop, remaining parent closure also requires the same Owner to be
+closed; a reviewed or uncertain Owner cannot be discarded by closing its join.
 
 Start and explicit Check use the actual server. Accepted supervisor cancellation
 while idle stops it independently of that canceled request; explicit Close then
@@ -163,6 +166,17 @@ releases only owned source duplicates, not borrowed authorities. The campaign
 witnesses exclusive loop admission before cancellation with a fixed one-hour
 idle interval. It therefore proves idle cancellation, NOT periodic real-server
 scans. Generic model tests separately cover periodic scans and drift.
+The separate policy-loss campaign uses one-second scheduled scans after real
+server start/I/O: byte-identical replacement of newly provisioned RAM policy
+must trigger actual stop without a manual detection Check. The original file's
+replacement is completed outside the watched directory before atomic exchange,
+so missing/partial-file detection cannot stand in for identity-loss evidence.
+This atomic fault mutation is not atomic service admission. The original file's
+restoration cannot revive the Owner or release remaining original claims/input/
+source references. The read-only `VerifyServerStoppedRetainedFixtureQEMU` witness
+does not retry stop or refresh policy; it requires reviewed original Owner and
+actual fixed stopped observations. This one case is not a complete periodic
+fault matrix, healthy repeated-scan or client-quiescence qualification.
 
 Stopped verification opens new bounded transactions beneath original NFSD
 controls, requires zero threads/empty ports/v3-only, absent fixed RPC listeners

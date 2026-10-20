@@ -7,10 +7,34 @@ package nfsowner_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 )
+
+func TestSourceRuntimeServerOwnerRefusesInvalidOriginalLifetime(t *testing.T) {
+	for _, value := range []*nfsowner.SourceRuntimeQEMU{nil, {}} {
+		for _, ctx := range []context.Context{nil, context.Background()} {
+			if owner, err := value.NewServerOwnerFixtureQEMU(ctx); owner != nil || !errors.Is(err, nfsowner.ErrInvalid) {
+				t.Fatal("invalid original source admitted a server Owner", err)
+			}
+		}
+	}
+}
+
+func TestSourceRuntimeServerOwnerAccessAndRetainedStopRefuseInvalidLifetime(t *testing.T) {
+	for _, owner := range []*nfsowner.Owner{nil, {}} {
+		if owner.ExerciseSourceIOFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid Owner admitted fixed source I/O")
+		}
+	}
+	for _, source := range []*nfsowner.SourceRuntimeQEMU{nil, {}} {
+		if source.VerifyServerStoppedRetainedFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid source admitted retained stopped proof")
+		}
+	}
+}
 
 func TestSourceRuntimeAccessRefusesInvalidHandles(t *testing.T) {
 	for _, value := range []*nfsowner.SourceRuntimeQEMU{nil, {}} {

@@ -18,8 +18,8 @@ import (
 )
 
 // SourceRuntimeQEMU reserves ORIGINAL export roots and matching runtime inputs.
-// Construction starts no consumer and exposes no descriptors. Its one finite
-// access campaign is synthetic QEMU only, not policy/identity authority,
+// Construction starts no consumer and exposes no descriptors. Its single-use
+// server lifetime and fixed access campaign are synthetic QEMU only, not policy/identity authority,
 // a complete kernel backend, fault-complete settlement or product admission.
 type SourceRuntimeQEMU struct {
 	original                       *SourceRuntimeQEMU
@@ -185,6 +185,15 @@ func (o *SourceRuntimeQEMU) Check(ctx context.Context) error {
 	if o.closed {
 		return ErrState
 	}
+	if o.serverOwner != nil {
+		state, err := o.serverOwner.Observe()
+		if errors.Is(err, ErrBusy) {
+			return ErrBusy
+		}
+		if err != nil || state == ReviewRequired {
+			return o.fail(errors.Join(ErrReviewRequired, err))
+		}
+	}
 	s, err := o.roots.enter()
 	if err != nil {
 		return err
@@ -210,6 +219,18 @@ func (o *SourceRuntimeQEMU) Close() error {
 	}
 	if o.accessAttempted && !o.accessSettled {
 		return ErrBusy
+	}
+	if o.serverOwner != nil {
+		state, err := o.serverOwner.Observe()
+		if errors.Is(err, ErrBusy) {
+			return ErrBusy
+		}
+		if err != nil || state == ReviewRequired {
+			return o.fail(errors.Join(ErrReviewRequired, err))
+		}
+		if state != Closed {
+			return ErrBusy
+		}
 	}
 	s, err := o.roots.enter()
 	if err != nil {

@@ -82,6 +82,13 @@ supervision cancellation and verified stop before release. This remains a
 disposable QEMU campaign, not periodic real-server fault qualification,
 reboot persistence or product startup/recovery.
 
+The optional `source-owner-policy-loss` campaign additionally requires scheduled
+Owner supervision to detect an atomic exchange with a complete byte-identical
+policy replacement, stop the actual
+server and retain review/references after restoration. It uses only fresh guest
+RAM policy state; this is one fault case, not complete service recovery or
+continuous request authorization.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.

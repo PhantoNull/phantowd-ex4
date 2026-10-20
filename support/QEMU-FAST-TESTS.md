@@ -166,6 +166,25 @@ Owner access before cancellation, not a sleep-based race against a running
 sample. Periodic real-server checks and live-fault compensation are NOT proved
 by this campaign. Existing five-second Owner/cleanup and90/60/360 bounds stay.
 
+The separate optional policy-loss campaign uses the same bounds and original
+server/Owner lifetime, with per-operation join/root gates:
+
+```powershell
+.\support\test-nfs-code.ps1 -FixtureMode source-owner-policy-loss
+```
+
+After real fixed I/O and exclusive supervisor admission, only the newly
+provisioned guest RAM policy leaf is replaced with byte-identical new inode.
+The replacement is complete in a separate new RAM directory before atomic
+exchange; both names always refer to complete files. Restoration also uses
+atomic exchange. This is not atomic multi-Owner service admission.
+The one-second periodic loop must detect it without a manual detection Check,
+stop actual exports/NFSD/daemons, then preserve review and remaining original
+references even after restoring the original file. Strict receipts distinguish
+stopped retained review from normal closure or the old source/client-loss cases.
+This is not healthy repeated-scan, complete live-fault, client-quiescence,
+product policy writing, boot or recovery qualification. No default job is added.
+
 The standard API overlay also requires a retained-NAS-policy planner proof:
 actual identity/passdb and mounted-roster Owners, original NAS/identity leases,
 parent commit/close fences, cancellation/released-claim refusals, same NFS text

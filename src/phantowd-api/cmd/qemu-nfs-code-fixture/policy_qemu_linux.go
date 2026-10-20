@@ -25,13 +25,15 @@ import (
 )
 
 type sourcePolicyFixture struct {
-	seedPolicy  *naspolicystore.Store
-	seedLedger  *serviceaccountstore.Store
-	policyOwner *naspolicystore.Owner
-	policy      *naspolicystore.Lease
-	identity    *identityowner.Owner
-	identityRef *identityowner.FileServiceLease
-	storage     *mountowner.MountedVolumeSet
+	policyDirectory string   // Only the fresh private RAM role provisioned below; not product input.
+	faultFile       *os.File // Original uncertain-close object, never retried or discarded.
+	seedPolicy      *naspolicystore.Store
+	seedLedger      *serviceaccountstore.Store
+	policyOwner     *naspolicystore.Owner
+	policy          *naspolicystore.Lease
+	identity        *identityowner.Owner
+	identityRef     *identityowner.FileServiceLease
+	storage         *mountowner.MountedVolumeSet
 }
 
 // This is explicit NEW guest-only provisioning, never an Owner constructor's
@@ -54,6 +56,7 @@ func prepareSourcePolicy(ctx context.Context, config fileservice.Config, storage
 	if err != nil {
 		return nil, err
 	}
+	f.policyDirectory = filepath.Join(dir, "policy")
 	document := naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: 1, FileServices: config,
 		ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
 			Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}

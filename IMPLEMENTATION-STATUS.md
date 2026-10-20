@@ -21,6 +21,19 @@ checks verify the fixed stopped profile before start and after stop. A lifecycle
 label alone is not stopped proof. Copied Owners and concurrent loop operations
 refuse; the required receipt explicitly excludes periodic real-server scans.
 
+`NewServerOwnerFixtureQEMU` issues one original Owner retained across operations,
+with join/root gates held per backend operation instead of throughout a finite
+campaign. Only original-source construction is accepted; fixed I/O is admitted
+under that Owner's gate. Remaining parent closure additionally requires the
+original Owner to be closed, preserving late/uncertain review.
+The optional policy-loss campaign requires periodic (not manually forced)
+detection of byte-identical replacement in a fresh RAM policy role, actual
+verified stop, and sticky review plus unchanged retained references after the
+original file is restored. This is not a product policy writer or complete
+periodic/partial-start/live-fault qualification.
+The replacement is completed outside the watched role before atomic exchange;
+the detector must not merely observe a missing or partially written file.
+
 Normal stop verifies export withdrawal, kernel/listener absence, original
 daemon stop/reap/handoff and per-component FD balance in reverse dependency
 order before source references can close. Cleanup uses one independent combined

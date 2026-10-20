@@ -67,6 +67,10 @@ SOURCE_SERVER = (b"PHANTOWD_NFS_SOURCE_SERVER_READY split_calls=true original_po
 SOURCE_OWNER = (b"PHANTOWD_NFS_SOURCE_OWNER_READY fixed_backend=true original_claims=true real_start_check_stop=true "
                 b"idle_cancel=true exclusive=true close_after_stop=true no_restart=true periodic_real_check=false "
                 b"product=false scope=qemu-only")
+SOURCE_OWNER_POLICY_LOSS = (b"PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_READY periodic_detection=true manual_detection=false exclusive=true "
+                            b"same_bytes_replacement=true atomic_exchange=true policy_review=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true "
+                            b"original_claims_retained=true source_refs_retained=true review_retained=true restored_refused=true "
+                            b"no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only")
 
 
 def expected_counts(report):
@@ -188,6 +192,29 @@ def verify_source(log, report):
         raise ValueError("incomplete duplicate or reordered source receipt")
 
 
+def verify_source_owner_policy_loss(log, report):
+    if len(log) > MAX_LOG:
+        raise ValueError("log budget")
+    counts = expected_counts(report)
+    markers = {SOURCE_POLICY: "policy", SOURCE_IO: "io", SOURCE_KERNEL: "kernel",
+               SOURCE_MOUNTD: "mountd", SOURCE_RPCBIND: "rpcbind", SOURCE_OWNER_POLICY_LOSS: "fault",
+               b"PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_DONE": "done"}
+    seen = []
+    for raw in log.split(b"\n"):
+        line = raw[:-1] if raw.endswith(b"\r") else raw
+        if not line.startswith(b"PHANTOWD_NFS_"):
+            continue
+        match = SOURCE_COUNTS.fullmatch(line)
+        if match and tuple(map(int, match.groups())) == counts:
+            seen.append("counts")
+        elif line in markers:
+            seen.append(markers[line])
+        else:
+            raise ValueError("unknown failed or broadened policy-loss receipt")
+    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "fault", "done"]:
+        raise ValueError("incomplete duplicate or reordered policy-loss receipt")
+
+
 def verify_source_loss(log, report):
     _verify_source_loss(log, report, False)
 
@@ -248,15 +275,18 @@ def main():
         source = len(sys.argv) == 4 and sys.argv[1] == "--source"
         loss = len(sys.argv) == 4 and sys.argv[1] == "--source-loss"
         peer = len(sys.argv) == 4 and sys.argv[1] == "--source-daemon-loss"
-        if not source and not loss and not peer and len(sys.argv) != 3:
+        policy_loss = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-policy-loss"
+        if not source and not loss and not peer and not policy_loss and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss or peer else sys.argv[1:]
-        verifier = verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer or policy_loss else sys.argv[1:]
+        verifier = verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if peer:
+    if policy_loss:
+        print("PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=periodic-policy-loss-stopped-review")
+    elif peer:
         print("PHANTOWD_NFS_SOURCE_DAEMON_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=combined-source-mountd-loss")
     elif loss:
         print("PHANTOWD_NFS_SOURCE_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=live-source-loss-retention")

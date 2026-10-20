@@ -27,7 +27,13 @@ func main() {
 	sourceFixture := len(os.Args) == 2 && os.Args[1] == "--source-binding"
 	sourceLoss := len(os.Args) == 2 && os.Args[1] == "--source-loss"
 	daemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-daemon-loss"
-	if (!sourceFixture && !sourceLoss && !daemonLoss && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+	policyLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-policy-loss"
+	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+		os.Exit(1)
+	}
+	command, commandErr := os.ReadFile("/proc/cmdline")
+	selected, selectorValid := parsePolicyLossSelector(command)
+	if commandErr != nil || !selectorValid || selected != policyLoss {
 		os.Exit(1)
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-nfs-code-expected.json")
@@ -41,6 +47,13 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	if policyLoss {
+		if err := probeSourceRuntimeMode(ctx, data, false, false, true); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_REFUSED")
+			os.Exit(1)
+		}
+		return
+	}
 	if daemonLoss {
 		if err := probeSourceDaemonLossRuntime(ctx, data); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_DAEMON_LOSS_REFUSED")

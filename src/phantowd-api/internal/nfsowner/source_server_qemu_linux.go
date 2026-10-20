@@ -13,13 +13,40 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 )
 
-// Fixed adapter used ONLY while the containing finite source campaign owns
-// both join/root gates. It never calls their public gate-taking methods, swaps
-// inputs, or releases borrowed policy/identity/storage authorities. Runtime
-// operations return before callbacks enter another authority domain.
+// Fixed original-source adapter. Each callback owns the join/root gates for
+// one operation only. No runtime gate crosses storage/identity callbacks;
+// no operation replaces original authority or runtime inputs.
 type sourceServerBackendQEMU struct {
 	source *SourceRuntimeQEMU
 	roots  *exportRoots
+}
+
+// NewServerOwnerFixtureQEMU prepares one original-source lifetime, starting no
+// service. Existing ARM/source guards apply; no backend/path argument or
+// descriptor escapes. This is not a product service constructor.
+func (o *SourceRuntimeQEMU) NewServerOwnerFixtureQEMU(ctx context.Context) (*Owner, error) {
+	if err := o.enter(ctx); err != nil {
+		return nil, err
+	}
+	defer func() { <-o.gate }()
+	if o.review {
+		return nil, ErrReviewRequired
+	}
+	if o.closed || o.serverOwner != nil || o.accessAttempted {
+		return nil, ErrState
+	}
+	if o.policyAuthority == nil {
+		return nil, ErrInvalid
+	}
+	s, err := o.roots.enter()
+	if err != nil {
+		return nil, err
+	}
+	defer s.leave()
+	if err := o.prepareAccessLocked(ctx, s, false, false); err != nil {
+		return nil, err
+	}
+	return newSourceServerOwnerQEMU(o, s)
 }
 
 func newSourceServerOwnerQEMU(o *SourceRuntimeQEMU, roots *exportRoots) (*Owner, error) {
@@ -35,36 +62,71 @@ func newSourceServerOwnerQEMU(o *SourceRuntimeQEMU, roots *exportRoots) (*Owner,
 	return owner, nil
 }
 
-func (b *sourceServerBackendQEMU) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
-	if !candidate.EquivalentTo(b.roots.candidate) {
-		return b.source.fail(ErrInvalid)
+// Stop/stopped verification may observe a reviewed JOIN. The original runtime
+// guards still apply: uncertain/partial-start cleanup is not fictional success.
+func (b *sourceServerBackendQEMU) operate(ctx context.Context, allowReview bool, call func(*SourceRuntimeQEMU, *exportRoots) error) error {
+	if b == nil || b.source == nil || b.roots == nil || call == nil {
+		return ErrInvalid
 	}
-	return b.source.verify(ctx, b.roots)
+	o := b.source
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	s, err := o.roots.enter()
+	if err != nil {
+		return err
+	}
+	defer s.leave()
+	if s != b.roots || s.runtime != o || o.closed || s.closed || s.closeUncertain ||
+		o.serverOwner == nil || o.serverOwner.inner == nil || o.serverOwner.inner.backend != b {
+		return o.fail(ErrReviewRequired)
+	}
+	if o.review && !allowReview {
+		return ErrReviewRequired
+	}
+	err = call(o, s)
+	if err == nil {
+		err = ctx.Err()
+	}
+	if err != nil {
+		return o.fail(err)
+	}
+	return nil
+}
+
+func (b *sourceServerBackendQEMU) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
+	return b.operate(ctx, false, func(o *SourceRuntimeQEMU, s *exportRoots) error {
+		if !candidate.EquivalentTo(s.candidate) {
+			return ErrInvalid
+		}
+		return o.verify(ctx, s)
+	})
 }
 
 func (b *sourceServerBackendQEMU) VerifyStopped(ctx context.Context) error {
-	if err := b.source.access.CheckServerStoppedFixtureQEMU(ctx); err != nil {
-		return b.source.fail(err)
-	}
-	return nil
+	return b.operate(ctx, true, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
+		return o.access.CheckServerStoppedFixtureQEMU(ctx)
+	})
 }
 
 func (b *sourceServerBackendQEMU) Start(ctx context.Context) error {
-	if err := b.source.access.StartServerFixtureQEMU(ctx); err != nil {
-		return b.source.fail(err)
-	}
-	b.source.accessServer = true
-	return nil
+	return b.operate(ctx, false, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
+		if err := o.access.StartServerFixtureQEMU(ctx); err != nil {
+			return err
+		}
+		o.accessServer = true
+		return nil
+	})
 }
 
 func (b *sourceServerBackendQEMU) VerifyReady(ctx context.Context) error {
-	if !b.source.accessServer {
-		return b.source.fail(ErrState)
-	}
-	if err := b.source.access.CheckServerFixtureQEMU(ctx); err != nil {
-		return b.source.fail(err)
-	}
-	return nil
+	return b.operate(ctx, false, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
+		if !o.accessServer {
+			return ErrState
+		}
+		return o.access.CheckServerFixtureQEMU(ctx)
+	})
 }
 
 // The original Owner supplies the independent cleanup context. Do not require
@@ -72,27 +134,93 @@ func (b *sourceServerBackendQEMU) VerifyReady(ctx context.Context) error {
 // already-admitted stop. The lower runtime still enforces its original guards;
 // its uncertain/partial-start failures retain review, not fictional cleanup.
 func (b *sourceServerBackendQEMU) Stop(ctx context.Context) error {
-	if err := b.source.access.StopServerFixtureQEMU(ctx); err != nil {
-		return b.source.fail(err)
-	}
-	b.source.accessServer = false
-	return nil
+	return b.operate(ctx, true, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
+		if err := o.access.StopServerFixtureQEMU(ctx); err != nil {
+			return err
+		}
+		o.accessServer = false
+		return nil
+	})
 }
 
 func (b *sourceServerBackendQEMU) Release(ctx context.Context) error {
-	o := b.source
-	if o.accessServer || o.review || o.accessSettled || o.accessVolume == nil {
-		return o.fail(ErrReviewRequired)
+	return b.operate(ctx, false, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
+		if o.accessServer || o.accessSettled || o.accessVolume == nil {
+			return ErrReviewRequired
+		}
+		if err := o.access.Close(ctx); err != nil {
+			return err
+		}
+		if err := o.accessVolume.Close(); err != nil {
+			return err
+		} // Original uncertain-close object retained, no retry.
+		o.accessVolume = nil
+		o.accessSettled = true
+		return nil
+	})
+}
+
+// Same original Owner gate and fixed synthetic-data operation. No path,
+// payload or replacement backend is accepted. Lower gates return before
+// independently budgeted Owner compensation on an admitted failure.
+func (o *Owner) ExerciseSourceIOFixtureQEMU(ctx context.Context) error {
+	s, err := o.acquire(ctx)
+	if err != nil {
+		return err
 	}
-	if err := o.access.Close(ctx); err != nil {
-		return o.fail(err)
+	defer s.unlock()
+	if s.state == ReviewRequired {
+		return ErrReviewRequired
 	}
-	if err := o.accessVolume.Close(); err != nil {
-		return o.fail(err) // Keep the original uncertain-close object; no retry.
+	if s.state != Running {
+		return ErrState
 	}
-	o.accessVolume = nil
-	o.accessSettled = true
-	return ctx.Err()
+	b, ok := s.backend.(*sourceServerBackendQEMU)
+	if !ok {
+		return ErrInvalid
+	}
+	if err := s.check(ctx); err != nil {
+		return err
+	}
+	err = b.operate(ctx, false, func(source *SourceRuntimeQEMU, _ *exportRoots) error {
+		return source.access.ExerciseServerIOFixtureQEMU(ctx)
+	})
+	if err != nil {
+		return s.review(err, true)
+	}
+	return s.check(ctx)
+}
+
+// Read-only witness AFTER original Owner review. No Stop retry, claim refresh,
+// reference release or clearing of review is performed by this diagnostic.
+func (o *SourceRuntimeQEMU) VerifyServerStoppedRetainedFixtureQEMU(ctx context.Context) error {
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	if !o.review || o.cause == nil || o.serverOwner == nil || o.access == nil ||
+		o.accessServer || o.accessSettled || o.accessVolume == nil {
+		return ErrState
+	}
+	state, err := o.serverOwner.Observe()
+	if err != nil {
+		return err
+	}
+	if state != ReviewRequired {
+		return ErrState
+	}
+	s, err := o.roots.enter()
+	if err != nil {
+		return err
+	}
+	defer s.leave()
+	if s.runtime != o || s.closed || s.closeUncertain || s.verify(ctx) != nil {
+		return ErrReviewRequired
+	}
+	if err := o.lease.Check(ctx); err != nil {
+		return err
+	}
+	return o.access.CheckServerStoppedFixtureQEMU(ctx)
 }
 
 // Positive real-server supervision evidence is IDLE cancellation, not periodic

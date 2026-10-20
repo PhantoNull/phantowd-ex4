@@ -28,18 +28,18 @@ var sourceRuntimeRetained any
 var sourceRuntimeCause error
 
 func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
-	return probeSourceRuntimeMode(ctx, expected, false, false)
+	return probeSourceRuntimeMode(ctx, expected, false, false, false)
 }
 
 func probeSourceLossRuntime(ctx context.Context, expected []byte) error {
-	return probeSourceRuntimeMode(ctx, expected, true, false)
+	return probeSourceRuntimeMode(ctx, expected, true, false, false)
 }
 
 func probeSourceDaemonLossRuntime(ctx context.Context, expected []byte) error {
-	return probeSourceRuntimeMode(ctx, expected, true, true)
+	return probeSourceRuntimeMode(ctx, expected, true, true, false)
 }
 
-func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, daemonLoss bool) (result error) {
+func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, daemonLoss, policyLoss bool) (result error) {
 	phase := "mount-roster"
 	defer func() {
 		sourceRuntimeCause = result // ORIGINAL retaining error, never only its text.
@@ -147,6 +147,10 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		}
 		fmt.Println("PHANTOWD_NFS_SOURCE_POLICY_READY original_policy_lease=true original_identity_lease=true unix_census=true registry=empty_fixture complete_candidate=true parent_close_excluded=true released_claims_refused=true mismatch_refused=true canceled_unchanged=true no_claim_release=true product=false scope=qemu-only")
 		phase = "original-source-nfs-access"
+		if policyLoss {
+			phase = "periodic-owner-policy-loss"
+			return runSourceOwnerPolicyLoss(ctx, joined, authority, roots, inputs[0], lease)
+		}
 		if sourceLoss {
 			phase = "live-source-replacement"
 			probe := joined.ProbeSourceLossFixtureQEMU

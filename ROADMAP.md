@@ -2238,7 +2238,16 @@ storage. No production roster provider or activation path exists.
   observations. NFSD transactions use new descriptors beneath original controls;
   fixed RPC absence and the private export table supplement the profile. Copied
   handles/concurrent loop operations refuse, without restart or new privileges.
-  This does not qualify periodic real-server scans, complete partial-start/live
+  The one-shot original-source QEMU constructor issues an Owner retained across
+  calls; join/root gates cover each backend operation, not a whole campaign.
+  Fixed synthetic I/O uses the Owner gate; remaining parent closure additionally
+  requires that original Owner to be closed. An optional policy-loss campaign
+  requires scheduled detection of byte-identical RAM policy replacement, actual
+  verified stop, retained original claims/source references and sticky review
+  after restoration, without manual detection, restart, retry or release.
+  Replacement is populated outside the watched role before atomic exchange;
+  no missing/partial-file window can stand in for equal-byte identity loss.
+  This does not qualify the complete periodic real-server matrix, partial-start/live
   fault compensation, client quiescence, domain census or boot/recovery; those
   remain required before product service activation or persistence.
   M4.1 remains incomplete until fresh storage and identity evidence are
