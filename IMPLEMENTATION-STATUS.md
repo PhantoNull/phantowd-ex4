@@ -3,6 +3,19 @@
 
 # Implementation status
 
+## Release gate restoration — local preflight, hosted qualification pending
+
+QEMU qualification keeps its existing per-ref concurrency group but no longer
+cancels an in-progress run on the next commit. A regression rejects the previous
+setting. The isolated Samba-status experiment is now versioned with its fixed
+staging destinations and transcript controls. It is optional, synthetic and
+not a demonstrated cause or repair of the integration timeout.
+
+Local checks pass: 31 build-feedback tests, seven producer-transcript tests,
+workflow routing contracts, shell/Python lint and C syntax. The PR's full QEMU,
+independent reproducibility and Stage A compile-only runs have not run yet.
+No firmware runtime, artifact name, installability or flashability is changed.
+
 ## Host release planning: optional strict-upgrade prerequisite
 
 Both host release inspectors now support `--require-upgrade` with a valid

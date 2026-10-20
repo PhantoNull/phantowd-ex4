@@ -448,7 +448,13 @@ button to an unqualified backend simply because the screen exists.
   state reboot. Next distinguish full process-group settlement, mapped/thread
   references and kernel deferred release with a deterministic lifecycle seam.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
-  changes use QEMU; board changes use the relevant current probe. Host toolkit
+  changes use QEMU; board changes use the relevant current probe. QEMU
+  qualification must finish without cancellation by a subsequent commit on the
+  same ref. The release-gate restoration changes QEMU's cancellation policy and
+  versions a separate optional synthetic Samba-status diagnostic; local contract
+  tests pass, but its own hosted/full and independent reproduction gates remain
+  open. Neither diagnostic presence nor a passing transcript proves a timeout fix.
+  Host toolkit
   CI selects and verifies the exact compiler from `GO_VERSION` in
   `versions.env`, independently of module minimums; pin-only push/PR changes
   trigger host checks. Local selector execution and path contracts pass;
