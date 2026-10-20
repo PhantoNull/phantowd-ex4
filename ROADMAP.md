@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-17**. This is the product specification and work breakdown,
+Reviewed: **2026-10-20**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -11,21 +11,35 @@ The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
 
-Current M0 gate: the complete `dedafa6` qualifier passes eight Samba campaigns,
-then reaches its unchanged 1,800-second outer limit. File/file-source, the union,
-later SMART lanes and the audit remain unqualified. This supersedes the earlier
-`0beb01e` seven-campaign/held failure without repairing its intermittent cause.
-Focused passing components cannot qualify that failed complete run.
+Current M0 gate: the sealed `caf6c99` complete qualifier exits 1 after 1,352
+seconds at the Samba fault campaign's final fresh Owner observation, after
+service/native/candidate/lifecycle pass. An unchanged-budget fault-only run
+reproduces expiry of the 20-second data context after the clients finish.
+Later campaigns, SMART and the independent audit remain unqualified.
+This supersedes the earlier current `dedafa6` outer-timeout description, without
+repairing either that historical failure or the earlier `0beb01e` fault.
+Focused passing components cannot qualify a failed complete run.
 The full/Samba drivers now have host-tested fixed-label boot-relative phase
 timing without command wrappers, signal traps, acceptance or timer changes.
 Unknown clock data stays unknown; an unmatched BEGIN is incomplete evidence.
 71actual-helper/stub-driver,83fixture and8CPU-budget controls pass, including
 the exact non-following full/focused lint calls after a real preflight refusal.
-Genuine
-full-run timing is still required: static Samba guest maxima sum1980s inside
-the shared1800s cached cap, but that is not observed runtime or causal proof.
-Next collect one sealed-source instrumented run with original statuses/logs/
-source witnesses, then make a measured, separately justified execution decision.
+Actual full-run phase timing is now captured. Static Samba guest maxima sum
+1980s inside the shared1800s cached cap, but that is not the cause established
+by this run, which exits before the outer limit. Next isolate the final Owner
+observation's cost/error from the preserved full and focused failures, with
+original source/authority witnesses and unchanged proof, before a justified fix.
+Failure-only elapsed partitions now pass native/race controls and an ordinary
+focused ARMv5 campaign. A separate forced-refusal source variant measures13
+checks at8,879ms and6clients at2,778ms after all original Owner checks pass.
+It is diagnostic only, not product code or a timeout fix. Adjacent post/pre
+checks now share one fresh boundary under the same exclusive gate, with no
+intermediate service operation. Every client bracket and separate final
+result/daemon/Owner observation, original authority and deadline remain.
+Actual ARMv5 controls observe8checks/6clients and11,467ms overall in the second
+sample versus15,018ms before; the ordinary source-fault proof passes too.
+Next qualify the exact published head and complete sealed integration/audit;
+focused success does not repair or replace the earlier failed full run.
 Require causal diagnosis/calibrated fixture decisions, complete qualification
 and audit; never replace failed results with selected passes or relax proofs.
 See [implementation status](IMPLEMENTATION-STATUS.md) and the

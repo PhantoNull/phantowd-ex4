@@ -3,6 +3,32 @@
 
 # Internal code-only runtime bundle inspection
 
+## Fixed planned-data cost diagnostics (QEMU only)
+
+The planned data probe can return a numeric elapsed-cost copy in addition to
+its unchanged error. It partitions time into daemon/result checks, client
+captures and the remaining return/cleanup interval. Counts denote measured
+boundaries, not successful checks. No command, path, account, credential,
+resource handle, clock or replacement deadline is returned.
+
+Only a refusal is annotated, preserving its original error chain and first
+snapshot. The coordinator can attach completed runtime costs when a later
+fresh Owner observation fails. The guarded child relays at most one bounded,
+fixed-field row; maximum combined diagnostics still fit its original 1 KiB
+capture. Neither a cost row nor child exit zero weakens the exact success proof.
+Native/race controls do not demonstrate an ARM timing fix. No product service,
+status-producer experiment, privilege or resource-lifetime contract is changed.
+
+Planned clients share the immediately adjacent post/pre verification boundary:
+the same exclusive runtime gate permits only local timing bookkeeping and fixed
+loop progression between clients. There is still a fresh check before and after
+each client, plus the separate final daemon check after result inspection and
+the coordinator's final Owner observation. Actual controlled ARMv5 measurements
+observe eight check boundaries for six clients instead of thirteen duplicate
+checks; an ordinary source-fault campaign also passes strict original proof.
+This focused result does not qualify the complete image, all faults or product
+startup. Original deadlines and failure/retention semantics remain unchanged.
+
 ## NFS userspace code expectations (QEMU-only consumer)
 
 The host toolkit's `inspect-nfs-runtime-closure DIRECTORY` resolves the current

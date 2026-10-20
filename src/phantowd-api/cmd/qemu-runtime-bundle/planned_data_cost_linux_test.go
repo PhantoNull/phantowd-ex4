@@ -65,7 +65,7 @@ func TestPlannedDataCostsKeepExistingChildCaptureBound(t *testing.T) {
 		plannedServiceDataCostDiagnosticQEMU(smbexec.NativePlannedDataCostObservationQEMU{Present: true, Steps: 2, BudgetMS: 180000, BeforeMS: 180000, ProbeMS: 180000, TotalMS: 180000})
 	clock := runtimebundle.NativeDataClockObservationQEMU{Present: true, ContextDone: true, DeadlineReached: true, ElapsedMS: 180000, EnteredRemainingMS: 180000}
 	for _, row := range []string{plannedDataClockDiagnosticQEMU(clock), plannedDataCaptureClockDiagnosticQEMU(runtimebundle.NativeDataCaptureClockObservationQEMU{NativeDataClockObservationQEMU: clock, LimitMS: 4000})} {
-		rows := prefix + row
+		rows := prefix + row + plannedRuntimeDataCostDiagnosticQEMU(runtimebundle.PlannedDataCostQEMU{Present: true, Checks: 13, Clients: 6, ChecksNS: 60_000_000_000, ClientsNS: 60_000_000_000, RemainderNS: 60_000_000_000})
 		var output nativeFaultOutput
 		if row == "" {
 			t.Fatal("missing maximum clock row")
@@ -73,5 +73,44 @@ func TestPlannedDataCostsKeepExistingChildCaptureBound(t *testing.T) {
 		if _, err := output.Write([]byte(rows)); err != nil || output.String() != rows || len(rows) > 1024 {
 			t.Fatal("failure telemetry no longer fits original 1KiB capture", len(rows))
 		}
+	}
+}
+
+func TestPlannedRuntimeCostsRelayOnlyFirstBoundedNumericRow(t *testing.T) {
+	cost := runtimebundle.PlannedDataCostQEMU{Present: true, Checks: 13, Clients: 6, ChecksNS: 12_000_000_000, ClientsNS: 4_000_000_000, RemainderNS: 9_000_000}
+	row := plannedRuntimeDataCostDiagnosticQEMU(cost)
+	const want = "PHANTOWD_QEMU_RUNTIME_COSTS checks=13 clients=6 checks_ms=12000 clients_ms=4000 remainder_ms=9 scope=diagnostic-only\n"
+	if row != want {
+		t.Fatal("missing fixed cost partition", row)
+	}
+	private := errors.New("private/path/password")
+	got := plannedFaultSubprocessDiagnosticQEMU(nil, private, row+row, "exact-proof\n")
+	if strings.Count(got, row) != 1 || strings.Contains(got, "private") {
+		t.Fatal("duplicated or leaked diagnostic", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(row, "checks=13", "checks=14", 1),
+		strings.Replace(row, "clients=6", "clients=7", 1),
+		strings.Replace(row, "checks_ms=12000", "checks_ms=012000", 1),
+		strings.Replace(row, "checks_ms=12000", "checks_ms=180000", 1),
+		strings.Replace(row, "clients_ms=4000", "clients_ms=-1", 1),
+		strings.Replace(row, "remainder_ms=9", "remainder_ms=secret", 1),
+		strings.TrimSuffix(row, "\n") + " extra=private\n",
+	} {
+		if strings.Contains(plannedFaultSubprocessDiagnosticQEMU(nil, private, bad, "proof"), "PHANTOWD_QEMU_RUNTIME_COSTS") {
+			t.Fatal("invalid cost row relayed", bad)
+		}
+	}
+	base := plannedFaultFailureDiagnosticQEMU("data", context.DeadlineExceeded) +
+		plannedServiceFailureDiagnosticQEMU(smbexec.NativePlannedFailureObservationQEMU{Present: true, Boundary: "verify-owners", ContextPresent: true, ContextDone: true, DeadlinePresent: true, DeadlineReached: true}) +
+		plannedServiceDataStageDiagnosticQEMU("after-runtime") +
+		plannedServiceDataCostDiagnosticQEMU(smbexec.NativePlannedDataCostObservationQEMU{Present: true, Steps: 2, BudgetMS: 180000, BeforeMS: 180000, ProbeMS: 180000, TotalMS: 180000})
+	maximum := plannedRuntimeDataCostDiagnosticQEMU(runtimebundle.PlannedDataCostQEMU{Present: true, Checks: 13, Clients: 6, ChecksNS: 60_000_000_000, ClientsNS: 60_000_000_000, RemainderNS: 60_000_000_000})
+	var output nativeFaultOutput
+	if _, err := output.Write([]byte(base + maximum)); err != nil || output.String() != base+maximum {
+		t.Fatal("diagnostic exceeded original child output bound")
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+"exact-proof\n", "exact-proof\n"); !strings.Contains(got, "proof_match=false") {
+		t.Fatal("telemetry weakened exact success proof")
 	}
 }

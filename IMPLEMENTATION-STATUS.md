@@ -3,6 +3,48 @@
 
 # Implementation status
 
+## Latest complete integration: failed, not installable (2026-10-20)
+
+The sealed `caf6c99` candidate passes its own 30 hosted checks. Its actual
+complete cached run exits 1 after 1,352 seconds, not at the 1,800-second outer
+limit. Host checks, main ARMv5/MD/state fixtures and the Samba service, native,
+candidate and lifecycle campaigns pass; the fault campaign fails strict proof.
+Later campaigns, SMART and the complete independent audit remain unqualified.
+
+A separate unchanged-budget fault-only run reproduces the failure. Both reach
+the final fresh Owner check after the six data clients finish, then exceed the
+20-second data context. The full run records cumulative elapsed times of
+2,322 / 18,761 / 20,032 ms (before runtime / after runtime / failure); the focused
+run records 2,540 / 19,720 / 20,002 ms. These values must not be added together.
+The responsible work inside the Owner observation is not yet isolated. This is
+not proof that earlier intermittent faults are fixed or that increasing a timer
+would be correct. No checks, budgets, product startup or NAS state were changed.
+
+This supersedes earlier *current-run* timeout/progress descriptions below;
+their dated evidence remains historical. The next step is targeted cost/error
+isolation with unchanged authority, lock order, rechecks and failure semantics,
+then regression and complete integration before an independent audit.
+
+QEMU-only numeric elapsed partitions now preserve the original error chain,
+success proof and 1 KiB diagnostic bound. Native/race and vet pass; one ordinary
+focused ARMv5 fault campaign passes, confirming intermittency rather than a fix.
+A temporary source-only variant then deliberately refuses *after* every
+original data/final-Owner check: 13 checks take 8,879 ms and six clients 2,778 ms
+in that sample, with 15,018 ms overall against 19,999 ms available. Checks include
+final result inspection. This is measurement, not a production or timeout fix;
+the forced variant is excluded from project sources.
+
+The probe now shares the immediately adjacent post/pre check between clients,
+under the same exclusive gate with no intervening service operation. A fresh
+check still brackets every client; separate final result/daemon and Owner
+observations remain. Actual controlled ARMv5 measurement changes from13 to8
+checks for the same6clients: 5,382 ms checks / 2,796 ms clients, 11,467 ms overall
+in the second sample versus15,018 ms before. This is a two-sample observation,
+not a universal speed guarantee. The ordinary source-fault guest also passes
+its complete original strict proof, with source bytes unchanged before/after.
+The complete integration, other campaign families, hosted publication and audit
+still require their own new-candidate qualification.
+
 ## Full-build phase timing: host-qualified instrumentation
 
 The full driver now emits bounded fixed-label BEGIN/END diagnostics around20
@@ -20,10 +62,11 @@ Samba fixture and8 CPU-budget controls, lint/path and Windows wrapper checks pas
 An initial complete preflight additionally caught a non-following ShellCheck
 import failure missed by the rapid `-x` lint. The exact full/focused standalone
 lint calls now have a regression; dynamic imports do not request following and
-the actual helper remains independently linted. This is NOT genuine QEMU timing,
-a complete-image pass or a causal timeout fix.
-Next: exact-head hosted checks and one sealed-source instrumented full run,
-then use measured phase costs before changing budgets or suite architecture.
+the actual helper remains independently linted. Those host controls alone are
+not genuine QEMU timing, a complete-image pass or a causal timeout fix.
+Exact-head hosted checks pass. The sealed-source instrumented full run and a
+focused reproduction now fail as recorded above; use those measured costs
+before changing budgets or suite architecture.
 
 ## Verified NFS compensation frontiers in disposable QEMU
 

@@ -34,7 +34,8 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		clock +
 		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) +
 		plannedServiceDataStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) +
-		plannedServiceDataCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+		plannedServiceDataCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostQEMU(err)) +
+		plannedRuntimeDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
 }
 
 func plannedDataCaptureClockDiagnosticQEMU(c runtimebundle.NativeDataCaptureClockObservationQEMU) string {
@@ -245,6 +246,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedRuntimeDataCostDiagnosticQEMU(fields) && !seen["runtime-data-cost"] {
+			seen["runtime-data-cost"] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedDataCaptureClockDiagnosticQEMU(fields) && !seen["data-capture-clock"] {
 			seen["data-capture-clock"] = true
 			output.WriteString(line)

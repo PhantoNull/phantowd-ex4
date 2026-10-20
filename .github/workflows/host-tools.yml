@@ -403,6 +403,7 @@ jobs:
           go test -count=1 ./...
           go vet -tags=qemu ./...
           go test -tags=qemu -count=1 -v ./cmd/qemu-nfs-code-fixture
+          go test -tags=qemu -race -count=1 -v -run '^(TestPlanned(DataCost|DataCosts|RuntimeCosts)|TestNativePlannedDataCosts)' ./internal/runtimebundle ./internal/smbexec ./cmd/qemu-runtime-bundle
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
           go test -tags=qemu -race -count=1 -v -run '^TestNFSSource' ./internal/mountowner
           go test -tags=qemu -race -count=1 -v ./internal/nfskernel

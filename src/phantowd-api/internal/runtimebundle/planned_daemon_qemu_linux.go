@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
@@ -67,6 +68,20 @@ func (r *NativeSambaRuntimeQEMU) StartPlannedDaemonQEMU(ctx context.Context) (re
 // No caller supplies a path, root, credential, command or backend. The six
 // bounded clients use the existing private helper and never start a daemon.
 func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context) (result error) {
+	_, result = r.ProbePlannedDataAccessMeasuredQEMU(ctx)
+	return result
+}
+
+// ProbePlannedDataAccessMeasuredQEMU runs the identical fixed experiment and
+// returns only nonqualifying elapsed costs, even when the later Owner check
+// refuses. It accepts no alternate command, deadline, sink or authority.
+func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessMeasuredQEMU(ctx context.Context) (PlannedDataCostQEMU, error) {
+	var cost plannedDataCostClockQEMU
+	err := r.probePlannedDataAccessQEMU(ctx, &cost)
+	return cost.finish(), err
+}
+
+func (r *NativeSambaRuntimeQEMU) probePlannedDataAccessQEMU(ctx context.Context, cost *plannedDataCostClockQEMU) (result error) {
 	clock := startNativeDataClockQEMU(ctx)
 	defer func() { result = clock.annotate(ctx, result) }()
 	if err := r.enter(ctx); err != nil {
@@ -81,20 +96,31 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 		return err
 	}
 	r.plannedDataAttempted = true
+	cost.start = time.Now()
 	defer func() {
 		if result != nil {
 			r.owner.review = true // Containing coordinator stops; keep all inputs.
 		}
 	}()
 	pid := r.daemonPID
+	// A single fresh check at each boundary brackets every client. The preceding
+	// client's post-check is also the next client's pre-check: only local timing
+	// bookkeeping and fixed loop progression intervene, under the same gate.
+	// Keep the separate final check after result inspection below.
+	err := r.verifyNativeDaemonQEMU(ctx, pid)
+	cost.mark(false)
+	if err != nil {
+		return nativeDataFailureQEMU("rw-write", nativeWorkerAdmissionQEMU, err)
+	}
 	for _, operation := range []string{"rw-write", "rw-read", "ro-read", "ro-write", "escape", "ungranted"} {
-		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
-			return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
-		}
-		if err := r.nativeDataClientQEMU(ctx, operation); err != nil {
+		err = r.nativeDataClientQEMU(ctx, operation)
+		cost.mark(true)
+		if err != nil {
 			return err
 		}
-		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+		err = r.verifyNativeDaemonQEMU(ctx, pid)
+		cost.mark(false)
+		if err != nil {
 			return nativeDataFailureQEMU(operation, nativeWorkerPostAdmissionQEMU, err)
 		}
 	}
@@ -128,7 +154,9 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 			return nativeDataFailureQEMU("denial", nativeWorkerResultQEMU, errors.New("planned SMB denial created an unintended file"))
 		}
 	}
-	if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+	err = r.verifyNativeDaemonQEMU(ctx, pid)
+	cost.mark(false)
+	if err != nil {
 		return nativeDataFailureQEMU("final-daemon", nativeWorkerPostAdmissionQEMU, err)
 	}
 	return nil
