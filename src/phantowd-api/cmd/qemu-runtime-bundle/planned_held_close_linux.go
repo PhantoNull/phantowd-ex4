@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
@@ -22,7 +23,9 @@ const plannedHeldCloseMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READ
 // must stay bound to the SAME backend session and both authorities through the
 // complete supervised scan. Accepted cancellation stops, but does not release;
 // only a subsequent verified full Close may release the original authorities.
-func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
+func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) (result error) {
+	cost := startPlannedHeldCostQEMU(ctx)
+	defer func() { fmt.Print(cost.row(ctx, result)) }()
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 	if err := service.StartHeldSessionQEMU(canceled); !errors.Is(err, context.Canceled) {
@@ -34,15 +37,18 @@ func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.Na
 	if err := service.StartHeldSessionQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("planned held close accepted duplicate admission")
 	}
+	cost.mark()
 	live, err := observePlannedHeldFaultStopQEMU(ctx, native)
 	if err != nil || live.DaemonStopped || live.ClientStopped || !live.InputsRetained {
 		return errors.Join(errors.New("planned live holder supplied stopped or released evidence"), err)
 	}
+	cost.mark()
 	// This uses the accepted exclusive loop unchanged, including the original
 	// session witness in every serialized storage-first/identity verification.
 	if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
 		return err
 	}
+	cost.mark()
 	for range 2 {
 		stopped, err := observePlannedHeldFaultStopQEMU(ctx, native)
 		if err != nil || !stopped.DaemonStopped || !stopped.ClientStopped || !stopped.InputsRetained {
@@ -54,6 +60,7 @@ func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.Na
 		!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 		return errors.New("planned held stop released original authority")
 	}
+	cost.mark()
 	for range 2 {
 		if err := service.Close(ctx); err != nil {
 			return err

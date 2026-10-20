@@ -3,7 +3,33 @@
 
 # Implementation status
 
-## Latest complete integration: failed, not installable (2026-10-20)
+## Latest complete integration: held-session deadline failure (2026-10-20)
+
+The exact `f587ad5` hosted workflow passes all30 steps. Its complete local run
+then exits1 after1,729 seconds, before the1,800-second outer limit. Seven Samba
+campaigns pass strict proof: service/native/candidate/lifecycle/fault/data/exit.
+The earlier data/final-Owner failing frontier is passed in this full execution.
+
+`held` fails during the20-second supervision phase at `verify-held-session`.
+Its session worker's1,014ms pre-admission leaves223ms; execution takes255ms and
+reaches the parent deadline. The cause is not yet isolated. Guest command exit0
+does not satisfy the failed proof. File/file-source, complete union, SMART and
+independent full audit remain unqualified. All1,837 frozen source files are
+unchanged. No automatic full retry, timer change or NAS operation follows.
+Next reproduce only held-session qualification, then isolate preparation,
+revalidation and actual session-error costs before a justified correction.
+
+The unchanged held-only baseline passes, confirming intermittency. New
+QEMU-only cumulative boundary diagnostics pass test-first context/clock controls,
+native race/vet, campaign-proof refusal tests and one actual ARMv5 held guest.
+In that sample, setup takes9,687ms, live observation5ms, supervision/stop4,846ms,
+stopped observations8ms and close6ms:14,552ms total of19,999ms available.
+Original actions are byte-equivalent after removing diagnostics, and the strict
+original proof remains required. This is not a timeout fix. Whether to split
+setup and supervision into separately bounded fixture actions is under review;
+no timer, product workflow or NAS state has changed.
+
+## Previous complete integration: data deadline failure (2026-10-20)
 
 The sealed `caf6c99` candidate passes its own 30 hosted checks. Its actual
 complete cached run exits 1 after 1,352 seconds, not at the 1,800-second outer

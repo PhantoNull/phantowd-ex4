@@ -2212,5 +2212,21 @@ class StatusSourceRefusalFixture(unittest.TestCase):
                 fixture.check_status_source_refusal(good.replace(required, ""))
 
 
+class HeldCostDiagnosticFixture(unittest.TestCase):
+    def test_held_costs_never_replace_actual_campaign_proof(self):
+        row = ("PHANTOWD_DIAG_HELD_COSTS stage=close steps=4 budget_ms=20000 "
+               "after_start_ms=3000 after_live_ms=8000 "
+               "after_supervision_ms=12000 after_stopped_ms=13000 "
+               "total_ms=15000 failed=false context_done=false "
+               "deadline_reached=false qualifying=false scope=qemu-only")
+        good = "\n".join(campaign_rows()["held"])
+        self.assertEqual(fixture.check_campaign(good, "held"),
+                         fixture.check_campaign(good + "\n" + row, "held"))
+        for bad in (row, good.replace(fixture.PLANNED_HELD_CLOSE_MARKER, row),
+                    good.replace("PHANTOWD_SAMBA_ROOT_HELD_DONE", row)):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign(bad, "held")
+
+
 if __name__ == "__main__":
     unittest.main()

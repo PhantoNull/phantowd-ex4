@@ -11,14 +11,24 @@ The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
 
-Current M0 gate: the sealed `caf6c99` complete qualifier exits 1 after 1,352
-seconds at the Samba fault campaign's final fresh Owner observation, after
-service/native/candidate/lifecycle pass. An unchanged-budget fault-only run
-reproduces expiry of the 20-second data context after the clients finish.
-Later campaigns, SMART and the independent audit remain unqualified.
-This supersedes the earlier current `dedafa6` outer-timeout description, without
-repairing either that historical failure or the earlier `0beb01e` fault.
-Focused passing components cannot qualify a failed complete run.
+Current M0 gate: `f587ad5` passes all30 exact hosted steps, then its sealed
+complete local qualifier exits1 after1,729s, before the1,800s outer cap. Seven
+Samba campaigns pass strict proof, including the older fault/data-Owner failure
+frontier. Held-session supervision now reaches its20s deadline at
+`verify-held-session`; a session worker starts execution with223ms remaining
+and takes255ms. Reproduce only that campaign and isolate its cost/error before
+any change. File/file-source, whole union, SMART and audit remain unqualified.
+All1,837source files remain unchanged; no automatic complete-run retry.
+This supersedes earlier current-run `caf6c99` data-deadline and `dedafa6`
+outer-timeout descriptions, not their historical evidence or all intermittent
+causes. Focused passing components cannot qualify a failed complete run.
+Held boundary instrumentation now passes native/race/vet and one strict actual
+ARMv5 guest. The healthy sample uses9.69s for setup and4.85s for supervised
+scan/stop,14.55s total; other observations/close are negligible in that sample.
+The current20s aggregate also includes setup. Decide explicitly between separate
+bounded setup/supervision actions and retaining the combined cap with further
+optimization. Do not describe a larger combined window as a speed improvement;
+no budget change is implemented yet.
 The full/Samba drivers now have host-tested fixed-label boot-relative phase
 timing without command wrappers, signal traps, acceptance or timer changes.
 Unknown clock data stays unknown; an unmatched BEGIN is incomplete evidence.
