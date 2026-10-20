@@ -24,7 +24,8 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) != 1 || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+	sourceFixture := len(os.Args) == 2 && os.Args[1] == "--source-binding"
+	if (!sourceFixture && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-nfs-code-expected.json")
@@ -38,6 +39,13 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	if sourceFixture {
+		if err := probeSourceRuntime(ctx, data); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_REFUSED")
+			os.Exit(1)
+		}
+		return
+	}
 	if err := runtimebundle.ProbeNFSCodeQEMU(ctx, data); err != nil {
 		fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_CODE_PROBE_REFUSED")
 		os.Exit(1)

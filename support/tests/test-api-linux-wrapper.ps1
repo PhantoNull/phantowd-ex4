@@ -70,6 +70,7 @@ try {
     foreach ($check in @('"$go_binary" vet ./...', '"$go_binary" test -count=1 ./...',
         '"$go_binary" vet -tags=qemu ./...',
         '"$go_binary" test -tags=qemu -race -count=1 ./internal/nfsowner',
+        '"$go_binary" test -tags=qemu -race -count=1 -run ''^TestNFSSource'' ./internal/mountowner',
         '"$go_binary" test -tags=qemu -race -count=1 ./internal/nfskernel',
         '"$go_binary" test -tags=qemu -race -count=1 -run ''^TestNFSMountdStartup'' ./internal/processowner',
         '"$go_binary" test -tags=qemu -race -count=1 -run ''^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd)'' ./internal/runtimebundle',

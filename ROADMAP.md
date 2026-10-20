@@ -2051,6 +2051,15 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
+**Original source/runtime join (QEMU-only):** reserve original export-root and
+runtime-input handles together with full candidate matching and both parents'
+Close exclusion. The separate fixed 32 MiB synthetic-source profile requires
+actual mounted-set authority, normal release/FD balance and retained review
+after path replacement/restoration. It does not supply live policy/identity
+leases, daemon source handoff, kernel/export ownership or actual NFS data I/O.
+Next compose those original authorities with fixed filehandle/cache controls
+and actual consumer readiness/settlement; do not widen the generic launcher.
+
 **NFS input-reservation prerequisite:** the QEMU-only typed reservation now
 compares the complete candidate definition/evidence and blocks parent input
 closure until explicit unstarted release. Changed input state retains review

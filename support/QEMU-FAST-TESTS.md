@@ -97,6 +97,34 @@ references in review. Its strict input receipt requires all four lease fields;
 older/missing/altered receipts cannot claim this proof. No extra guest, timeout
 increase, data source, service activation or product authority is added.
 
+## Optional original NFS source/runtime join
+
+`support/test-nfs-code.ps1 -FixtureMode source` selects one separate guarded
+source guest at the same90s/60s/360s bounds. Default `code` remains the existing
+full loader/table/daemons/kernel proof; neither mode substitutes for the other.
+Only a newly allocated regular32MiB tmpfs file is formatted, with its fixed UUID,
+then attached as a snapshot. Model/root/selectors, device size/type, UUID and
+mount/device/flag binding are checked before actual mounted-set qualification.
+The base and synthetic backing hashes must remain unchanged. No physical device,
+image build/pull, new volume, added default CI guest or host privilege is used.
+
+Two independently captured original NFS input lifetimes test normal and fault
+joins. The source profile requires two real O_PATH directories from the original
+roster lease, exact candidate/evidence matching, parent-close exclusion,
+copy/duplicate/cancellation refusal, normal FD balance and sticky review after
+source replacement/restoration. Reviewed mount/qualification/roster/source/input
+references remain until VM disposal; that is not verified product teardown.
+Policy/identity are synthetic, no source descriptor reaches a daemon and there
+is no kernel/export mutation or NFS data I/O in this profile.
+
+Separate strict source receipts reject missing/duplicate/reordered/altered,
+failed or mixed campaign markers and compare counts to independent code metadata.
+Actual POSIX tests cover profile selection surviving image-file staging and
+init reading its selector only after proc is mounted. The original code receipt
+also rejects a failed/mixed source campaign rather than silently ignoring it.
+The Windows mode parameter is syntax-checked; actual qualification uses the
+same shell driver against the existing pinned read-only cache.
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:

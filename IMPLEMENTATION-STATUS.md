@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Original export roots joined to NFS inputs: QEMU-only preparation
+
+An internal typed join now reserves the original mounted-roster export roots
+and matching original code/config/state inputs. Complete candidate equivalence
+is checked at construction, without descriptor getters or replacement backends.
+Both parent closures are excluded while joined. Clean unstarted release frees
+only its reservations; changed/uncertain inputs retain review and original refs.
+Storage lease calls return before the runtime gate is entered, preventing a
+runtime-to-storage callback lock inversion. These checks are not atomic admission.
+
+The optional `support/test-nfs-code.ps1 -FixtureMode source` selects a separate
+bounded synthetic-source guest, not a default CI boot. A fresh regular 32 MiB
+tmpfs file is formatted and attached only as a QEMU snapshot. Guarded actual
+mount/roster leases supply two source directories; normal release, same-text
+different-evidence refusal and source replacement/restoration must preserve
+parent exclusion, review and descriptor balance. The original `code` mode keeps
+its complete loader/daemon/kernel campaign and unchanged 90/60/360 limits.
+
+This joins storage roots to runtime inputs only: policy/identity remain synthetic,
+no daemon receives source descriptors, no actual exports/data I/O occur in this
+source mode, and no product service, boot/recovery or hardware gate is qualified.
+
 ## Original NFS input reservation: QEMU-only preparation
 
 A typed, non-copyable reservation now holds the original NFS code/config/state

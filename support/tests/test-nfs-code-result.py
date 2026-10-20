@@ -4,6 +4,9 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
+import subprocess
+import sys
 import unittest
 
 spec = importlib.util.spec_from_file_location("nfs_code_result", Path(__file__).resolve().parents[1] / "nfs-code-result.py")
@@ -22,6 +25,19 @@ class CodeReceiptTests(unittest.TestCase):
     def test_lf_and_serial_crlf_have_same_exact_meaning(self):
         for ending in (b"\n", b"\r\n"):
             checker.verify(ending.join(self.lines) + ending, self.report)
+
+    def test_source_join_receipt_requires_its_own_complete_proof(self):
+        source = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",
+                  b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=2 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_DONE"]
+        for ending in (b"\n", b"\r\n"):
+            checker.verify_source(ending.join(source) + ending, self.report)
+        for lines in ([source[0], source[2]], source + [source[1]], list(reversed(source)), self.lines,
+                      source + [b"PHANTOWD_NFS_SOURCE_FAILED"], source + [checker.KERNEL],
+                      [line.replace(b"daemons=false", b"daemons=true") for line in source],
+                      [line.replace(b"bytes=400", b"bytes=399") for line in source]):
+            with self.subTest(lines=lines), self.assertRaises(ValueError):
+                checker.verify_source(b"\n".join(lines), self.report)
 
     def test_old_input_only_receipt_cannot_claim_real_table_execution(self):
         without_table = [line for line in self.lines if not line.startswith(b"PHANTOWD_NFS_TABLE_")]
@@ -48,6 +64,10 @@ class CodeReceiptTests(unittest.TestCase):
                for line in self.lines]
         with self.assertRaises(ValueError):
             checker.verify(b"\n".join(old), self.report)
+
+    def test_code_receipt_cannot_hide_a_failed_source_campaign(self):
+        with self.assertRaises(ValueError):
+            checker.verify(b"\n".join(self.lines + [b"PHANTOWD_NFS_SOURCE_FAILED"]), self.report)
 
     def test_missing_duplicate_reordered_or_failed_receipts_refuse(self):
         variants = [self.lines[:i] + self.lines[i+1:] for i in range(len(self.lines))]
@@ -94,6 +114,37 @@ class CodeReceiptTests(unittest.TestCase):
                                    "execution_authorized": False, "objects": [None] * 4}):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 checker.verify(b"\n".join(self.lines), json.dumps(value).encode())
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
+class ShellModeTests(unittest.TestCase):
+    def test_actual_init_selects_source_only_after_proc_is_available(self):
+        init = (Path(__file__).parent / "nfs-code-init.sh").read_text()
+        init = init.replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        stubs = '''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
+'''
+        completed = subprocess.run(["sh", "-c", stubs + init], capture_output=True, timeout=2)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_DONE", completed.stdout)
+        self.assertNotIn(b"FAILED", completed.stdout)
+
+    def test_actual_image_staging_function_preserves_fixture_selection(self):
+        driver = (Path(__file__).parent / "test-qemu-nfs-code.sh").read_text()
+        selected = re.search(r"^(\w+)=\$\{7:-code\}$", driver, re.M).group(1)
+        function = re.search(r"^install_image_file\(\) \{\n.*?^\}", driver, re.M | re.S).group(0)
+        # The REAL function and selector assignment, with only its external image
+        # tools stubbed. No image/file is created/deleted and no QEMU is started.
+        script = (f"{selected}=source\ndebugfs=:\nscratch=/unused\n"
+                  "cmp() { :; }\nrm() { :; }\n" + function +
+                  f'\ninstall_image_file unused unused 0100555\ntest "${selected}" = source\n')
+        completed = subprocess.run(["sh", "-eu", "-c", script], capture_output=True, timeout=2)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
 if __name__ == "__main__":

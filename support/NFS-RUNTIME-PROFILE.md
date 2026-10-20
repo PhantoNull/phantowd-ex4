@@ -443,6 +443,17 @@ This reservation alone does not implement that Owner or a real NFS data path.
 
 ## Required kernel-backend construction and sole ownership
 
+The QEMU-only source/runtime join now reserves original `ExportRootsQEMU` plus
+the original input lease at construction, without raw descriptor getters.
+Its gate precedes the source gate; storage lease calls return before runtime
+lease/code calls, followed by storage recheck. There is no runtime-to-storage
+callback or planner-derivation lock held across kernel/process operations.
+Matching immutable candidates is necessary, not a live policy/identity lease.
+Normal Close releases only an unstarted reservation. Source/input drift or
+uncertain post-reservation construction retains both parents and the ORIGINAL
+error chain; restoration cannot release or revive it. The complete constructor/
+close/concurrency fault matrix and an admitted-consumer lifecycle remain open.
+
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.
 - Admit one exclusive NFS control domain, with original network/control-filesystem

@@ -36,6 +36,7 @@ type exportRoots struct {
 	candidate                      fileserviceplan.NFSv3Candidate
 	pins                           []*mountowner.VolumeRootPin
 	roots                          []exportRoot
+	runtime                        *SourceRuntimeQEMU
 	review, closed, closeUncertain bool
 }
 
@@ -221,6 +222,9 @@ func (o *ExportRootsQEMU) Close() error {
 		return err
 	}
 	defer s.leave()
+	if s.runtime != nil {
+		return ErrBusy
+	}
 	if err := s.releaseInputs(); err != nil {
 		s.review = true
 		return err

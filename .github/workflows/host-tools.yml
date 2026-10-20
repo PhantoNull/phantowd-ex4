@@ -399,6 +399,7 @@ jobs:
           go vet -tags=qemu ./...
           go test -tags=qemu -count=1 -v ./cmd/qemu-nfs-code-fixture
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
+          go test -tags=qemu -race -count=1 -v -run '^TestNFSSource' ./internal/mountowner
           go test -tags=qemu -race -count=1 -v ./internal/nfskernel
           go test -tags=qemu -race -count=1 -v -run '^TestNFSMountdStartup' ./internal/processowner
           go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd)' ./internal/runtimebundle

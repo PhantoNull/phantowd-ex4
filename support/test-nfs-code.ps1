@@ -3,9 +3,11 @@
 [CmdletBinding()]
 param(
     [string]$BaseArtifactDirectory = (Join-Path $PSScriptRoot '../artifacts/qemu-armv5'),
-    [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx')
+    [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx'),
+    [ValidateSet('code','source')][string]$FixtureMode = 'code'
 )
 $ErrorActionPreference = 'Stop'
+$FixtureMode = $FixtureMode.ToLowerInvariant()
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDirectory).Path
 if (-not (Test-Path -LiteralPath $DockerDataVhdxPath -PathType Leaf)) { throw 'Provide the existing Docker data VHDX path.' }
@@ -26,8 +28,9 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/${BUILDROOT_VERSION}-${config_hash}"
-exec timeout --signal=TERM --kill-after=10s 360s sh /src/support/tests/test-qemu-nfs-code.sh /base "$output/target" "$output/host/bin/go" "$(command -v debugfs)" /src
+exec timeout --signal=TERM --kill-after=10s 360s sh /src/support/tests/test-qemu-nfs-code.sh /base "$output/target" "$output/host/bin/go" "$(command -v debugfs)" /src '' __MODE__
 '@
+$linux = $linux.Replace('__MODE__', $FixtureMode)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linux.Replace("`r`n","`n")))
 $command = "printf '%s' '$encoded' | base64 -d > /tmp/nfs-code-fixture.sh; exec /bin/sh /tmp/nfs-code-fixture.sh"
 $preferenceBefore = $ErrorActionPreference

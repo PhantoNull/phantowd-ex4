@@ -9,6 +9,8 @@ go_binary=${3:?pinned Go required}
 debugfs=${4:?pinned debugfs required}
 source_dir=${5:?source required}
 failure_log=${6:-}
+fixture_mode=${7:-code}
+case "$fixture_mode" in code|source) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
 tmpdir=${TMPDIR:-/tmp}
 case "$base:$target:$go_binary:$debugfs:$source_dir:$failure_log:$tmpdir" in
     *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
@@ -74,21 +76,43 @@ install_image_file "$scratch/probe" /usr/sbin/phantowd-nfs-code-fixture 0100555
 install_image_file "$scratch/launcher" /usr/sbin/phantowd-service-launcher 0100555
 install_image_file "$scratch/nfs-table-bootstrap" /usr/sbin/phantowd-nfs-table-bootstrap 0100555
 install_image_file "$source_dir/support/tests/nfs-code-init.sh" /usr/sbin/phantowd-nfs-code-init 0100555
+selector=
+set --
+if [ "$fixture_mode" = source ]; then
+    # Only this fresh regular RAM file is formatted, never a host block device.
+    truncate -s 32M "$scratch/source.ext2"
+    [ -f "$scratch/source.ext2" ] && [ ! -L "$scratch/source.ext2" ] || exit 1
+    "$(dirname "$debugfs")/mke2fs" -q -F -t ext2 -m 0 \
+        -U 11111111-2222-3333-4444-555555555555 "$scratch/source.ext2"
+    source_hash=$(sha256sum "$scratch/source.ext2" | awk '{print $1}')
+    selector=' phantowd_nfs_source_fixture=1'
+    set -- -drive "file=$scratch/source.ext2,format=raw,if=scsi,snapshot=on"
+fi
 # QEMU's default /tmp selection may fall back to /var/tmp for snapshots. Use
 # this exact owned RAM directory; never broaden the container's writable roots.
 TMPDIR="$scratch" timeout --signal=TERM --kill-after=5s 90s qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
-    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_nfs_code_fixture=1 init=/usr/sbin/phantowd-nfs-code-init' \
-    -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" >"$scratch/guest.log" 2>&1 &
+    -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_nfs_code_fixture=1$selector init=/usr/sbin/phantowd-nfs-code-init" \
+    -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" "$@" >"$scratch/guest.log" 2>&1 &
 child_pid=$!
 status=0
 wait "$child_pid" || status=$?
 child_pid=
 cat "$scratch/guest.log"
-if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/nfs-code-result.py" "$scratch/guest.log" "$scratch/expected.json" || \
-    ! python3 -B "$source_dir/support/tests/nfs_loader_result.py" "$scratch/guest.log" "$scratch/expected.json" \
-        "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json"; then
+verify_guest() {
+    [ "$status" -eq 0 ] || return 1
+    if [ "$fixture_mode" = source ]; then
+        python3 -B "$source_dir/support/nfs-code-result.py" --source "$scratch/guest.log" "$scratch/expected.json" || return 1
+        [ "$(sha256sum "$scratch/source.ext2" | awk '{print $1}')" = "$source_hash" ] || return 1
+        echo PHANTOWD_NFS_SOURCE_SNAPSHOT_UNCHANGED
+    else
+        python3 -B "$source_dir/support/nfs-code-result.py" "$scratch/guest.log" "$scratch/expected.json" || return 1
+        python3 -B "$source_dir/support/tests/nfs_loader_result.py" "$scratch/guest.log" "$scratch/expected.json" \
+            "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json" || return 1
+    fi
+}
+if ! verify_guest; then
     if [ -n "$failure_log" ]; then cp "$scratch/guest.log" "$failure_log"; fi
     exit 1
 fi

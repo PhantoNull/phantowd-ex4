@@ -34,11 +34,16 @@ KERNEL = (b"PHANTOWD_NFS_KERNEL_READY original_control=true original_namespaces=
           b"original_daemons_live=true null_rpc_v3=true threads=2 stop_verified=true fd_balance=true "
           b"exports=false owner_backend=false product=false scope=qemu-only")
 COUNTS = re.compile(rb"PHANTOWD_NFS_CODE_COUNTS files=([0-9]{1,3}) aliases=([0-9]{1,4}) bytes=([0-9]{1,8})")
+SOURCE_COUNTS = re.compile(COUNTS.pattern.replace(b"CODE", b"SOURCE"))
+SOURCE_READY = (b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=2 input_pair=true complete_candidate=true "
+                b"parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true "
+                b"mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true "
+                b"original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only")
 
 
-def verify(log, report):
-    if len(log) > MAX_LOG or len(report) > MAX_REPORT:
-        raise ValueError("log budget")
+def expected_counts(report):
+    if len(report) > MAX_REPORT:
+        raise ValueError("report budget")
     expected = json.loads(report)
     if (not isinstance(expected, dict)
             or expected.get("format") != "phantowd-nfs-runtime-candidate"
@@ -63,11 +68,20 @@ def verify(log, report):
     if (not 0 < total <= 8 << 20 or type(expected.get("total_bytes")) is not int
             or total != expected["total_bytes"] or not 0 <= aliases <= 1024 - len(objects)):
         raise ValueError("fixture budget")
+    return len(objects), aliases, total
+
+
+def verify(log, report):
+    if len(log) > MAX_LOG:
+        raise ValueError("log budget")
+    counts = expected_counts(report)
     seen = []
     for raw in log.split(b"\n"):
         # The serial transport adds ONE terminal CR. Embedded/repeated CR is
         # not stripped and therefore cannot manufacture an accepted marker.
         line = raw[:-1] if raw.endswith(b"\r") else raw
+        if line.startswith(b"PHANTOWD_NFS_SOURCE_"):
+            raise ValueError("source campaign in code receipt")
         if line.startswith(b"PHANTOWD_NFS_KERNEL_"):
             if line != KERNEL:
                 raise ValueError("unknown or failed kernel receipt")
@@ -97,7 +111,7 @@ def verify(log, report):
             continue
         match = COUNTS.fullmatch(line)
         if match:
-            if tuple(map(int, match.groups())) != (len(objects), aliases, total):
+            if tuple(map(int, match.groups())) != counts:
                 raise ValueError("counts mismatch")
             seen.append("counts")
         elif line == READY:
@@ -108,6 +122,28 @@ def verify(log, report):
             raise ValueError("unknown or failed code receipt")
     if seen != ["table", "kernel", "mountd", "rpcbind", "inputs", "counts", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered receipt")
+
+
+def verify_source(log, report):
+    if len(log) > MAX_LOG:
+        raise ValueError("log budget")
+    counts = expected_counts(report)
+    seen = []
+    for raw in log.split(b"\n"):
+        line = raw[:-1] if raw.endswith(b"\r") else raw
+        if not line.startswith(b"PHANTOWD_NFS_"):
+            continue
+        match = SOURCE_COUNTS.fullmatch(line)
+        if match and tuple(map(int, match.groups())) == counts:
+            seen.append("counts")
+        elif line == SOURCE_READY:
+            seen.append("ready")
+        elif line == b"PHANTOWD_NFS_SOURCE_DONE":
+            seen.append("done")
+        else:
+            raise ValueError("unknown failed or broadened source receipt")
+    if seen != ["counts", "ready", "done"]:
+        raise ValueError("incomplete duplicate or reordered source receipt")
 
 
 def read_regular(path, limit):
@@ -127,13 +163,18 @@ def read_regular(path, limit):
 
 def main():
     try:
-        if len(sys.argv) != 3:
+        source = len(sys.argv) == 4 and sys.argv[1] == "--source"
+        if not source and len(sys.argv) != 3:
             raise ValueError("arguments")
-        verify(read_regular(sys.argv[1], MAX_LOG), read_regular(sys.argv[2], MAX_REPORT))
+        args = sys.argv[2:] if source else sys.argv[1:]
+        (verify_source if source else verify)(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-inputs-daemons-and-kernel")
+    if source:
+        print("PHANTOWD_NFS_SOURCE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=unstarted-source-input-join")
+    else:
+        print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-inputs-daemons-and-kernel")
     return 0
 
 
