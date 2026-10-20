@@ -2423,6 +2423,18 @@ storage. No production roster provider or activation path exists.
   Next construct the dedicated service view/bootstrap from these SAME inputs
   with policy/identity/source/kernel authorities and verify actual startup,
   I/O and all consumers' settlement; preserve ordinary unclean-boot recovery.
+  **Finite real-consumer prerequisite:** the guarded ARM lane now executes
+  retained `exportfs -s` against populated/empty synthetic etab controls under
+  the original input gate. Detached descriptor-derived mount clones are prepared
+  before namespace change, then attached to the private fixed view; no source
+  path fallback or generic-launcher widening. Actual constructor rollback,
+  close exclusion, unchanged table, verified group/FD closure and all previous
+  proofs pass. Root/capability-zero is a fixture profile, not product admission.
+  The old secinfo rendering mask omits `secure` without kernel export features;
+  retained input still requests it, but listing cannot attest kernel enforcement.
+  Next qualify actual exports/config parsing, rpcbind/mountd and real NFSD/source/
+  identity/policy/state ownership together, complete stop/faults and automatic
+  ordinary unclean-boot recovery. Never infer complete service stop from PID exit.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

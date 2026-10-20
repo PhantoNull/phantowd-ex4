@@ -114,6 +114,44 @@ with all earlier loader/code proofs. Mutable test bytes are not an etab parser,
 health or service proof. Product persistent state, ordinary unclean boot recovery,
 daemon bootstrap/privileges and fault-complete backend composition remain open.
 
+## Fixed NFS table-listing consumer (QEMU only)
+
+The private finite table probe borrows the original `NFSInputsQEMU` references
+under their gate, which excludes input closure through construction, capture,
+verified whole-group settlement, child-reference closure and revalidation.
+A separate static, fixture-only bootstrap receives fixed original code/config/
+state roots and the retained `exportfs` ELF. Before changing namespace it clones
+detached mounts from those descriptors with `open_tree`, applies fixed mount
+attributes, then attaches them using `move_mount`; an inherited original mount
+cannot be an ordinary bind source in the new namespace. No path fallback is
+allowed. It creates a private mount namespace
+and a fresh read-only template: code read-only/executable, configuration
+read-only/noexec, state writable/noexec, all nosuid/nodev. Explicit `/lib`, `/usr`
+and `/var/run` aliases resolve only within that view; no `/proc`, `/dev`, export
+data root or physical device is provided. The generic launcher is unchanged.
+
+Only `exportfs -s` executes, twice as independent single-use captures: a known
+populated synthetic etab and an empty control. Exact output, exit, fixed handoff,
+unchanged table bytes/inode/timestamps, original inputs and normal FD balance
+are required. A wrong state role must roll back without consuming originals.
+Without `/proc/fs/nfsd/export_features`, this pinned nfs-utils rendering uses
+the old secinfo mask and does not print `secure`, although the retained input
+explicitly requests it. Table output cannot independently attest every export
+option or kernel enforcement; the probe does not fabricate a kernel response.
+The nfs-utils read path can create `.etab.lock`; only the known owned fixture
+leaves are removed after both captures and all their references are settled.
+Unknown/failed output or cleanup retains review and original references; no
+capture/release retry is inferred. The strict host receipt requires this proof
+in addition to all earlier input/code/loader controls.
+
+This finite fixture retains UID/GID 0 but removes all supplementary groups and
+capability sets/bounding/ambient authority, with no-new-privileges. It is NOT
+the product least-privilege decision or a hostile-root sandbox: no PID/user/
+network namespace is isolated. It starts no daemon, changes no NFSD controls,
+publishes no export and supplies no NLM/NSM, NSS completeness, permanent state,
+fault-complete backend, boot recovery or hardware qualification. The bootstrap
+is injected only into a disposable image copy, never installed by the product.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

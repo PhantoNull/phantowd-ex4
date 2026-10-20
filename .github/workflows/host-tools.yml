@@ -399,7 +399,8 @@ jobs:
           go vet -tags=qemu ./...
           go test -tags=qemu -count=1 -v ./cmd/qemu-nfs-code-fixture
           go test -tags=qemu -race -count=1 -v ./internal/nfsowner
-          go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code|Configuration|Inputs)' ./internal/runtimebundle
+          go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code|Configuration|Inputs|Table)' ./internal/runtimebundle
+          go test -tags=qemu -race -count=1 -v -run '^TestNFSTableCaptureRefusesOrdinaryHost$' ./internal/processowner
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
           go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .

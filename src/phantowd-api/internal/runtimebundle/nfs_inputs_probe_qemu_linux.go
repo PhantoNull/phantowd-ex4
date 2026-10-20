@@ -157,6 +157,10 @@ func probeNFSInputsQEMU(ctx context.Context, expected []byte, codeRoot *os.File)
 	if !errors.Is(good.Check(canceled), context.Canceled) || good.Check(ctx) != nil {
 		return errors.New("pre-cancellation changed input lifetime")
 	}
+	phase = "real-exportfs-table"
+	if err := probeNFSTableQEMU(ctx, good, candidate); err != nil {
+		return err
+	}
 	phase = "mutable-file-write"
 	etab := filepath.Join(nfsStateViewQEMU, "nfs/etab")
 	temporary := etab + ".tmp"

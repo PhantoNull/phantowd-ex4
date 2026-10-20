@@ -233,6 +233,32 @@ budgets. This is input retention, not actual config parsing/NSS, state-format
 integrity, sole writer/NFSD ownership, daemon startup or product boot recovery.
 No production state schema or privilege profile is selected by this fixture.
 
+## Fixed table-listing consumer (QEMU only)
+
+The later optional consumer additionally executes fixed `exportfs -s` from
+the SAME retained input gate. Its separate static bootstrap uses `open_tree`
+detached descriptor clones prepared before `unshare`, fixed `mount_setattr`
+attributes and `move_mount` into the private view. An ordinary bind from an
+inherited parent-namespace mount is refused by the pinned kernel; no source
+path reopen/fallback is used. The original parent roots/flags remain unchanged.
+Only fresh fixture state is writable; template/code/configuration are read-only.
+
+Actual ARM passes one populated etab and one empty control, exact exit/output/
+handoff, wrong-role rollback, close exclusion, unchanged etab bytes and stable
+inode/mtime/ctime, verified whole-group settlement, closure/FD balance and every
+old proof. `exportfs -s` can create `.etab.lock`; exact owned leaves are cleaned
+only after both captures and their references are gone. Any uncertainty retains
+original input/capture/error references and review, with no automatic retry.
+
+UID/GID0/capability-zero and NNP is a disposable finite-fixture profile, not a
+product privilege decision or hostile-root sandbox (no PID/user/network namespace
+isolation). No daemon, data root, kernel NFS control, service activation, product
+installation or physical operation is involved. With no kernel export-features
+interface, the pinned old secinfo mask does not render `secure`; the retained
+configuration still requests it. Do not infer all option/security enforcement,
+full exports/NSS parsing, sole-writer/NFSD authority, complete backend settlement
+or ordinary unclean-boot recovery from successful table listing.
+
 ## Actual userspace code expectations, not execution authority
 
 `phantowd-lab inspect-nfs-runtime-closure DIRECTORY` inventories once and unions

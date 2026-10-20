@@ -52,6 +52,8 @@ done
 target_cc="$(dirname "$go_binary")/arm-buildroot-linux-gnueabi-gcc"
 "$target_cc" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/launcher" "$source_dir/src/phantowd-service-launcher/launcher.c"
+"$target_cc" -std=c11 -O2 -static -Wall -Wextra -Werror \
+    -o "$scratch/nfs-table-bootstrap" "$source_dir/support/tests/nfs-table-bootstrap.c"
 (cd "$source_dir/src/phantowd-api" && GOOS=linux GOARCH=arm GOARM=5 "$go_binary" build -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/probe" ./cmd/qemu-nfs-code-fixture)
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 "$debugfs" -w -R 'mkdir /usr/lib/phantowd' "$scratch/rootfs.ext2" >/dev/null 2>&1 || true
@@ -70,6 +72,7 @@ install_image_file() {
 install_image_file "$scratch/expected.json" /usr/lib/phantowd/qemu-nfs-code-expected.json 0100444
 install_image_file "$scratch/probe" /usr/sbin/phantowd-nfs-code-fixture 0100555
 install_image_file "$scratch/launcher" /usr/sbin/phantowd-service-launcher 0100555
+install_image_file "$scratch/nfs-table-bootstrap" /usr/sbin/phantowd-nfs-table-bootstrap 0100555
 install_image_file "$source_dir/support/tests/nfs-code-init.sh" /usr/sbin/phantowd-nfs-code-init 0100555
 # QEMU's default /tmp selection may fall back to /var/tmp for snapshots. Use
 # this exact owned RAM directory; never broaden the container's writable roots.
@@ -91,5 +94,5 @@ if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/nfs-code-result.py" 
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
 sha256sum "$scratch/probe" "$scratch/launcher" "$scratch/expected.json" "$scratch/rootfs.ext2" \
-    "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json"
+    "$scratch/rpcbind.json" "$scratch/rpc.mountd.json" "$scratch/exportfs.json" "$scratch/nfs-table-bootstrap"
 echo PHANTOWD_NFS_CODE_BASE_UNCHANGED

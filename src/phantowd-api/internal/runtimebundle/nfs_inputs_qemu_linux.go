@@ -30,7 +30,8 @@ const (
 
 // All inputs are fixed at construction; no operation accepts a new candidate,
 // path, backend or identity. Failed uncertain rollback must remain retained in
-// its ORIGINAL error chain. No consumer exists in this input-only leaf.
+// its ORIGINAL error chain. A private finite QEMU table-listing probe may borrow
+// these originals only while holding the code gate through verified settlement.
 func NewNFSInputsQEMU(ctx context.Context, expected []byte, candidate fileserviceplan.NFSv3Candidate, codeRoot, configRoot, stateRoot *os.File) (_ *NFSInputsQEMU, result error) {
 	if ctx == nil || codeRoot == nil || configRoot == nil || stateRoot == nil {
 		return nil, ErrInvalid

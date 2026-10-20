@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Descriptor-bound real NFS table listing qualified in ARMv5 QEMU
+
+The optional NFS lane now executes the retained real `exportfs -s` against the
+same input lifetime: one populated synthetic etab and one empty control. A
+dedicated static bootstrap clones original descriptor-bound mounts before
+changing namespace, then attaches code/configuration/state with separate fixed
+permissions. Its template is read-only; no export-data, proc or device tree is
+provided. UID/GID0 with zero capability sets and NNP is fixture-only, not the
+product privilege choice or a hostile-root sandbox. The generic launcher is
+unchanged; no daemon starts, export is published or NFSD control changes.
+
+Windows/full pinned native checks, focused race3 and actual ARM pass. Wrong-role
+constructor rollback, gate-held close exclusion, exact populated/empty results,
+unchanged etab bytes/inode/timestamps, verified process-group absence, normal
+FD balance and every preceding input/code/loader proof remain mandatory.
+All1374source/harness inputs match before/after; base unchanged and budgets
+unchanged. Local qualification caught an ARM32 type difference, a cross-namespace
+ordinary-bind rejection and the pinned old secinfo output mask before publishing.
+With no kernel export-features interface, that mask omits `secure` in the list;
+the retained candidate still explicitly requests it. Listing is not independent
+verification of every option or kernel enforcement. Only known owned fixture
+leaves, including the lock file, are cleaned after verified capture closure.
+
+Full exports parsing, rpcbind/mountd startup, NSS completeness, sole writer/NFSD
+and source/identity/policy composition, complete faults and normal/unclean boot
+recovery remain required before product activation. No NAS or physical operation.
+
 ## NFS candidate configuration and mutable-directory inputs retained
 
 The QEMU-only input constructor now retains original code, nine immutable

@@ -1,5 +1,32 @@
 # Fast API and file-service integration checks
 
+## Optional retained NFS table consumer
+
+`support/test-nfs-code.ps1` keeps the existing90s guest/60s helper/360s work
+limits and all code/input/loader receipts. Its shell driver additionally injects
+the separate static `nfs-table-bootstrap.c` into a disposable image copy only.
+Two single-use captures run actual `exportfs -s` against one synthetic table and
+an empty control. Original input references stay locked through capture, group
+settlement, child-reference closure and final revalidation. No data disk, daemon,
+kernel NFS control, default CI boot or product installation is added.
+
+The bootstrap creates descriptor-derived detached mount clones before changing
+namespace, sets fixed attributes, then attaches them to its private root. Code
+and configuration stay read-only; only original fresh state is writable.
+UID/GID0/capability-zero/NNP is strictly this finite QEMU fixture, without PID,
+user or network isolation; it is not the product privilege design. The generic
+static/non-root launcher stays unchanged. Unsupported mount APIs refuse without
+path fallback. The successful receipt requires populated/empty exact output,
+original table bytes/inode/timestamps, rollback, close exclusion and FD balance.
+Known fixture etab/lock leaves are removed only after both capture lifetimes end.
+
+Only nfs.conf/state-path and etab listing are consumed here. The old secinfo
+mask omits `secure` without `/proc/fs/nfsd/export_features`; the input retains
+that flag, but output is not a kernel/security enforcement observation. Unknown,
+failed, duplicate, missing, reordered or broadened receipts refuse. Full exports
+parsing, NSS, daemon/kernel composition, fault-complete stop and automatic boot
+recovery remain unqualified. See the [runtime contract](NFS-RUNTIME-PROFILE.md).
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:

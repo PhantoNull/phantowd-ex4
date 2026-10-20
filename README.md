@@ -52,6 +52,10 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
+The optional NFS lane also runs retained `exportfs -s` against synthetic state
+inside a descriptor-bound private view. This is table listing, not a complete
+NFS backend or product startup/recovery.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.
