@@ -38,6 +38,8 @@ type nfsCodeLifetimeQEMU struct {
 	review    bool
 	closed    bool
 	cause     error
+	// One containing source/runtime lease, never a descriptor or launch getter.
+	sourceReserved bool
 	// Present together only for the separate complete input constructor.
 	configuration *retainedConfiguration
 	state         *retainedNFSStateQEMU
@@ -258,6 +260,9 @@ func (o *NFSCodeQEMU) Close() error {
 		return err
 	}
 	defer s.leave()
+	if s.sourceReserved {
+		return processowner.ErrBusy
+	}
 	if s.review {
 		return ErrReviewRequired
 	}

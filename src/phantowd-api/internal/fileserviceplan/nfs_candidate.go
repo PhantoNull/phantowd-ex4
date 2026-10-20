@@ -65,6 +65,22 @@ func (c NFSv3Candidate) FreshAgainst(current Freshness) bool {
 	return c.valid && c.freshness == current
 }
 
+// EquivalentTo compares the complete immutable NFS definition and evidence
+// data. Independently rebuilt identical candidates may match; this is NOT
+// provenance, a live policy/identity/storage lease or activation authority.
+func (c NFSv3Candidate) EquivalentTo(other NFSv3Candidate) bool {
+	if !c.valid || !other.valid || c.freshness != other.freshness || c.table != other.table || len(c.roots) != len(other.roots) {
+		return false
+	}
+	for i, root := range c.roots {
+		otherRoot := other.roots[i]
+		if root.ID != otherRoot.ID || root.Volume != otherRoot.Volume || root.RelativePath != otherRoot.RelativePath || root.ReadOnly != otherRoot.ReadOnly || !slices.Equal(root.Clients, otherRoot.Clients) {
+			return false
+		}
+	}
+	return true
+}
+
 // FreshAgainstStorage compares DATA only; it supplies no retained authority.
 // A trusted consumer must obtain the snapshot from its original roster lease.
 func (c NFSv3Candidate) FreshAgainstStorage(s StorageSnapshot) bool {

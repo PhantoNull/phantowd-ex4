@@ -15,6 +15,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
@@ -25,6 +26,10 @@ var nfsInputsProbeRetainedQEMU []*NFSInputsQEMU
 var nfsInputsProbeErrorQEMU error
 
 func nfsInputsFixtureCandidateQEMU(network string) (fileserviceplan.NFSv3Candidate, error) {
+	return nfsInputsFixtureCandidateWithGenerationQEMU(network, 1)
+}
+
+func nfsInputsFixtureCandidateWithGenerationQEMU(network string, generation uint64) (fileserviceplan.NFSv3Candidate, error) {
 	registry, err := serviceaccounts.New(1000, 2000)
 	if err != nil {
 		return fileserviceplan.NFSv3Candidate{}, err
@@ -36,7 +41,7 @@ func nfsInputsFixtureCandidateQEMU(network string) (fileserviceplan.NFSv3Candida
 		Exports: []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "bulk", RelativePath: "books",
 			Clients: []nfsconfig.Client{{Network: network, Access: "rw", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}}
 	plan, err := fileserviceplan.Build(fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1, Shares: shares, NFS: nfs}, 0,
-		fileserviceplan.IdentitySnapshot{Complete: true, Generation: 1, Fingerprint: sha256.Sum256([]byte("disposable-nfs-input-fixture")), Registry: registry,
+		fileserviceplan.IdentitySnapshot{Complete: true, Generation: generation, Fingerprint: sha256.Sum256([]byte("disposable-nfs-input-fixture")), Registry: registry,
 			UnixUIDs: []uint32{1000}, UnixGIDs: []uint32{1000}, Samba: []fileserviceplan.SambaIdentity{}},
 		fileserviceplan.StorageSnapshot{Complete: true, Generation: 1, Volumes: []fileserviceplan.ObservedVolume{{VolumeID: "bulk", FilesystemUUID: uuid,
 			MountPath: shareconfig.VolumeMountRoot + "/bulk", Compatibility: fileserviceplan.CompatibilityQualified, MountID: 73, DeviceMajor: 9, DeviceMinor: 1}}})
@@ -146,6 +151,10 @@ func probeNFSInputsQEMU(ctx context.Context, expected []byte, codeRoot *os.File)
 	if err != nil {
 		return err
 	}
+	phase = "original-input-reservation"
+	if err := probeNFSInputLeaseQEMU(ctx, good, candidate); err != nil {
+		return err
+	}
 	phase = "copied-handle"
 	copyInputs := *good
 	if copyInputs.Check(ctx) != ErrInvalid || copyInputs.Close() != ErrInvalid {
@@ -210,6 +219,11 @@ func probeNFSInputsQEMU(ctx context.Context, expected []byte, codeRoot *os.File)
 		return err
 	}
 	nfsInputsProbeRetainedQEMU = append(nfsInputsProbeRetainedQEMU, second)
+	secondLease, err := NewNFSInputLeaseQEMU(ctx, second, candidate)
+	if err != nil {
+		return err
+	}
+	nfsInputLeaseProbeRetainedQEMU = secondLease
 	if err := errors.Join(configuration.Close(), state.Close(), codeRoot.Close()); err != nil || first.Check(ctx) != nil || second.Check(ctx) != nil {
 		return errors.New("caller closure lost original input references")
 	}
@@ -248,12 +262,13 @@ func probeNFSInputsQEMU(ctx context.Context, expected []byte, codeRoot *os.File)
 		return err
 	}
 	retained, err := retainedFixtureFDCount()
-	if err != nil || !errors.Is(second.Check(ctx), ErrReviewRequired) || !errors.Is(second.Close(), ErrReviewRequired) {
+	if err != nil || !errors.Is(second.Check(ctx), ErrReviewRequired) || !errors.Is(secondLease.Check(ctx), ErrReviewRequired) ||
+		!errors.Is(secondLease.Close(), ErrReviewRequired) || !errors.Is(second.Close(), processowner.ErrBusy) || !second.code.inner.sourceReserved {
 		return errors.New("state restoration erased review")
 	}
 	if after, err := retainedFixtureFDCount(); err != nil || after != retained || len(first.code.inner.state.files) != 2 || len(second.code.inner.state.files) != 2 {
 		return errors.New("reviewed original inputs were released")
 	}
-	fmt.Println("PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_dirs=2 original_code=true caller_copies_closed=true normal_fd_balance=true wrong_candidate_refused=true nonfresh_refused=true mutable_updates=true config_overmount_review=true state_replacement_review=true restored_refused=true original_refs_retained=true service=false recovery=false scope=qemu-only")
+	fmt.Println("PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_dirs=2 original_code=true caller_copies_closed=true normal_fd_balance=true wrong_candidate_refused=true nonfresh_refused=true mutable_updates=true config_overmount_review=true state_replacement_review=true restored_refused=true original_refs_retained=true input_lease=true full_evidence_match=true parent_close_excluded=true lease_review_retained=true service=false recovery=false scope=qemu-only")
 	return nil
 }

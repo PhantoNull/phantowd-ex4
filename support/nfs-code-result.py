@@ -19,7 +19,8 @@ INPUTS = (b"PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_d
           b"original_code=true caller_copies_closed=true normal_fd_balance=true "
           b"wrong_candidate_refused=true nonfresh_refused=true mutable_updates=true "
           b"config_overmount_review=true state_replacement_review=true restored_refused=true "
-          b"original_refs_retained=true service=false recovery=false scope=qemu-only")
+          b"original_refs_retained=true input_lease=true full_evidence_match=true "
+          b"parent_close_excluded=true lease_review_retained=true service=false recovery=false scope=qemu-only")
 TABLE = (b"PHANTOWD_NFS_TABLE_READY populated=true empty_control=true table_unchanged=true "
          b"original_inputs=true close_excluded=true constructor_rollback=true private_view=true capabilities_zero=true "
          b"stop_reaped=true fd_balance=true command=exportfs-s services=false kernel_control=false scope=qemu-only")

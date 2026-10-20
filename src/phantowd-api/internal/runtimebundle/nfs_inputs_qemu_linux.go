@@ -19,8 +19,9 @@ import (
 // NFSInputsQEMU is a disposable input lifetime, not a daemon/kernel Owner or
 // product activation/persistence authority. Only the original handle is valid.
 type NFSInputsQEMU struct {
-	original *NFSInputsQEMU
-	code     *NFSCodeQEMU
+	original  *NFSInputsQEMU
+	code      *NFSCodeQEMU
+	candidate fileserviceplan.NFSv3Candidate
 }
 
 const (
@@ -71,7 +72,7 @@ func NewNFSInputsQEMU(ctx context.Context, expected []byte, candidate fileservic
 	if err := s.revalidate(ctx); err != nil {
 		return nil, err
 	}
-	o := &NFSInputsQEMU{code: code}
+	o := &NFSInputsQEMU{code: code, candidate: candidate}
 	o.original = o
 	return o, nil
 }

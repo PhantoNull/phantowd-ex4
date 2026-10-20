@@ -421,6 +421,26 @@ Netlink checks through the shared controller. Neither path becomes a complete
 product backend. This code fixture has no exports/data I/O, fresh complete
 control-domain census, full faults, NLM/NSM or normal/unclean product boot recovery.
 
+## Original input reservation before source/consumer composition
+
+The `qemu`-only `NFSInputLeaseQEMU` is an unstarted reservation of the original
+complete code/config/state lifetime, not a process, kernel or source Owner.
+It compares the entire immutable candidate definition and freshness evidence;
+matching rendered text alone cannot join different observations. Candidate
+equality is data equality, NOT policy/identity/storage provenance.
+
+The lease exposes no descriptor/backend/path getter. Its own gate precedes the
+original runtime gate; neither is held across storage/identity callbacks. Parent
+closure refuses while reserved. Explicit normal release is permitted only for
+this unstarted preparation. Drift/uncertain validation retains the first cause,
+references and reservation in review; restoration and repeated Close cannot
+settle it. No new privilege, daemon/kernel mutation or product API is introduced.
+
+A future containing source/consumer Owner must retain the original source,
+policy and identity authorities independently, prevent release after admission
+until consumers are verifiably absent, and qualify the complete lock graph.
+This reservation alone does not implement that Owner or a real NFS data path.
+
 ## Required kernel-backend construction and sole ownership
 
 - Fix the trusted kernel/backend implementation at construction. Operations take

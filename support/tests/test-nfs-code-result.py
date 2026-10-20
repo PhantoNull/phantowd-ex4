@@ -43,6 +43,12 @@ class CodeReceiptTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             checker.verify(b"\n".join(without_kernel), self.report)
 
+    def test_old_inputs_receipt_cannot_claim_original_input_reservation(self):
+        old = [line.replace(b" input_lease=true full_evidence_match=true parent_close_excluded=true lease_review_retained=true", b"")
+               for line in self.lines]
+        with self.assertRaises(ValueError):
+            checker.verify(b"\n".join(old), self.report)
+
     def test_missing_duplicate_reordered_or_failed_receipts_refuse(self):
         variants = [self.lines[:i] + self.lines[i+1:] for i in range(len(self.lines))]
         variants += [self.lines[:i] + [self.lines[i]] + self.lines[i:] for i in range(len(self.lines))]
@@ -61,7 +67,11 @@ class CodeReceiptTests(unittest.TestCase):
                          (b"exports=false", b"exports=true"),
                          (b"threads=2", b"threads=0"),
                          (b"original_control=true", b"original_control=false"),
-                         (b"owner_backend=false", b"owner_backend=true")):
+                         (b"owner_backend=false", b"owner_backend=true"),
+                         (b"input_lease=true", b"input_lease=false"),
+                         (b"full_evidence_match=true", b"full_evidence_match=false"),
+                         (b"parent_close_excluded=true", b"parent_close_excluded=false"),
+                         (b"lease_review_retained=true", b"lease_review_retained=false")):
             variants.append([line.replace(old, new) for line in self.lines])
         variants.append([line + b"\r\r" for line in self.lines])
         for lines in variants:

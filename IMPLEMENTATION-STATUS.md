@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Original NFS input reservation: QEMU-only preparation
+
+A typed, non-copyable reservation now holds the original NFS code/config/state
+lifetime without exposing descriptors or granting launch authority. Construction
+compares the complete immutable candidate, including identity/storage evidence
+and per-client rules: equal rendered text alone is insufficient. The parent
+cannot close while reserved. Pre-cancellation has no effect; drift retains the
+original cause, references and sticky review rather than permitting release.
+
+The optional ARM lane requires matching-candidate admission, changed-evidence
+refusal, copy/duplicate refusal, parent-close exclusion, normal descriptor balance
+and retained reservation after state replacement/restoration. These are unstarted
+preparations only. This does NOT connect export source roots to the live daemons,
+authorize actual exports or qualify product boot/recovery. The next integration
+must retain and revalidate the original source/policy/identity authorities too.
+
 ## Retained NFSD composed with original daemons in ARMv5 QEMU
 
 The optional NFS lane now starts two actual NFSD threads on a retained IPv4

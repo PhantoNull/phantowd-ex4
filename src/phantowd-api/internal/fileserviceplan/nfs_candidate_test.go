@@ -13,6 +13,96 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 )
 
+func TestNFSv3CandidateEquivalenceRequiresValidCompleteCandidates(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	first, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := first.NFSv3TCPCandidate()
+	b, _ := second.NFSv3TCPCandidate()
+	if !a.EquivalentTo(b) || !b.EquivalentTo(a) || !a.EquivalentTo(a) {
+		t.Fatal("identical independently compiled candidate data refused")
+	}
+	if a.EquivalentTo(NFSv3Candidate{}) || (NFSv3Candidate{}).EquivalentTo(a) || (NFSv3Candidate{}).EquivalentTo(NFSv3Candidate{}) {
+		t.Fatal("invalid candidate gained equivalence")
+	}
+}
+
+func TestNFSv3CandidateEquivalenceRejectsSameTextWithChangedEvidence(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, _ := plan.NFSv3TCPCandidate()
+	_, table, _, _ := original.Documents()
+	for _, change := range []func(*uint64, *IdentitySnapshot, *StorageSnapshot){
+		func(a *uint64, _ *IdentitySnapshot, _ *StorageSnapshot) { *a++ },
+		func(_ *uint64, i *IdentitySnapshot, _ *StorageSnapshot) { i.Generation++ },
+		func(_ *uint64, i *IdentitySnapshot, _ *StorageSnapshot) { i.Fingerprint[0] ^= 1 },
+		func(_ *uint64, _ *IdentitySnapshot, s *StorageSnapshot) { s.Generation++ },
+		func(_ *uint64, _ *IdentitySnapshot, s *StorageSnapshot) { s.OwnerFingerprint[0] ^= 1 },
+		func(_ *uint64, _ *IdentitySnapshot, s *StorageSnapshot) { s.Volumes[0].MountID++ },
+	} {
+		a, i, s := active, identity, storage
+		s.Volumes = append([]ObservedVolume(nil), storage.Volumes...)
+		change(&a, &i, &s)
+		changed, err := Build(config, a, i, s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		candidate, _ := changed.NFSv3TCPCandidate()
+		_, otherTable, _, _ := candidate.Documents()
+		if table != otherTable {
+			t.Fatal("test did not retain identical rendered exports")
+		}
+		if original.EquivalentTo(candidate) || candidate.EquivalentTo(original) {
+			t.Fatal("same rendered text hid changed evidence")
+		}
+	}
+}
+
+func TestNFSv3CandidateEquivalenceRejectsChangedDefinitionAtSameRevision(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, _ := plan.NFSv3TCPCandidate()
+	for _, change := range []func(*nfsconfig.Export){
+		func(e *nfsconfig.Export) { e.RelativePath = "other" },
+		func(e *nfsconfig.Export) { e.Clients[0].Access = "ro" },
+		func(e *nfsconfig.Export) { e.Clients[0].Network = "127.0.0.2/32" },
+		func(e *nfsconfig.Export) { e.ID = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff" },
+	} {
+		changed := config
+		changed.NFS.Exports = append([]nfsconfig.Export(nil), config.NFS.Exports...)
+		changed.NFS.Exports[0].Clients = append([]nfsconfig.Client(nil), config.NFS.Exports[0].Clients...)
+		change(&changed.NFS.Exports[0])
+		otherPlan, err := Build(changed, active, identity, storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		other, _ := otherPlan.NFSv3TCPCandidate()
+		_, originalText, _, _ := original.Documents()
+		_, changedText, _, _ := other.Documents()
+		if originalText == changedText {
+			t.Fatal("test did not change the export definition")
+		}
+		if !other.FreshAgainst(plan.Freshness()) {
+			t.Fatal("test changed freshness instead of definition")
+		}
+		if original.EquivalentTo(other) || other.EquivalentTo(original) {
+			t.Fatal("changed definition at the same revision accepted")
+		}
+	}
+}
+
 func TestNFSv3CandidateBindsSamePlanPolicyAndStorage(t *testing.T) {
 	config, active, identity, storage := planInputs(t)
 	plan, err := Build(config, active, identity, storage)

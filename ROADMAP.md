@@ -2051,6 +2051,14 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
+**NFS input-reservation prerequisite:** the QEMU-only typed reservation now
+compares the complete candidate definition/evidence and blocks parent input
+closure until explicit unstarted release. Changed input state retains review
+and original references. This is not a source/daemon activation backend: next
+bind it to original export roots without a descriptor getter or runtime-to-
+storage lock inversion, then prove real export/client I/O and fault settlement.
+Equal text/revisions do not replace retained policy/identity/storage provenance.
+
 **Session-observation producer gate:** real disposable ARMv5 evidence shows
 Samba 4.22.11 can return exit zero and decodable empty sessions after a source
 database open failure. The QEMU STATUS boundary now refuses unexpected stderr

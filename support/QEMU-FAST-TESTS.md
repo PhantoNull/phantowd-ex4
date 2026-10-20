@@ -86,6 +86,17 @@ are pending, unknown/trailing bytes refuse. This fixes actual asynchronous
 collection observed ending at `rpc.mountd: `, not a daemon-error whitelist.
 No timeout reset, explicit sleep, retry/restart or lifecycle-gate reentry.
 
+## Original NFS input reservation
+
+The same optional code guest also checks an unstarted typed input reservation:
+same complete candidate, equal table/different identity evidence refused,
+pre-cancellation without effects, copied/duplicate handles refused, parent Close
+excluded, explicit clean release and unchanged descriptor count. A separate
+state replacement/restoration case must retain the original reservation and
+references in review. Its strict input receipt requires all four lease fields;
+older/missing/altered receipts cannot claim this proof. No extra guest, timeout
+increase, data source, service activation or product authority is added.
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:
