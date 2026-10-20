@@ -3,6 +3,11 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# Fixed mock-only command contracts run before reports or native UI/Go work.
+# Keep the entrypoint-order regression separate; calling it here would recurse.
+foreach ($contract in @('test-api-linux-wrapper.ps1', 'test-api-overlay-wrapper.ps1', 'test-api-overlay-stderr.ps1')) {
+    & (Join-Path $repoRoot "support/tests/$contract")
+}
 $moduleRoot = Join-Path $repoRoot 'src/phantowd-api'
 $dashboardTest = Join-Path $repoRoot 'support/test-dashboard-ui.mjs'
 $reportRoot = Join-Path $repoRoot 'artifacts/api-host-tests'

@@ -81,6 +81,8 @@ on:
       - 'support/tests/test-cached-qemu-wrapper.ps1'
       - 'support/tests/test-cached-qemu-preflight.py'
       - 'support/test-api-linux.ps1'
+      - 'support/test-api.ps1'
+      - 'support/tests/test-api-preflight-order.ps1'
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-api-overlay.ps1'
       - 'support/tests/test-api-overlay-wrapper.ps1'
@@ -195,6 +197,8 @@ on:
       - 'support/tests/test-cached-qemu-wrapper.ps1'
       - 'support/tests/test-cached-qemu-preflight.py'
       - 'support/test-api-linux.ps1'
+      - 'support/test-api.ps1'
+      - 'support/tests/test-api-preflight-order.ps1'
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-api-overlay.ps1'
       - 'support/tests/test-api-overlay-wrapper.ps1'
@@ -290,6 +294,7 @@ jobs:
         shell: pwsh
         run: |
           ./support/tests/test-api-linux-wrapper.ps1
+          ./support/tests/test-api-preflight-order.ps1
           ./support/tests/test-api-overlay-wrapper.ps1
           ./support/tests/test-api-overlay-stderr.ps1
 

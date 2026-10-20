@@ -284,13 +284,18 @@ support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/host-tools.yml
 '
 
-# The optional local Linux API wrapper changes no firmware input. Validate its
-# external command contract in cheap host CI without unrelated image builds.
-for path in 'support/test-api-linux.ps1' 'support/tests/test-api-linux-wrapper.ps1'; do
+# Local API orchestration and its mocked contracts change no target input.
+# Keep explicit host coverage without unrelated QEMU/EX4 image builds.
+for path in 'support/test-api.ps1' 'support/tests/test-api-preflight-order.ps1' \
+    'support/test-api-linux.ps1' 'support/tests/test-api-linux-wrapper.ps1'; do
     require_triggered_path "$host_workflow" "$path"
     require_ignored_path "$qemu_workflow" "$path"
     require_ignored_path "$stage_b3_workflow" "$path"
 done
+if ! grep -Fx '          ./support/tests/test-api-preflight-order.ps1' "$host_workflow" >/dev/null; then
+    echo 'Host CI must execute the actual API preflight-order regression' >&2
+    exit 1
+fi
 
 # Internal launcher tests must not rebuild EX4 research profiles, but must
 # retain the one QEMU lane and cheap native host refusals.
@@ -417,7 +422,6 @@ support/container/apply-buildroot-samba-json-patch.sh
 support/tests/test-buildroot-samba-json-patch.sh
 support/tests/test-perl-configure-date.py
 support/buildroot-patches/**
-support/test-api.ps1
 support/test-dashboard-ui.mjs
 support/dashboard-preview.mjs
 '

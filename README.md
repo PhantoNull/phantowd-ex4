@@ -214,7 +214,9 @@ cd phantowd-ex4
 ```
 
 These checks do not use Docker or contact the NAS. ARMv5 cross-compilation is
-not guest execution. With the pinned image/workspace already present,
+not guest execution. The API preflight first runs three mocked wrapper-contract
+suites; a failure stops before native UI/Go work. These guards need no Docker
+daemon or image. With the pinned image/workspace already present,
 `support/test-api-linux.ps1` adds Linux-native checks without pulling an image
 or creating volumes. Its non-root container is capped at four CPUs, 2 GiB RAM,
 256 processes and 1 GiB disposable tmpfs; the Linux suite has a 180-second
