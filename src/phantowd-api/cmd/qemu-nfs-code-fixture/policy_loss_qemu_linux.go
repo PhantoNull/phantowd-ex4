@@ -30,6 +30,12 @@ import (
 // The factory/mounted-roster construction still requires the original ARMv5,
 // VersatilePB and disposable source disk guards BEFORE any fault mutation.
 func parsePolicyLossSelector(data []byte) (selected, valid bool) {
+	return parseOwnerLossSelector(data, "phantowd_nfs_source_owner_policy_loss_fixture=")
+}
+
+// Each caller supplies one fixed internal selector. Exact source/code flags,
+// one selected fault and no sibling fault are required before guest mutation.
+func parseOwnerLossSelector(data []byte, faultFlag string) (selected, valid bool) {
 	if len(data) > 4096 {
 		return false, false
 	}
@@ -46,16 +52,18 @@ func parsePolicyLossSelector(data []byte) (selected, valid bool) {
 		if word == "phantowd_nfs_source_fixture=1" {
 			source++
 		}
-		if strings.HasPrefix(word, "phantowd_nfs_source_owner_policy_loss_fixture=") {
+		if strings.HasPrefix(word, faultFlag) {
 			selected = true
-			if word != "phantowd_nfs_source_owner_policy_loss_fixture=1" {
+			if word != faultFlag+"1" {
 				return true, false
 			}
 			policy++
 		}
-		if strings.HasPrefix(word, "phantowd_nfs_source_loss_fixture=") ||
-			strings.HasPrefix(word, "phantowd_nfs_source_daemon_loss_fixture=") {
-			other++
+		for _, prefix := range []string{"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=",
+			"phantowd_nfs_source_owner_policy_loss_fixture=", "phantowd_nfs_source_owner_daemon_loss_fixture="} {
+			if prefix != faultFlag && strings.HasPrefix(word, prefix) {
+				other++
+			}
 		}
 	}
 	if !selected {

@@ -29,6 +29,7 @@ type nfsServerQEMU struct {
 	beforeRPC, beforeMountd, beforeKernel        int
 	table                                        nfsServerTableQEMU
 	running, ioAttempted, stopAttempted, stopped bool
+	peerExitAttempted, peerExitVerified          bool
 	phase                                        string
 }
 
@@ -294,6 +295,7 @@ func (v *nfsServerQEMU) check(ctx context.Context) error {
 	if err := v.rpcbind.check(ctx); err != nil {
 		return err
 	}
+	v.phase = "original-mountd"
 	if err := v.mountd.check(ctx); err != nil {
 		return err
 	}

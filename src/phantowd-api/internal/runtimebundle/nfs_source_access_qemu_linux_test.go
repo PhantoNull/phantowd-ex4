@@ -31,6 +31,9 @@ func TestNFSInputsSourceLossRefusesMissingOriginalLease(t *testing.T) {
 		}
 	}
 	for _, value := range []*runtimebundle.NFSSourceAccessQEMU{nil, {}} {
+		if value.InjectServerMountdExitFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid consumer interrupted the original server")
+		}
 		if value.VerifySourceLossRetainedQEMU(context.Background()) == nil {
 			t.Fatal("invalid consumer accepted a retained-live-loss proof")
 		}

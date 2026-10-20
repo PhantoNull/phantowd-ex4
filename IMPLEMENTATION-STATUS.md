@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Independent mountd-loss reproducer: verified gap, not a fix
+
+The optional `source-owner-daemon-loss` fixture starts the original NFS Owner,
+completes synthetic I/O, and terminates only its original mountd before admitting
+exclusive one-second supervision. A scheduled scan detects the exit, but the
+actual ARMv5 reproducer then **fails** at `stopped-retained`: the reviewed lower
+runtime refuses normal stop and no verified-stop result is available. Review
+alone is not successful compensation. No cleanup/recovery semantics were changed.
+
+Complete Linux/Windows checks, native race-count3, strict receipt/dispatch tests
+and all five prior real-NFS/code profiles pass on the same unchanged inputs.
+This characterizes one controlled graceful exit; it does not qualify independent
+fault compensation, hard crashes, pending I/O, product startup or NAS hardware.
+The reproducer remains explicitly failing until its original-reference cleanup
+and separate actual stopped witness are implemented and verified.
+
 ## Owner-backed real-NFS server calls in disposable QEMU
 
 The normal source fixture separates server Start, Check, fixed I/O and Stop.

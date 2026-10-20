@@ -21,6 +21,33 @@ and audit; never replace failed results with selected passes or relax proofs.
 See [implementation status](IMPLEMENTATION-STATUS.md) and the
 [focused staging contract](support/QEMU-FAST-TESTS.md#smart-report-staging-checked-disposable-image).
 
+## Immediate NFS original-peer compensation packet
+
+The opt-in `source-owner-daemon-loss` ARMv5 reproducer currently detects the
+original mountd exit through scheduled supervision, then fails stopped proof.
+The existing five code/source/policy-loss/combined profiles remain passing;
+this new reproducer is not an additional passing capability.
+
+Next acceptance work, before claiming independent-daemon compensation:
+
+1. Keep the original Owner/backend/join/runtime lifetime; admit at most one
+   bounded compensation after review without granting normal service authority.
+2. Withdraw owned exports and stop original NFSD/daemons using retained controls,
+   code, state and namespace references. A missing daemon must not prevent
+   settlement of remaining peers; do not reopen data by path or retry effects.
+3. Preserve original detection and stop errors. A reviewed Stop is not normal
+   success; independently verify original process wait/group absence, empty
+   export state, NFSD controls and fixed listener absence before reporting stop.
+4. Keep reviewed authority and original references; refuse restart/release and
+   test those refusals without changing generic process/Owner semantics.
+5. Run native/race checks before the explicit ARM test, then regress all existing
+   modes under their unchanged budgets. Extend identity/source/channel/state,
+   partial-start and uncertain-close coverage separately; no broad fault claim.
+
+This packet adds no HTTP activation, product recovery/restart, physical-disk
+operation or hardware qualification. First-release normal/unclean automatic
+startup remains the separate required product contract below.
+
 ## Product contract
 
 Build a maintained, efficient, local-first replacement for the **WD My Cloud

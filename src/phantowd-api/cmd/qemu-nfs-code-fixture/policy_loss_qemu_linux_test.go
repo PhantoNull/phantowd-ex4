@@ -20,6 +20,7 @@ func TestOwnerPolicyLossSelectorRequiresExactUnmixedSourceProfile(t *testing.T) 
 		{base + flag + " " + flag, true, false}, {base + strings.ReplaceAll(flag, "=1", "=0"), true, false},
 		{base + flag + " phantowd_nfs_source_loss_fixture=1", true, false},
 		{base + flag + " phantowd_nfs_source_daemon_loss_fixture=1", true, false},
+		{base + flag + " phantowd_nfs_source_owner_daemon_loss_fixture=1", true, false},
 		{base + flag + " phantowd_nfs_code_fixture=1", true, false},
 		{base + flag + " phantowd_nfs_source_fixture=1", true, false},
 		{base + flag + " phantowd_nfs_code_fixture=0", true, false},

@@ -27,6 +27,9 @@ func TestNFSSourceRolesRefuseOrdinaryHost(t *testing.T) {
 		}
 	}
 	for _, value := range []*processowner.PinnedSet{nil, {}} {
+		if value.InterruptNFSServerMountdFixtureQEMU(context.Background()) == nil {
+			t.Fatal("unowned independent server interruption admitted")
+		}
 		if value.InterruptNFSSourceMountdFixtureQEMU(context.Background()) == nil {
 			t.Fatal("unowned mountd interruption admitted")
 		}

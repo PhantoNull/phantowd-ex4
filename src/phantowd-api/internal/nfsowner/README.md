@@ -223,3 +223,24 @@ protocol/client/ACL faults and hardware gates remain open. Automatic startup of
 desired-enabled services after ordinary unclean shutdown remains required; the
 single-use Owner is not an automatic restart loop or a boot coordinator.
 See the [NFS runtime profile](../../../../support/NFS-RUNTIME-PROFILE.md).
+
+## Independent mountd-loss reproducer: cleanup not yet qualified
+
+The optional `source-owner-daemon-loss` fixture exposes a current stop gap.
+`Owner.InjectSourceMountdExitFixtureQEMU` holds the original Owner gate through
+the fixed backend and lower original-child operation; it cannot bypass exclusive
+supervision, operate through a copied Owner or use a model backend. No PID,
+signal, command, descriptor or replacement backend is accepted from a caller.
+The separate exact ARMv5/VersatilePB/source selector is mandatory.
+
+After successful synthetic I/O, the fixture terminates mountd BEFORE admitting
+supervision, so the mutation cannot contend with a scheduled check. Historical
+Running does not certify daemon health; the subsequent scheduled scan must
+detect the original exit. Actual ARMv5 detection passes, then stopped verification
+fails because reviewed lower access refuses normal stop. The fixture reports
+failure, not successful settlement; this is not a repair or a hard-crash test.
+
+Next work is one bounded original-reference compensation plus a distinct fresh
+stopped witness, while retaining review, original causes and all authority.
+Generic Stop/Close semantics, product activation/recovery and physical NAS
+operations remain unchanged. The existing five optional profiles still pass.

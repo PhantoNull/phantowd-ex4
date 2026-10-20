@@ -25,6 +25,9 @@ func TestSourceRuntimeServerOwnerRefusesInvalidOriginalLifetime(t *testing.T) {
 
 func TestSourceRuntimeServerOwnerAccessAndRetainedStopRefuseInvalidLifetime(t *testing.T) {
 	for _, owner := range []*nfsowner.Owner{nil, {}} {
+		if owner.InjectSourceMountdExitFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid Owner admitted an independent mountd exit")
+		}
 		if owner.ExerciseSourceIOFixtureQEMU(context.Background()) == nil {
 			t.Fatal("invalid Owner admitted fixed source I/O")
 		}

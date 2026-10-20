@@ -42,6 +42,10 @@ func (s *PinnedSet) InterruptNFSSourceMountdFixtureQEMU(ctx context.Context) err
 	if !nfsSourcePeerFaultGuardQEMU() {
 		return ErrInvalid
 	}
+	return s.interruptNFSSourceMountdQEMU(ctx)
+}
+
+func (s *PinnedSet) interruptNFSSourceMountdQEMU(ctx context.Context) error {
 	if err := s.enter(ctx); err != nil {
 		return err
 	}

@@ -1,5 +1,22 @@
 # Fast API and file-service integration checks
 
+## Independent mountd-loss diagnostic (currently expected to fail)
+
+`support/test-nfs-code.ps1 -FixtureMode source-owner-daemon-loss` is an opt-in
+reproducer, **not** a passing qualification lane. It performs actual synthetic
+NFS I/O, then admits one fixed graceful exit of the original mountd under the
+original Owner gate, before exclusive periodic supervision. A scheduled scan
+detects the exit, but the current ARMv5 run fails at `stopped-retained`: review
+prevents normal stop. No deadline or receipt is relaxed to accept that failure.
+
+The exact separate selector refuses mixed policy/source-loss profiles; copied,
+model-backed and concurrently supervised Owners cannot perform the mutation.
+Only original fixture references are used; no caller-selected PID/signal/path,
+product endpoint, NAS operation, new default job or persistent resource is added.
+Host/native/race checks and all five existing NFS profiles pass; those passes
+do not qualify this missing compensation path. Guest90/helper60/wrapper360 and
+the existing RAM-only resource limits remain unchanged.
+
 ## Optional retained NFS table consumer
 
 `support/test-nfs-code.ps1` keeps the existing90s guest/60s helper/360s work

@@ -16,6 +16,27 @@ spec.loader.exec_module(checker)
 
 
 class CodeReceiptTests(unittest.TestCase):
+    def test_independent_owner_daemon_loss_requires_stopped_proof_not_just_review(self):
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_POLICY,
+                 b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_ARMED real_io=true original_mountd_exit=true fault_before_supervision=true historical_owner_running=true detection=false product=false scope=qemu-only",
+                 b"PHANTOWD_NFS_SERVER_FAILURE phase=original-mountd",
+                 b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_READY scheduled_detection=true manual_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only",
+                 b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_DONE"]
+        for ending in (b"\n", b"\r\n"):
+            checker.verify_source_owner_daemon_loss(ending.join(lines)+ending,self.report)
+        variants = [lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)),lines+[b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_FAILED"],
+                     lines+[b"PHANTOWD_NFS_SERVER_FAILURE phase=original-daemons"],
+                     [line+b"\r\r" for line in lines]]
+        for old,new in ((b"kernel_stopped=true",b"kernel_stopped=false"),(b"daemons_stopped=true",b"daemons_stopped=false"),
+                        (b"release=false",b"release=true"),(b"no_retry=true",b"no_retry=false"),
+                        (b"manual_detection=false",b"manual_detection=true"),(b"source_refs_retained=true",b"source_refs_retained=false")):
+            variants.append([line.replace(old,new) for line in lines])
+        for variant in variants:
+            with self.subTest(variant=variant),self.assertRaises(ValueError):
+                checker.verify_source_owner_daemon_loss(b"\n".join(variant),self.report)
+
     def setUp(self):
         self.report = json.dumps({"format": "phantowd-nfs-runtime-candidate", "schema_version": 1,
                                   "static_dependencies_resolved": True, "runtime_qualified": False,
@@ -272,7 +293,7 @@ class ShellModeTests(unittest.TestCase):
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -287,7 +308,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -302,7 +323,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -317,7 +338,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-daemon-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -327,6 +348,21 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-policy-loss; }
         self.assertEqual(completed.returncode,0,completed.stderr)
         self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_DONE",completed.stdout)
         self.assertNotIn(b"FAILED",completed.stdout)
+
+    def test_actual_init_selects_independent_owner_daemon_loss_explicitly(self):
+        init = self.dispatch_init()
+        stubs = '''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*) return 1;; esac; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-daemon-loss; }
+'''
+        completed = subprocess.run(["sh", "-c", stubs+init], capture_output=True, timeout=2)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_DONE", completed.stdout)
+        self.assertNotIn(b"FAILED", completed.stdout)
 
     def test_actual_image_staging_function_preserves_fixture_selection(self):
         driver = (Path(__file__).parent / "test-qemu-nfs-code.sh").read_text()
