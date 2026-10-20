@@ -64,6 +64,9 @@ SOURCE_SERVER = (b"PHANTOWD_NFS_SOURCE_SERVER_READY split_calls=true original_po
                  b"kernel_verified=true exports_verified=true owner_ready_checks=2 copied_refused=true early_close_refused=true "
                  b"pre_cancel_unchanged=true start_once=true stop_once=true io=true stopped=true original_parents_retained=true "
                  b"product=false scope=qemu-only")
+SOURCE_OWNER = (b"PHANTOWD_NFS_SOURCE_OWNER_READY fixed_backend=true original_claims=true real_start_check_stop=true "
+                b"idle_cancel=true exclusive=true close_after_stop=true no_restart=true periodic_real_check=false "
+                b"product=false scope=qemu-only")
 
 
 def expected_counts(report):
@@ -173,13 +176,15 @@ def verify_source(log, report):
             seen.append("rpcbind")
         elif line == SOURCE_SERVER:
             seen.append("server")
+        elif line == SOURCE_OWNER:
+            seen.append("owner")
         elif line == SOURCE_READY:
             seen.append("ready")
         elif line == b"PHANTOWD_NFS_SOURCE_DONE":
             seen.append("done")
         else:
             raise ValueError("unknown failed or broadened source receipt")
-    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "server", "ready", "done"]:
+    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "server", "owner", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered source receipt")
 
 

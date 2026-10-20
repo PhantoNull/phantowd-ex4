@@ -158,6 +158,14 @@ There is no extra default boot/job, timer increase, product supervision or
 reboot-persistence claim. Failed/uncertain new lifetimes retain original refs;
 complete partial-start/stop and policy/identity faults remain unqualified.
 
+The normal profile also requires the fixed real-source Owner/backend proof:
+actual start/check/stop under original authority, exclusive supervisor idle
+cancellation, no restart and explicit closure after fresh stopped observations.
+The one-hour idle interval is intentional: admission is witnessed by exclusive
+Owner access before cancellation, not a sleep-based race against a running
+sample. Periodic real-server checks and live-fault compensation are NOT proved
+by this campaign. Existing five-second Owner/cleanup and90/60/360 bounds stay.
+
 The standard API overlay also requires a retained-NAS-policy planner proof:
 actual identity/passdb and mounted-roster Owners, original NAS/identity leases,
 parent commit/close fences, cancellation/released-claim refusals, same NFS text

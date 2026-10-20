@@ -50,6 +50,10 @@ func (o *NFSSourceAccessQEMU) StopServerFixtureQEMU(ctx context.Context) error {
 	return o.serverOperation(ctx, 3)
 }
 
+func (o *NFSSourceAccessQEMU) CheckServerStoppedFixtureQEMU(ctx context.Context) error {
+	return o.serverOperation(ctx, 4)
+}
+
 func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uint8) (result error) {
 	if err := o.enter(ctx); err != nil {
 		return err
@@ -61,12 +65,18 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 	if o.review {
 		return ErrReviewRequired
 	}
-	if o.sourceLoss || o.daemonLoss || operation > 3 {
+	if o.sourceLoss || o.daemonLoss || operation > 4 {
 		return ErrInvalid
 	}
 	if operation == 0 {
 		if o.consumed || o.server != nil {
 			return ErrUnavailable
+		}
+	} else if operation == 4 {
+		if o.consumed || o.server != nil {
+			if !o.consumed || o.server == nil || !o.settled || !o.server.stopped {
+				return ErrUnavailable
+			}
 		}
 	} else if !o.consumed || o.server == nil || o.settled || operation == 2 && o.server.ioAttempted || operation == 3 && o.server.stopAttempted {
 		return ErrUnavailable
@@ -96,8 +106,12 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SERVER_FAILURE phase=%s\n", phase)
 		}
 	}()
-	if o.lease.consumer != o || operation == 0 && s.sourceAccess != nil || operation != 0 && s.sourceAccess != o || o.lease.revalidate(ctx, s) != nil || o.check(ctx) != nil {
+	beforeStart := operation == 0 || operation == 4 && !o.consumed
+	if o.lease.consumer != o || beforeStart && s.sourceAccess != nil || !beforeStart && s.sourceAccess != o || o.lease.revalidate(ctx, s) != nil || o.check(ctx) != nil {
 		return ErrReviewRequired
+	}
+	if operation == 4 {
+		return o.observeServerStopped(ctx, s)
 	}
 	if operation == 0 {
 		o.consumed, s.sourceAccess = true, o
@@ -132,6 +146,76 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 		return nil
 	}
 	return ErrInvalid
+}
+
+// A fresh stopped sample under ORIGINAL control, namespace, code and state
+// references. This is a fixed fixture profile, NOT sole-domain ownership,
+// complete export-cache census, remote-client quiescence or release authority.
+// Every legacy read gets a new transaction descriptor (no seek/stale snapshot).
+func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCodeLifetimeQEMU) error {
+	if o.exportsLoaded || o.capture != nil || len(o.mounts) != 0 || o.heldClient != nil || o.faultFile != nil {
+		return ErrUnavailable
+	}
+	for _, mountd := range []bool{false, true} {
+		if inode, err := nfsRPCListenerQEMU(mountd); err != nil || inode != "" {
+			return errors.Join(ErrMismatch, err)
+		}
+	}
+	var profile [3][]byte
+	for index, name := range []string{"threads", "versions", "portlist"} {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		fd, err := openBeneath(int(o.controlRoot.Fd()), name, unix.O_RDONLY)
+		if err != nil {
+			return err
+		}
+		f := os.NewFile(uintptr(fd), "original-nfs-stopped-transaction")
+		o.faultFile = f
+		var st unix.Statx_t
+		const mask = unix.STATX_TYPE | unix.STATX_INO | unix.STATX_UID | unix.STATX_GID | unix.STATX_MNT_ID_UNIQUE
+		if unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, mask, &st) != nil || st.Mask&mask != mask ||
+			st.Mode&unix.S_IFMT != unix.S_IFREG || st.Ino == 0 || st.Uid != 0 || st.Gid != 0 || st.Mnt_id != o.controlMetadata[0].Mnt_id {
+			err = ErrMismatch
+		} else {
+			profile[index], err = io.ReadAll(io.LimitReader(f, 4097))
+			if len(profile[index]) > 4096 {
+				err = ErrMismatch
+			}
+		}
+		if closeErr := f.Close(); closeErr != nil {
+			return errors.Join(ErrReviewRequired, err, closeErr) // Original object retained, never retry Close.
+		}
+		o.faultFile = nil
+		if err != nil {
+			return err
+		}
+	}
+	if err := nfskernel.ValidateProfileQEMU(profile[0], profile[1], profile[2], false); err != nil {
+		return err
+	}
+	var named unix.Stat_t
+	err := unix.Fstatat(int(s.state.root.Fd()), "nfs/etab", &named, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		if !errors.Is(err, unix.ENOENT) || o.consumed {
+			return err
+		}
+	} else {
+		view := nfsServerQEMU{source: o, code: s}
+		if _, count, err := view.observeTable(ctx); err != nil || count != 0 {
+			return errors.Join(ErrMismatch, err)
+		}
+	}
+	if ok, err := nfsFixedNullQEMU(ctx, "127.0.0.1:2049", 100003, 3); err != nil || ok {
+		return errors.Join(ErrMismatch, err)
+	}
+	if err := o.check(ctx); err != nil {
+		return err
+	}
+	if err := s.revalidate(ctx); err != nil {
+		return err
+	}
+	return ctx.Err()
 }
 
 func (v *nfsServerQEMU) start(ctx context.Context) error {

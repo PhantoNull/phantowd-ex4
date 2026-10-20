@@ -76,8 +76,11 @@ to the retained runtime and recheck their candidate around operations. Their
 new state and Unix test identity exist only in disposable guest RAM; they do not
 enable product startup, continuous request admission or recovery.
 The normal source campaign uses separate server start/check/I/O/stop calls,
-keeping original processes and exports alive between them. This is an internal
-QEMU lifecycle prerequisite, not reboot persistence or product supervision.
+keeping original processes and exports alive between them. A fixed internal
+backend joins those calls to the experimental Owner, including exclusive idle
+supervision cancellation and verified stop before release. This remains a
+disposable QEMU campaign, not periodic real-server fault qualification,
+reboot persistence or product startup/recovery.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

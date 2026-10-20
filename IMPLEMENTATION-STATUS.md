@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Split real-NFS server calls in disposable QEMU
+## Owner-backed real-NFS server calls in disposable QEMU
 
 The normal source fixture separates server Start, Check, fixed I/O and Stop.
 Original rpcbind/mountd lifetime objects and the existing NFSD controller stay
@@ -11,6 +11,15 @@ alive between calls. Runtime gates are not held across those intervals, so the
 join can rederive from original policy/identity/storage claims while running.
 Exports survive the I/O probe until explicit withdrawal; readiness also compares
 a bounded read-only observation of the original private export table.
+
+A private fixed backend now connects this normal campaign to the real
+experimental Owner. Original candidate/authority checks surround readiness;
+the exclusive supervisor's accepted idle cancellation invokes actual stop,
+then explicit Owner closure releases only owned source duplicates. Fresh
+descriptor-relative NFSD reads, RPC listener absence and private export-table
+checks verify the fixed stopped profile before start and after stop. A lifecycle
+label alone is not stopped proof. Copied Owners and concurrent loop operations
+refuse; the required receipt explicitly excludes periodic real-server scans.
 
 Normal stop verifies export withdrawal, kernel/listener absence, original
 daemon stop/reap/handoff and per-component FD balance in reverse dependency
@@ -20,7 +29,7 @@ daemon lifetime implementation while retaining their existing proof and budgets.
 Copied, duplicate-start/stop, canceled pre-admission and early-close controls are
 required; host workflow selectors include the new pure refusal/table tests.
 
-This is not a persistent product service, generic Owner supervision, full
+This is not a persistent product service, complete real-server supervision, full
 partial-start/stop/policy/identity fault coverage, sole domain authority, client
 quiescence, boot/recovery or physical-device qualification. Any admitted failure
 retains original resources/review without retry or a fabricated clean teardown.

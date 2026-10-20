@@ -32,6 +32,7 @@ type SourceRuntimeQEMU struct {
 	accessVolume                   *os.File
 	accessAttempted, accessSettled bool
 	accessServer                   bool
+	serverOwner                    *Owner // Retained through every uncertain backend transition.
 	closed, review                 bool
 	cause                          error
 }

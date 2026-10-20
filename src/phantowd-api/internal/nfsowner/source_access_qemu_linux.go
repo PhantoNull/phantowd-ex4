@@ -119,13 +119,27 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 		runErr = o.access.Run(ctx)
 	} else {
 		runErr = func() error {
-			if err := o.access.StartServerFixtureQEMU(ctx); err != nil {
+			owner, err := newSourceServerOwnerQEMU(o, s)
+			if err != nil {
 				return err
 			}
-			o.accessServer = true
+			preCanceled, cancelStart := context.WithCancel(ctx)
+			cancelStart()
+			if !errors.Is(owner.Start(preCanceled), context.Canceled) || !errors.Is(o.access.CheckServerStoppedFixtureQEMU(preCanceled), context.Canceled) {
+				return ErrInvalid
+			}
+			if err := owner.Start(ctx); err != nil {
+				return err
+			}
+			copyOwner := *owner
+			if copyOwner.Start(ctx) == nil || copyOwner.Check(ctx) == nil || copyOwner.Stop(ctx) == nil || copyOwner.Close(ctx) == nil ||
+				!errors.Is(owner.Start(ctx), ErrState) {
+				return ErrInvalid
+			}
 			copyAccess := *o.access
 			if copyAccess.StartServerFixtureQEMU(ctx) == nil || copyAccess.CheckServerFixtureQEMU(ctx) == nil ||
 				copyAccess.ExerciseServerIOFixtureQEMU(ctx) == nil || copyAccess.StopServerFixtureQEMU(ctx) == nil ||
+				copyAccess.CheckServerStoppedFixtureQEMU(ctx) == nil || o.access.CheckServerStoppedFixtureQEMU(ctx) == nil ||
 				o.access.StartServerFixtureQEMU(ctx) == nil || o.access.Close(ctx) == nil {
 				return ErrInvalid
 			}
@@ -135,23 +149,22 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 				!errors.Is(o.access.StopServerFixtureQEMU(canceled), context.Canceled) {
 				return ErrInvalid
 			}
-			if err := o.verify(ctx, s); err != nil {
+			if err := owner.Check(ctx); err != nil {
 				return err
 			}
 			if err := o.access.ExerciseServerIOFixtureQEMU(ctx); err != nil {
 				return err
 			}
-			if err := o.verify(ctx, s); err != nil {
+			if err := owner.Check(ctx); err != nil {
 				return err
 			}
-			if err := o.access.StopServerFixtureQEMU(ctx); err != nil {
+			if err := stopSourceServerThroughSupervisionQEMU(ctx, owner); err != nil {
 				return err
 			}
-			o.accessServer = false
 			if o.access.StopServerFixtureQEMU(ctx) == nil || o.access.CheckServerFixtureQEMU(ctx) == nil || o.access.ExerciseServerIOFixtureQEMU(ctx) == nil {
 				return ErrInvalid
 			}
-			return nil
+			return owner.Close(ctx)
 		}()
 	}
 	if sourceLoss {
@@ -165,16 +178,12 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 		fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_ACCESS_FAILURE phase=run")
 		return o.fail(runErr)
 	}
-	if err := o.access.Close(ctx); err != nil {
-		return o.fail(err)
+	if !o.accessSettled || o.accessVolume != nil {
+		return o.fail(ErrReviewRequired)
 	}
-	o.accessSettled = true
-	if err := o.accessVolume.Close(); err != nil {
-		return o.fail(err)
-	}
-	o.accessVolume = nil
 	if !sourceLoss {
 		fmt.Println("PHANTOWD_NFS_SOURCE_SERVER_READY split_calls=true original_policy_identity=true original_daemons=true kernel_verified=true exports_verified=true owner_ready_checks=2 copied_refused=true early_close_refused=true pre_cancel_unchanged=true start_once=true stop_once=true io=true stopped=true original_parents_retained=true product=false scope=qemu-only")
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_READY fixed_backend=true original_claims=true real_start_check_stop=true idle_cancel=true exclusive=true close_after_stop=true no_restart=true periodic_real_check=false product=false scope=qemu-only")
 	}
 	return o.verify(ctx, s)
 }

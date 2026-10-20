@@ -22,3 +22,13 @@ func TestNFSSourceServerRefusesInvalidOriginalLifetime(t *testing.T) {
 		}
 	}
 }
+
+func TestNFSSourceServerStoppedObservationRefusesInvalidLifetime(t *testing.T) {
+	for _, source := range []*runtimebundle.NFSSourceAccessQEMU{nil, {}} {
+		for _, ctx := range []context.Context{nil, context.Background()} {
+			if source.CheckServerStoppedFixtureQEMU(ctx) == nil {
+				t.Fatal("invalid source server accepted a stopped observation")
+			}
+		}
+	}
+}

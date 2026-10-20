@@ -2232,9 +2232,15 @@ storage. No production roster provider or activation path exists.
   exports, verifies/stops NFSD, then mountd/rpcbind and FD/reference closure under
   one combined independent five-second budget. Old fault profiles and their
   budgets remain separate. No runtime gate spans identity/storage callbacks.
-  The generic supervised Owner/backend connection, complete partial-start/live
-  fault compensation, client quiescence, domain census and boot/recovery remain
-  required; the split fixture is not product service activation or persistence.
+  A fixed private backend now joins the normal real-source campaign to the
+  experimental Owner: original candidate/input checks, real start/check/stop,
+  exclusive idle cancellation and explicit release only after fresh stopped
+  observations. NFSD transactions use new descriptors beneath original controls;
+  fixed RPC absence and the private export table supplement the profile. Copied
+  handles/concurrent loop operations refuse, without restart or new privileges.
+  This does not qualify periodic real-server scans, complete partial-start/live
+  fault compensation, client quiescence, domain census or boot/recovery; those
+  remain required before product service activation or persistence.
   M4.1 remains incomplete until fresh storage and identity evidence are
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service

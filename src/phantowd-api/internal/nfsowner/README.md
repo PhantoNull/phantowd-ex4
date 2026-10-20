@@ -4,7 +4,8 @@
 # Experimental NFS lifetime owner
 
 This package exists only with the `qemu` build tag. It implements the approved
-host/disposable-QEMU lifecycle, **not a kernel backend or product NFS manager**.
+host/disposable-QEMU lifecycle and a fixed real-source campaign adapter,
+**not a product kernel backend or NFS manager**.
 Normal firmware builds cannot construct it. There is no HTTP endpoint or physical
 device operation here. The memory-model API executes no command; the separate
 Linux/QEMU source join delegates only the fixed finite server fixtures below.
@@ -63,7 +64,7 @@ authority without retry, automatic restart or release. Normal stopped lifetimes
 are not restartable either. Automatic normal/unclean product boot recovery is
 still a separate required coordinator, not this loop.
 
-The guest source fixture connects this real Owner to original mounted-roster
+The standard guest source fixture connects this real Owner to original mounted-roster
 pins and live identity/storage planning, but its consumer remains a memory
 model. Automatic root-replacement detection must stop that model once and
 retain pins through restoration; this is not daemon/kernel supervision proof.
@@ -146,8 +147,30 @@ After I/O, exports and daemons remain live until the explicit stop; withdrawal
 precedes kernel stop, then mountd and rpcbind stop/reap and reference closure.
 Normal cleanup has one independent combined five-second budget; fault campaigns
 keep their existing separate profile and budgets. Admitted uncertainty retains
-review and originals; complete partial-start/live-fault settlement and connection
-to the generic supervised Owner are not qualified. No product boot is enabled.
+review and originals; complete partial-start/live-fault settlement remains
+unqualified. No product boot is enabled.
+
+The normal real-source campaign uses one private fixed backend for the
+experimental Owner, with its original candidate, policy/identity claims,
+mounted-roster sources and runtime references. It does not expose a backend
+factory, replacement inputs, HTTP or a product constructor. Both containing
+join/root gates remain held throughout this finite campaign; runtime gates
+still return before callbacks enter storage/identity domains.
+
+Start and explicit Check use the actual server. Accepted supervisor cancellation
+while idle stops it independently of that canceled request; explicit Close then
+releases only owned source duplicates, not borrowed authorities. The campaign
+witnesses exclusive loop admission before cancellation with a fixed one-hour
+idle interval. It therefore proves idle cancellation, NOT periodic real-server
+scans. Generic model tests separately cover periodic scans and drift.
+
+Stopped verification opens new bounded transactions beneath original NFSD
+controls, requires zero threads/empty ports/v3-only, absent fixed RPC listeners
+and absent-before-start or empty-after-stop private export state. Original
+namespace/source/code checks bracket the sample. This is not sole-domain,
+complete cache or remote-client quiescence evidence. The Owner and original
+backend causes remain retained after uncertainty; partial-start and live-fault
+compensation are not made complete by this normal-path adapter.
 
 `ProbeSourceLossFixtureQEMU` is a fault TEST, not a running/healthy state reply.
 It requires the separate source-loss guest selector. Success means same-payload
