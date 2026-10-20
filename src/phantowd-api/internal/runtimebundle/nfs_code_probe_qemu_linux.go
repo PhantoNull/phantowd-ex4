@@ -25,9 +25,9 @@ import (
 var nfsCodeProbeRetainedQEMU *NFSCodeQEMU
 
 // ProbeNFSCodeQEMU stages public guest code into its own bounded RAM mount.
-// The loader's fixed --list and exportfs -s execute; no daemon starts or data
-// device opens. The non-root loader and root/capability-zero table fixtures
-// have separate fixed profiles; neither selects product privileges.
+// Loader lists, exportfs -s and one foreground rpcbind lifetime execute with
+// distinct fixed fixture profiles. No NFSD or data device opens; these tests
+// do not select product privileges or activate a product NFS backend.
 func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 	phase := "guard"
 	defer func() {
@@ -192,7 +192,7 @@ func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 		return errors.New("independent input capture erased earlier code review")
 	}
 	fmt.Printf("PHANTOWD_NFS_CODE_COUNTS files=%d aliases=%d bytes=%d\n", len(plan.files), len(plan.aliases), plan.bytes)
-	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-list-and-exportfs-s scope=code-inputs-and-table-list")
+	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-list-table-and-rpcbind scope=code-inputs-and-rpcbind-lifetime")
 	return nil
 }
 

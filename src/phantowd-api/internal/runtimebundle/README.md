@@ -152,6 +152,36 @@ publishes no export and supplies no NLM/NSM, NSS completeness, permanent state,
 fault-complete backend, boot recovery or hardware qualification. The bootstrap
 is injected only into a disposable image copy, never installed by the product.
 
+## Fixed foreground rpcbind lifetime (QEMU only)
+
+The private rpcbind probe borrows the SAME original input gate through start,
+observation, verified stop/reap, reference closure and final revalidation.
+A separate guarded `PinnedSet` constructor fixes the four original descriptor
+roles and `rpcbind-v1`; generic launchers and Samba privilege profiles do not
+change. The shared fixture bootstrap retains exactly BIND_SERVICE/SETUID/SETGID
+for this fixed role, then runs retained `rpcbind -f -s -h 127.0.0.1`. The table
+role remains capability-zero. Correct service aliases are supplied by the same
+retained configuration. Only the guest loopback is enabled, with no NIC or port
+forwarding; this is not a product network/privilege choice.
+The pinned rpcbind ignores `-h` for TCP and listens on IPv4 wildcard. Its
+dedicated role therefore refuses unless lo is the sole UP interface (down
+built-in tunnel devices may exist), and the observer requires the exact wildcard
+profile. Do not treat `-h` as TCP address restriction or product network admission.
+
+Readiness requires a bounded accepted RPC NULL reply, not merely a socket or
+handoff. Subsequent observations require UID/GID1, no supplementary groups,
+zero effective/permitted/inheritable/ambient capabilities and exactly the three
+startup bounding bits, NNP, the original executable, private mount view and a
+positive listener-inode-to-owned-PID FD match. The socket's root creator UID
+is distinct from the daemon's current UID. Observations are sequential, not an
+atomic service lease or complete FD census/absence authority. Unexpected output
+refuses; uncertain inputs/start/stop/close retain original references and review.
+
+After verified process-group stop and listener absence, only known root-owned
+fresh fixture socket/lock leaves may be removed. No NFSD or export data is
+provided; full NFS backend/domain composition, fault coverage, product privilege
+selection and normal/unclean-boot recovery remain outside this fixture.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

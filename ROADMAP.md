@@ -2435,6 +2435,16 @@ storage. No production roster provider or activation path exists.
   Next qualify actual exports/config parsing, rpcbind/mountd and real NFSD/source/
   identity/policy/state ownership together, complete stop/faults and automatic
   ordinary unclean-boot recovery. Never infer complete service stop from PID exit.
+  **Real rpcbind prerequisite:** the original-input guarded ARM fixture now
+  starts one foreground rpcbind, verifies accepted NULL RPC, actual UID/GID1,
+  zero effective/permitted caps with only three startup bounding bits, original
+  code/private view and positive PID/listener binding. Group/listener/FD closure
+  passes before known fixture-leaf cleanup; all old proofs stay mandatory.
+  The pinned TCP path ignores `-h`: require its exact wildcard profile only with
+  lo as sole UP interface and a NIC-none guest. Product address/interface policy
+  remains unqualified; do not copy this fixture's network or privilege choice.
+  Next compose retained mountd and original kernel/export/source authority, full
+  stop/fault coverage and normal/unclean automatic recovery before activation.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

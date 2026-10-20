@@ -13,7 +13,7 @@ MAX_REPORT = 128 << 10
 READY = (b"PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true "
          b"caller_copy_closed=true normal_fd_balance=true constructor_rollback=true "
          b"non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true "
-         b"review_retained=true execution=loader-list-and-exportfs-s scope=code-inputs-and-table-list")
+         b"review_retained=true execution=loader-list-table-and-rpcbind scope=code-inputs-and-rpcbind-lifetime")
 DONE = b"PHANTOWD_NFS_CODE_DONE"
 INPUTS = (b"PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_dirs=2 "
           b"original_code=true caller_copies_closed=true normal_fd_balance=true "
@@ -23,6 +23,9 @@ INPUTS = (b"PHANTOWD_NFS_INPUTS_READY same_candidate=true config_files=9 state_d
 TABLE = (b"PHANTOWD_NFS_TABLE_READY populated=true empty_control=true table_unchanged=true "
          b"original_inputs=true close_excluded=true constructor_rollback=true private_view=true capabilities_zero=true "
          b"stop_reaped=true fd_balance=true command=exportfs-s services=false kernel_control=false scope=qemu-only")
+RPCBIND = (b"PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 "
+           b"effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true "
+           b"stop_reaped=true listener_stopped=true fd_balance=true nfsd=false product=false scope=qemu-only")
 COUNTS = re.compile(rb"PHANTOWD_NFS_CODE_COUNTS files=([0-9]{1,3}) aliases=([0-9]{1,4}) bytes=([0-9]{1,8})")
 
 
@@ -58,6 +61,11 @@ def verify(log, report):
         # The serial transport adds ONE terminal CR. Embedded/repeated CR is
         # not stripped and therefore cannot manufacture an accepted marker.
         line = raw[:-1] if raw.endswith(b"\r") else raw
+        if line.startswith(b"PHANTOWD_NFS_RPCBIND_"):
+            if line != RPCBIND:
+                raise ValueError("unknown or failed rpcbind receipt")
+            seen.append("rpcbind")
+            continue
         if line.startswith(b"PHANTOWD_NFS_TABLE_"):
             if line != TABLE:
                 raise ValueError("unknown or failed table receipt")
@@ -81,7 +89,7 @@ def verify(log, report):
             seen.append("done")
         else:
             raise ValueError("unknown or failed code receipt")
-    if seen != ["table", "inputs", "counts", "ready", "done"]:
+    if seen != ["table", "rpcbind", "inputs", "counts", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered receipt")
 
 
@@ -108,7 +116,7 @@ def main():
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-inputs-and-table-list")
+    print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-inputs-and-rpcbind-lifetime")
     return 0
 
 

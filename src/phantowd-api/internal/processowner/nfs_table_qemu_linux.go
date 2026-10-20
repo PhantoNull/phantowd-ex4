@@ -19,16 +19,23 @@ import (
 // input lifetime must remain locked and revalidated through capture/settlement.
 // No caller-selectable arguments, privilege profile or generic FD injection.
 func NewNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ *CaptureOwner, result error) {
-	if runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 {
+	if !nfsRuntimeFixtureGuardQEMU() {
 		return nil, ErrInvalid
+	}
+	return newNFSTableCaptureQEMU(executable, input, objects)
+}
+
+func nfsRuntimeFixtureGuardQEMU() bool {
+	if runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 {
+		return false
 	}
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if err != nil || string(model) != "ARM Versatile PB\x00" {
-		return nil, ErrInvalid
+		return false
 	}
 	command, err := os.ReadFile("/proc/cmdline")
 	if err != nil || len(command) > 4096 {
-		return nil, ErrInvalid
+		return false
 	}
 	count := 0
 	for _, word := range strings.Fields(string(command)) {
@@ -36,9 +43,10 @@ func NewNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ 
 			count++
 		}
 	}
-	if count != 1 {
-		return nil, ErrInvalid
-	}
+	return count == 1
+}
+
+func newNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ *CaptureOwner, result error) {
 	c, err := NewCapture(CaptureSpec{
 		ExecutableLabel: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{"table-v1"},
 		RunAs: &Credentials{UID: 0, GID: 0}, Timeout: 10 * time.Second, StopTimeout: time.Second,

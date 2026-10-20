@@ -7,19 +7,24 @@
 #include <linux/capability.h>
 #include <linux/magic.h>
 #include <linux/mount.h>
+#include <net/if.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/vfs.h>
 #include <unistd.h>
 
 /* Disposable QEMU-only fixed ABI: bootstrap=3, code/config/state roots=4/5/6,
- * original exportfs=7. No arbitrary command, path, UID or capability selector.
+ * original role target=7. Only table-v1 or rpcbind-v1 selects a fixed program;
+ * no arbitrary command, path, UID or capability selector.
  * UID 0/capability-zero is NOT the product privilege design or an isolation
  * boundary against hostile guest-root code. No PID/user/network isolation. */
 static int refuse(void)
@@ -57,12 +62,14 @@ static int fixture_guard(void)
     return count == 1 ? 0 : -1;
 }
 
-static int descriptors(void)
+static int descriptors(int daemon)
 {
     struct stat st;
     struct statfs fs;
-    if (fstat(0, &st) || !S_ISREG(st.st_mode) || st.st_size ||
-        (fcntl(0, F_GETFL) & O_ACCMODE) != O_RDONLY || lseek(0, 0, SEEK_CUR) != 0)
+    if (fstat(0, &st) || (fcntl(0, F_GETFL) & O_ACCMODE) != O_RDONLY)
+        return -1;
+    if (daemon ? (!S_ISCHR(st.st_mode) || major(st.st_rdev) != 1 || minor(st.st_rdev) != 3)
+               : (!S_ISREG(st.st_mode) || st.st_size || lseek(0, 0, SEEK_CUR) != 0))
         return -1;
     for (int fd = 1; fd <= 2; ++fd)
         if (fstat(fd, &st) || !S_ISFIFO(st.st_mode) ||
@@ -94,6 +101,41 @@ static int descriptors(void)
         }
     }
     return 0;
+}
+
+/* This rpcbind version's -h does not restrict TCP. Refuse its fixture role
+ * unless lo is the sole UP interface; the harness additionally has no NIC or
+ * forwarding. Down built-in tunnel interfaces are not active receivers.
+ * This point-in-time guard is not a product network-namespace authority. */
+static int loopback_only(void)
+{
+    struct if_nameindex *names = if_nameindex();
+    if (!names)
+        return -1;
+    int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    int valid = fd >= 0, count = 0, loopback = 0;
+    for (struct if_nameindex *entry = names; valid && entry->if_index; ++entry) {
+        struct ifreq request = {0};
+        if (++count > 16 || !entry->if_name || strlen(entry->if_name) >= IFNAMSIZ) {
+            valid = 0;
+            break;
+        }
+        strcpy(request.ifr_name, entry->if_name);
+        if (ioctl(fd, SIOCGIFFLAGS, &request)) {
+            valid = 0;
+            break;
+        }
+        if (request.ifr_flags & IFF_UP) {
+            if (strcmp(entry->if_name, "lo") || !(request.ifr_flags & IFF_LOOPBACK))
+                valid = 0;
+            else
+                ++loopback;
+        }
+    }
+    if_freenameindex(names);
+    if (fd >= 0 && close(fd))
+        valid = 0;
+    return valid && loopback == 1 ? 0 : -1;
 }
 
 /* Open the detached clones BEFORE unshare: inherited O_PATH descriptors still
@@ -165,7 +207,7 @@ static int private_view(void)
     return 0;
 }
 
-static int no_capabilities(void)
+static int fixed_capabilities(unsigned long long allowed)
 {
     if (setgroups(0, NULL) || prctl(PR_SET_KEEPCAPS, 0, 0, 0, 0) ||
         prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0))
@@ -178,18 +220,21 @@ static int no_capabilities(void)
             last = cap;
             break;
         }
-        if (prctl(PR_CAPBSET_DROP, cap, 0, 0, 0))
+        if (!(allowed & (1ULL << cap)) && prctl(PR_CAPBSET_DROP, cap, 0, 0, 0))
             return -1;
     }
     struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3, 0};
     struct __user_cap_data_struct data[2] = {{0}, {0}};
+    data[0].effective = data[0].permitted = (unsigned int)allowed;
+    data[1].effective = data[1].permitted = (unsigned int)(allowed >> 32);
     if (!last || syscall(SYS_capset, &header, data) || syscall(SYS_capget, &header, data))
         return -1;
     for (size_t i = 0; i < 2; ++i)
-        if (data[i].effective || data[i].permitted || data[i].inheritable)
+        if (data[i].effective != (unsigned int)(allowed >> (i * 32)) ||
+            data[i].permitted != data[i].effective || data[i].inheritable)
             return -1;
     for (unsigned int cap = 0; cap < last; ++cap)
-        if (prctl(PR_CAPBSET_READ, cap, 0, 0, 0) != 0 ||
+        if (prctl(PR_CAPBSET_READ, cap, 0, 0, 0) != !!(allowed & (1ULL << cap)) ||
             prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, cap, 0, 0) != 0)
             return -1;
     return getgroups(0, NULL) == 0 && prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) == 1 ? 0 : -1;
@@ -212,12 +257,15 @@ static int reset_signals(void)
 
 int main(int argc, char **argv)
 {
-    if (argc != 2 || strcmp(argv[1], "table-v1") ||
+    int daemon = argc == 2 && !strcmp(argv[1], "rpcbind-v1");
+    if (argc != 2 || (!daemon && strcmp(argv[1], "table-v1")) ||
         getuid() || geteuid() || getgid() || getegid() || getpgrp() != getpid())
         return refuse();
     if (fixture_guard())
         return refuse();
-    if (descriptors())
+    if (descriptors(daemon))
+        return refuse();
+    if (daemon && loopback_only())
         return refuse();
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) || private_view())
         return refuse();
@@ -225,14 +273,21 @@ int main(int argc, char **argv)
         syscall(SYS_close_range, 8U, ~0U, 0) ||
         fcntl(7, F_SETFD, FD_CLOEXEC))
         return refuse();
-    if (no_capabilities() || reset_signals())
+    /* Only the fixed rpcbind role retains these three startup capabilities;
+     * rpcbind -s subsequently drops to the synthetic daemon account. Parent
+     * observation must verify actual UID/GID and zero effective/permitted caps. */
+    unsigned long long allowed = daemon ? (1ULL << CAP_NET_BIND_SERVICE) |
+        (1ULL << CAP_SETUID) | (1ULL << CAP_SETGID) : 0;
+    if (fixed_capabilities(allowed) || reset_signals())
         return refuse();
     umask(0077);
     char *args[] = {"/usr/sbin/exportfs", "-s", NULL};
+    char *daemon_args[] = {"/usr/sbin/rpcbind", "-f", "-s", "-h", "127.0.0.1", NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin", "LC_ALL=C", NULL};
-    fputs("PHANTOWD_NFS_TABLE_HANDOFF private_view=true capabilities_zero=true fixed_exportfs=true\n", stderr);
+    fputs(daemon ? "PHANTOWD_NFS_RPCBIND_HANDOFF private_view=true initial_caps=bind-setuid-setgid active_interfaces=lo fixed_rpcbind=true\n" :
+          "PHANTOWD_NFS_TABLE_HANDOFF private_view=true capabilities_zero=true fixed_exportfs=true\n", stderr);
     if (fflush(stderr))
         return refuse();
-    syscall(SYS_execveat, 7, "", args, environment, AT_EMPTY_PATH);
+    syscall(SYS_execveat, 7, "", daemon ? daemon_args : args, environment, AT_EMPTY_PATH);
     return refuse();
 }

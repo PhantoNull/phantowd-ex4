@@ -161,6 +161,10 @@ func probeNFSInputsQEMU(ctx context.Context, expected []byte, codeRoot *os.File)
 	if err := probeNFSTableQEMU(ctx, good, candidate); err != nil {
 		return err
 	}
+	phase = "real-rpcbind-lifetime"
+	if err := probeNFSRPCBindQEMU(ctx, good); err != nil {
+		return err
+	}
 	phase = "mutable-file-write"
 	etab := filepath.Join(nfsStateViewQEMU, "nfs/etab")
 	temporary := etab + ".tmp"

@@ -84,7 +84,7 @@ func TestNFSConfigurationReturnsIndependentFilesOnlyDocuments(t *testing.T) {
 	_, table, _, _ := candidate.Documents()
 	if err != nil || len(second) != 9 || second["exports"] != table || second["nfs.conf"] == "" ||
 		second["netconfig"] != "local tpi_cots_ord - loopback - - -\ntcp tpi_cots_ord v inet tcp - -\n" ||
-		second["hosts"] != "127.0.0.1 localhost\n" || second["services"] != "sunrpc 111/tcp\nnfs 2049/tcp\nmountd 20048/tcp\n" {
+		second["hosts"] != "127.0.0.1 localhost\n" || second["services"] != "sunrpc 111/tcp rpcbind portmapper\nnfs 2049/tcp\nmountd 20048/tcp\n" {
 		t.Fatal("caller mutation, DNS, or unsupported transport changed profile", err)
 	}
 }

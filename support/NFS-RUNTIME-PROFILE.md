@@ -259,6 +259,34 @@ configuration still requests it. Do not infer all option/security enforcement,
 full exports/NSS parsing, sole-writer/NFSD authority, complete backend settlement
 or ordinary unclean-boot recovery from successful table listing.
 
+## Fixed rpcbind fixture, not a product profile
+
+The original input gate now also spans a fixed foreground rpcbind child through
+its entire verified lifetime. The shared QEMU bootstrap has two fixed roles,
+not caller-selectable privileges/commands. Table listing stays capability-zero;
+rpcbind retains exactly CAP_NET_BIND_SERVICE, CAP_SETUID and CAP_SETGID for its
+own `-s` transition. Actual UID/GID1, empty groups and zero effective/permitted/
+inheritable/ambient caps are required, with only those three bounding bits and
+NNP remaining. The same protected configuration adds rpcbind/portmapper aliases
+to sunrpc; startup uses actual files-only passwd/services lookups.
+
+The selected rpcbind COTS source uses `getaddrinfo(NULL, AI_PASSIVE)`; `-h` does
+not restrict TCP. The finite fixture requires exact IPv4 wildcard TCP111, no
+other port111 listener, and a positive socket-inode-to-owned-PID FD match. Root
+socket creator UID is not the daemon's current UID. Before this role starts,
+the bootstrap refuses unless lo is the only UP interface; down built-in tunnel
+interfaces can exist. The harness still has no NIC/forwarding. This does not
+qualify product address binding, network namespace ownership or LAN admission.
+
+Readiness consumes a bounded accepted NULL RPC record. After original code/
+configuration/root/namespace revalidation, one verified stop/reap must remove
+the listener; pins close and FD count balances before known fresh socket/lock
+leaves are removed. Any uncertainty retains original references and review,
+without restart/retry. Sequential positive binding is not an atomic lease,
+complete FD census, client quiescence or full NFS stop. No mountd/NFSD/export
+data, product startup/recovery or physical operation is qualified. Actual ARM
+passes alongside every earlier code/table/input/loader proof at unchanged bounds.
+
 ## Actual userspace code expectations, not execution authority
 
 `phantowd-lab inspect-nfs-runtime-closure DIRECTORY` inventories once and unions

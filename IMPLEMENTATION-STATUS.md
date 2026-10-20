@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Real retained rpcbind lifetime qualified in ARMv5 QEMU
+
+The dedicated optional NFS guest now starts the original pinned rpcbind in a
+private mount view under the original code/config/state gate. The fixed role
+retains only BIND_SERVICE/SETUID/SETGID at entry; `-s` switches to synthetic
+UID/GID1. Actual observation requires zero effective/permitted/inheritable/
+ambient capabilities, exactly those three bounding bits, NNP, original code/
+root identities, a listener-inode-to-owned-PID FD match and accepted RPC NULL
+responses. Socket creator UID0 is checked separately from current process UID1.
+The table role stays capability-zero; generic/Samba launchers are unchanged.
+
+Source inspection catches missing rpcbind/portmapper service aliases before
+ARM. The first real daemon responds/stops but the expected TCP address is wrong:
+rpcbind's `-h` limits UDP, not its TCP wildcard binding. The exact fixed guest
+profile now requires IPv4 wildcard/TCP only plus a bootstrap guard refusing any
+UP interface except lo; the NIC-none/no-forwarding harness is unchanged. This
+is not TCP address restriction or a product network/privilege decision.
+
+Whole Windows/pinned native checks, focused race3 and actual ARM pass with all
+earlier table/code/input/loader proofs, unchanged90/60/360limits/base and1379
+frozen inputs. Normal stop verifies whole-group absence, no RPC listener and FD
+balance before removing only known owned fresh socket/lock leaves. Observations
+are sequential positive instance binding, not a complete FD census or atomic
+service/domain lease. Start/stop uncertainty retains originals and review.
+
+No mountd/NFSD/export data or real NAS is involved. Product policy/source/identity/
+kernel ownership, complete faults and normal/unclean-boot recovery remain open.
+
 ## Descriptor-bound real NFS table listing qualified in ARMv5 QEMU
 
 The optional NFS lane now executes the retained real `exportfs -s` against the

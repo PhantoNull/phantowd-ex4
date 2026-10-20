@@ -38,7 +38,7 @@ func NFSFixtureConfigurationQEMU(candidate fileserviceplan.NFSv3Candidate) (map[
 		"nsswitch.conf": "passwd: files\ngroup: files\nshadow: files\nhosts: files\nnetworks: files\nprotocols: files\nservices: files\n",
 		"hosts":         "127.0.0.1 localhost\n",
 		"protocols":     "tcp 6 TCP\n",
-		"services":      "sunrpc 111/tcp\nnfs 2049/tcp\nmountd 20048/tcp\n",
+		"services":      "sunrpc 111/tcp rpcbind portmapper\nnfs 2049/tcp\nmountd 20048/tcp\n",
 	}
 	var total int64
 	for _, value := range documents {

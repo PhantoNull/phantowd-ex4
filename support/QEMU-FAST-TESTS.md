@@ -7,8 +7,9 @@ limits and all code/input/loader receipts. Its shell driver additionally injects
 the separate static `nfs-table-bootstrap.c` into a disposable image copy only.
 Two single-use captures run actual `exportfs -s` against one synthetic table and
 an empty control. Original input references stay locked through capture, group
-settlement, child-reference closure and final revalidation. No data disk, daemon,
-kernel NFS control, default CI boot or product installation is added.
+settlement, child-reference closure and final revalidation. This table phase
+adds no data disk or kernel NFS control; the same lane now also checks the
+separate foreground rpcbind lifetime below. No default CI boot or product install.
 
 The bootstrap creates descriptor-derived detached mount clones before changing
 namespace, sets fixed attributes, then attaches them to its private root. Code
@@ -26,6 +27,26 @@ that flag, but output is not a kernel/security enforcement observation. Unknown,
 failed, duplicate, missing, reordered or broadened receipts refuse. Full exports
 parsing, NSS, daemon/kernel composition, fault-complete stop and automatic boot
 recovery remain unqualified. See the [runtime contract](NFS-RUNTIME-PROFILE.md).
+
+## Optional retained rpcbind lifetime
+
+The same `support/test-nfs-code.ps1` lane starts one real retained rpcbind under
+the original input gate and a fixed role-specific bootstrap. It requires an
+accepted bounded NULL RPC reply, original executable/private root, UID/GID1,
+zero effective/permitted caps and exact three-bit startup bounding set, NNP,
+and positive PID/socket identity. Socket creator UID and process UID are distinct.
+The generic launcher, Samba profile and all old mandatory proofs remain intact.
+
+This rpcbind version ignores `-h` for TCP. Require its exact IPv4 wildcard TCP
+listener only after the bootstrap verifies lo is the sole UP interface (down
+built-in tunnel interfaces may exist); QEMU still has no NIC/forwarding. This
+is not a product network policy or privilege decision. The fixed same-config
+services document includes rpcbind and portmapper aliases rather than relying
+on missing lookup names. Normal stop requires whole-group/listener absence and
+FD balance before cleaning known owned fresh socket/lock leaves. Uncertainty
+keeps original references/review without restart. No mountd/NFSD/export data,
+atomic network lease, complete faults or normal/unclean recovery is qualified.
+The guest/helper/work limits remain90/60/360seconds; no extra guest/job is added.
 
 ## Optional Samba status-source refusal probe
 
