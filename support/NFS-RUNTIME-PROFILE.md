@@ -12,6 +12,20 @@ without clearing review or releasing original authority. Fixed role ABIs and
 generic Owner/process semantics are unchanged. This does not
 qualify complete faults, a privileged product controller/bootstrap, automatic
 recovery or permission to operate an existing NAS.
+
+The opt-in `source-owner-kernel-ready-cancel` scenario covers a distinct
+pre-export frontier: original Kernel.Start succeeds, then a controlled child
+context is canceled before export activation is attempted. Normal startup also
+checks cancellation there. Original-reference validation and fresh running
+evidence precede one original kernel stop, verified absence and reverse-order
+daemon stop/reap. Review and all remaining references stay retained. No exports
+are activated/withdrawn, no controller is closed/replaced and no restart or
+release is granted. This route is separate from an unattached bind failure and
+from a normally reviewed stopped server. Existing five-second operation and
+settlement, sixty-second fixture and ninety-second guest caps remain unchanged.
+It does not qualify partial kernel Start, uncertain export activation, pending
+I/O, product startup/recovery or physical hardware.
+
 The explicit-Stop variant performs no intervening Check or supervision. Its
 first admitted Stop retains the initial precheck cause/phase, revalidates
 original references and compensates once; fresh stopped proof cannot clear

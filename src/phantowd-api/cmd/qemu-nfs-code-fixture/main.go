@@ -27,6 +27,7 @@ func main() {
 	sourceFixture := len(os.Args) == 2 && os.Args[1] == "--source-binding"
 	kernelSocket := len(os.Args) == 2 && os.Args[1] == "--kernel-socket-refusal"
 	kernelBind := len(os.Args) == 2 && os.Args[1] == "--source-owner-kernel-bind-refusal"
+	kernelReadyCancel := len(os.Args) == 2 && os.Args[1] == "--source-owner-kernel-ready-cancel"
 	sourceLoss := len(os.Args) == 2 && os.Args[1] == "--source-loss"
 	daemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-daemon-loss"
 	policyLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-policy-loss"
@@ -34,7 +35,7 @@ func main() {
 	kernelRefusal := len(os.Args) == 2 && os.Args[1] == "--source-owner-kernel-refusal"
 	ownerStopLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-stop-loss"
 	ownerDaemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-loss" || ownerStopLoss
-	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && !partialStart && !kernelRefusal && !kernelSocket && !kernelBind && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && !partialStart && !kernelRefusal && !kernelSocket && !kernelBind && !kernelReadyCancel && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}
 	command, commandErr := os.ReadFile("/proc/cmdline")
@@ -44,7 +45,8 @@ func main() {
 	partialSelected, partialValid := parseOwnerLossSelector(command, "phantowd_nfs_source_owner_rpc_start_failure_fixture=")
 	kernelSelected, kernelValid := parseOwnerLossSelector(command, "phantowd_nfs_source_owner_kernel_construct_refusal_fixture=")
 	bindSelected, bindValid := parseKernelBindSelectorQEMU(command)
-	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss || !partialValid || partialSelected != partialStart || !kernelValid || kernelSelected != kernelRefusal || !bindValid || bindSelected != kernelBind {
+	readySelected, readyValid := runtimebundle.KernelReadyCancelSelectorQEMU(command)
+	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss || !partialValid || partialSelected != partialStart || !kernelValid || kernelSelected != kernelRefusal || !bindValid || bindSelected != kernelBind || !readyValid || readySelected != kernelReadyCancel {
 		os.Exit(1)
 	}
 	if kernelSocket {
@@ -66,6 +68,13 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	if kernelReadyCancel {
+		if err := probeSourceRuntimeMode(ctx, data, false, false, ownerKernelReadyCancel); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_REFUSED")
+			os.Exit(1)
+		}
+		return
+	}
 	if kernelBind {
 		if err := probeSourceRuntimeMode(ctx, data, false, false, ownerKernelBindRefusal); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_REFUSED")

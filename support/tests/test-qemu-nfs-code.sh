@@ -10,7 +10,7 @@ debugfs=${4:?pinned debugfs required}
 source_dir=${5:?source required}
 failure_log=${6:-}
 fixture_mode=${7:-code}
-case "$fixture_mode" in code|kernel-socket|source|source-loss|source-daemon-loss|source-owner-policy-loss|source-owner-daemon-loss|source-owner-daemon-stop-loss|source-owner-partial-start|source-owner-kernel-refusal|source-owner-kernel-bind-refusal) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
+case "$fixture_mode" in code|kernel-socket|source|source-loss|source-daemon-loss|source-owner-policy-loss|source-owner-daemon-loss|source-owner-daemon-stop-loss|source-owner-partial-start|source-owner-kernel-refusal|source-owner-kernel-bind-refusal|source-owner-kernel-ready-cancel) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
 tmpdir=${TMPDIR:-/tmp}
 case "$base:$target:$go_binary:$debugfs:$source_dir:$failure_log:$tmpdir" in
     *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
@@ -78,6 +78,7 @@ install_image_file "$scratch/nfs-table-bootstrap" /usr/sbin/phantowd-nfs-table-b
 init_source="$source_dir/support/tests/nfs-code-init.sh"
 init_target=/usr/sbin/phantowd-nfs-code-init
 if [ "$fixture_mode" = source-owner-kernel-bind-refusal ]; then init_target=/usr/sbin/phantowd-nfs-kernel-bind-init; fi
+if [ "$fixture_mode" = source-owner-kernel-ready-cancel ]; then init_target=/usr/sbin/phantowd-nfs-kernel-ready-cancel-init; fi
 if [ "$fixture_mode" = kernel-socket ]; then init_source="$source_dir/support/tests/nfs-kernel-socket-init.sh"; fi
 install_image_file "$init_source" "$init_target" 0100555
 selector=
@@ -116,7 +117,9 @@ verify_guest() {
     if [ "$fixture_mode" = kernel-socket ]; then
         python3 -B "$source_dir/support/nfs-code-result.py" --kernel-socket "$scratch/guest.log" "$scratch/expected.json" || return 1
     elif [ "$fixture_mode" != code ]; then
-        if [ "$fixture_mode" = source-owner-kernel-bind-refusal ]; then
+        if [ "$fixture_mode" = source-owner-kernel-ready-cancel ]; then
+            python3 -B "$source_dir/support/nfs-code-result.py" --source-owner-kernel-ready-cancel "$scratch/guest.log" "$scratch/expected.json" || return 1
+        elif [ "$fixture_mode" = source-owner-kernel-bind-refusal ]; then
             python3 -B "$source_dir/support/nfs-code-result.py" --source-owner-kernel-bind-refusal "$scratch/guest.log" "$scratch/expected.json" || return 1
         elif [ "$fixture_mode" = source-owner-kernel-refusal ]; then
             python3 -B "$source_dir/support/nfs-code-result.py" --source-owner-kernel-refusal "$scratch/guest.log" "$scratch/expected.json" || return 1

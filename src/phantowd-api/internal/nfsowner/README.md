@@ -291,6 +291,27 @@ reviewed stopped servers or expand the constructor-conflict cleanup above.
 Cached and ordinary wrappers plus ten previous profiles pass in twelve NFS
 guests; API smoke and two clean state boots add three, not product qualification.
 
+The separate `source-owner-kernel-ready-cancel` fixture cancels a child context
+immediately after successful original Kernel.Start, before attempting export
+activation. Normal startup also checks caller cancellation at this boundary.
+Successful kernel startup is recorded separately from a failed Start attempt;
+it must never borrow the never-attached bind-refusal path.
+
+Compensation requires the original ready daemons and controller, unchanged
+original code/source references, and a fresh original running-kernel observation.
+One kernel Stop and fresh stopped proof precede reverse mountd/rpcbind stop and
+reap. Further original kernel/daemon/source observations establish absence.
+No export activation/withdrawal, controller Close, replacement or reference
+release is authorized at this no-export boundary. The original cancellation
+and review remain; retries, restart and normal closure refuse. Ordinary reviewed
+stopped servers keep their existing route. All operation/settlement budgets
+are unchanged; callbacks and kernel I/O remain cooperatively bounded.
+
+This covers observed cancellation before export activation, not every possible
+cancellation timing, a failed/partially successful Kernel.Start, uncertain
+exportfs activation or pending I/O. It remains an opt-in disposable-guest test,
+not a product constructor, recovery rule or new hardware authority.
+
 Other pre-dispatch/reference/admission failures, other partial-start/readiness/
 uncertain-constructor/close outcomes,
 hard crashes, complete faults, domain/client quiescence and product bootstrap/

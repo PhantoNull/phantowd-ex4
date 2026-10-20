@@ -39,6 +39,7 @@ type nfsServerQEMU struct {
 	kernelConstructionRefused                    bool
 	kernelStartAttempted                         bool
 	kernelBindStopped                            bool
+	kernelStartVerified, kernelReadyStopped      bool
 }
 
 type nfsServerTableQEMU struct {
@@ -312,6 +313,20 @@ func (v *nfsServerQEMU) start(ctx context.Context) error {
 	v.phase = "kernel-start"
 	v.kernelStartAttempted = true // BEFORE any listener/thread transaction.
 	if err := v.kernel.Start(ctx); err != nil {
+		return err
+	}
+	v.kernelStartVerified = true // Actual successful original controller, never a selector.
+	if command, readErr := os.ReadFile("/proc/cmdline"); readErr == nil {
+		if selected, valid := KernelReadyCancelSelectorQEMU(command); selected && valid {
+			v.phase = "kernel-ready-before-exports"
+			canceled, cancel := context.WithCancel(ctx)
+			cancel()
+			fmt.Println("PHANTOWD_NFS_SERVER_KERNEL_READY_CANCEL_ARMED original_kernel_running=true original_daemons_ready=true exports_never_attempted=true product=false scope=qemu-only")
+			return canceled.Err()
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		v.phase = "kernel-ready-before-exports"
 		return err
 	}
 	v.phase = "activate-exports"

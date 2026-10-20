@@ -134,6 +134,16 @@ def verify_source_owner_kernel_bind(log, report):
     },["counts","policy","armed","failed","stopped-review","done"])
 
 
+def verify_source_owner_kernel_ready_cancel(log, report):
+    _verify_source_owner_fault(log,report,{
+        SOURCE_POLICY:"policy",
+        b"PHANTOWD_NFS_SERVER_KERNEL_READY_CANCEL_ARMED original_kernel_running=true original_daemons_ready=true exports_never_attempted=true product=false scope=qemu-only":"armed",
+        b"PHANTOWD_NFS_SERVER_FAILURE phase=kernel-ready-before-exports":"detected",
+        b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_READY original_kernel_stopped=true original_daemons_stopped=true exports_never_activated=true original_stopped_observation=true original_claims_retained=true source_refs_retained=true review_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only":"stopped-review",
+        b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_DONE":"done",
+    })
+
+
 def verify(log, report):
     if len(log) > MAX_LOG:
         raise ValueError("log budget")
@@ -374,15 +384,18 @@ def main():
         kernel_refusal = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-kernel-refusal"
         kernel_socket = len(sys.argv) == 4 and sys.argv[1] == "--kernel-socket"
         kernel_bind = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-kernel-bind-refusal"
-        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and not kernel_refusal and not kernel_socket and not kernel_bind and len(sys.argv) != 3:
+        kernel_ready_cancel = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-kernel-ready-cancel"
+        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and not kernel_refusal and not kernel_socket and not kernel_bind and not kernel_ready_cancel and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start or kernel_refusal or kernel_socket or kernel_bind else sys.argv[1:]
-        verifier = verify_source_owner_kernel_bind if kernel_bind else verify_kernel_socket if kernel_socket else verify_source_owner_kernel_refusal if kernel_refusal else verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start or kernel_refusal or kernel_socket or kernel_bind or kernel_ready_cancel else sys.argv[1:]
+        verifier = verify_source_owner_kernel_ready_cancel if kernel_ready_cancel else verify_source_owner_kernel_bind if kernel_bind else verify_kernel_socket if kernel_socket else verify_source_owner_kernel_refusal if kernel_refusal else verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if kernel_bind:
+    if kernel_ready_cancel:
+        print("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_RECEIPT_READY transport=LF-or-CRLF exact=true scope=ready-kernel-before-exports-stopped-review")
+    elif kernel_bind:
         print("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_RECEIPT_READY transport=LF-or-CRLF exact=true scope=original-server-bind-refusal-stopped-review")
     elif kernel_socket:
         print("PHANTOWD_NFS_KERNEL_SOCKET_RECEIPT_READY transport=LF-or-CRLF exact=true scope=kernel-component-only")

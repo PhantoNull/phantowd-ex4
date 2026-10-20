@@ -69,7 +69,7 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	}
 	phase = "owner-start"
 	err = owner.Start(ctx)
-	if !errors.Is(err, nfsowner.ErrReviewRequired) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if !errors.Is(err, nfsowner.ErrReviewRequired) || errors.Is(err, context.Canceled) != (fault == ownerKernelReadyCancel) || errors.Is(err, context.DeadlineExceeded) {
 		return errors.Join(errors.New("partial startup did not retain review"), err)
 	}
 	phase = "stopped-retained"
@@ -104,6 +104,10 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	}
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if fault == ownerKernelReadyCancel {
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_READY original_kernel_stopped=true original_daemons_stopped=true exports_never_activated=true original_stopped_observation=true original_claims_retained=true source_refs_retained=true review_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only")
+		return nil
 	}
 	if fault == ownerKernelBindRefusal {
 		phase = "independent-socket-unchanged"

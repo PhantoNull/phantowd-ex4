@@ -37,6 +37,7 @@ const (
 	ownerRPCStartFailure
 	ownerKernelConstructRefusal
 	ownerKernelBindRefusal
+	ownerKernelReadyCancel
 )
 
 func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
@@ -52,7 +53,7 @@ func probeSourceDaemonLossRuntime(ctx context.Context, expected []byte) error {
 }
 
 func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, daemonLoss bool, ownerFault sourceOwnerFault) (result error) {
-	if ownerFault > ownerKernelBindRefusal || daemonLoss && !sourceLoss || ownerFault != ownerNoFault && (sourceLoss || daemonLoss) {
+	if ownerFault > ownerKernelReadyCancel || daemonLoss && !sourceLoss || ownerFault != ownerNoFault && (sourceLoss || daemonLoss) {
 		return errors.New("mixed source fault modes")
 	}
 	phase := "mount-roster"
@@ -162,7 +163,7 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		}
 		fmt.Println("PHANTOWD_NFS_SOURCE_POLICY_READY original_policy_lease=true original_identity_lease=true unix_census=true registry=empty_fixture complete_candidate=true parent_close_excluded=true released_claims_refused=true mismatch_refused=true canceled_unchanged=true no_claim_release=true product=false scope=qemu-only")
 		phase = "original-source-nfs-access"
-		if ownerFault == ownerRPCStartFailure || ownerFault == ownerKernelConstructRefusal || ownerFault == ownerKernelBindRefusal {
+		if ownerFault == ownerRPCStartFailure || ownerFault == ownerKernelConstructRefusal || ownerFault == ownerKernelBindRefusal || ownerFault == ownerKernelReadyCancel {
 			phase = "partial-rpc-start"
 			return runSourceOwnerPartialStart(ctx, joined, authority, roots, inputs[0], lease, ownerFault)
 		}

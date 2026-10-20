@@ -35,10 +35,17 @@ prepare() {
 }
 if prepare; then
     case " $(cat /proc/cmdline) " in
-      *' init=/usr/sbin/phantowd-nfs-kernel-bind-init '*) kernel_bind_case=1 ;;
-      *) kernel_bind_case=0 ;;
+      *' init=/usr/sbin/phantowd-nfs-kernel-ready-cancel-init '*) kernel_bind_case=0; kernel_ready_case=1 ;;
+      *' init=/usr/sbin/phantowd-nfs-kernel-bind-init '*) kernel_bind_case=1; kernel_ready_case=0 ;;
+      *) kernel_bind_case=0; kernel_ready_case=0 ;;
     esac
-    if [ "$kernel_bind_case" = 1 ]; then
+    if [ "$kernel_ready_case" = 1 ]; then
+        if /usr/sbin/phantowd-nfs-code-fixture --source-owner-kernel-ready-cancel; then
+            echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_DONE
+        else
+            echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_READY_CANCEL_FAILED
+        fi
+    elif [ "$kernel_bind_case" = 1 ]; then
         if /usr/sbin/phantowd-nfs-code-fixture --source-owner-kernel-bind-refusal; then
             echo PHANTOWD_NFS_SOURCE_OWNER_KERNEL_BIND_DONE
         else

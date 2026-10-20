@@ -20,7 +20,7 @@ func (v *nfsServerQEMU) kernelBindReviewRouteQEMU() bool {
 func (v *nfsServerQEMU) kernelBindStartBoundaryQEMU() bool {
 	return v != nil && v.source != nil && v.code != nil && v.source.server == v && v.code.sourceAccess == v.source &&
 		!v.running && !v.stopped && !v.ioAttempted && !v.source.exportsLoaded &&
-		!v.rpcOnlyStartRefused && !v.kernelConstructionRefused && v.kernelStartAttempted && v.kernel != nil &&
+		!v.rpcOnlyStartRefused && !v.kernelConstructionRefused && v.kernelStartAttempted && !v.kernelStartVerified && v.kernel != nil &&
 		v.ownsReadyPartialDaemon(v.rpcbind, false) && v.ownsReadyPartialDaemon(v.mountd, true)
 }
 
