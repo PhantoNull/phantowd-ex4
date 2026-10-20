@@ -36,6 +36,25 @@ Policy/identity remain synthetic. Complete constructor, cancellation, drift and
 partial-start/stop faults, sole control-domain admission, protocol/recovery and
 product activation remain open. This is not a product backend or hardware gate.
 
+## Named source binding and live-client source loss (QEMU-only)
+
+The finite consumer now reopens each fixed relative directory beneath its
+original retained volume and compares inode/device/unique mount ID, mode and
+ownership with the original directory. Held-FD metadata alone cannot detect
+path replacement. Symlinks and nested mounts refuse; temporary references close
+once, with uncertain closure retained. Review preserves the original cause and
+does not clear when names are restored. No storage callback runs under a runtime
+gate, and these sequential checks are not atomic request authorization.
+
+Optional `-FixtureMode source-loss` uses a separate disposable guest with the
+same existing budgets/artifact, not a new default CI job. The controller's
+one-lifetime-per-process guard remains intact. A real NFS file stays open while
+the source is replaced with the same payload, then restored. Required proofs
+include sticky review, one ordinary client-unmount EBUSY, original file/kernel/
+daemon/input retention and refusal to retry/release. The guest's destruction is
+not verified product settlement. This is not a physical volume failure, pending
+write interruption, remote-client revocation or complete NFS fault qualification.
+
 ## Original NFS input reservation: QEMU-only preparation
 
 A typed, non-copyable reservation now holds the original NFS code/config/state

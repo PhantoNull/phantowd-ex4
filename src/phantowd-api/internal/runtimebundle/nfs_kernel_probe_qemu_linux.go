@@ -60,7 +60,9 @@ func probeNFSDKernelQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, channels *
 				companions [2]nfsCompanionQEMU
 				cause      error
 			}{kernel, companions, result}
-			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_KERNEL_FAILURE phase=%s\n", phase)
+			if !nfsSourceLossExpectedQEMU(s, result) {
+				fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_KERNEL_FAILURE phase=%s\n", phase)
+			}
 		}
 	}()
 	if nfsCompanionsLiveQEMU(ctx, s, channels, companions) != nil {
@@ -103,6 +105,14 @@ func probeNFSDKernelQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, channels *
 		return nil
 	}()
 	if checkErr != nil && s.sourceAccess != nil && (len(s.sourceAccess.mounts) != 0 || s.sourceAccess.capture != nil || s.sourceAccess.exportsLoaded) {
+		if s.sourceAccess.sourceLoss && s.sourceAccess.lossTriggered && errors.Is(checkErr, errNFSSourceLossQEMU) {
+			o := s.sourceAccess
+			o.loss = &nfsSourceLossEvidenceQEMU{kernel: kernel, companions: companions, held: o.heldClientIdentity}
+			if err := o.observeSourceLossConsumersQEMU(ctx); err != nil {
+				return err
+			}
+			o.loss.verified = true
+		}
 		return checkErr
 	}
 	phase = "stop"

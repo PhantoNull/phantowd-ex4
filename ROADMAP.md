@@ -2063,6 +2063,19 @@ complete faults or product startup/recovery. Next qualify cancellation, partial
 startup/withdrawal/stop, live source loss and retained uncertain consumers, then
 bind real policy/identity authorities; do not widen the generic launcher.
 
+**Live source binding (QEMU-only):** current names are compared beneath the
+original volume with original directory tuples, retaining first-cause review.
+An optional separate source-loss guest requires same-payload replacement with
+a real client file held open, restoration refusal, ordinary client unmount
+EBUSY and retained original daemon/kernel/source/input references. Do not weaken
+the single-use kernel component to run two lifetimes in one process. Client
+mount EBUSY is not proof of server data-volume busy state or product quiescence.
+Next require server-side export/cache withdrawal on drift under an independent
+bounded cleanup context, owned-daemon exit/partial-start/stop/close faults,
+mount/device disappearance and pending-I/O cases, followed by real policy and
+identity authority, protocol/reclaim and qualified boot recovery. VM disposal
+must never satisfy the product settlement or automatic recovery acceptance.
+
 **NFS input-reservation prerequisite:** the QEMU-only typed reservation now
 compares the complete candidate definition/evidence and blocks parent input
 closure until explicit unstarted release. Changed input state retains review

@@ -466,6 +466,21 @@ are required. Unknown active capture, mounted client, export or kernel outcome
 retains review and original consumers until VM disposal, not product recovery.
 Complete fault coverage and sole-domain/policy/identity authority remain open.
 
+The finite consumer also compares current source names through Openat2 beneath
+the ORIGINAL volume with each original inode/device/unique-mount tuple and mode/
+owner. There is no absolute-path fallback or runtime-to-storage callback. A
+temporary binding reference whose Close is uncertain remains retained without
+retry; observed drift keeps first-cause review after restoration. These samples
+do not close the unobserved replace/restore race or authorize individual RPCs.
+
+Separate optional source-loss execution follows actual synthetic I/O, holds one
+NFS file across same-payload directory replacement/restoration, and requires
+ordinary client-unmount EBUSY plus retained kernel/daemon/source/input authority.
+Its exact receipt explicitly denies settlement. Do not treat client-mount EBUSY
+as a server volume or remote-client quiescence observation. One NFSD lifetime per
+process remains required; no global guard reset or product restart is introduced.
+Verified server-side withdrawal/stop under drift/cancellation is still required.
+
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.
 - Admit one exclusive NFS control domain, with original network/control-filesystem

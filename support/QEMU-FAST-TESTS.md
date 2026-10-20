@@ -86,6 +86,29 @@ are pending, unknown/trailing bytes refuse. This fixes actual asynchronous
 collection observed ending at `rpc.mountd: `, not a daemon-error whitelist.
 No timeout reset, explicit sleep, retry/restart or lifecycle-gate reentry.
 
+## Optional live-client NFS source loss
+
+`support/test-nfs-code.ps1 -FixtureMode source-loss` uses the same pinned base,
+fresh32MiB synthetic snapshot and90/60/360bounds, with an additional explicit boot
+selector. Normal `source` and `code` remain separate mandatory regression proofs;
+none is substituted or added as a new default CI boot/job. The kernel component
+still permits only one lifetime per process; a rejected second constructor is
+not repaired by clearing its global retention state.
+
+The fault follows real RW/fsync/readback, RO/EROFS and denied-client checks.
+Retain a real NFS file, replace its source directory with the same file payload,
+detect current-name/original-tuple mismatch under the original volume, restore
+the name and require sticky review. One ordinary client unmount must return
+EBUSY. Verify the same open NFS inode, original live daemon instances, kernel
+profile/RPC and original input/source retention; new run/close attempts refuse.
+No forced/lazy unmount, retry, restart or product shutdown is claimed. Resources
+remain until VM disposal. This does not model an EX4 disk failure or pending I/O.
+
+Loss receipts require exact counts, one complete loss proof and loss completion.
+Normal shutdown, mixed, partial, duplicate or unknown failure markers refuse.
+Both positive modes verify unchanged base/synthetic backing hashes. Actual POSIX
+init tests distinguish normal-source and explicit loss dispatch after proc setup.
+
 ## Original NFS input reservation
 
 The same optional code guest also checks an unstarted typed input reservation:

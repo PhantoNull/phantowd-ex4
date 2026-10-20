@@ -5,9 +5,9 @@
 
 This package exists only with the `qemu` build tag. It implements the approved
 host/disposable-QEMU lifecycle, **not a kernel backend or product NFS manager**.
-Normal firmware builds cannot construct it. There is no HTTP endpoint, command
-execution, namespace setup or physical-device operation here. The Linux/QEMU
-source lifetime below opens directories only through an original mount lease.
+Normal firmware builds cannot construct it. There is no HTTP endpoint or physical
+device operation here. The memory-model API executes no command; the separate
+Linux/QEMU source join delegates only the fixed finite server fixtures below.
 
 ## Fixed inputs and lifecycle
 
@@ -101,6 +101,28 @@ whole-volume capture, missing/symlink refusal, parent-close exclusion and sticky
 replacement/restoration review using real temporary mounted-volume authority.
 It does not start a service or prove effective NFS client access through these
 new references. The mandatory receipt says `service=false`.
+
+## Original source/runtime finite fixtures (Linux/QEMU only)
+
+`NewSourceRuntimeQEMU` joins original export-root and complete runtime-input
+lifetimes, without descriptor getters or per-operation replacement backends.
+Both parents refuse closure. Storage calls finish before runtime gates are
+entered, preserving the no-callback lock boundary. Complete immutable candidate
+matching is necessary but does not supply a live policy/identity lease.
+
+`RunAccessFixtureQEMU` delegates one fixed real NFS synthetic-data campaign and
+requires normal client/export/kernel/daemon/reference closure before clean join
+release. Current names are additionally compared under the original volume with
+the original directory tuples; held metadata alone cannot detect replacement.
+Observed loss or uncertain validation retains first-cause review and both parents.
+
+`ProbeSourceLossFixtureQEMU` is a fault TEST, not a running/healthy state reply.
+It requires the separate source-loss guest selector. Success means same-payload
+directory substitution was detected with a real NFS file open, restoration could
+not clear review, and ordinary client-unmount EBUSY kept original live consumers
+and references. The join must remain reviewed; run/close refuse afterwards.
+This does not authorize product activation, force unmount, certify remote-client
+revocation/physical disk faults or turn VM disposal into verified settlement.
 
 ## Tests and remaining integration
 

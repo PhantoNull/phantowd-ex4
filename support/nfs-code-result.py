@@ -46,6 +46,9 @@ SOURCE_MOUNTD = (b"PHANTOWD_NFS_SOURCE_MOUNTD_READY original_channels=3 original
                  b"fd_balance=true product=false scope=qemu-only")
 SOURCE_RPCBIND = (b"PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true "
                   b"listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only")
+SOURCE_LOSS = (b"PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true "
+               b"held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true "
+               b"original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only")
 SOURCE_READY = (b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_pair=true complete_candidate=true "
                 b"parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true "
                 b"mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true "
@@ -165,6 +168,28 @@ def verify_source(log, report):
         raise ValueError("incomplete duplicate or reordered source receipt")
 
 
+def verify_source_loss(log, report):
+    if len(log) > MAX_LOG:
+        raise ValueError("log budget")
+    counts = expected_counts(report)
+    seen = []
+    for raw in log.split(b"\n"):
+        line = raw[:-1] if raw.endswith(b"\r") else raw
+        if not line.startswith(b"PHANTOWD_NFS_"):
+            continue
+        match = SOURCE_COUNTS.fullmatch(line)
+        if match and tuple(map(int, match.groups())) == counts:
+            seen.append("counts")
+        elif line == SOURCE_LOSS:
+            seen.append("loss")
+        elif line == b"PHANTOWD_NFS_SOURCE_LOSS_DONE":
+            seen.append("done")
+        else:
+            raise ValueError("unknown failed or mixed live-source-loss receipt")
+    if seen != ["counts", "loss", "done"]:
+        raise ValueError("incomplete duplicate or reordered live-source-loss receipt")
+
+
 def read_regular(path, limit):
     before = os.stat(path, follow_symlinks=False)
     if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= limit:
@@ -183,14 +208,18 @@ def read_regular(path, limit):
 def main():
     try:
         source = len(sys.argv) == 4 and sys.argv[1] == "--source"
-        if not source and len(sys.argv) != 3:
+        loss = len(sys.argv) == 4 and sys.argv[1] == "--source-loss"
+        if not source and not loss and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source else sys.argv[1:]
-        (verify_source if source else verify)(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
+        args = sys.argv[2:] if source or loss else sys.argv[1:]
+        verifier = verify_source_loss if loss else verify_source if source else verify
+        verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if source:
+    if loss:
+        print("PHANTOWD_NFS_SOURCE_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=live-source-loss-retention")
+    elif source:
         print("PHANTOWD_NFS_SOURCE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=source-inputs-and-nfs-io")
     else:
         print("PHANTOWD_NFS_CODE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=code-inputs-daemons-and-kernel")

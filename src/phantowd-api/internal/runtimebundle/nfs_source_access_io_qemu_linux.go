@@ -122,7 +122,7 @@ func sourceClientStatQEMU(path string, st *unix.Statx_t) error {
 func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetimeQEMU) (result error) {
 	phase := "activate"
 	defer func() {
-		if result != nil {
+		if result != nil && !(o.sourceLoss && o.lossTriggered && errors.Is(result, errNFSSourceLossQEMU)) {
 			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SOURCE_IO_FAILURE phase=%s\n", phase)
 		}
 	}()
@@ -206,6 +206,11 @@ func (o *NFSSourceAccessQEMU) exerciseIO(ctx context.Context, s *nfsCodeLifetime
 	}
 	if !errors.Is(err, unix.ENOENT) {
 		return err
+	}
+	if o.sourceLoss {
+		phase = "source-loss"
+		o.accessComplete = true
+		return o.exerciseSourceLossQEMU(ctx)
 	}
 	phase = "unmount-clients"
 	for len(o.mounts) > 0 {

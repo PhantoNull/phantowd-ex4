@@ -95,7 +95,9 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 				child    *processowner.PinnedSet
 				err      error
 			}{channels, child, result}
-			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_MOUNTD_FAILURE phase=%s\n", phase)
+			if !nfsSourceLossExpectedQEMU(s, result) {
+				fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_MOUNTD_FAILURE phase=%s\n", phase)
+			}
 		}
 	}()
 	if s.review || s.closed || s.revalidate(ctx) != nil {

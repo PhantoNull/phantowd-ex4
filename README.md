@@ -58,6 +58,9 @@ on three synthetic, original mounted-roster roots: RW, RO and an excluded client
 It also requires original volume/namespace/control handles, UID/GID mapping,
 export withdrawal and verified daemon/kernel closure. Neither mode qualifies
 a complete NFS backend, product startup/recovery or access to physical disks.
+An additional optional `source-loss` mode checks replacement/restoration while
+a synthetic NFS file remains open: observed drift must retain review and live
+resources after a busy client unmount, not claim successful service shutdown.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

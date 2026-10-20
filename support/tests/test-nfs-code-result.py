@@ -58,6 +58,24 @@ class CodeReceiptTests(unittest.TestCase):
             with self.subTest(lines=lines), self.assertRaises(ValueError):
                 checker.verify_source(b"\n".join(lines), self.report)
 
+    def test_live_source_loss_proof_cannot_claim_normal_settlement(self):
+        loss = b"PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only"
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", loss, b"PHANTOWD_NFS_SOURCE_LOSS_DONE"]
+        for ending in (b"\n", b"\r\n"):
+            checker.verify_source_loss(ending.join(lines) + ending, self.report)
+        variants = [lines[:i] + lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i] + [lines[i]] + lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)), self.lines, lines+[checker.SOURCE_IO], lines+[b"PHANTOWD_NFS_KERNEL_FAILURE phase=ready"], [line+b"\r\r" for line in lines]]
+        for old,new in ((b"binding_mismatch=true",b"binding_mismatch=false"), (b"unmount_ebusy=true",b"unmount_ebusy=false"),
+                        (b"original_refs_retained=true",b"original_refs_retained=false"), (b"settlement=false",b"settlement=true"),
+                        (b"forced_unmount=false",b"forced_unmount=true"), (b"restart=false",b"restart=true"), (b"bytes=400",b"bytes=399")):
+            variants.append([line.replace(old,new) for line in lines])
+        for value in variants:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                checker.verify_source_loss(b"\n".join(value),self.report)
+        for verifier in (checker.verify,checker.verify_source):
+            with self.assertRaises(ValueError):verifier(b"\n".join(lines),self.report)
+
     def test_old_input_only_receipt_cannot_claim_real_table_execution(self):
         without_table = [line for line in self.lines if not line.startswith(b"PHANTOWD_NFS_TABLE_")]
         with self.assertRaises(ValueError):
@@ -142,7 +160,7 @@ class ShellModeTests(unittest.TestCase):
         init = init.replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -152,6 +170,21 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn(b"PHANTOWD_NFS_SOURCE_DONE", completed.stdout)
         self.assertNotIn(b"FAILED", completed.stdout)
+
+    def test_actual_init_selects_loss_with_explicit_loss_selector(self):
+        init = (Path(__file__).parent / "nfs-code-init.sh").read_text().replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        stubs = '''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
+'''
+        completed = subprocess.run(["sh", "-c", stubs+init],capture_output=True,timeout=2)
+        self.assertEqual(completed.returncode,0,completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_LOSS_DONE",completed.stdout)
+        self.assertNotIn(b"FAILED",completed.stdout)
 
     def test_actual_image_staging_function_preserves_fixture_selection(self):
         driver = (Path(__file__).parent / "test-qemu-nfs-code.sh").read_text()

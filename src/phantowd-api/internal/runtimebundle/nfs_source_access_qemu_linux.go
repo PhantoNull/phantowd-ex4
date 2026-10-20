@@ -7,6 +7,7 @@ package runtimebundle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ import (
 // directory descriptors at CONSTRUCTION, never via an operation or getter.
 // This does not establish product policy/identity or sole kernel-domain authority.
 type NFSSourceAccessQEMU struct {
+	heldClientIdentity                unix.Stat_t
 	original                          *NFSSourceAccessQEMU
 	gate                              chan struct{}
 	lease                             *NFSInputLeaseQEMU
@@ -37,6 +39,10 @@ type NFSSourceAccessQEMU struct {
 	consumed, settled, closed, review bool
 	exportsLoaded                     bool
 	accessComplete                    bool
+	sourceLoss, lossTriggered         bool
+	loss                              *nfsSourceLossEvidenceQEMU
+	heldClient, faultFile             *os.File
+	bindingUncertain                  *os.File
 	cause                             error
 	mounts                            []nfsSourceClientMountQEMU
 }
@@ -52,7 +58,15 @@ const nfsSourceAnchorQEMU = "/srv/phantowd/volumes/qemu-plan"
 const nfsSourceInputQEMU = "/run/nfs-source-empty-input"
 
 func NewNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File) (_ *NFSSourceAccessQEMU, result error) {
-	if ctx == nil || nfsCodeGuardQEMU() != nil || !nfsSourceAccessSelectorQEMU() || lease == nil {
+	return newNFSSourceAccessQEMU(ctx, lease, sources, false)
+}
+
+func NewNFSSourceLossAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File) (*NFSSourceAccessQEMU, error) {
+	return newNFSSourceAccessQEMU(ctx, lease, sources, true)
+}
+
+func newNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File, sourceLoss bool) (_ *NFSSourceAccessQEMU, result error) {
+	if ctx == nil || nfsCodeGuardQEMU() != nil || !nfsSourceAccessSelectorQEMU(sourceLoss) || lease == nil {
 		return nil, ErrInvalid
 	}
 	if err := lease.enter(ctx); err != nil {
@@ -80,6 +94,7 @@ func NewNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sourc
 		}
 	}
 	o := &NFSSourceAccessQEMU{gate: make(chan struct{}, 1), lease: lease}
+	o.sourceLoss = sourceLoss
 	o.original = o
 	lease.consumer = o
 	defer func() {
@@ -204,6 +219,26 @@ func nfsSourceMetadataQEMU(file *os.File, kind int64, mode uint16, st *unix.Stat
 }
 
 func (o *NFSSourceAccessQEMU) check(ctx context.Context) error {
+	if o.review {
+		return ErrReviewRequired
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	err := o.checkReferences(ctx)
+	if err == nil {
+		err = o.checkSourceBindings(ctx)
+	}
+	if err != nil {
+		o.review = true
+		if o.cause == nil {
+			o.cause = err
+		}
+	}
+	return err
+}
+
+func (o *NFSSourceAccessQEMU) checkReferences(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -224,6 +259,35 @@ func (o *NFSSourceAccessQEMU) check(ctx context.Context) error {
 		}
 	}
 	return o.channels.Check(ctx)
+}
+
+// Compare each current name BENEATH the original volume with the original
+// directory tuple. Held-FD metadata alone cannot detect a renamed/replaced leaf.
+// No storage-owner callback, absolute path reopen or authority getter is used.
+func (o *NFSSourceAccessQEMU) checkSourceBindings(ctx context.Context) error {
+	if o.bindingUncertain != nil {
+		return ErrReviewRequired
+	}
+	for index, name := range nfsSourceDataNamesQEMU {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		fd, err := unix.Openat2(int(o.volume.Fd()), name, &unix.OpenHow{Flags: unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+		if err != nil {
+			return errors.Join(ErrMismatch, err)
+		}
+		current := os.NewFile(uintptr(fd), "nfs-source-current-binding")
+		var st unix.Statx_t
+		readErr := nfsSourceMetadataQEMU(current, unix.EXT4_SUPER_MAGIC, unix.S_IFDIR|0700, &st)
+		if err := current.Close(); err != nil {
+			o.bindingUncertain = current // Never retry Close on a recycled FD number.
+			return errors.Join(ErrReviewRequired, readErr, err)
+		}
+		if readErr != nil || !sameMountdChannelQEMU(st, o.metadata[index]) {
+			return errors.Join(ErrMismatch, readErr)
+		}
+	}
+	return ctx.Err()
 }
 
 func (o *NFSSourceAccessQEMU) enter(ctx context.Context) error {
@@ -331,21 +395,34 @@ func (o *NFSSourceAccessQEMU) Close(ctx context.Context) error {
 	return nil
 }
 
-func nfsSourceAccessSelectorQEMU() bool {
+func nfsSourceAccessSelectorQEMU(sourceLoss bool) bool {
 	command, err := os.ReadFile("/proc/cmdline")
 	if err != nil || len(command) > 4096 {
 		return false
 	}
-	count := 0
+	count, loss := 0, 0
 	for _, word := range strings.Fields(string(command)) {
 		if word == "phantowd_nfs_source_fixture=1" {
 			count++
 		}
+		if strings.HasPrefix(word, "phantowd_nfs_source_loss_fixture=") {
+			if word != "phantowd_nfs_source_loss_fixture=1" {
+				return false
+			}
+			loss++
+		}
 	}
-	return count == 1
+	wantLoss := 0
+	if sourceLoss {
+		wantLoss = 1
+	}
+	return count == 1 && loss == wantLoss
 }
 
 func (o *NFSSourceAccessQEMU) release() error {
+	if o.bindingUncertain != nil || o.heldClient != nil || o.faultFile != nil {
+		return ErrReviewRequired
+	}
 	if o.channels != nil {
 		if err := o.channels.Close(); err != nil {
 			return err

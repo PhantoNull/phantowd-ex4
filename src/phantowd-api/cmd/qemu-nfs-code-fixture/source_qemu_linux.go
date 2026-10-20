@@ -30,6 +30,14 @@ var sourceRuntimeRetained any
 var sourceRuntimeCause error
 
 func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
+	return probeSourceRuntimeMode(ctx, expected, false)
+}
+
+func probeSourceLossRuntime(ctx context.Context, expected []byte) error {
+	return probeSourceRuntimeMode(ctx, expected, true)
+}
+
+func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss bool) (result error) {
 	phase := "mount-roster"
 	defer func() {
 		sourceRuntimeCause = result // ORIGINAL retaining error, never only its text.
@@ -134,6 +142,24 @@ func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
 			return errors.New("live join failed cancellation or parent closure exclusion")
 		}
 		phase = "original-source-nfs-access"
+		if sourceLoss {
+			phase = "live-source-replacement"
+			if err := joined.ProbeSourceLossFixtureQEMU(ctx); err != nil {
+				return err
+			}
+			retained, err := sourceFDCount()
+			if err != nil || !errors.Is(joined.Check(ctx), nfsowner.ErrReviewRequired) || !errors.Is(joined.Close(), nfsowner.ErrReviewRequired) ||
+				!errors.Is(joined.RunAccessFixtureQEMU(ctx), nfsowner.ErrReviewRequired) || !errors.Is(joined.ProbeSourceLossFixtureQEMU(ctx), nfsowner.ErrReviewRequired) ||
+				!errors.Is(roots.Close(), nfsowner.ErrBusy) || !errors.Is(inputs[0].Close(), processowner.ErrBusy) || !errors.Is(lease.Close(), mountowner.ErrBusy) ||
+				!errors.Is(inputs[0].Check(ctx), runtimebundle.ErrReviewRequired) {
+				return errors.New("live source loss released original authorities")
+			}
+			if after, err := sourceFDCount(); err != nil || after != retained {
+				return errors.New("review released live-consumer references")
+			}
+			fmt.Println("PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only")
+			return nil
+		}
 		if err := joined.RunAccessFixtureQEMU(ctx); err != nil {
 			return err
 		}

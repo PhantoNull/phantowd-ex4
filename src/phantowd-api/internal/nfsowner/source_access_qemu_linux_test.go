@@ -19,3 +19,11 @@ func TestSourceRuntimeAccessRefusesInvalidHandles(t *testing.T) {
 		}
 	}
 }
+
+func TestSourceRuntimeLossProbeRefusesInvalidHandles(t *testing.T) {
+	for _, value := range []*nfsowner.SourceRuntimeQEMU{nil, {}} {
+		if value.ProbeSourceLossFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid source/input join accepted a live-loss proof")
+		}
+	}
+}

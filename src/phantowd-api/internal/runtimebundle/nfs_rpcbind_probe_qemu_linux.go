@@ -226,7 +226,9 @@ func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nf
 				bootstrap *os.File
 				err       error
 			}{inputs, child, bootstrap, result}
-			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_RPCBIND_FAILURE phase=%s\n", phase)
+			if !nfsSourceLossExpectedQEMU(s, result) {
+				fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_RPCBIND_FAILURE phase=%s\n", phase)
+			}
 		}
 	}()
 	if s.review || s.closed || s.configuration == nil || s.state == nil || s.revalidate(ctx) != nil || !errors.Is(inputs.Close(), processowner.ErrBusy) {
