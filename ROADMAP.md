@@ -19,7 +19,9 @@ Focused passing components cannot qualify that failed complete run.
 The full/Samba drivers now have host-tested fixed-label boot-relative phase
 timing without command wrappers, signal traps, acceptance or timer changes.
 Unknown clock data stays unknown; an unmatched BEGIN is incomplete evidence.
-70actual-helper/stub-driver,83fixture and8CPU-budget controls pass. Genuine
+71actual-helper/stub-driver,83fixture and8CPU-budget controls pass, including
+the exact non-following full/focused lint calls after a real preflight refusal.
+Genuine
 full-run timing is still required: static Samba guest maxima sum1980s inside
 the shared1800s cached cap, but that is not observed runtime or causal proof.
 Next collect one sealed-source instrumented run with original statuses/logs/

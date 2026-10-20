@@ -14,10 +14,14 @@ and a missing END is incomplete evidence, not success or a duration estimate.
 
 The helper wraps no commands and installs no traps, timers, retries or cleanup.
 All original nontelemetry driver lines, arguments, proofs and budgets remain
-unchanged.70 feedback tests cover the actual helper/driver with disposable
+unchanged.71 feedback tests cover the actual helper/driver with disposable
 command stubs, including failure/signal/clock/sink/nested-phase controls;83
 Samba fixture and8 CPU-budget controls, lint/path and Windows wrapper checks pass.
-This is NOT genuine QEMU timing, a complete-image pass or a causal timeout fix.
+An initial complete preflight additionally caught a non-following ShellCheck
+import failure missed by the rapid `-x` lint. The exact full/focused standalone
+lint calls now have a regression; dynamic imports do not request following and
+the actual helper remains independently linted. This is NOT genuine QEMU timing,
+a complete-image pass or a causal timeout fix.
 Next: exact-head hosted checks and one sealed-source instrumented full run,
 then use measured phase costs before changing budgets or suite architecture.
 

@@ -10,7 +10,8 @@ if [ "${PHANTOWD_OUTER_GROUP_TIMEOUT:-0}" = 1 ]; then
 fi
 
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
-# shellcheck source=support/container/build-phase-clock.sh
+# Runtime-selected root; the helper is independently linted below and tested.
+# shellcheck disable=SC1091
 . "$external_dir/support/container/build-phase-clock.sh"
 phantowd_phase_begin preflight
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"

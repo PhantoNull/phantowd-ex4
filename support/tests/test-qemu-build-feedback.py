@@ -1284,6 +1284,23 @@ class PhaseClockTests(unittest.TestCase):
             ['sh', '-ec', '. ' + shlex.quote(str(helper)) + '\n' + body],
             text=True, capture_output=True, timeout=3)
 
+    @unittest.skipUnless(shutil.which('shellcheck'), 'ShellCheck required')
+    def test_actual_nonfollowing_lint_profiles_accept_both_host_drivers(self):
+        # Match the full/focused callers: no -x or special source search path.
+        groups = [
+            ['support/tests/test-qemu-samba-root.sh',
+             'support/tests/samba-root-init.sh'],
+            ['support/container/build-qemu.sh'],
+            ['support/container/build-phase-clock.sh']]
+        for paths in groups:
+            with self.subTest(paths=paths):
+                result = subprocess.run(
+                    ['shellcheck', '-s', 'sh',
+                     *(str(ROOT / p) for p in paths)],
+                    text=True, capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, 0,
+                                 result.stdout + result.stderr)
+
     def test_reports_monotonic_elapsed_without_qualification(self):
         result = self.run_clock(
             'phantowd_phase_begin host-api\n'

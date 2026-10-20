@@ -30,7 +30,8 @@ case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpd
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
-# shellcheck source=support/container/build-phase-clock.sh
+# Runtime-selected root; the helper has independent lint and execution tests.
+# shellcheck disable=SC1091
 . "$source_dir/support/container/build-phase-clock.sh"
 phantowd_phase_begin samba-stage
 pending_profile=0

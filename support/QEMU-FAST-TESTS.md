@@ -21,6 +21,10 @@ and Samba driver with disposable command stubs, including failure, interruption,
 clock unavailability, nested phases and full diagnostic sinks. These host tests
 do not boot QEMU or measure real firmware performance. Collect an exact-source
 full run before attributing a timeout or proposing budget/suite changes.
+The non-following ShellCheck invocations used by the full/focused callers also
+have an execution regression: imports use the runtime-selected source root,
+while the helper is linted independently. A passing `shellcheck -x` is not a
+substitute for those real caller profiles.
 
 ## Independent mountd-loss reviewed compensation
 
