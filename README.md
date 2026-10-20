@@ -169,9 +169,11 @@ This does not establish independent clean reproduction, physical EX4 support,
 complete fault coverage or an installable release. Ordinary-native QEMU work
 and verified settlement now share coordinated fixed deadlines without changing
 product/worker limits or removing proof. Successful local runs do not establish
-that earlier intermittent hosted failures are repaired. The current publication
-still requires its own hosted checks before integration. No product SMB/NFS
-service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
+that earlier intermittent hosted failures are repaired. Current host native/race
+checks and focused ARMv5 SMART and original-open-file scenarios pass. The latest
+complete run still fails the held-session deadline; complete integration and
+its independent audit remain unqualified. No product SMB/NFS service is activated;
+see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 
