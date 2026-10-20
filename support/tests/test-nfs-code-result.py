@@ -16,6 +16,28 @@ spec.loader.exec_module(checker)
 
 
 class CodeReceiptTests(unittest.TestCase):
+    def test_explicit_stop_peer_loss_cannot_borrow_supervision_receipts(self):
+        lines=[b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",checker.SOURCE_POLICY,
+               b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_ARMED real_io=true original_mountd_exit=true historical_owner_running=true no_check_before_stop=true no_supervision=true product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SERVER_FAILURE phase=original-mountd",
+               b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_READY explicit_stop_detection=true supervised_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_DONE"]
+        for ending in (b"\n",b"\r\n"):
+            checker.verify_source_owner_stop_loss(ending.join(lines)+ending,self.report)
+        variants=[lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)),lines+[b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_FAILED"],
+                     [line+b"\r\r" for line in lines]]
+        for old,new in ((b"kernel_stopped=true",b"kernel_stopped=false"),(b"release=false",b"release=true"),
+                        (b"no_retry=true",b"no_retry=false"),(b"no_supervision=true",b"no_supervision=false"),
+                        (b"no_check_before_stop=true",b"no_check_before_stop=false"),
+                        (b"SOURCE_OWNER_STOP_LOSS",b"SOURCE_OWNER_DAEMON_LOSS"),
+                        (b"supervised_detection=false",b"supervised_detection=true")):
+            variants.append([line.replace(old,new) for line in lines])
+        for variant in variants:
+            with self.subTest(variant=variant),self.assertRaises(ValueError):
+                checker.verify_source_owner_stop_loss(b"\n".join(variant),self.report)
+
     def test_independent_owner_daemon_loss_requires_stopped_proof_not_just_review(self):
         lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_POLICY,
                  b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_ARMED real_io=true original_mountd_exit=true fault_before_supervision=true historical_owner_running=true detection=false product=false scope=qemu-only",
@@ -252,7 +274,9 @@ class ShellModeTests(unittest.TestCase):
         source = Path(__file__).parent / "nfs-table-bootstrap.c"
         prefix = "phantowd_nfs_code_fixture=1 phantowd_nfs_source_fixture=1 "
         flag = "phantowd_nfs_source_owner_daemon_loss_fixture=1"
+        stop = "phantowd_nfs_source_owner_stop_loss_fixture=1"
         invalid = ["", prefix, flag, prefix+flag+" "+flag, prefix+flag.replace("=1","=0")]
+        invalid += [prefix+flag+" "+stop.replace("=1","=0"),prefix+flag+" "+stop+" "+stop]
         invalid += [prefix+flag+" "+other for other in
                     ("phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1",
                      "phantowd_nfs_code_fixture=0", "phantowd_nfs_source_fixture=0",
@@ -263,6 +287,8 @@ class ShellModeTests(unittest.TestCase):
                 'int main(void) {\n'
                 f'char good[] = {json.dumps("console=ttyAMA0 "+prefix+flag+" ro")};\n'
                 'if (server_cleanup_command(good,strlen(good))) return 1;\n')
+        body += (f'char stopgood[] = {json.dumps(prefix+flag+" "+stop)};\n'
+                 'if (server_cleanup_command(stopgood,strlen(stopgood))) return 4;\n')
         for index, value in enumerate(invalid):
             body += (f'char bad{index}[] = {json.dumps(value)};\n'
                      f'if (!server_cleanup_command(bad{index},strlen(bad{index}))) return 2;\n')
@@ -321,7 +347,7 @@ class ShellModeTests(unittest.TestCase):
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -336,7 +362,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -351,7 +377,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -366,7 +392,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-daemon-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_daemon_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -381,7 +407,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-policy-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -391,6 +417,21 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-daemon-loss; }
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_DONE", completed.stdout)
         self.assertNotIn(b"FAILED", completed.stdout)
+
+    def test_actual_init_selects_explicit_stop_loss_without_supervision(self):
+        init=self.dispatch_init()
+        stubs='''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*) return 1;; esac; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-daemon-stop-loss; }
+'''
+        completed=subprocess.run(["sh","-c",stubs+init],capture_output=True,timeout=2)
+        self.assertEqual(completed.returncode,0,completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_DONE",completed.stdout)
+        self.assertNotIn(b"FAILED",completed.stdout)
 
     def test_actual_image_staging_function_preserves_fixture_selection(self):
         driver = (Path(__file__).parent / "test-qemu-nfs-code.sh").read_text()

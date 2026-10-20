@@ -28,14 +28,16 @@ func main() {
 	sourceLoss := len(os.Args) == 2 && os.Args[1] == "--source-loss"
 	daemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-daemon-loss"
 	policyLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-policy-loss"
-	ownerDaemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-loss"
+	ownerStopLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-stop-loss"
+	ownerDaemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-loss" || ownerStopLoss
 	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}
 	command, commandErr := os.ReadFile("/proc/cmdline")
 	selected, selectorValid := parsePolicyLossSelector(command)
 	peerSelected, peerValid := parseOwnerDaemonLossSelector(command)
-	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss {
+	stopSelected, stopValid := parseOwnerStopLossSelector(command)
+	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss {
 		os.Exit(1)
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-nfs-code-expected.json")
@@ -50,14 +52,22 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	if ownerDaemonLoss {
-		if err := probeSourceRuntimeMode(ctx, data, false, false, false, true); err != nil {
-			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_REFUSED")
+		mode := ownerScheduledDaemonLoss
+		if ownerStopLoss {
+			mode = ownerStopDaemonLoss
+		}
+		if err := probeSourceRuntimeMode(ctx, data, false, false, mode); err != nil {
+			if ownerStopLoss {
+				fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_REFUSED")
+			} else {
+				fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_REFUSED")
+			}
 			os.Exit(1)
 		}
 		return
 	}
 	if policyLoss {
-		if err := probeSourceRuntimeMode(ctx, data, false, false, true, false); err != nil {
+		if err := probeSourceRuntimeMode(ctx, data, false, false, ownerPolicyLoss); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_REFUSED")
 			os.Exit(1)
 		}

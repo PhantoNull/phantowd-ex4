@@ -6,12 +6,17 @@
 Status: dedicated Owner work approved for host/disposable QEMU. The `qemu`-tagged
 [lifecycle implementation](../src/phantowd-api/internal/nfsowner/README.md) includes
 memory-model tests and a fixed original-source backend with actual NFS I/O.
-The controlled mountd-loss campaign now checks scheduled detection, one
+The controlled mountd-loss campaigns now check scheduled or explicit-Stop detection, one
 zero-capability/no-data-root compensation and independent stopped observations,
 without clearing review or releasing original authority. Legacy source-loss
 role guards and generic Owner/process semantics are unchanged. This does not
 qualify complete faults, a privileged product controller/bootstrap, automatic
 recovery or permission to operate an existing NAS.
+The explicit-Stop variant performs no intervening Check or supervision. Its
+first admitted Stop retains the initial precheck cause/phase, revalidates
+original references and compensates once; fresh stopped proof cannot clear
+review or turn that Stop into normal success. Other pre-dispatch/reference/
+admission failures and partial-start settlement remain unqualified.
 
 ## Existing evidence and the missing boundary
 

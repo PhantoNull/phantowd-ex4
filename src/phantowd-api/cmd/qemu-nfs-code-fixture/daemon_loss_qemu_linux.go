@@ -27,11 +27,15 @@ func parseOwnerDaemonLossSelector(data []byte) (selected, valid bool) {
 // with a scheduled check's join/runtime gates. Only the scheduled scan may
 // detect it; historical Observe is not a fresh daemon observation.
 func runSourceOwnerDaemonLoss(ctx context.Context, joined *nfsowner.SourceRuntimeQEMU, authority *sourcePolicyFixture,
-	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease) (result error) {
+	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease, explicitStop bool) (result error) {
 	phase := "owner-construction"
 	defer func() {
 		if result != nil {
-			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_OWNER_DAEMON_LOSS_FAILURE phase=%s\n", phase)
+			kind := "DAEMON_LOSS"
+			if explicitStop {
+				kind = "STOP_LOSS"
+			}
+			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_OWNER_%s_FAILURE phase=%s\n", kind, phase)
 		}
 	}()
 	owner, err := joined.NewServerOwnerFixtureQEMU(ctx)
@@ -54,9 +58,15 @@ func runSourceOwnerDaemonLoss(ctx context.Context, joined *nfsowner.SourceRuntim
 	if err != nil || state != nfsowner.Running {
 		return errors.New("injection falsely represented as supervised detection")
 	}
-	fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_ARMED real_io=true original_mountd_exit=true fault_before_supervision=true historical_owner_running=true detection=false product=false scope=qemu-only")
-	phase = "scheduled-detection"
-	err = owner.Supervise(ctx, time.Second)
+	if explicitStop {
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_ARMED real_io=true original_mountd_exit=true historical_owner_running=true no_check_before_stop=true no_supervision=true product=false scope=qemu-only")
+		phase = "explicit-stop-detection"
+		err = owner.Stop(ctx)
+	} else {
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_ARMED real_io=true original_mountd_exit=true fault_before_supervision=true historical_owner_running=true detection=false product=false scope=qemu-only")
+		phase = "scheduled-detection"
+		err = owner.Supervise(ctx, time.Second)
+	}
 	if !errors.Is(err, nfsowner.ErrReviewRequired) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return errors.Join(errors.New("scheduled mountd refusal not observed"), err)
 	}
@@ -93,6 +103,10 @@ func runSourceOwnerDaemonLoss(ctx context.Context, joined *nfsowner.SourceRuntim
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_READY scheduled_detection=true manual_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only")
+	if explicitStop {
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_READY explicit_stop_detection=true supervised_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only")
+	} else {
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_READY scheduled_detection=true manual_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only")
+	}
 	return nil
 }

@@ -221,16 +221,26 @@ def verify_source_loss(log, report):
 
 SOURCE_OWNER_DAEMON_ARMED = b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_ARMED real_io=true original_mountd_exit=true fault_before_supervision=true historical_owner_running=true detection=false product=false scope=qemu-only"
 SOURCE_OWNER_DAEMON_READY = b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_READY scheduled_detection=true manual_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only"
+SOURCE_OWNER_STOP_ARMED = b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_ARMED real_io=true original_mountd_exit=true historical_owner_running=true no_check_before_stop=true no_supervision=true product=false scope=qemu-only"
+SOURCE_OWNER_STOP_READY = b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_READY explicit_stop_detection=true supervised_detection=false original_mountd_exit=true kernel_stopped=true daemons_stopped=true exports_withdrawn=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false quiescence=false product=false scope=qemu-only"
 
 
 def verify_source_owner_daemon_loss(log, report):
+    _verify_source_owner_peer_loss(log, report, False)
+
+
+def verify_source_owner_stop_loss(log, report):
+    _verify_source_owner_peer_loss(log, report, True)
+
+
+def _verify_source_owner_peer_loss(log, report, explicit_stop):
     if len(log) > MAX_LOG:
         raise ValueError("log budget")
     counts = expected_counts(report)
-    markers = {SOURCE_POLICY: "policy", SOURCE_OWNER_DAEMON_ARMED: "armed",
+    markers = {SOURCE_POLICY: "policy", (SOURCE_OWNER_STOP_ARMED if explicit_stop else SOURCE_OWNER_DAEMON_ARMED): "armed",
                b"PHANTOWD_NFS_SERVER_FAILURE phase=original-mountd": "detected",
-               SOURCE_OWNER_DAEMON_READY: "stopped-review",
-               b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_DONE": "done"}
+               (SOURCE_OWNER_STOP_READY if explicit_stop else SOURCE_OWNER_DAEMON_READY): "stopped-review",
+               (b"PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_DONE" if explicit_stop else b"PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_DONE"): "done"}
     seen = []
     for raw in log.split(b"\n"):
         line = raw[:-1] if raw.endswith(b"\r") else raw
@@ -305,15 +315,18 @@ def main():
         peer = len(sys.argv) == 4 and sys.argv[1] == "--source-daemon-loss"
         policy_loss = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-policy-loss"
         owner_peer = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-daemon-loss"
-        if not source and not loss and not peer and not policy_loss and not owner_peer and len(sys.argv) != 3:
+        owner_stop = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-daemon-stop-loss"
+        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer else sys.argv[1:]
-        verifier = verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop else sys.argv[1:]
+        verifier = verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if owner_peer:
+    if owner_stop:
+        print("PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=explicit-stop-peer-loss-stopped-review")
+    elif owner_peer:
         print("PHANTOWD_NFS_SOURCE_OWNER_DAEMON_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=independent-daemon-loss-stopped-review")
     elif policy_loss:
         print("PHANTOWD_NFS_SOURCE_OWNER_POLICY_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=periodic-policy-loss-stopped-review")

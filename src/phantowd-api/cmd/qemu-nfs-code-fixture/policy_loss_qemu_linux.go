@@ -42,6 +42,9 @@ func parseOwnerLossSelector(data []byte, faultFlag string) (selected, valid bool
 	code, source, policy, other := 0, 0, 0, 0
 	invalidBase := false
 	for _, word := range strings.Fields(string(data)) {
+		if faultFlag != "phantowd_nfs_source_owner_daemon_loss_fixture=" && strings.HasPrefix(word, "phantowd_nfs_source_owner_stop_loss_fixture=") {
+			other++
+		}
 		if strings.HasPrefix(word, "phantowd_nfs_code_fixture=") && word != "phantowd_nfs_code_fixture=1" ||
 			strings.HasPrefix(word, "phantowd_nfs_source_fixture=") && word != "phantowd_nfs_source_fixture=1" {
 			invalidBase = true

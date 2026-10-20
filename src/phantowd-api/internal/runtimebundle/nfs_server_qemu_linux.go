@@ -32,6 +32,8 @@ type nfsServerQEMU struct {
 	peerExitAttempted, peerExitVerified          bool
 	reviewStopVerified                           bool
 	reviewStopCause, peerStopCause               error
+	stopCheckCause                               error
+	stopCheckPhase                               string
 	phase                                        string
 }
 
@@ -108,6 +110,9 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 			phase := "admission"
 			if o.server != nil {
 				phase = o.server.phase
+				if o.server.stopCheckPhase != "" {
+					phase = o.server.stopCheckPhase
+				}
 			}
 			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SERVER_FAILURE phase=%s\n", phase)
 		}
@@ -336,7 +341,33 @@ func (v *nfsServerQEMU) stop(ctx context.Context) error {
 		return ErrUnavailable
 	}
 	if err := v.check(ctx); err != nil {
-		return err
+		// This is still the FIRST admitted Stop, not another Stop attempt.
+		// A pre-stop observation failure must not skip owned compensation.
+		v.stopCheckCause, v.stopCheckPhase = err, v.phase
+		o, s := v.source, v.code
+		o.review = true
+		if o.cause == nil {
+			o.cause = err
+		}
+		if !s.review {
+			s.review, s.cause = true, err
+		}
+		if refErr := s.revalidateReferences(ctx); refErr != nil {
+			v.reviewStopCause = refErr
+			return errors.Join(ErrReviewRequired, err, refErr)
+		}
+		if refErr := o.checkReferences(ctx); refErr != nil {
+			v.reviewStopCause = refErr
+			return errors.Join(ErrReviewRequired, err, refErr)
+		}
+		v.reviewStopCause = v.stopReviewed(ctx)
+		if v.reviewStopCause != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_SERVER_REVIEW_STOP_FAILURE phase=%s\n", v.phase)
+			return errors.Join(ErrReviewRequired, err, v.reviewStopCause)
+		}
+		v.running = false
+		v.reviewStopVerified = true
+		return errors.Join(ErrReviewRequired, err, v.peerStopCause)
 	}
 	v.phase = "withdraw-exports"
 	if err := v.source.withdrawExports(ctx, v.code); err != nil {

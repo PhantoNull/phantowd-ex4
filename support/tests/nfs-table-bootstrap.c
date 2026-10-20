@@ -83,9 +83,14 @@ static int server_cleanup_command(char *command, size_t size)
                               "phantowd_nfs_source_owner_daemon_loss_fixture="};
     const char *excluded[] = {"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=",
                               "phantowd_nfs_source_owner_policy_loss_fixture="};
-    int count[3] = {0, 0, 0};
+    int count[3] = {0, 0, 0}, stop = 0;
+    const char *stop_prefix = "phantowd_nfs_source_owner_stop_loss_fixture=";
     char *save = NULL;
     for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save)) {
+        if (!strncmp(word, stop_prefix, strlen(stop_prefix))) {
+            if (strcmp(word, "phantowd_nfs_source_owner_stop_loss_fixture=1")) return -1;
+            ++stop;
+        }
         for (int index = 0; index < 3; ++index) {
             size_t length = strlen(required[index]);
             if (!strncmp(word, required[index], length)) {
@@ -95,7 +100,7 @@ static int server_cleanup_command(char *command, size_t size)
             if (!strncmp(word, excluded[index], strlen(excluded[index]))) return -1;
         }
     }
-    return count[0] == 1 && count[1] == 1 && count[2] == 1 ? 0 : -1;
+    return count[0] == 1 && count[1] == 1 && count[2] == 1 && stop <= 1 ? 0 : -1;
 }
 
 static int server_cleanup_selector(void)

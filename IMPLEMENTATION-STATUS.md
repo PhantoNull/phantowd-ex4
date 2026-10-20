@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Independent mountd loss: reviewed compensation in disposable QEMU
+## Independent mountd loss: scheduled and explicit-Stop compensation in QEMU
 
 The optional `source-owner-daemon-loss` fixture now passes. After synthetic NFS
 I/O and the original mountd's controlled graceful exit, scheduled supervision
@@ -16,10 +16,19 @@ observations establish absence without clearing review or releasing authority.
 
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
-targeted race-count3, strict C-selector/receipt/dispatch tests and all six optional
-profiles pass. The new case passes both cached and ordinary-wrapper guests.
-This does not qualify hard crashes, exit first discovered during explicit Stop,
-partial startup, pending I/O, complete faults, product recovery or EX4 hardware.
+targeted race-count3, strict C-selector/receipt/dispatch tests and all seven optional
+profiles pass. The explicit-Stop variant passes both cached and ordinary-wrapper
+guests; six previous profiles pass independent fresh-kernel regression.
+
+`source-owner-daemon-stop-loss` performs no Check or supervision between the
+controlled mountd exit and explicit Stop. The original Stop precheck previously
+returned before compensation; that same first admitted Stop now retains its
+initial cause/phase, revalidates original references and invokes the reviewed
+compensation once. It still returns review, with separate fresh stopped proof
+and no retry, restart or release. Eight actual guests share one tested helper;
+25 receipt/shell and three loader groups pass with unchanged deadlines.
+This does not qualify other pre-dispatch/reference/admission failures, hard
+crashes, partial startup, pending I/O, complete faults, product recovery or EX4.
 
 ## Owner-backed real-NFS server calls in disposable QEMU
 

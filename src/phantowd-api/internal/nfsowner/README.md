@@ -246,8 +246,16 @@ original controls, empty exports, fixed listeners and original process/group
 absence before the join records the server absent. That diagnostic does not
 require healthy service admission, clear review or authorize release. Policy/
 identity claims remain valid; closure/retry/restart refuse and retained FDs stay
-stable. All six profiles pass, including a separate ordinary-wrapper execution.
+stable. All seven profiles pass, including a separate ordinary-wrapper execution.
 
-Partial-start/close uncertainty, hard crashes, explicit-Stop discovery, complete
-faults, domain/client quiescence and product bootstrap/recovery remain unqualified.
+The `source-owner-daemon-stop-loss` variant calls explicit Stop immediately
+after the same exit, with no intervening Check or supervision. The same first
+admitted Stop now retains its original precheck cause/phase and runs reviewed
+compensation once after original-reference revalidation; review still returns.
+Fresh stopped proof, retained claims/FDs and refusal after review are required.
+Eight fresh guests cover this variant twice and each prior profile once.
+
+Other pre-dispatch/reference/admission failures, partial-start/close uncertainty,
+hard crashes, complete faults, domain/client quiescence and product bootstrap/
+recovery remain unqualified.
 Generic process/Owner semantics and physical NAS operations remain unchanged.

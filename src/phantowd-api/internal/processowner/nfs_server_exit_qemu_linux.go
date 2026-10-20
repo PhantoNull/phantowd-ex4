@@ -15,7 +15,14 @@ func nfsServerPeerCommandQEMU(command []byte) bool {
 		return false
 	}
 	counts := [3]int{}
+	stop := 0
 	for _, word := range strings.Fields(string(command)) {
+		if strings.HasPrefix(word, "phantowd_nfs_source_owner_stop_loss_fixture=") {
+			if word != "phantowd_nfs_source_owner_stop_loss_fixture=1" {
+				return false
+			}
+			stop++
+		}
 		for index, prefix := range []string{"phantowd_nfs_code_fixture=", "phantowd_nfs_source_fixture=", "phantowd_nfs_source_owner_daemon_loss_fixture="} {
 			if strings.HasPrefix(word, prefix) {
 				if word != prefix+"1" {
@@ -30,7 +37,7 @@ func nfsServerPeerCommandQEMU(command []byte) bool {
 			}
 		}
 	}
-	return counts == [3]int{1, 1, 1}
+	return counts == [3]int{1, 1, 1} && stop <= 1
 }
 
 func nfsServerPeerFaultGuardQEMU() bool {

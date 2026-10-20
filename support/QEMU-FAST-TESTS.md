@@ -14,14 +14,25 @@ Separate server-cleanup roles accept no data roots and run with zero capabilitie
 The legacy source-loss constructor/role selector is unchanged. Go and native C
 selector tests reject missing/duplicate/mixed flags; C is exercised in its actual
 ARM role as well. Copied, model-backed and concurrently supervised Owners cannot
-perform the fault mutation. All six optional NFS profiles pass, with this case
+perform the fault mutation. All seven optional NFS profiles pass, with this case
 also checked through the ordinary PowerShell wrapper. Guest90/helper60/wrapper360
 and the original operation/cleanup5s and RAM-only resource limits are unchanged.
 
+The separate `-FixtureMode source-owner-daemon-stop-loss` variant requires the
+same exact daemon-loss selector plus `phantowd_nfs_source_owner_stop_loss_fixture=1`.
+It performs real I/O, the fixed mountd exit and explicit Owner Stop, with no
+intervening Check or supervision. The same first admitted Stop retains the
+original failure cause/phase and compensates once, still returning review.
+Distinct strict ARMED/READY/DONE receipts require explicit-Stop detection and
+exclude supervised detection; cross-profile, missing, duplicate or broadened
+receipts refuse. Cached and ordinary PowerShell executions plus all six prior
+profiles pass in eight fresh guests with one byte-identical helper. The native
+suite includes 25 receipt/shell and three loader groups before guest execution.
+
 No caller-selected PID/signal/path, product endpoint, NAS operation, new default
-job or persistent resource is added. This is a controlled graceful-exit case,
-not hard-crash, partial-start, explicit-Stop discovery, client quiescence,
-complete fault/recovery, full-image or hardware qualification.
+job or persistent resource is added. These controlled graceful-exit cases do not
+qualify other pre-dispatch/reference/admission failures, hard crashes, partial
+startup, client quiescence, complete faults/recovery, full images or hardware.
 
 ## Optional retained NFS table consumer
 

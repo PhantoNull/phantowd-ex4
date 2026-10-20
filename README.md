@@ -93,6 +93,10 @@ The optional `source-owner-daemon-loss` campaign additionally tests a controlled
 original mountd exit, scheduled detection and one retained-reference compensation.
 Fresh stopped observations retain review and authority; they do not permit a
 restart or certify complete faults, client quiescence or product recovery.
+The optional `source-owner-daemon-stop-loss` variant detects the same controlled
+exit first inside explicit Stop, without an intervening Check or supervision.
+That first admitted Stop performs the original-reference compensation once,
+retains the original cause and still returns review rather than normal success.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
