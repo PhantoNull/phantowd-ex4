@@ -16,13 +16,36 @@ import (
 
 // RunAccessFixtureQEMU is a finite synthetic-guest campaign, not product startup.
 func (o *SourceRuntimeQEMU) RunAccessFixtureQEMU(ctx context.Context) error {
-	return o.runAccessFixtureQEMU(ctx, false)
+	return o.runAccessFixtureQEMU(ctx, false, false)
 }
 
 // ProbeSourceLossFixtureQEMU reports only success of an intentional fault test.
 // The join MUST remain in review afterwards, with live consumers retained.
 func (o *SourceRuntimeQEMU) ProbeSourceLossFixtureQEMU(ctx context.Context) error {
-	return o.runAccessFixtureQEMU(ctx, true)
+	return o.runAccessFixtureQEMU(ctx, true, false)
+}
+
+func (o *SourceRuntimeQEMU) ProbeSourceDaemonLossFixtureQEMU(ctx context.Context) error {
+	return o.runAccessFixtureQEMU(ctx, true, true)
+}
+
+func (o *SourceRuntimeQEMU) InjectSourceMountdExitFixtureQEMU(ctx context.Context) error {
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	if !o.review || o.access == nil || o.accessVolume == nil || o.accessSettled {
+		return ErrInvalid
+	}
+	s, err := o.roots.enter()
+	if err != nil {
+		return err
+	}
+	defer s.leave()
+	if s.runtime != o || s.closed || s.closeUncertain {
+		return ErrReviewRequired
+	}
+	return o.access.InjectSourceMountdExitFixtureQEMU(ctx)
 }
 
 // Finite fixture cleanup only; successful test return NEVER clears review.
@@ -45,7 +68,7 @@ func (o *SourceRuntimeQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context) e
 	return o.access.WithdrawSourceLossFixtureQEMU(ctx)
 }
 
-func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss bool) error {
+func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss, daemonLoss bool) error {
 	if err := o.enter(ctx); err != nil {
 		return err
 	}
@@ -80,7 +103,9 @@ func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss
 		return o.fail(err)
 	}
 	sources[3] = o.accessVolume
-	if sourceLoss {
+	if daemonLoss {
+		o.access, err = runtimebundle.NewNFSSourceDaemonLossAccessQEMU(ctx, o.lease, sources)
+	} else if sourceLoss {
 		o.access, err = runtimebundle.NewNFSSourceLossAccessQEMU(ctx, o.lease, sources)
 	} else {
 		o.access, err = runtimebundle.NewNFSSourceAccessQEMU(ctx, o.lease, sources)

@@ -26,7 +26,7 @@ func (o *NFSSourceAccessQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context)
 		return err
 	}
 	defer func() { <-o.gate }()
-	if !o.sourceLoss || !nfsSourceAccessSelectorQEMU(true) || !o.consumed || !o.review || o.cause == nil || o.loss == nil || !o.loss.verified {
+	if !o.sourceLoss || !nfsSourceAccessSelectorQEMU(true, o.daemonLoss) || !o.consumed || !o.review || o.cause == nil || o.loss == nil || !o.loss.verified {
 		return ErrInvalid
 	}
 	if o.loss.withdrawalAttempted {
@@ -46,7 +46,14 @@ func (o *NFSSourceAccessQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context)
 	}
 	request, cancelRequest := context.WithCancel(ctx)
 	defer cancelRequest()
-	if s.revalidateReferences(request) != nil || o.observeSourceLossConsumersQEMU(request) != nil {
+	checkConsumers := o.observeSourceLossConsumersQEMU
+	if o.daemonLoss {
+		if !o.loss.peerExitVerified {
+			return ErrReviewRequired
+		}
+		checkConsumers = o.observeSourcePeerLossQEMU
+	}
+	if s.revalidateReferences(request) != nil || checkConsumers(request) != nil {
 		return ErrReviewRequired
 	}
 	before, err := o.cachedClientReferencesQEMU()
@@ -104,7 +111,16 @@ func (o *NFSSourceAccessQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context)
 	for _, index := range []int{1, 0} {
 		companion := o.loss.companions[index]
 		stopped, err := companion.owner.Stop(cleanup)
-		if err != nil || stopped.State != processowner.StateStopped || stopped.Generation != 1 || len(stopped.Members) != 1 ||
+		if o.daemonLoss && index == 1 {
+			o.loss.peerStopCause = err // Preserve the actual reviewed-stop error.
+			if !errors.Is(err, processowner.ErrReviewRequired) || stopped.State != processowner.StateReviewRequired ||
+				companion.owner.CheckNFSSourceMountdReviewStopQEMU(cleanup) != nil {
+				return errors.Join(ErrReviewRequired, err)
+			}
+		} else if err != nil || stopped.State != processowner.StateStopped {
+			return errors.Join(ErrReviewRequired, err)
+		}
+		if stopped.Generation != 1 || len(stopped.Members) != 1 ||
 			stopped.Members[0].Process.PID != 0 || stopped.Members[0].Process.DiagnosticsTruncated || !errors.Is(unix.Kill(-companion.pid, 0), unix.ESRCH) {
 			return errors.Join(ErrReviewRequired, err)
 		}
@@ -113,6 +129,9 @@ func (o *NFSSourceAccessQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context)
 		}
 	}
 	phase = "stopped-original-references"
+	if o.daemonLoss && (o.loss.peerStopCause == nil || o.loss.companions[1].owner.CheckNFSSourceMountdReviewStopQEMU(cleanup) != nil) {
+		return ErrReviewRequired
+	}
 	if o.loss.companions[1].owner.CheckNFSSourceMountdAccessHandoffQEMU(cleanup, true) != nil ||
 		o.loss.companions[0].owner.CheckNFSRPCBindHandoffQEMU(cleanup) != nil || o.loss.kernel.CheckStopped(cleanup) != nil ||
 		s.revalidateReferences(cleanup) != nil || o.checkReferences(cleanup) != nil {

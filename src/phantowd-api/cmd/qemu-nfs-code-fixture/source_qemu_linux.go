@@ -30,14 +30,18 @@ var sourceRuntimeRetained any
 var sourceRuntimeCause error
 
 func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
-	return probeSourceRuntimeMode(ctx, expected, false)
+	return probeSourceRuntimeMode(ctx, expected, false, false)
 }
 
 func probeSourceLossRuntime(ctx context.Context, expected []byte) error {
-	return probeSourceRuntimeMode(ctx, expected, true)
+	return probeSourceRuntimeMode(ctx, expected, true, false)
 }
 
-func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss bool) (result error) {
+func probeSourceDaemonLossRuntime(ctx context.Context, expected []byte) error {
+	return probeSourceRuntimeMode(ctx, expected, true, true)
+}
+
+func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, daemonLoss bool) (result error) {
 	phase := "mount-roster"
 	defer func() {
 		sourceRuntimeCause = result // ORIGINAL retaining error, never only its text.
@@ -144,7 +148,11 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss boo
 		phase = "original-source-nfs-access"
 		if sourceLoss {
 			phase = "live-source-replacement"
-			if err := joined.ProbeSourceLossFixtureQEMU(ctx); err != nil {
+			probe := joined.ProbeSourceLossFixtureQEMU
+			if daemonLoss {
+				probe = joined.ProbeSourceDaemonLossFixtureQEMU
+			}
+			if err := probe(ctx); err != nil {
 				return err
 			}
 			retained, err := sourceFDCount()
@@ -158,6 +166,21 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss boo
 				return errors.New("review released live-consumer references")
 			}
 			fmt.Println("PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only")
+			if daemonLoss {
+				phase = "source-mountd-exit"
+				canceled, cancel := context.WithCancel(ctx)
+				cancel()
+				if !errors.Is(joined.InjectSourceMountdExitFixtureQEMU(canceled), context.Canceled) || copyJoin.InjectSourceMountdExitFixtureQEMU(ctx) == nil {
+					return errors.New("invalid fault admission accepted")
+				}
+				if err := joined.InjectSourceMountdExitFixtureQEMU(ctx); err != nil {
+					return err
+				}
+				if !errors.Is(joined.InjectSourceMountdExitFixtureQEMU(ctx), runtimebundle.ErrReviewRequired) {
+					return errors.New("mountd fault repeated")
+				}
+				fmt.Println("PHANTOWD_NFS_SOURCE_DAEMON_LOSS_READY source_review=true original_mountd_exit=true mountd_review=true kernel_and_rpcbind_live=true original_refs_retained=true client_file_cached=true stop_attempted=false restart=false product=false scope=qemu-only")
+			}
 			phase = "source-loss-withdrawal"
 			canceled, cancel := context.WithCancel(ctx)
 			cancel()

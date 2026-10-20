@@ -25,6 +25,9 @@ type nfsSourceLossEvidenceQEMU struct {
 	verified                                bool
 	withdrawalAttempted, withdrawalVerified bool
 	withdrawalCause                         error
+	peerExitAttempted, peerExitVerified     bool
+	peerExitCause                           error
+	peerStopCause                           error
 }
 
 func nfsSourceLossExpectedQEMU(s *nfsCodeLifetimeQEMU, err error) bool {

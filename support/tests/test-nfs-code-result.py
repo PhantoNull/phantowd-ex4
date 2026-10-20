@@ -80,6 +80,27 @@ class CodeReceiptTests(unittest.TestCase):
         for verifier in (checker.verify,checker.verify_source):
             with self.assertRaises(ValueError):verifier(b"\n".join(lines),self.report)
 
+    def test_combined_mountd_exit_requires_its_own_proof_and_completion(self):
+        peer = b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_READY source_review=true original_mountd_exit=true mountd_review=true kernel_and_rpcbind_live=true original_refs_retained=true client_file_cached=true stop_attempted=false restart=false product=false scope=qemu-only"
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_LOSS, peer,
+                 checker.SOURCE_WITHDRAW, b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_DONE"]
+        for ending in (b"\n", b"\r\n"):
+            checker.verify_source_daemon_loss(ending.join(lines)+ending,self.report)
+        variants = [lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)), lines+[checker.SOURCE_IO],
+                     lines[:-1]+[b"PHANTOWD_NFS_SOURCE_LOSS_DONE"], lines+[b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_FAILED"]]
+        for old,new in ((b"original_mountd_exit=true",b"original_mountd_exit=false"),
+                        (b"mountd_review=true",b"mountd_review=false"),
+                        (b"kernel_and_rpcbind_live=true",b"kernel_and_rpcbind_live=false"),
+                        (b"stop_attempted=false",b"stop_attempted=true"), (b"product=false",b"product=true")):
+            variants.append([line.replace(old,new) for line in lines])
+        for value in variants:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                checker.verify_source_daemon_loss(b"\n".join(value),self.report)
+        for verifier in (checker.verify,checker.verify_source,checker.verify_source_loss):
+            with self.assertRaises(ValueError):verifier(b"\n".join(lines),self.report)
+
     def test_old_input_only_receipt_cannot_claim_real_table_execution(self):
         without_table = [line for line in self.lines if not line.startswith(b"PHANTOWD_NFS_TABLE_")]
         with self.assertRaises(ValueError):
@@ -164,7 +185,7 @@ class ShellModeTests(unittest.TestCase):
         init = init.replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -179,7 +200,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         init = (Path(__file__).parent / "nfs-code-init.sh").read_text().replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -188,6 +209,21 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
         completed = subprocess.run(["sh", "-c", stubs+init],capture_output=True,timeout=2)
         self.assertEqual(completed.returncode,0,completed.stderr)
         self.assertIn(b"PHANTOWD_NFS_SOURCE_LOSS_DONE",completed.stdout)
+        self.assertNotIn(b"FAILED",completed.stdout)
+
+    def test_actual_init_selects_combined_source_daemon_loss_explicitly(self):
+        init = (Path(__file__).parent / "nfs-code-init.sh").read_text().replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        stubs = '''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-daemon-loss; }
+'''
+        completed = subprocess.run(["sh", "-c", stubs+init],capture_output=True,timeout=2)
+        self.assertEqual(completed.returncode,0,completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_DONE",completed.stdout)
         self.assertNotIn(b"FAILED",completed.stdout)
 
     def test_actual_image_staging_function_preserves_fixture_selection(self):

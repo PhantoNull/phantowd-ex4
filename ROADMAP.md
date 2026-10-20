@@ -2075,7 +2075,14 @@ kernel/daemon/group/listener stop under an independent five-second cleanup
 budget after canceling its admitted request. The shutdown-only role has no data
 roots and zero capabilities after setup. Original reviewed parent/client refs
 remain; cached identity does not certify complete quiescence or pending I/O.
-Next qualify owned-daemon exit/partial-start/stop/close faults,
+An additional optional combined source/mountd-loss guest now requires original
+command exit outside its normal lifecycle, sticky daemon review and retained
+kernel/rpcbind/client authorities. Cleanup must retain the actual reviewed-stop
+error while a separate read-only original-owner witness verifies group absence
+and retained pins, then continue stopping remaining owned resources. No generic
+Stop success/release or product health is inferred. This is not a daemon-only
+fault or hard-crash campaign; all earlier separate modes remain required.
+Next qualify independent owned-daemon exit/partial-start/stop/close faults,
 mount/device disappearance and pending-I/O cases, followed by real policy and
 identity authority, protocol/reclaim and qualified boot recovery. VM disposal
 must never satisfy the product settlement or automatic recovery acceptance.

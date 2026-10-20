@@ -25,6 +25,9 @@ func TestSourceRuntimeLossProbeRefusesInvalidHandles(t *testing.T) {
 		if value.ProbeSourceLossFixtureQEMU(context.Background()) == nil {
 			t.Fatal("invalid source/input join accepted a live-loss proof")
 		}
+		if value.ProbeSourceDaemonLossFixtureQEMU(context.Background()) == nil || value.InjectSourceMountdExitFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid source runtime admitted combined fault")
+		}
 	}
 }
 

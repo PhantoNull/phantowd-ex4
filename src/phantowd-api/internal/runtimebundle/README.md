@@ -265,6 +265,15 @@ refuses. Cached DONT_SYNC inode/mount observations avoid client RPC after server
 stop. They do not prove post-stop I/O, full cache/client quiescence, pending-I/O
 completion, remote revocation, product startup/recovery or physical EX4 safety.
 
+The separate combined source/mountd-loss fixture additionally terminates only
+the original retained process object, once, after proving live source loss.
+It observes real exit/review with the original kernel/rpcbind still live. Cleanup
+retains the actual reviewed-stop error and requires an original-owner read-only
+group-stopped/pins-retained witness before continuing. Normal admission and
+generic Stop semantics stay unchanged; no review reset or release is permitted.
+Its additional explicit selector and exact proof/completion do not replace the
+three earlier modes, add a default CI boot or qualify hard crash/pending I/O.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

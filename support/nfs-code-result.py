@@ -172,6 +172,17 @@ def verify_source(log, report):
 
 
 def verify_source_loss(log, report):
+    _verify_source_loss(log, report, False)
+
+
+SOURCE_DAEMON_LOSS = b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_READY source_review=true original_mountd_exit=true mountd_review=true kernel_and_rpcbind_live=true original_refs_retained=true client_file_cached=true stop_attempted=false restart=false product=false scope=qemu-only"
+
+
+def verify_source_daemon_loss(log, report):
+    _verify_source_loss(log, report, True)
+
+
+def _verify_source_loss(log, report, daemon_loss):
     if len(log) > MAX_LOG:
         raise ValueError("log budget")
     counts = expected_counts(report)
@@ -187,11 +198,14 @@ def verify_source_loss(log, report):
             seen.append("loss")
         elif line == SOURCE_WITHDRAW:
             seen.append("withdraw")
-        elif line == b"PHANTOWD_NFS_SOURCE_LOSS_DONE":
+        elif daemon_loss and line == SOURCE_DAEMON_LOSS:
+            seen.append("peer")
+        elif line == (b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_DONE" if daemon_loss else b"PHANTOWD_NFS_SOURCE_LOSS_DONE"):
             seen.append("done")
         else:
             raise ValueError("unknown failed or mixed live-source-loss receipt")
-    if seen != ["counts", "loss", "withdraw", "done"]:
+    expected = ["counts", "loss", "peer", "withdraw", "done"] if daemon_loss else ["counts", "loss", "withdraw", "done"]
+    if seen != expected:
         raise ValueError("incomplete duplicate or reordered live-source-loss receipt")
 
 
@@ -214,15 +228,18 @@ def main():
     try:
         source = len(sys.argv) == 4 and sys.argv[1] == "--source"
         loss = len(sys.argv) == 4 and sys.argv[1] == "--source-loss"
-        if not source and not loss and len(sys.argv) != 3:
+        peer = len(sys.argv) == 4 and sys.argv[1] == "--source-daemon-loss"
+        if not source and not loss and not peer and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss else sys.argv[1:]
-        verifier = verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer else sys.argv[1:]
+        verifier = verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if loss:
+    if peer:
+        print("PHANTOWD_NFS_SOURCE_DAEMON_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=combined-source-mountd-loss")
+    elif loss:
         print("PHANTOWD_NFS_SOURCE_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=live-source-loss-retention")
     elif source:
         print("PHANTOWD_NFS_SOURCE_RECEIPT_READY transport=LF-or-CRLF exact=true scope=source-inputs-and-nfs-io")

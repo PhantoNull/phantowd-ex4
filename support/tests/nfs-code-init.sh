@@ -21,7 +21,13 @@ prepare() {
     ip link set lo up || return 1
 }
 if prepare; then
-    if grep -Eq '(^| )phantowd_nfs_source_loss_fixture=1( |$)' /proc/cmdline; then
+    if grep -Eq '(^| )phantowd_nfs_source_daemon_loss_fixture=1( |$)' /proc/cmdline; then
+        if /usr/sbin/phantowd-nfs-code-fixture --source-daemon-loss; then
+            echo PHANTOWD_NFS_SOURCE_DAEMON_LOSS_DONE
+        else
+            echo PHANTOWD_NFS_SOURCE_DAEMON_LOSS_FAILED
+        fi
+    elif grep -Eq '(^| )phantowd_nfs_source_loss_fixture=1( |$)' /proc/cmdline; then
         if /usr/sbin/phantowd-nfs-code-fixture --source-loss; then
             echo PHANTOWD_NFS_SOURCE_LOSS_DONE
         else

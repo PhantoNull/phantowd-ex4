@@ -490,6 +490,14 @@ parent/client refs remain, with one stop attempt and no forced/lazy unmount or
 restart. Post-stop DONT_SYNC metadata proves cached identity only, not successful
 I/O, remote revocation, complete kernel-cache census or product quiescence.
 
+The additional optional combined source/mountd-loss guest requires actual exit
+of the original command outside its normal lifecycle, daemon review/listener
+absence and original kernel/rpcbind/cached-client retention. A separate read-only
+original-owner witness may attest a reviewed Stop's verified group absence and
+retained pins; its actual review error remains owned while remaining cleanup
+continues. This does not relax generic Stop, clear review, release authority or
+qualify a daemon-only fault, hard crash, pending I/O or product recovery.
+
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.
 - Admit one exclusive NFS control domain, with original network/control-filesystem

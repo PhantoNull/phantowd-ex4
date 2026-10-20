@@ -117,6 +117,27 @@ Normal shutdown, mixed, partial, duplicate or unknown failure markers refuse.
 Both positive modes verify unchanged base/synthetic backing hashes. Actual POSIX
 init tests distinguish normal-source and explicit loss dispatch after proc setup.
 
+### Combined source and original mountd exit
+
+`-FixtureMode source-daemon-loss` requires both the original loss selector and
+one additional explicit combined-fault selector, in a separate optional guest.
+No default CI boot/job or timeout is added. First preserve the live source-loss
+proof; then terminate only the original owned mountd command via its retained
+process object, never a caller PID/signal. Actual Wait, mountd review/listener
+absence and still-live original kernel/rpcbind/cached-client refs are required.
+The fault is admitted once; copied, pre-canceled and repeated calls refuse.
+
+Cleanup uses the unchanged independent five-second budget. A reviewed Stop is
+not normal success: a separate read-only original-owner witness must confirm
+current process absent after verified Wait/group settlement and all pins still
+retained. Preserve the actual error and review while continuing the remaining
+owned cleanup, without Stop retry, release, restart or forced/lazy unmount.
+Exact ordered receipts require the additional peer-exit proof and its distinct
+completion; normal/loss-only/mixed receipts cannot claim this campaign. Keep
+`source-loss`, `source` and `code` as separate regressions on identical inputs.
+This combined source plus graceful out-of-lifecycle daemon exit is not an
+independent daemon-only failure, hard crash, in-flight I/O or product recovery.
+
 ## Original NFS input reservation
 
 The same optional code guest also checks an unstarted typed input reservation:

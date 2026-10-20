@@ -6,6 +6,7 @@
 package processowner_test
 
 import (
+	"context"
 	"os"
 	"runtime"
 	"testing"
@@ -23,6 +24,14 @@ func TestNFSSourceRolesRefuseOrdinaryHost(t *testing.T) {
 	for _, role := range []processowner.NFSSourceExportOperationQEMU{processowner.NFSSourceActivateQEMU, processowner.NFSSourceWithdrawQEMU, processowner.NFSSourceFlushQEMU, "invalid"} {
 		if value, err := processowner.NewNFSSourceExportCaptureQEMU(role, nil, nil, [4]*os.File{}, [10]*os.File{}); value != nil || err == nil {
 			t.Fatal("ordinary host acquired export-control role")
+		}
+	}
+	for _, value := range []*processowner.PinnedSet{nil, {}} {
+		if value.InterruptNFSSourceMountdFixtureQEMU(context.Background()) == nil {
+			t.Fatal("unowned mountd interruption admitted")
+		}
+		if value.CheckNFSSourceMountdReviewStopQEMU(context.Background()) == nil {
+			t.Fatal("unowned mountd stop certified")
 		}
 	}
 }

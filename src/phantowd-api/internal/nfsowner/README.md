@@ -124,6 +124,16 @@ and references. The join must remain reviewed; run/close refuse afterwards.
 This does not authorize product activation, force unmount, certify remote-client
 revocation/physical disk faults or turn VM disposal into verified settlement.
 
+`WithdrawSourceLossFixtureQEMU` performs the fixed independent-budget shutdown
+without clearing review or releasing parents/client references. A separate
+`ProbeSourceDaemonLossFixtureQEMU` prepares the combined source fault, and
+`InjectSourceMountdExitFixtureQEMU` admits one original-command termination only
+with its additional explicit disposable-guest selector. It accepts no PID,
+signal or replacement backend. The real exit must leave daemon review and
+original kernel/rpcbind/client references; cleanup requires a distinct read-only
+reviewed-stop witness before continuing. Generic Owner/Stop semantics do not
+change. This is not independent daemon-only, hard-crash or product qualification.
+
 ## Tests and remaining integration
 
 External-package units exercise actual lifecycle behavior with a memory model

@@ -64,6 +64,8 @@ resources after a busy client unmount. Its subsequent fixed cleanup withdraws
 exports and stops original NFSD/daemons despite post-admission cancellation,
 without releasing reviewed source/input/client references. This is not complete
 client quiescence, product recovery or hardware qualification.
+The optional `source-daemon-loss` mode additionally checks an original mountd
+exit after that source fault, with reviewed stop and retained references.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

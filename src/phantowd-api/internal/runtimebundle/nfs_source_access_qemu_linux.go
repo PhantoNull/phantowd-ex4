@@ -40,6 +40,7 @@ type NFSSourceAccessQEMU struct {
 	exportsLoaded                     bool
 	accessComplete                    bool
 	sourceLoss, lossTriggered         bool
+	daemonLoss                        bool
 	loss                              *nfsSourceLossEvidenceQEMU
 	heldClient, faultFile             *os.File
 	bindingUncertain                  *os.File
@@ -58,15 +59,19 @@ const nfsSourceAnchorQEMU = "/srv/phantowd/volumes/qemu-plan"
 const nfsSourceInputQEMU = "/run/nfs-source-empty-input"
 
 func NewNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File) (_ *NFSSourceAccessQEMU, result error) {
-	return newNFSSourceAccessQEMU(ctx, lease, sources, false)
+	return newNFSSourceAccessQEMU(ctx, lease, sources, false, false)
 }
 
 func NewNFSSourceLossAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File) (*NFSSourceAccessQEMU, error) {
-	return newNFSSourceAccessQEMU(ctx, lease, sources, true)
+	return newNFSSourceAccessQEMU(ctx, lease, sources, true, false)
 }
 
-func newNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File, sourceLoss bool) (_ *NFSSourceAccessQEMU, result error) {
-	if ctx == nil || nfsCodeGuardQEMU() != nil || !nfsSourceAccessSelectorQEMU(sourceLoss) || lease == nil {
+func NewNFSSourceDaemonLossAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File) (*NFSSourceAccessQEMU, error) {
+	return newNFSSourceAccessQEMU(ctx, lease, sources, true, true)
+}
+
+func newNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sources [4]*os.File, sourceLoss, daemonLoss bool) (_ *NFSSourceAccessQEMU, result error) {
+	if ctx == nil || nfsCodeGuardQEMU() != nil || !nfsSourceAccessSelectorQEMU(sourceLoss, daemonLoss) || lease == nil {
 		return nil, ErrInvalid
 	}
 	if err := lease.enter(ctx); err != nil {
@@ -95,6 +100,7 @@ func newNFSSourceAccessQEMU(ctx context.Context, lease *NFSInputLeaseQEMU, sourc
 	}
 	o := &NFSSourceAccessQEMU{gate: make(chan struct{}, 1), lease: lease}
 	o.sourceLoss = sourceLoss
+	o.daemonLoss = daemonLoss
 	o.original = o
 	lease.consumer = o
 	defer func() {
@@ -395,12 +401,12 @@ func (o *NFSSourceAccessQEMU) Close(ctx context.Context) error {
 	return nil
 }
 
-func nfsSourceAccessSelectorQEMU(sourceLoss bool) bool {
+func nfsSourceAccessSelectorQEMU(sourceLoss, daemonLoss bool) bool {
 	command, err := os.ReadFile("/proc/cmdline")
 	if err != nil || len(command) > 4096 {
 		return false
 	}
-	count, loss := 0, 0
+	count, loss, daemon := 0, 0, 0
 	for _, word := range strings.Fields(string(command)) {
 		if word == "phantowd_nfs_source_fixture=1" {
 			count++
@@ -411,12 +417,22 @@ func nfsSourceAccessSelectorQEMU(sourceLoss bool) bool {
 			}
 			loss++
 		}
+		if strings.HasPrefix(word, "phantowd_nfs_source_daemon_loss_fixture=") {
+			if word != "phantowd_nfs_source_daemon_loss_fixture=1" {
+				return false
+			}
+			daemon++
+		}
 	}
 	wantLoss := 0
 	if sourceLoss {
 		wantLoss = 1
 	}
-	return count == 1 && loss == wantLoss
+	wantDaemon := 0
+	if daemonLoss {
+		wantDaemon = 1
+	}
+	return count == 1 && loss == wantLoss && daemon == wantDaemon && (!daemonLoss || sourceLoss)
 }
 
 func (o *NFSSourceAccessQEMU) release() error {

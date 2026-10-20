@@ -10,7 +10,7 @@ debugfs=${4:?pinned debugfs required}
 source_dir=${5:?source required}
 failure_log=${6:-}
 fixture_mode=${7:-code}
-case "$fixture_mode" in code|source|source-loss) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
+case "$fixture_mode" in code|source|source-loss|source-daemon-loss) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
 tmpdir=${TMPDIR:-/tmp}
 case "$base:$target:$go_binary:$debugfs:$source_dir:$failure_log:$tmpdir" in
     *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
@@ -86,7 +86,8 @@ if [ "$fixture_mode" != code ]; then
         -U 11111111-2222-3333-4444-555555555555 "$scratch/source.ext2"
     source_hash=$(sha256sum "$scratch/source.ext2" | awk '{print $1}')
     selector=' phantowd_nfs_source_fixture=1'
-    if [ "$fixture_mode" = source-loss ]; then selector="$selector phantowd_nfs_source_loss_fixture=1"; fi
+    if [ "$fixture_mode" = source-loss ] || [ "$fixture_mode" = source-daemon-loss ]; then selector="$selector phantowd_nfs_source_loss_fixture=1"; fi
+    if [ "$fixture_mode" = source-daemon-loss ]; then selector="$selector phantowd_nfs_source_daemon_loss_fixture=1"; fi
     set -- -drive "file=$scratch/source.ext2,format=raw,if=scsi,snapshot=on"
 fi
 # QEMU's default /tmp selection may fall back to /var/tmp for snapshots. Use
@@ -104,7 +105,9 @@ cat "$scratch/guest.log"
 verify_guest() {
     [ "$status" -eq 0 ] || return 1
     if [ "$fixture_mode" != code ]; then
-        if [ "$fixture_mode" = source-loss ]; then
+        if [ "$fixture_mode" = source-daemon-loss ]; then
+            python3 -B "$source_dir/support/nfs-code-result.py" --source-daemon-loss "$scratch/guest.log" "$scratch/expected.json" || return 1
+        elif [ "$fixture_mode" = source-loss ]; then
             python3 -B "$source_dir/support/nfs-code-result.py" --source-loss "$scratch/guest.log" "$scratch/expected.json" || return 1
         else
             python3 -B "$source_dir/support/nfs-code-result.py" --source "$scratch/guest.log" "$scratch/expected.json" || return 1

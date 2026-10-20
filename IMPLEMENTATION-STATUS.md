@@ -61,6 +61,24 @@ Cached metadata is not successful post-stop I/O or complete client quiescence.
 The guest's destruction is not verified product settlement. This is not a physical volume failure, pending
 write interruption, remote-client revocation or complete NFS fault qualification.
 
+## Combined source and mountd loss (QEMU-only)
+
+Separate optional `-FixtureMode source-daemon-loss` adds one fixed termination
+of the ORIGINAL owned mountd command after the live source-loss proof. No caller
+PID/signal/backend, new privilege or product control is exposed. Actual exit,
+mountd review/listener absence and still-live original kernel/rpcbind/client
+references are required before cleanup. Pre-cancellation/copies/repeated fault
+admission refuse without issuing another signal.
+
+Cleanup no longer requires a failed original daemon to be healthy. Its actual
+reviewed Stop error is retained; a separate read-only original-owner witness
+must verify process-group settlement and retained pins before remaining cleanup
+continues. No generic Stop result is relaxed, review cleared or input released.
+The original source-loss, normal-source and code modes remain separate mandatory
+regressions at unchanged budgets. This combined, idle-file/graceful-daemon-exit
+case does not qualify an independent daemon-only fault, hard crash, partial
+startup, pending I/O, complete quiescence, product recovery or physical media.
+
 ## Original NFS input reservation: QEMU-only preparation
 
 A typed, non-copyable reservation now holds the original NFS code/config/state
