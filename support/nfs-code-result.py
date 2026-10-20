@@ -35,6 +35,10 @@ KERNEL = (b"PHANTOWD_NFS_KERNEL_READY original_control=true original_namespaces=
           b"exports=false owner_backend=false product=false scope=qemu-only")
 COUNTS = re.compile(rb"PHANTOWD_NFS_CODE_COUNTS files=([0-9]{1,3}) aliases=([0-9]{1,4}) bytes=([0-9]{1,8})")
 SOURCE_COUNTS = re.compile(COUNTS.pattern.replace(b"CODE", b"SOURCE"))
+SOURCE_POLICY = (b"PHANTOWD_NFS_SOURCE_POLICY_READY original_policy_lease=true original_identity_lease=true "
+                 b"unix_census=true registry=empty_fixture complete_candidate=true parent_close_excluded=true "
+                 b"released_claims_refused=true mismatch_refused=true canceled_unchanged=true no_claim_release=true "
+                 b"product=false scope=qemu-only")
 SOURCE_IO = (b"PHANTOWD_NFS_SOURCE_IO_READY original_sources=true private_0700=true rw=true ro_read=true "
              b"ro_erofs=true denied_client=true anon_uid_gid=1000 fsynced=true clients_unmounted=true "
              b"exports_withdrawn=true product=false scope=qemu-only")
@@ -153,6 +157,8 @@ def verify_source(log, report):
         match = SOURCE_COUNTS.fullmatch(line)
         if match and tuple(map(int, match.groups())) == counts:
             seen.append("counts")
+        elif line == SOURCE_POLICY:
+            seen.append("policy")
         elif line == SOURCE_IO:
             seen.append("io")
         elif line == SOURCE_KERNEL:
@@ -167,7 +173,7 @@ def verify_source(log, report):
             seen.append("done")
         else:
             raise ValueError("unknown failed or broadened source receipt")
-    if seen != ["counts", "io", "kernel", "mountd", "rpcbind", "ready", "done"]:
+    if seen != ["counts", "policy", "io", "kernel", "mountd", "rpcbind", "ready", "done"]:
         raise ValueError("incomplete duplicate or reordered source receipt")
 
 
@@ -194,6 +200,8 @@ def _verify_source_loss(log, report, daemon_loss):
         match = SOURCE_COUNTS.fullmatch(line)
         if match and tuple(map(int, match.groups())) == counts:
             seen.append("counts")
+        elif line == SOURCE_POLICY:
+            seen.append("policy")
         elif line == SOURCE_LOSS:
             seen.append("loss")
         elif line == SOURCE_WITHDRAW:
@@ -204,7 +212,7 @@ def _verify_source_loss(log, report, daemon_loss):
             seen.append("done")
         else:
             raise ValueError("unknown failed or mixed live-source-loss receipt")
-    expected = ["counts", "loss", "peer", "withdraw", "done"] if daemon_loss else ["counts", "loss", "withdraw", "done"]
+    expected = ["counts", "policy", "loss", "peer", "withdraw", "done"] if daemon_loss else ["counts", "policy", "loss", "withdraw", "done"]
     if seen != expected:
         raise ValueError("incomplete duplicate or reordered live-source-loss receipt")
 

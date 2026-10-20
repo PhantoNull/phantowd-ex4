@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("nfs_code_result", Path(__file__).resolve().parents[1] / "nfs-code-result.py")
@@ -28,6 +29,7 @@ class CodeReceiptTests(unittest.TestCase):
 
     def test_source_join_receipt_requires_its_own_complete_proof(self):
         source = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",
+                  checker.SOURCE_POLICY,
                   b"PHANTOWD_NFS_SOURCE_IO_READY original_sources=true private_0700=true rw=true ro_read=true ro_erofs=true denied_client=true anon_uid_gid=1000 fsynced=true clients_unmounted=true exports_withdrawn=true product=false scope=qemu-only",
                   b"PHANTOWD_NFS_SOURCE_KERNEL_READY original_control=true original_namespaces=true original_daemons_live=true threads=2 stop_verified=true fd_balance=true exports_withdrawn=true owner_backend=false product=false scope=qemu-only",
                   b"PHANTOWD_NFS_SOURCE_MOUNTD_READY original_channels=3 original_sources=3 filehandle_view=true private_view=true uid_gid=0 caps=dac-read-search listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only",
@@ -48,6 +50,12 @@ class CodeReceiptTests(unittest.TestCase):
                          (b"clients_unmounted=true", b"clients_unmounted=false"),
                          (b"exports_withdrawn=true", b"exports_withdrawn=false"),
                          (b"caps=dac-read-search", b"caps=all"),
+                         (b"original_policy_lease=true", b"original_policy_lease=false"),
+                         (b"original_identity_lease=true", b"original_identity_lease=false"),
+                         (b"unix_census=true", b"unix_census=false"),
+                         (b"released_claims_refused=true", b"released_claims_refused=false"),
+                         (b"mismatch_refused=true", b"mismatch_refused=false"),
+                         (b"no_claim_release=true", b"no_claim_release=false"),
                          (b"product=false", b"product=true")):
             variants.append([line.replace(old, new) for line in source])
         variants += [[source[0], source[2]], source + [source[1]], list(reversed(source)), self.lines,
@@ -61,7 +69,7 @@ class CodeReceiptTests(unittest.TestCase):
     def test_live_source_loss_proof_cannot_claim_normal_settlement(self):
         loss = b"PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only"
         withdraw = b"PHANTOWD_NFS_SOURCE_WITHDRAW_READY admitted_cancel=true independent_cleanup=true exports_withdrawn=true kernel_stopped=true daemons_stopped=true listeners_absent=true client_mounts_retained=true cached_file_identity=true review_retained=true stop_once=true forced_unmount=false restart=false quiescence=false product=false scope=qemu-only"
-        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", loss, withdraw, b"PHANTOWD_NFS_SOURCE_LOSS_DONE"]
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_POLICY, loss, withdraw, b"PHANTOWD_NFS_SOURCE_LOSS_DONE"]
         for ending in (b"\n", b"\r\n"):
             checker.verify_source_loss(ending.join(lines) + ending, self.report)
         variants = [lines[:i] + lines[i+1:] for i in range(len(lines))]
@@ -82,7 +90,7 @@ class CodeReceiptTests(unittest.TestCase):
 
     def test_combined_mountd_exit_requires_its_own_proof_and_completion(self):
         peer = b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_READY source_review=true original_mountd_exit=true mountd_review=true kernel_and_rpcbind_live=true original_refs_retained=true client_file_cached=true stop_attempted=false restart=false product=false scope=qemu-only"
-        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_LOSS, peer,
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", checker.SOURCE_POLICY, checker.SOURCE_LOSS, peer,
                  checker.SOURCE_WITHDRAW, b"PHANTOWD_NFS_SOURCE_DAEMON_LOSS_DONE"]
         for ending in (b"\n", b"\r\n"):
             checker.verify_source_daemon_loss(ending.join(lines)+ending,self.report)
@@ -180,9 +188,49 @@ class CodeReceiptTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
 class ShellModeTests(unittest.TestCase):
-    def test_actual_init_selects_source_only_after_proc_is_available(self):
+    def dispatch_init(self):
         init = (Path(__file__).parent / "nfs-code-init.sh").read_text()
-        init = init.replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        init, count = re.subn(r"^prepare_source_identity\(\) \{\n.*?^\}",
+                              "prepare_source_identity() { :; }", init, flags=re.M | re.S)
+        self.assertEqual(count, 1)
+        return init.replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+
+    def test_source_identity_uses_one_ram_directory_without_changing_original(self):
+        init = (Path(__file__).parent / "nfs-code-init.sh").read_text()
+        function = re.search(r"^prepare_source_identity\(\) \{\n.*?^\}", init, re.M | re.S).group(0)
+        for collision in (None, "uid", "gid", "name"):
+            with self.subTest(collision=collision), tempfile.TemporaryDirectory() as tmp:
+                original, scratch = Path(tmp)/"etc", Path(tmp)/"ram-etc"
+                original.mkdir()
+                passwd = b"root:x:0:0:root:/:/bin/sh\n"
+                group = b"root:x:0:\n"
+                if collision == "uid": passwd += b"other:!:1000:2::/:/bin/false\n"
+                if collision == "gid": group += b"other:!:1000:\n"
+                if collision == "name": passwd += b"nfsfixture:!:2:2::/:/bin/false\n"
+                (original/"passwd").write_bytes(passwd)
+                (original/"group").write_bytes(group)
+                (original/"nsswitch.conf").write_text("passwd: files\ngroup: files\n")
+                # Execute only the actual preparation function. Every path is
+                # remapped beneath this fixture; mounts are observations only.
+                script = function.replace("/run/nfs-fixture-etc", str(scratch)).replace("/etc", str(original))
+                script = "mount() { printf 'MOUNT %s\\n' \"$*\"; }\n"+script+"\nprepare_source_identity\n"
+                completed = subprocess.run(["sh", "-c", script], capture_output=True, timeout=2)
+                self.assertEqual((original/"passwd").read_bytes(), passwd)
+                self.assertEqual((original/"group").read_bytes(), group)
+                if collision:
+                    self.assertNotEqual(completed.returncode, 0)
+                    self.assertFalse(scratch.exists())
+                    self.assertEqual(completed.stdout, b"")
+                else:
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertEqual((scratch/"passwd").read_bytes(), passwd+b"nfsfixture:!:1000:1000::/:/sbin/nologin\n")
+                    self.assertEqual((scratch/"group").read_bytes(), group+b"nfsfixture:!:1000:\n")
+                    self.assertEqual((scratch/"nsswitch.conf").read_bytes(), (original/"nsswitch.conf").read_bytes())
+                    self.assertEqual(completed.stdout.decode().splitlines(),
+                                     [f"MOUNT -o bind {scratch} {original}", f"MOUNT -o remount,bind,ro {original}"])
+
+    def test_actual_init_selects_source_only_after_proc_is_available(self):
+        init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
 grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*) return 1;; esac; }
@@ -197,7 +245,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         self.assertNotIn(b"FAILED", completed.stdout)
 
     def test_actual_init_selects_loss_with_explicit_loss_selector(self):
-        init = (Path(__file__).parent / "nfs-code-init.sh").read_text().replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
 grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*) return 1;; esac; }
@@ -212,7 +260,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
         self.assertNotIn(b"FAILED",completed.stdout)
 
     def test_actual_init_selects_combined_source_daemon_loss_explicitly(self):
-        init = (Path(__file__).parent / "nfs-code-init.sh").read_text().replace("/usr/sbin/phantowd-nfs-code-fixture", "fixture_probe")
+        init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
 grep() { test "$proc_ready" = 1; }

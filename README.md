@@ -71,6 +71,10 @@ Internal candidate planning can also read desired file services from an original
 NAS policy lease, with retained identity and mounted-roster observations. The
 existing ARM API fixture requires revision/release/drift refusals without
 activating NFS; this is not a product policy-to-service coordinator.
+The optional real-NFS source fixtures also join original policy/identity claims
+to the retained runtime and recheck their candidate around operations. Their
+new state and Unix test identity exist only in disposable guest RAM; they do not
+enable product startup, continuous request admission or recovery.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

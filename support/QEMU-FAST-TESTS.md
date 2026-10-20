@@ -140,6 +140,15 @@ independent daemon-only failure, hard crash, in-flight I/O or product recovery.
 
 ## Retained NAS-policy candidate planning
 
+The optional `source`, `source-loss` and `source-daemon-loss` NFS lanes also
+require original NAS-policy and identity claims in the source/runtime join.
+Each guest provisions only new RAM state and a locked Unix fixture account in
+a whole-directory read-only RAM copy; complete candidate/released-claim/cancel
+and parent-close controls precede the existing NFS I/O or fault assertions.
+The original code-only mode and all time/resource budgets remain unchanged.
+This is not product state initialization, a managed/passdb account campaign,
+continuous admission or physical-device operation.
+
 The standard API overlay also requires a retained-NAS-policy planner proof:
 actual identity/passdb and mounted-roster Owners, original NAS/identity leases,
 parent commit/close fences, cancellation/released-claim refusals, same NFS text

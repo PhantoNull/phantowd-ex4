@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Original policy and identity claims in the NFS source runtime
+
+The QEMU-only `NewLeasedSourceRuntimeQEMU` joins the existing original-source
+and runtime lifetime to caller-held NAS-policy/identity claims and mounted
+roster. It verifies complete candidate equality before input reservation and
+rederives from the same claims before/after runtime checks. The existing finite
+I/O entry and normal closure use those checks; no per-operation replacement
+backend, policy, credential or applied-revision assertion is accepted.
+
+Source guests now provision separate policy and empty identity-ledger roles in
+RAM and observe the actual local Unix census, rather than synthesizing it.
+Required receipts add parent-close fences, released claims, freshness mismatch
+and canceled admission while preserving all existing I/O/fault proofs. Fixture
+identity setup uses one read-only whole-directory RAM copy; host tests execute
+it only with paths remapped beneath a temporary directory and stubbed mounts.
+
+Borrowed claims are not acquired/released by the wrapper. Uncertainty after
+reservation retains review and original references. This is still a finite
+disposable-guest join, not atomic service admission, continuous monitoring,
+complete fault coverage, sole NFSD ownership or product boot/recovery.
+
 ## Retained NAS policy, identity and storage planning
 
 `BuildFromLeasedNASOwners` takes the original NAS policy lease and identity

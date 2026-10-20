@@ -2214,6 +2214,16 @@ storage. No production roster provider or activation path exists.
   are not atomic three-owner admission, policy-Owner provenance, applied state
   or the product history/boot/service coordinator. Callers must keep/recheck
   their original authorities through independently verified settlement.
+  The optional source-runtime fixture additionally borrows the original NAS
+  policy/identity claims and roster at construction, verifies complete candidate
+  equality before runtime reservation, and rederives around subsequent checks.
+  Actual source guests use fresh RAM policy/empty identity-ledger Owners and a
+  real Unix census; required receipts include released-claim/freshness/cancel
+  refusals and parent-close exclusion before existing I/O/fault assertions.
+  The wrapper never releases borrowed claims, and reviewed joins keep original
+  references. This does not establish atomic admission, continuous in-flight
+  monitoring, managed/passdb account coverage, product history/boot or a complete
+  policy/identity fault matrix. Those remain required for product activation.
   M4.1 remains incomplete until fresh storage and identity evidence are
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service

@@ -110,6 +110,27 @@ Both parents refuse closure. Storage calls finish before runtime gates are
 entered, preserving the no-callback lock boundary. Complete immutable candidate
 matching is necessary but does not supply a live policy/identity lease.
 
+`NewLeasedSourceRuntimeQEMU` additionally borrows the original NAS-policy and
+identity claims plus the original mounted roster at construction. It derives
+through `BuildFromLeasedNASOwners`, requires complete candidate equality before
+reserving inputs, and repeats that derivation around runtime checks. No runtime
+gate is held during storage/identity callbacks. Operations accept no replacement
+claims, backend or applied-revision assertion. Released or changed claims refuse;
+post-reservation uncertainty preserves the original error/references in review.
+The wrapper never acquires/releases the borrowed claims or closes their Owners.
+The caller must retain them through verified teardown. These sequential checks
+are not atomic admission, continuous in-flight monitoring or complete domain,
+state-history/recovery authority; the original unleased constructor remains a
+separately limited fixture interface.
+
+The optional source guests use newly provisioned RAM-only policy and identity
+Owners with an empty managed-account registry and actual `/etc` census, not
+invented UID/GID evidence or a passdb-backed account test. A locked UID/GID1000
+fixture is added to a whole-directory RAM copy mounted read-only; the base image
+and no-cross-mount census checks remain unchanged. Every source-mode receipt
+requires original claims, parent-close fences, released-claim/mismatched-freshness
+refusals and unchanged healthy claims before the existing real I/O/fault proof.
+
 `RunAccessFixtureQEMU` delegates one fixed real NFS synthetic-data campaign and
 requires normal client/export/kernel/daemon/reference closure before clean join
 release. Current names are additionally compared under the original volume with

@@ -26,6 +26,7 @@ type SourceRuntimeQEMU struct {
 	gate                           chan struct{}
 	roots                          *ExportRootsQEMU
 	inputs                         *runtimebundle.NFSInputsQEMU
+	policyAuthority                *sourcePolicyAuthority
 	lease                          *runtimebundle.NFSInputLeaseQEMU
 	access                         *runtimebundle.NFSSourceAccessQEMU
 	accessVolume                   *os.File
@@ -52,6 +53,10 @@ func (*sourceRuntimeConstructionReview) Is(err error) bool { return err == ErrRe
 // Before reservation, mismatch/busy/cancellation has no join effects. After any
 // uncertain reservation, retain the ORIGINAL construction error and parents.
 func NewSourceRuntimeQEMU(ctx context.Context, roots *ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU) (*SourceRuntimeQEMU, error) {
+	return newSourceRuntimeQEMU(ctx, roots, inputs, nil)
+}
+
+func newSourceRuntimeQEMU(ctx context.Context, roots *ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, authority *sourcePolicyAuthority) (*SourceRuntimeQEMU, error) {
 	if ctx == nil {
 		return nil, ErrInvalid
 	}
@@ -73,7 +78,12 @@ func NewSourceRuntimeQEMU(ctx context.Context, roots *ExportRootsQEMU, inputs *r
 		s.review = true
 		return nil, err
 	}
-	o := &SourceRuntimeQEMU{gate: make(chan struct{}, 1), roots: roots, inputs: inputs}
+	if authority != nil {
+		if err := authority.verify(ctx, s.candidate); err != nil {
+			return nil, err // No runtime reservation or borrowed-claim mutation.
+		}
+	}
+	o := &SourceRuntimeQEMU{gate: make(chan struct{}, 1), roots: roots, inputs: inputs, policyAuthority: authority}
 	o.original = o
 	o.lease, err = runtimebundle.NewNFSInputLeaseQEMU(ctx, inputs, s.candidate)
 	if err != nil {
@@ -131,6 +141,11 @@ func (o *SourceRuntimeQEMU) verify(ctx context.Context, s *exportRoots) error {
 		s.review = true
 		return o.fail(err)
 	}
+	if o.policyAuthority != nil {
+		if err := o.policyAuthority.verify(ctx, s.candidate); err != nil {
+			return o.fail(err)
+		}
+	}
 	if err := o.lease.Check(ctx); err != nil {
 		if errors.Is(err, processowner.ErrBusy) {
 			return ErrBusy
@@ -140,6 +155,11 @@ func (o *SourceRuntimeQEMU) verify(ctx context.Context, s *exportRoots) error {
 	if err := s.verify(ctx); err != nil {
 		s.review = true
 		return o.fail(err)
+	}
+	if o.policyAuthority != nil {
+		if err := o.policyAuthority.verify(ctx, s.candidate); err != nil {
+			return o.fail(err)
+		}
 	}
 	return nil
 }

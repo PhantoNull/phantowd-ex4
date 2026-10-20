@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -20,7 +19,6 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
@@ -74,29 +72,24 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		if err := os.Chown(marker, 1000, 1000); err != nil {
 			return err
 		}
+		config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1,
+			Shares: shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
+				Volumes: []shareconfig.Volume{{ID: volume.VolumeID, FilesystemUUID: volume.FilesystemUUID}}, Users: []shareconfig.User{}, Shares: []shareconfig.Share{}},
+			NFS: nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
+				Exports: []nfsconfig.Export{
+					{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: volume.VolumeID, RelativePath: "books",
+						Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
+					{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: volume.VolumeID, RelativePath: "archive",
+						Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
+					{ID: "cccccccc-dddd-eeee-ffff-aaaaaaaaaaaa", VolumeID: volume.VolumeID, RelativePath: "denied",
+						Clients: []nfsconfig.Client{{Network: "192.0.2.0/24", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}}}
+		phase = "policy-identity-owners"
+		authority, err := prepareSourcePolicy(ctx, config, set)
+		if err != nil {
+			return err
+		}
 		build := func(generation uint64) (fileserviceplan.NFSv3Candidate, error) {
-			registry, err := serviceaccounts.New(1000, 2000)
-			if err != nil {
-				return fileserviceplan.NFSv3Candidate{}, err
-			}
-			config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1,
-				Shares: shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
-					Volumes: []shareconfig.Volume{{ID: volume.VolumeID, FilesystemUUID: volume.FilesystemUUID}}, Users: []shareconfig.User{}, Shares: []shareconfig.Share{}},
-				NFS: nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
-					Exports: []nfsconfig.Export{
-						{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: volume.VolumeID, RelativePath: "books",
-							Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
-						{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: volume.VolumeID, RelativePath: "archive",
-							Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
-						{ID: "cccccccc-dddd-eeee-ffff-aaaaaaaaaaaa", VolumeID: volume.VolumeID, RelativePath: "denied",
-							Clients: []nfsconfig.Client{{Network: "192.0.2.0/24", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}}}
-			plan, err := fileserviceplan.Build(config, 0, fileserviceplan.IdentitySnapshot{Complete: true, Generation: generation,
-				Fingerprint: sha256.Sum256([]byte("synthetic-nfs-source-identity-only")), Registry: registry,
-				UnixUIDs: []uint32{1000}, UnixGIDs: []uint32{1000}, Samba: []fileserviceplan.SambaIdentity{}}, storage)
-			if err != nil {
-				return fileserviceplan.NFSv3Candidate{}, err
-			}
-			return plan.NFSv3TCPCandidate()
+			return authority.candidate(ctx, generation-1)
 		}
 		candidate, err := build(1)
 		if err != nil {
@@ -126,8 +119,12 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		if err != nil {
 			return err
 		}
+		phase = "policy-admission"
+		if err := authority.verifyAdmission(ctx, roots, inputs[0]); err != nil {
+			return err
+		}
 		phase = "normal-binding"
-		joined, err = nfsowner.NewSourceRuntimeQEMU(ctx, roots, inputs[0])
+		joined, err = nfsowner.NewLeasedSourceRuntimeQEMU(ctx, roots, inputs[0], authority.policy, authority.identityRef, set, 0)
 		if err != nil {
 			return err
 		}
@@ -145,6 +142,10 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 			!errors.Is(lease.Close(), mountowner.ErrBusy) {
 			return errors.New("live join failed cancellation or parent closure exclusion")
 		}
+		if authority.policy.Verify(ctx) != nil || authority.identityRef.Verify(ctx) != nil {
+			return errors.New("source runtime consumed original policy or identity claim")
+		}
+		fmt.Println("PHANTOWD_NFS_SOURCE_POLICY_READY original_policy_lease=true original_identity_lease=true unix_census=true registry=empty_fixture complete_candidate=true parent_close_excluded=true released_claims_refused=true mismatch_refused=true canceled_unchanged=true no_claim_release=true product=false scope=qemu-only")
 		phase = "original-source-nfs-access"
 		if sourceLoss {
 			phase = "live-source-replacement"
@@ -244,7 +245,7 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		if err != nil {
 			return err
 		}
-		joined, err = nfsowner.NewSourceRuntimeQEMU(ctx, roots, inputs[1])
+		joined, err = nfsowner.NewLeasedSourceRuntimeQEMU(ctx, roots, inputs[1], authority.policy, authority.identityRef, set, 0)
 		if err != nil || joined.Check(ctx) != nil {
 			return errors.New("fault fixture failed original join")
 		}
