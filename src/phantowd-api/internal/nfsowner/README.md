@@ -246,16 +246,28 @@ original controls, empty exports, fixed listeners and original process/group
 absence before the join records the server absent. That diagnostic does not
 require healthy service admission, clear review or authorize release. Policy/
 identity claims remain valid; closure/retry/restart refuse and retained FDs stay
-stable. All seven profiles pass, including a separate ordinary-wrapper execution.
+stable. All eight profiles pass, including a separate ordinary-wrapper execution.
 
 The `source-owner-daemon-stop-loss` variant calls explicit Stop immediately
 after the same exit, with no intervening Check or supervision. The same first
 admitted Stop now retains its original precheck cause/phase and runs reviewed
 compensation once after original-reference revalidation; review still returns.
 Fresh stopped proof, retained claims/FDs and refusal after review are required.
-Eight fresh guests cover this variant twice and each prior profile once.
+The prior explicit-Stop checkpoint covers that variant twice and each earlier
+profile once; the latest RPC-only partial-start campaign is described below.
 
-Other pre-dispatch/reference/admission failures, partial-start/close uncertainty,
+The optional `source-owner-partial-start` variant now starts the real original
+rpcbind and obtains readiness, then provokes an actual mountd constructor refusal
+before acquisition. Compensation derives its frontier from original resources,
+not the test flag, validates original references and stops only rpcbind once.
+It cannot accept a non-nil failed mountd constructor result. Fresh original
+stopped observations and actual RPC stopped-child proof qualify missing etab
+only for this frontier. Review, original causes and authority remain held;
+closure/retry/restart refuse with stable retained FDs. Nine fresh guests cover
+this variant twice and each prior profile once, with27 receipt/shell groups.
+
+Other pre-dispatch/reference/admission failures, other partial-start/readiness/
+uncertain-constructor/close outcomes,
 hard crashes, complete faults, domain/client quiescence and product bootstrap/
 recovery remain unqualified.
 Generic process/Owner semantics and physical NAS operations remain unchanged.

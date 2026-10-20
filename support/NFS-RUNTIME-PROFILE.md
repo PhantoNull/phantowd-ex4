@@ -16,7 +16,14 @@ The explicit-Stop variant performs no intervening Check or supervision. Its
 first admitted Stop retains the initial precheck cause/phase, revalidates
 original references and compensates once; fresh stopped proof cannot clear
 review or turn that Stop into normal success. Other pre-dispatch/reference/
-admission failures and partial-start settlement remain unqualified.
+admission failures remain unqualified. One RPC-only partial-start frontier is
+also verified: original rpcbind ready, actual mountd constructor refusal before
+acquisition, then original-reference validation and one rpcbind stop. Mountd,
+NFSD and exports are never claimed stopped when never started. Fresh stopped
+observations permit missing etab only after actual RPC stopped proof at that
+established frontier. Review/references stay retained. Other partial-start,
+readiness and uncertain-constructor outcomes remain unqualified; no product
+constructor, privilege or generic Owner/process behavior changes.
 
 ## Existing evidence and the missing boundary
 

@@ -35,6 +35,7 @@ type nfsServerQEMU struct {
 	stopCheckCause                               error
 	stopCheckPhase                               string
 	phase                                        string
+	rpcOnlyStartRefused                          bool
 }
 
 type nfsServerTableQEMU struct {
@@ -208,7 +209,12 @@ func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCo
 	var named unix.Stat_t
 	err := unix.Fstatat(int(s.state.root.Fd()), "nfs/etab", &named, unix.AT_SYMLINK_NOFOLLOW)
 	if err != nil {
-		if !errors.Is(err, unix.ENOENT) || o.consumed {
+		// A consumed partial-start can legitimately have NO export table:
+		// only an established RPC-only boundary with actual stopped-child
+		// proof may admit absence. It is never inferred from nil components.
+		partial := reviewed && o.server.rpcOnlyStartBoundary() && o.server.stopAttempted &&
+			o.server.rpcbind.stopped && o.server.rpcbind.stoppedProof
+		if !errors.Is(err, unix.ENOENT) || o.consumed && !partial {
 			return err
 		}
 	} else {
@@ -268,8 +274,18 @@ func (v *nfsServerQEMU) start(ctx context.Context) error {
 		return err
 	}
 	v.phase = "mountd-construct"
-	v.mountd, err = newNFSDaemonQEMU(ctx, s, o.bootstrap, o.channels, true)
+	channels := o.channels
+	if command, readErr := os.ReadFile("/proc/cmdline"); readErr == nil && nfsRPCOnlyFailureSelectorQEMU(command) {
+		channels = nil // Exact opt-in constructor refusal; no mountd is created.
+	}
+	v.mountd, err = newNFSDaemonQEMU(ctx, s, o.bootstrap, channels, true)
 	if err != nil {
+		// A nil result from this constructor means no mountd lifetime was
+		// acquired. Non-nil failed lifetimes must not enter this boundary.
+		v.rpcOnlyStartRefused = v.mountd == nil
+		if channels == nil && errors.Is(err, ErrInvalid) && v.rpcOnlyStartRefused {
+			fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_ARMED original_rpcbind_ready=true mountd_constructor_refused=true mountd_started=false kernel_started=false exports_activated=false product=false scope=qemu-only")
+		}
 		return err
 	}
 	v.phase = "mountd-start"

@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Independent mountd loss: scheduled and explicit-Stop compensation in QEMU
+## Verified NFS compensation frontiers in disposable QEMU
 
 The optional `source-owner-daemon-loss` fixture now passes. After synthetic NFS
 I/O and the original mountd's controlled graceful exit, scheduled supervision
@@ -16,19 +16,32 @@ observations establish absence without clearing review or releasing authority.
 
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
-targeted race-count3, strict C-selector/receipt/dispatch tests and all seven optional
-profiles pass. The explicit-Stop variant passes both cached and ordinary-wrapper
-guests; six previous profiles pass independent fresh-kernel regression.
+targeted race-count3 and strict C-selector/receipt/dispatch tests pass. The latest
+campaign covers all eight optional profiles: the RPC-only partial-start case
+through cached and ordinary wrappers plus seven previous profiles in fresh guests.
 
 `source-owner-daemon-stop-loss` performs no Check or supervision between the
 controlled mountd exit and explicit Stop. The original Stop precheck previously
 returned before compensation; that same first admitted Stop now retains its
 initial cause/phase, revalidates original references and invokes the reviewed
 compensation once. It still returns review, with separate fresh stopped proof
-and no retry, restart or release. Eight actual guests share one tested helper;
-25 receipt/shell and three loader groups pass with unchanged deadlines.
+and no retry, restart or release.
+
+`source-owner-partial-start` now verifies one concrete initialization frontier:
+the original rpcbind is started/ready, then the actual mountd constructor rejects
+missing channels before creating a lifetime. The original full-server guard
+could not compensate this partial state. The backend now derives that boundary
+from actual acquired resources, revalidates original references and stops only
+rpcbind once. Mountd/NFSD/exports were never started, not falsely declared stopped.
+Fresh original stopped observations may accept a missing export table only at
+this established RPC-only boundary with verified stopped-child proof. Review,
+causes and authority remain retained; retry/restart/release refuse.
+
+Nine actual guests share one tested helper and unchanged source/base images;
+27 receipt/shell and three loader groups pass with unchanged deadlines.
 This does not qualify other pre-dispatch/reference/admission failures, hard
-crashes, partial startup, pending I/O, complete faults, product recovery or EX4.
+crashes, other partial-start/readiness/uncertain-constructor frontiers, pending
+I/O, complete faults, product recovery or EX4 hardware.
 
 ## Owner-backed real-NFS server calls in disposable QEMU
 

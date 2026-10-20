@@ -97,6 +97,10 @@ The optional `source-owner-daemon-stop-loss` variant detects the same controlled
 exit first inside explicit Stop, without an intervening Check or supervision.
 That first admitted Stop performs the original-reference compensation once,
 retains the original cause and still returns review rather than normal success.
+The optional `source-owner-partial-start` case also verifies actual rpcbind
+readiness followed by mountd constructor refusal before acquisition. It stops
+only the acquired component, retains review/references and proves the fixed
+stopped profile; other partial-start/readiness faults remain unqualified.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

@@ -28,16 +28,18 @@ func main() {
 	sourceLoss := len(os.Args) == 2 && os.Args[1] == "--source-loss"
 	daemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-daemon-loss"
 	policyLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-policy-loss"
+	partialStart := len(os.Args) == 2 && os.Args[1] == "--source-owner-partial-start"
 	ownerStopLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-stop-loss"
 	ownerDaemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-loss" || ownerStopLoss
-	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && !partialStart && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}
 	command, commandErr := os.ReadFile("/proc/cmdline")
 	selected, selectorValid := parsePolicyLossSelector(command)
 	peerSelected, peerValid := parseOwnerDaemonLossSelector(command)
 	stopSelected, stopValid := parseOwnerStopLossSelector(command)
-	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss {
+	partialSelected, partialValid := parseOwnerLossSelector(command, "phantowd_nfs_source_owner_rpc_start_failure_fixture=")
+	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss || !partialValid || partialSelected != partialStart {
 		os.Exit(1)
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-nfs-code-expected.json")
@@ -51,6 +53,13 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	if partialStart {
+		if err := probeSourceRuntimeMode(ctx, data, false, false, ownerRPCStartFailure); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_REFUSED")
+			os.Exit(1)
+		}
+		return
+	}
 	if ownerDaemonLoss {
 		mode := ownerScheduledDaemonLoss
 		if ownerStopLoss {

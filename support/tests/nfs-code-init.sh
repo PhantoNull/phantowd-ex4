@@ -34,7 +34,13 @@ prepare() {
     ip link set lo up || return 1
 }
 if prepare; then
-    if grep -Eq '(^| )phantowd_nfs_source_owner_stop_loss_fixture=1( |$)' /proc/cmdline; then
+    if grep -Eq '(^| )phantowd_nfs_source_owner_rpc_start_failure_fixture=1( |$)' /proc/cmdline; then
+        if /usr/sbin/phantowd-nfs-code-fixture --source-owner-partial-start; then
+            echo PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_DONE
+        else
+            echo PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_FAILED
+        fi
+    elif grep -Eq '(^| )phantowd_nfs_source_owner_stop_loss_fixture=1( |$)' /proc/cmdline; then
         if /usr/sbin/phantowd-nfs-code-fixture --source-owner-daemon-stop-loss; then
             echo PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_DONE
         else

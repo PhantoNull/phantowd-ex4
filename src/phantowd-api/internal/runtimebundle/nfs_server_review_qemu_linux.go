@@ -19,6 +19,9 @@ import (
 // injected-exit flag: original references, not a test event, authorize cleanup.
 func (o *NFSSourceAccessQEMU) reviewedServerOperation(ctx context.Context, operation uint8) error {
 	v := o.server
+	if v != nil && v.rpcOnlyStartRefused {
+		return o.reviewedRPCOnlyOperation(ctx, operation)
+	}
 	if !o.review || o.cause == nil || o.closed || o.sourceLoss || o.daemonLoss || !o.consumed || o.settled || v == nil ||
 		v.source != o || v.code == nil || v.kernel == nil || !v.mountd.valid() || !v.rpcbind.valid() ||
 		!v.mountd.mountd || v.rpcbind.mountd || v.stopped || o.capture != nil || o.heldClient != nil || len(o.mounts) != 0 ||

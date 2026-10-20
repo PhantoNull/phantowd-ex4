@@ -14,7 +14,7 @@ Separate server-cleanup roles accept no data roots and run with zero capabilitie
 The legacy source-loss constructor/role selector is unchanged. Go and native C
 selector tests reject missing/duplicate/mixed flags; C is exercised in its actual
 ARM role as well. Copied, model-backed and concurrently supervised Owners cannot
-perform the fault mutation. All seven optional NFS profiles pass, with this case
+perform the fault mutation. All eight optional NFS profiles pass, with this case
 also checked through the ordinary PowerShell wrapper. Guest90/helper60/wrapper360
 and the original operation/cleanup5s and RAM-only resource limits are unchanged.
 
@@ -31,8 +31,29 @@ suite includes 25 receipt/shell and three loader groups before guest execution.
 
 No caller-selected PID/signal/path, product endpoint, NAS operation, new default
 job or persistent resource is added. These controlled graceful-exit cases do not
-qualify other pre-dispatch/reference/admission failures, hard crashes, partial
+qualify other pre-dispatch/reference/admission failures, hard crashes, other partial
 startup, client quiescence, complete faults/recovery, full images or hardware.
+
+### RPC-only partial initialization
+
+`-FixtureMode source-owner-partial-start` adds the exact
+`phantowd_nfs_source_owner_rpc_start_failure_fixture=1` selector to the base
+code/source profile. After actual original rpcbind readiness, the fixture passes
+missing channels to the real mountd constructor, which must refuse before
+creating a lifetime. A non-nil failed constructor result is NOT this frontier.
+The cleanup boundary is established from actual acquired components, not the
+test flag. Original references must revalidate before one rpcbind stop; no
+mountd, kernel or export command may be invented for an unstarted component.
+
+The strict separate receipts require original stopped observations and retained
+review/authority, no retry/restart/release and stable retained FDs after refusal.
+Missing etab is accepted only at the established RPC-only frontier after actual
+RPC child/group/listener stopped proof, never from nil components alone.
+Cached and ordinary wrapper executions plus all seven previous profiles pass:
+nine fresh guests/one helper,27 receipt/shell and three loader groups. Existing
+90/60/360/5s limits, old role guards, privileges and default CI jobs are unchanged.
+Other acquisition/readiness/uncertain-constructor/close failures, complete
+quiescence, product bootstrap/recovery, full images and EX4 remain unqualified.
 
 ## Optional retained NFS table consumer
 
