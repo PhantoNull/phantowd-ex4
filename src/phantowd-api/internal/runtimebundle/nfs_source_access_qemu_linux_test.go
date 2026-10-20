@@ -33,3 +33,11 @@ func TestNFSInputsSourceLossRefusesMissingOriginalLease(t *testing.T) {
 		}
 	}
 }
+
+func TestNFSInputsSourceWithdrawalRefusesInvalidAuthority(t *testing.T) {
+	for _, value := range []*runtimebundle.NFSSourceAccessQEMU{nil, {}} {
+		if value.WithdrawSourceLossFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid consumer admitted cleanup after source loss")
+		}
+	}
+}

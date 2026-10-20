@@ -22,7 +22,7 @@ func TestControllerQEMURefusesHostAndInvalidLifetimes(t *testing.T) {
 		}
 	}
 	for _, k := range []*nfskernel.ControllerQEMU{nil, {}} {
-		for _, operation := range []func(context.Context) error{k.Start, k.CheckRunning, k.Stop, k.Close} {
+		for _, operation := range []func(context.Context) error{k.Start, k.CheckRunning, k.CheckStopped, k.Stop, k.Close} {
 			if operation(nil) == nil || operation(context.Background()) == nil {
 				t.Fatal("invalid lifetime admitted")
 			}

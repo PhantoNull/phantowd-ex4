@@ -199,6 +199,20 @@ func (s *nfsCodeLifetimeQEMU) elfHeaders() error {
 }
 
 func (s *nfsCodeLifetimeQEMU) revalidate(ctx context.Context) error {
+	if err := s.revalidateReferences(ctx); err != nil {
+		return err
+	}
+	if s.sourceAccess != nil {
+		if err := s.sourceAccess.check(ctx); err != nil {
+			return err
+		}
+	}
+	return s.binding(ctx)
+}
+
+// Original code/config/state references only. Shutdown must not re-admit a
+// failed source binding. Ordinary admission always adds sourceAccess.check.
+func (s *nfsCodeLifetimeQEMU) revalidateReferences(ctx context.Context) error {
 	if err := s.binding(ctx); err != nil {
 		return err
 	}
@@ -221,11 +235,6 @@ func (s *nfsCodeLifetimeQEMU) revalidate(ctx context.Context) error {
 		}
 		state := s.state.identity["."]
 		if err := nfsInputNamedRootQEMU(nfsStateViewQEMU, state.inode, state.mount, state.major, state.minor); err != nil {
-			return err
-		}
-	}
-	if s.sourceAccess != nil {
-		if err := s.sourceAccess.check(ctx); err != nil {
 			return err
 		}
 	}

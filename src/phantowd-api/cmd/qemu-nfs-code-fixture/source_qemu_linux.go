@@ -158,6 +158,25 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss boo
 				return errors.New("review released live-consumer references")
 			}
 			fmt.Println("PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only")
+			phase = "source-loss-withdrawal"
+			canceled, cancel := context.WithCancel(ctx)
+			cancel()
+			if !errors.Is(joined.WithdrawSourceLossFixtureQEMU(canceled), context.Canceled) {
+				return errors.New("pre-admission cancellation not preserved")
+			}
+			if err := joined.WithdrawSourceLossFixtureQEMU(ctx); err != nil {
+				return err
+			}
+			retained, err = sourceFDCount()
+			if err != nil || !errors.Is(joined.WithdrawSourceLossFixtureQEMU(ctx), runtimebundle.ErrReviewRequired) ||
+				!errors.Is(joined.Check(ctx), nfsowner.ErrReviewRequired) || !errors.Is(joined.Close(), nfsowner.ErrReviewRequired) ||
+				!errors.Is(roots.Close(), nfsowner.ErrBusy) || !errors.Is(inputs[0].Close(), processowner.ErrBusy) || !errors.Is(lease.Close(), mountowner.ErrBusy) {
+				return errors.New("withdrawal revived or released reviewed authority")
+			}
+			if after, err := sourceFDCount(); err != nil || after != retained {
+				return errors.New("withdrawal review released references")
+			}
+			fmt.Println("PHANTOWD_NFS_SOURCE_WITHDRAW_READY admitted_cancel=true independent_cleanup=true exports_withdrawn=true kernel_stopped=true daemons_stopped=true listeners_absent=true client_mounts_retained=true cached_file_identity=true review_retained=true stop_once=true forced_unmount=false restart=false quiescence=false product=false scope=qemu-only")
 			return nil
 		}
 		if err := joined.RunAccessFixtureQEMU(ctx); err != nil {

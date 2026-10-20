@@ -2070,8 +2070,12 @@ a real client file held open, restoration refusal, ordinary client unmount
 EBUSY and retained original daemon/kernel/source/input references. Do not weaken
 the single-use kernel component to run two lifetimes in one process. Client
 mount EBUSY is not proof of server data-volume busy state or product quiescence.
-Next require server-side export/cache withdrawal on drift under an independent
-bounded cleanup context, owned-daemon exit/partial-start/stop/close faults,
+The fixed fixture now withdraws exports/flushes caches and verifies original
+kernel/daemon/group/listener stop under an independent five-second cleanup
+budget after canceling its admitted request. The shutdown-only role has no data
+roots and zero capabilities after setup. Original reviewed parent/client refs
+remain; cached identity does not certify complete quiescence or pending I/O.
+Next qualify owned-daemon exit/partial-start/stop/close faults,
 mount/device disappearance and pending-I/O cases, followed by real policy and
 identity authority, protocol/reclaim and qualified boot recovery. VM disposal
 must never satisfy the product settlement or automatic recovery acceptance.

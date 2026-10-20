@@ -246,6 +246,25 @@ HTTP activation or physical qualification. The existing separate two-boot
 synthetic I/O fixture uses the same kernel implementation with its original
 synthetic-disk guard and independent Netlink checks retained.
 
+## Source-loss withdrawal fixture (QEMU only)
+
+The optional source-loss guest first proves real I/O, current-name replacement
+refusal and retained live consumers after one busy ordinary client unmount.
+`WithdrawSourceLossFixtureQEMU` then makes one serialized cleanup attempt on
+those original reviewed inputs. A deterministically canceled admitted request
+cannot suppress the independent fixed five-second cleanup budget. Code/config/
+state and original control references are revalidated without re-admitting the
+failed source or clearing review. Ordinary admission still checks all bindings.
+
+Separate fixed withdrawal/flush roles supply no data directories, volume anchor,
+filehandle or activation option, and drop all capabilities after private-view
+setup. The fixture requires empty original etab, original kernel stopped profile
+and refused connection, original daemon/group/listener absence and exact stopped
+handoffs. All reviewed parent and client references remain; repeated stop/Close
+refuses. Cached DONT_SYNC inode/mount observations avoid client RPC after server
+stop. They do not prove post-stop I/O, full cache/client quiescence, pending-I/O
+completion, remote revocation, product startup/recovery or physical EX4 safety.
+
 ## Existing Samba runtime and observation work
 
 The QEMU-only native Samba STATUS/session publication boundary accepts only the exact

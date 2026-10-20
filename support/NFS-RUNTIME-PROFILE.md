@@ -476,10 +476,19 @@ do not close the unobserved replace/restore race or authorize individual RPCs.
 Separate optional source-loss execution follows actual synthetic I/O, holds one
 NFS file across same-payload directory replacement/restoration, and requires
 ordinary client-unmount EBUSY plus retained kernel/daemon/source/input authority.
-Its exact receipt explicitly denies settlement. Do not treat client-mount EBUSY
+Its initial exact receipt explicitly denies settlement. Do not treat client-mount EBUSY
 as a server volume or remote-client quiescence observation. One NFSD lifetime per
 process remains required; no global guard reset or product restart is introduced.
-Verified server-side withdrawal/stop under drift/cancellation is still required.
+The same optional guest then cancels an admitted request and uses an independent
+fixed five-second cleanup budget to withdraw exports/flush caches and stop its
+original kernel/daemon instances, checking group/listener absence. A separate
+cleanup-only descriptor ABI supplies code/config/state/features/four flush nodes
+and original netns, NO data roots/anchor/filehandle/activation, with zero caps
+after setup. Normal admission still checks source bindings; cleanup validates
+original references without re-admitting the reviewed source. All reviewed
+parent/client refs remain, with one stop attempt and no forced/lazy unmount or
+restart. Post-stop DONT_SYNC metadata proves cached identity only, not successful
+I/O, remote revocation, complete kernel-cache census or product quiescence.
 
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.

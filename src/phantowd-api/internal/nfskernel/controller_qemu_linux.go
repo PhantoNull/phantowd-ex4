@@ -374,6 +374,20 @@ func (k *ControllerQEMU) CheckRunning(ctx context.Context) error {
 	return nil
 }
 
+// CheckStopped observes the ORIGINAL stopped component without releasing any
+// namespace/control reference. It is not complete export/client quiescence.
+func (k *ControllerQEMU) CheckStopped(ctx context.Context) error {
+	if err := k.enter(ctx, false); err != nil {
+		return err
+	}
+	defer k.leave()
+	k.phase = "check-stopped"
+	if !k.started || !k.stopped || k.socket >= 0 || k.uncertain != nil || k.profile(ctx, false) != nil {
+		return k.retain()
+	}
+	return nil
+}
+
 func (ControllerQEMU) MarshalJSON() ([]byte, error) { return nil, ErrRefused }
 func (*ControllerQEMU) UnmarshalJSON([]byte) error  { return ErrRefused }
 func (ControllerQEMU) Format(s fmt.State, _ rune)   { _, _ = io.WriteString(s, "nfs-kernel{private}") }

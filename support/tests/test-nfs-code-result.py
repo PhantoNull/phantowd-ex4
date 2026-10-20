@@ -60,7 +60,8 @@ class CodeReceiptTests(unittest.TestCase):
 
     def test_live_source_loss_proof_cannot_claim_normal_settlement(self):
         loss = b"PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only"
-        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", loss, b"PHANTOWD_NFS_SOURCE_LOSS_DONE"]
+        withdraw = b"PHANTOWD_NFS_SOURCE_WITHDRAW_READY admitted_cancel=true independent_cleanup=true exports_withdrawn=true kernel_stopped=true daemons_stopped=true listeners_absent=true client_mounts_retained=true cached_file_identity=true review_retained=true stop_once=true forced_unmount=false restart=false quiescence=false product=false scope=qemu-only"
+        lines = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400", loss, withdraw, b"PHANTOWD_NFS_SOURCE_LOSS_DONE"]
         for ending in (b"\n", b"\r\n"):
             checker.verify_source_loss(ending.join(lines) + ending, self.report)
         variants = [lines[:i] + lines[i+1:] for i in range(len(lines))]
@@ -68,7 +69,10 @@ class CodeReceiptTests(unittest.TestCase):
         variants += [list(reversed(lines)), self.lines, lines+[checker.SOURCE_IO], lines+[b"PHANTOWD_NFS_KERNEL_FAILURE phase=ready"], [line+b"\r\r" for line in lines]]
         for old,new in ((b"binding_mismatch=true",b"binding_mismatch=false"), (b"unmount_ebusy=true",b"unmount_ebusy=false"),
                         (b"original_refs_retained=true",b"original_refs_retained=false"), (b"settlement=false",b"settlement=true"),
-                        (b"forced_unmount=false",b"forced_unmount=true"), (b"restart=false",b"restart=true"), (b"bytes=400",b"bytes=399")):
+                        (b"forced_unmount=false",b"forced_unmount=true"), (b"restart=false",b"restart=true"), (b"bytes=400",b"bytes=399"),
+                        (b"admitted_cancel=true",b"admitted_cancel=false"), (b"independent_cleanup=true",b"independent_cleanup=false"),
+                        (b"kernel_stopped=true",b"kernel_stopped=false"), (b"daemons_stopped=true",b"daemons_stopped=false"),
+                        (b"quiescence=false",b"quiescence=true")):
             variants.append([line.replace(old,new) for line in lines])
         for value in variants:
             with self.subTest(value=value), self.assertRaises(ValueError):

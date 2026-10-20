@@ -25,6 +25,26 @@ func (o *SourceRuntimeQEMU) ProbeSourceLossFixtureQEMU(ctx context.Context) erro
 	return o.runAccessFixtureQEMU(ctx, true)
 }
 
+// Finite fixture cleanup only; successful test return NEVER clears review.
+func (o *SourceRuntimeQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context) error {
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	if !o.review || o.access == nil || o.accessVolume == nil || o.accessSettled {
+		return ErrInvalid
+	}
+	s, err := o.roots.enter()
+	if err != nil {
+		return err
+	}
+	defer s.leave()
+	if s.runtime != o || s.closed || s.closeUncertain {
+		return ErrReviewRequired
+	}
+	return o.access.WithdrawSourceLossFixtureQEMU(ctx)
+}
+
 func (o *SourceRuntimeQEMU) runAccessFixtureQEMU(ctx context.Context, sourceLoss bool) error {
 	if err := o.enter(ctx); err != nil {
 		return err

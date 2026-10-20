@@ -37,6 +37,7 @@ static int refuse(void)
 
 /* Separate SOURCE-only roles. Legacy table/rpcbind/mountd remain unchanged. */
 static int source_role;
+static int cleanup_role;
 static const char *source_names[] = {"books", "archive", "denied"};
 static const char *flush_names[] = {"auth.unix.ip", "auth.unix.gid", "nfsd.fh", "nfsd.export"};
 
@@ -53,6 +54,43 @@ static int source_selector(void)
     for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save))
         count += !strcmp(word, "phantowd_nfs_source_fixture=1");
     return count == 1 ? 0 : -1;
+}
+
+static int cleanup_selector(void)
+{
+    char command[4097];
+    int fd = open("/proc/cmdline", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return -1;
+    ssize_t size = read(fd, command, sizeof(command));
+    int closed = close(fd), count = 0;
+    if (size <= 0 || size >= (ssize_t)sizeof(command) || closed) return -1;
+    command[size] = 0;
+    char *save = NULL;
+    const char *prefix = "phantowd_nfs_source_loss_fixture=";
+    for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save)) {
+        if (!strncmp(word, prefix, strlen(prefix))) {
+            if (strcmp(word, "phantowd_nfs_source_loss_fixture=1")) return -1;
+            ++count;
+        }
+    }
+    return count == 1 ? 0 : -1;
+}
+
+/* Separate shutdown-only ABI: feature=8, four flush nodes=9..12, netns=13.
+ * No source directory or volume reference is passed to this program. */
+static int cleanup_inputs(void)
+{
+    struct stat st, current;
+    struct statfs fs;
+    for (int fd = 8; fd <= 12; ++fd)
+        if (fstat(fd, &st) || st.st_mode != (S_IFREG | (fd == 8 ? 0444 : 0600)) ||
+            st.st_uid || st.st_gid || !(fcntl(fd, F_GETFL) & O_PATH) || fstatfs(fd, &fs) ||
+            fs.f_type != (fd == 8 ? 0x6e667364 : PROC_SUPER_MAGIC)) return -1;
+    if (fstat(13, &st) || fstatfs(13, &fs) || fs.f_type != NSFS_MAGIC ||
+        ioctl(13, NS_GET_NSTYPE) != CLONE_NEWNET ||
+        (fcntl(13, F_GETFL) & (O_PATH | O_ACCMODE)) != O_RDONLY ||
+        stat("/proc/thread-self/ns/net", &current) || st.st_ino != current.st_ino || st.st_dev != current.st_dev) return -1;
+    return 0;
 }
 
 static int fixture_guard(void)
@@ -283,6 +321,20 @@ static int attach_sources(struct source_trees *views)
     return 0;
 }
 
+static int attach_cleanup(struct source_trees *views)
+{
+    unsigned long common = MS_NOSUID | MS_NODEV | MS_NOEXEC;
+    if (mkdir("/run/root/proc/fs", 0755) || mkdir("/run/root/proc/fs/nfsd", 0755) ||
+        source_leaf(views->feature, 8, "/run/root/proc/fs/nfsd/export_features", common | MS_RDONLY, 0x6e667364)) return -1;
+    for (int i = 0; i < 4; ++i) {
+        char path[160];
+        if (snprintf(path, sizeof(path), "/run/root/proc/net/rpc/%s", flush_names[i]) <= 0 || mkdir(path, 0755)) return -1;
+        strcat(path, "/flush");
+        if (source_leaf(views->flush[i], 9 + i, path, common, PROC_SUPER_MAGIC)) return -1;
+    }
+    return 0;
+}
+
 static const char *channel_names[] = {"auth.unix.ip", "nfsd.export", "nfsd.fh"};
 
 static int channel_inputs(void)
@@ -313,6 +365,11 @@ static int private_view(int mountd)
     if (code < 0 || configuration < 0 || state < 0)
         return -1;
     if (source_role && clone_sources(&sources)) return -1;
+    if (cleanup_role) {
+        if ((sources.feature = clone_input(8, common | MS_RDONLY | MS_NOEXEC)) < 0) return -1;
+        for (int i = 0; i < 4; ++i)
+            if ((sources.flush[i] = clone_input(9 + i, common | MS_NOEXEC)) < 0) return -1;
+    }
     if (mountd)
         for (int i = 0; i < 3; ++i)
             if ((channels[i] = clone_input(8 + i, common | MS_NOEXEC)) < 0)
@@ -330,7 +387,7 @@ static int private_view(int mountd)
         symlink("code/usr", "/run/root/usr") ||
         symlink("../run", "/run/root/var/run"))
         return -1;
-    if (mountd || source_role) {
+    if (mountd || source_role || cleanup_role) {
         if (mkdir("/run/root/proc", 0755) || mkdir("/run/root/proc/net", 0755) || mkdir("/run/root/proc/net/rpc", 0755))
             return -1;
         for (int i = 0; mountd && i < 3; ++i) {
@@ -344,6 +401,7 @@ static int private_view(int mountd)
         }
     }
     if (source_role && attach_sources(&sources)) return -1;
+    if (cleanup_role && attach_cleanup(&sources)) return -1;
     if (bind_input(code, 4, "/run/root/code", common | MS_RDONLY) ||
         bind_input(configuration, 5, "/run/root/etc", common | MS_RDONLY | MS_NOEXEC) ||
         bind_input(state, 6, "/run/root/run", common | MS_NOEXEC) ||
@@ -351,7 +409,7 @@ static int private_view(int mountd)
         chdir("/run/root") || chroot(".") || chdir("/"))
         return -1;
     for (size_t i = 0; i < 3; ++i) {
-        const char *missing[] = {source_role ? "/proc/self" : mountd ? "/proc/fs" : "/proc", "/dev", source_role ? "/sys" : "/srv"};
+        const char *missing[] = {(source_role || cleanup_role) ? "/proc/self" : mountd ? "/proc/fs" : "/proc", "/dev", source_role ? "/sys" : "/srv"};
         errno = 0;
         if (!lstat(missing[i], &after) || errno != ENOENT)
             return -1;
@@ -414,17 +472,19 @@ int main(int argc, char **argv)
         if (!strcmp(argv[1], "exportfs-source-v1")) source_role = 2;
         if (!strcmp(argv[1], "withdraw-source-v1")) source_role = 3;
         if (!strcmp(argv[1], "flush-source-v1")) source_role = 4;
+        if (!strcmp(argv[1], "withdraw-owned-v1")) cleanup_role = 1;
+        if (!strcmp(argv[1], "flush-owned-v1")) cleanup_role = 2;
     }
     int daemon = argc == 2 && !strcmp(argv[1], "rpcbind-v1");
     int mountd = argc == 2 && (!strcmp(argv[1], "mountd-v1") || source_role == 1);
-    if (argc != 2 || (!daemon && !mountd && !source_role && strcmp(argv[1], "table-v1")) ||
+    if (argc != 2 || (!daemon && !mountd && !source_role && !cleanup_role && strcmp(argv[1], "table-v1")) ||
         getuid() || geteuid() || getgid() || getegid() || getpgrp() != getpid())
         return refuse();
-    if (fixture_guard() || (source_role && source_selector()))
+    if (fixture_guard() || ((source_role || cleanup_role) && source_selector()) || (cleanup_role && cleanup_selector()))
         return refuse();
-    if (descriptors(daemon || mountd) || (mountd && channel_inputs()) || (source_role && source_inputs()))
+    if (descriptors(daemon || mountd) || (mountd && channel_inputs()) || (source_role && source_inputs()) || (cleanup_role && cleanup_inputs()))
         return refuse();
-    if ((daemon || mountd || source_role) && loopback_only())
+    if ((daemon || mountd || source_role || cleanup_role) && loopback_only())
         return refuse();
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) || private_view(mountd))
         return refuse();
@@ -442,16 +502,18 @@ int main(int argc, char **argv)
     umask(0077);
     char *args[] = {"/usr/sbin/exportfs", "-s", NULL};
     char *source_args[] = {"/usr/sbin/exportfs", source_role == 2 ? "-r" : source_role == 3 ? "-au" : "-f", NULL};
+    char *cleanup_args[] = {"/usr/sbin/exportfs", cleanup_role == 1 ? "-au" : "-f", NULL};
     char *daemon_args[] = {"/usr/sbin/rpcbind", "-f", "-s", "-h", "127.0.0.1", NULL};
     char *mountd_args[] = {"/usr/sbin/rpc.mountd", "-F", "-N", "2", "-N", "4", "-V", "3", "-u", "-p", "20048", NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin", "LC_ALL=C", NULL};
-    fputs(source_role == 1 ? "PHANTOWD_NFS_SOURCE_MOUNTD_HANDOFF private_view=true caps=dac-read-search channels=3 sources=3 filehandle=true active_interfaces=lo fixed_mountd=true\n" :
+    fputs(cleanup_role ? "PHANTOWD_NFS_WITHDRAW_HANDOFF private_view=true capabilities_zero=true data_roots=false flush=4 fixed_exportfs=true\n" :
+          source_role == 1 ? "PHANTOWD_NFS_SOURCE_MOUNTD_HANDOFF private_view=true caps=dac-read-search channels=3 sources=3 filehandle=true active_interfaces=lo fixed_mountd=true\n" :
           source_role ? "PHANTOWD_NFS_SOURCE_EXPORT_HANDOFF private_view=true caps=dac-read-search sources=3 flush=4 fixed_exportfs=true\n" :
           mountd ? "PHANTOWD_NFS_MOUNTD_HANDOFF private_view=true capabilities_zero=true channels=3 active_interfaces=lo fixed_mountd=true\n" :
           daemon ? "PHANTOWD_NFS_RPCBIND_HANDOFF private_view=true initial_caps=bind-setuid-setgid active_interfaces=lo fixed_rpcbind=true\n" :
           "PHANTOWD_NFS_TABLE_HANDOFF private_view=true capabilities_zero=true fixed_exportfs=true\n", stderr);
     if (fflush(stderr))
         return refuse();
-    syscall(SYS_execveat, 7, "", mountd ? mountd_args : daemon ? daemon_args : source_role ? source_args : args, environment, AT_EMPTY_PATH);
+    syscall(SYS_execveat, 7, "", mountd ? mountd_args : daemon ? daemon_args : source_role ? source_args : cleanup_role ? cleanup_args : args, environment, AT_EMPTY_PATH);
     return refuse();
 }

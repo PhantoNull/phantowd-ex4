@@ -27,3 +27,11 @@ func TestSourceRuntimeLossProbeRefusesInvalidHandles(t *testing.T) {
 		}
 	}
 }
+
+func TestSourceRuntimeWithdrawalRefusesInvalidHandles(t *testing.T) {
+	for _, value := range []*nfsowner.SourceRuntimeQEMU{nil, {}} {
+		if value.WithdrawSourceLossFixtureQEMU(context.Background()) == nil {
+			t.Fatal("invalid source owner admitted withdrawal")
+		}
+	}
+}

@@ -49,6 +49,9 @@ SOURCE_RPCBIND = (b"PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_g
 SOURCE_LOSS = (b"PHANTOWD_NFS_SOURCE_LOSS_READY original_sources=true same_payload_replacement=true live_client=true "
                b"held_file=true binding_mismatch=true restored_refused=true unmount_ebusy=true kernel_and_daemons_live=true "
                b"original_refs_retained=true forced_unmount=false restart=false settlement=false product=false scope=qemu-only")
+SOURCE_WITHDRAW = (b"PHANTOWD_NFS_SOURCE_WITHDRAW_READY admitted_cancel=true independent_cleanup=true exports_withdrawn=true "
+                   b"kernel_stopped=true daemons_stopped=true listeners_absent=true client_mounts_retained=true cached_file_identity=true "
+                   b"review_retained=true stop_once=true forced_unmount=false restart=false quiescence=false product=false scope=qemu-only")
 SOURCE_READY = (b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_pair=true complete_candidate=true "
                 b"parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true "
                 b"mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true "
@@ -182,11 +185,13 @@ def verify_source_loss(log, report):
             seen.append("counts")
         elif line == SOURCE_LOSS:
             seen.append("loss")
+        elif line == SOURCE_WITHDRAW:
+            seen.append("withdraw")
         elif line == b"PHANTOWD_NFS_SOURCE_LOSS_DONE":
             seen.append("done")
         else:
             raise ValueError("unknown failed or mixed live-source-loss receipt")
-    if seen != ["counts", "loss", "done"]:
+    if seen != ["counts", "loss", "withdraw", "done"]:
         raise ValueError("incomplete duplicate or reordered live-source-loss receipt")
 
 

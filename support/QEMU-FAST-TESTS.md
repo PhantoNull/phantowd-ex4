@@ -101,10 +101,18 @@ detect current-name/original-tuple mismatch under the original volume, restore
 the name and require sticky review. One ordinary client unmount must return
 EBUSY. Verify the same open NFS inode, original live daemon instances, kernel
 profile/RPC and original input/source retention; new run/close attempts refuse.
-No forced/lazy unmount, retry, restart or product shutdown is claimed. Resources
-remain until VM disposal. This does not model an EX4 disk failure or pending I/O.
+Then require a separate exact withdrawal proof: cancel the admitted request,
+use an independent fixed five-second cleanup budget, withdraw exports/flush
+caches and verify original kernel/daemon/group/listener stop. The fixed cleanup
+role receives original code/config/state/features/four flush controls/netns but
+NO data roots, volume anchor, filehandle or activation option, and has zero
+capabilities after setup. Review and original parent/client references remain;
+new stop/release attempts refuse. Post-stop client identity uses DONT_SYNC cached
+metadata only, not remote I/O or complete quiescence. No forced/lazy unmount,
+restart, product shutdown or EX4 disk-failure/pending-I/O qualification is claimed.
 
-Loss receipts require exact counts, one complete loss proof and loss completion.
+Loss receipts require exact counts, one complete live-loss proof, one complete
+withdrawal proof and loss completion; older loss-only receipts no longer pass.
 Normal shutdown, mixed, partial, duplicate or unknown failure markers refuse.
 Both positive modes verify unchanged base/synthetic backing hashes. Actual POSIX
 init tests distinguish normal-source and explicit loss dispatch after proc setup.

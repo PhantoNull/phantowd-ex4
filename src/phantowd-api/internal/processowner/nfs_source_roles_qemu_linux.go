@@ -22,6 +22,42 @@ const (
 	NFSSourceFlushQEMU    NFSSourceExportOperationQEMU = "flush-source-v1"
 )
 
+// Cleanup-only ABI: no data root, volume anchor, filehandle or activation role.
+type NFSWithdrawalOperationQEMU string
+
+const (
+	NFSWithdrawOwnedQEMU NFSWithdrawalOperationQEMU = "withdraw-owned-v1"
+	NFSFlushOwnedQEMU    NFSWithdrawalOperationQEMU = "flush-owned-v1"
+)
+
+func NewNFSWithdrawalCaptureQEMU(role NFSWithdrawalOperationQEMU, bootstrap, input *os.File, objects [4]*os.File, extra [6]*os.File) (*CaptureOwner, error) {
+	if !nfsSourceFixtureGuardQEMU() || (role != NFSWithdrawOwnedQEMU && role != NFSFlushOwnedQEMU) {
+		return nil, ErrInvalid
+	}
+	command, err := os.ReadFile("/proc/cmdline")
+	if err != nil || len(command) > 4096 {
+		return nil, ErrInvalid
+	}
+	count := 0
+	for _, word := range strings.Fields(string(command)) {
+		if strings.HasPrefix(word, "phantowd_nfs_source_loss_fixture=") {
+			if word != "phantowd_nfs_source_loss_fixture=1" {
+				return nil, ErrInvalid
+			}
+			count++
+		}
+	}
+	if count != 1 {
+		return nil, ErrInvalid
+	}
+	return newNFSCommandCaptureQEMU(bootstrap, input, objects, string(role), extra[:], func(file *os.File, index int) bool {
+		if index == 0 {
+			return nfsSourceObjectQEMU(file, 4)
+		}
+		return nfsKernelInputQEMU(file, index == 5)
+	})
+}
+
 func nfsSourceFixtureGuardQEMU() bool {
 	if !nfsRuntimeFixtureGuardQEMU() {
 		return false

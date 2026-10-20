@@ -26,3 +26,14 @@ func TestNFSSourceRolesRefuseOrdinaryHost(t *testing.T) {
 		}
 	}
 }
+
+func TestNFSWithdrawalRolesRefuseOrdinaryHost(t *testing.T) {
+	if runtime.GOARCH == "arm" {
+		t.Skip("positive proof requires the dedicated source-loss guest")
+	}
+	for _, role := range []processowner.NFSWithdrawalOperationQEMU{processowner.NFSWithdrawOwnedQEMU, processowner.NFSFlushOwnedQEMU, "exportfs-source-v1", "invalid"} {
+		if value, err := processowner.NewNFSWithdrawalCaptureQEMU(role, nil, nil, [4]*os.File{}, [6]*os.File{}); value != nil || err == nil {
+			t.Fatal("ordinary host acquired source-loss withdrawal role")
+		}
+	}
+}

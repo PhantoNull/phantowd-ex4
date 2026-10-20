@@ -60,7 +60,7 @@ cd /external/src/phantowd-api
 "$go_binary" test -tags=qemu -race -count=1 ./internal/nfskernel
 "$go_binary" test -tags=qemu -race -count=1 -run '^TestNFS(Mountd|SourceMountd)(Startup|Access)' ./internal/processowner
 "$go_binary" test -tags=qemu -race -count=1 -run '^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd)' ./internal/runtimebundle
-"$go_binary" test -tags=qemu -race -count=1 -run '^TestNFS(SourceRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
+"$go_binary" test -tags=qemu -race -count=1 -run '^TestNFS(SourceRolesRefuseOrdinaryHost|WithdrawalRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
 "$go_binary" test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
 "$go_binary" test -tags=qemu -run '^(TestQEMUNFS(Reboot|Kernel)|TestQEMURebootShutdown)' -count=1 -v .
 "$go_binary" test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction

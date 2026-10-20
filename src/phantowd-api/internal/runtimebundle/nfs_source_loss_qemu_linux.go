@@ -19,10 +19,12 @@ import (
 var errNFSSourceLossQEMU = errors.New("fixed NFS source-loss fixture retains live consumers")
 
 type nfsSourceLossEvidenceQEMU struct {
-	kernel     *nfskernel.ControllerQEMU
-	companions [2]nfsCompanionQEMU
-	held       unix.Stat_t
-	verified   bool
+	kernel                                  *nfskernel.ControllerQEMU
+	companions                              [2]nfsCompanionQEMU
+	held                                    unix.Stat_t
+	verified                                bool
+	withdrawalAttempted, withdrawalVerified bool
+	withdrawalCause                         error
 }
 
 func nfsSourceLossExpectedQEMU(s *nfsCodeLifetimeQEMU, err error) bool {

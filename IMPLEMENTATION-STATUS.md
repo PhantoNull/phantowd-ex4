@@ -51,8 +51,14 @@ same existing budgets/artifact, not a new default CI job. The controller's
 one-lifetime-per-process guard remains intact. A real NFS file stays open while
 the source is replaced with the same payload, then restored. Required proofs
 include sticky review, one ordinary client-unmount EBUSY, original file/kernel/
-daemon/input retention and refusal to retry/release. The guest's destruction is
-not verified product settlement. This is not a physical volume failure, pending
+daemon/input retention and refusal to retry/release. A subsequent cleanup-only
+role receives no data directories and zero capabilities after setup. The fixed
+fixture cancels its request after admission, then uses an independent five-second
+budget for export withdrawal/cache flush, original kernel stop and original
+daemon/group/listener absence. It retains client mounts/the cached open-file
+identity and all reviewed parent references; repeated stop/release refuses.
+Cached metadata is not successful post-stop I/O or complete client quiescence.
+The guest's destruction is not verified product settlement. This is not a physical volume failure, pending
 write interruption, remote-client revocation or complete NFS fault qualification.
 
 ## Original NFS input reservation: QEMU-only preparation

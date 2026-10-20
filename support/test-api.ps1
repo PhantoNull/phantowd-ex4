@@ -39,7 +39,7 @@ try {
     go test -tags=qemu -count=1 -run '^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd)' ./internal/runtimebundle
     if ($LASTEXITCODE -ne 0) { throw 'NFS expected-code metadata tests failed.' }
     if ($IsLinux -or $env:OS -ne 'Windows_NT') {
-        go test -tags=qemu -count=1 -run '^TestNFS(SourceRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
+        go test -tags=qemu -count=1 -run '^TestNFS(SourceRolesRefuseOrdinaryHost|WithdrawalRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
         if ($LASTEXITCODE -ne 0) { throw 'NFS table capture host-refusal test failed.' }
     }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNetworkPolicy|TestQEMUISCSIPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD)$' -count=1 .
