@@ -52,55 +52,22 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
-The optional NFS `code` lane composes retained `exportfs -s`, rpcbind, mountd
-and NFSD without file I/O. Its separate `source` mode requires real NFSv3 I/O
-on three synthetic, original mounted-roster roots: RW, RO and an excluded client.
-It also requires original volume/namespace/control handles, UID/GID mapping,
-export withdrawal and verified daemon/kernel closure. Neither mode qualifies
-a complete NFS backend, product startup/recovery or access to physical disks.
-An additional optional `source-loss` mode checks replacement/restoration while
-a synthetic NFS file remains open: observed drift must retain review and live
-resources after a busy client unmount. Its subsequent fixed cleanup withdraws
-exports and stops original NFSD/daemons despite post-admission cancellation,
-without releasing reviewed source/input/client references. This is not complete
-client quiescence, product recovery or hardware qualification.
-The optional `source-daemon-loss` mode additionally checks an original mountd
-exit after that source fault, with reviewed stop and retained references.
+Optional NFS fixtures compose retained userspace code, real NFSv3/TCP access
+and an experimental lifecycle Owner in disposable ARMv5 QEMU. Synthetic tests
+cover RW/RO/excluded clients, UID/GID mapping, original policy/identity/storage
+bindings, controlled source/policy/peer loss and selected partial-start failures.
+Verified compensation stops only acquired original components, retains review
+and authority, and never grants retry, restart or release after an uncertain
+attempt. A separately prepared kernel controller remains untouched when a
+second construction is refused.
 
-Internal candidate planning can also read desired file services from an original
-NAS policy lease, with retained identity and mounted-roster observations. The
-existing ARM API fixture requires revision/release/drift refusals without
-activating NFS; this is not a product policy-to-service coordinator.
-The optional real-NFS source fixtures also join original policy/identity claims
-to the retained runtime and recheck their candidate around operations. Their
-new state and Unix test identity exist only in disposable guest RAM; they do not
-enable product startup, continuous request admission or recovery.
-The normal source campaign uses separate server start/check/I/O/stop calls,
-keeping original processes and exports alive between them. A fixed internal
-backend joins those calls to the experimental Owner, including exclusive idle
-supervision cancellation and verified stop before release. This remains a
-disposable QEMU campaign, not periodic real-server fault qualification,
-reboot persistence or product startup/recovery.
-
-The optional `source-owner-policy-loss` campaign additionally requires scheduled
-Owner supervision to detect an atomic exchange with a complete byte-identical
-policy replacement, stop the actual
-server and retain review/references after restoration. It uses only fresh guest
-RAM policy state; this is one fault case, not complete service recovery or
-continuous request authorization.
-
-The optional `source-owner-daemon-loss` campaign additionally tests a controlled
-original mountd exit, scheduled detection and one retained-reference compensation.
-Fresh stopped observations retain review and authority; they do not permit a
-restart or certify complete faults, client quiescence or product recovery.
-The optional `source-owner-daemon-stop-loss` variant detects the same controlled
-exit first inside explicit Stop, without an intervening Check or supervision.
-That first admitted Stop performs the original-reference compensation once,
-retains the original cause and still returns review rather than normal success.
-The optional `source-owner-partial-start` case also verifies actual rpcbind
-readiness followed by mountd constructor refusal before acquisition. It stops
-only the acquired component, retains review/references and proves the fixed
-stopped profile; other partial-start/readiness faults remain unqualified.
+These are development fixtures, not a complete NFS backend, exclusive OS-wide
+control-domain authority, continuous request authorization or product startup/
+recovery. Other constructor/readiness failures, pending I/O, NLM/NSM, complete
+client quiescence and physical disks remain unqualified. See the
+[Owner contract](src/phantowd-api/internal/nfsowner/README.md),
+[runtime boundaries](support/NFS-RUNTIME-PROFILE.md) and
+[focused test profiles](support/QEMU-FAST-TESTS.md).
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

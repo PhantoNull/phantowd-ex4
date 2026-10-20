@@ -374,6 +374,30 @@ func (k *ControllerQEMU) CheckRunning(ctx context.Context) error {
 	return nil
 }
 
+// CheckPreparedQEMU observes an ORIGINAL reserved but never-started controller.
+// No transaction writes, stop, close, release or replacement are performed.
+// It is not sole kernel-domain authority or complete client quiescence.
+func (k *ControllerQEMU) CheckPreparedQEMU(ctx context.Context) error {
+	if err := k.enter(ctx, false); err != nil {
+		return err
+	}
+	defer k.leave()
+	if k.started || k.stopped || k.socket >= 0 || k.uncertain != nil {
+		return ErrRefused
+	}
+	kernelRetention.Lock()
+	originalReservation := kernelRetention.active == k && len(kernelRetention.objects) == 0
+	kernelRetention.Unlock()
+	if !originalReservation {
+		return k.retain()
+	}
+	k.phase = "check-prepared"
+	if k.profile(ctx, false) != nil {
+		return k.retain()
+	}
+	return ctx.Err()
+}
+
 // CheckStopped observes the ORIGINAL stopped component without releasing any
 // namespace/control reference. It is not complete export/client quiescence.
 func (k *ControllerQEMU) CheckStopped(ctx context.Context) error {

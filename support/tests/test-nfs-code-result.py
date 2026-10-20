@@ -16,6 +16,27 @@ spec.loader.exec_module(checker)
 
 
 class CodeReceiptTests(unittest.TestCase):
+    def test_kernel_constructor_refusal_requires_original_controller_and_daemon_stop(self):
+        lines=[b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",checker.SOURCE_POLICY,
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_ARMED original_prepared_controller=true original_reservation=true replacement=false kernel_started=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SERVER_KERNEL_CONSTRUCT_REFUSED original_daemons_ready=true kernel_start_attempted=false exports_activated=false retention_inferred=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SERVER_FAILURE phase=kernel-construct",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_READY original_daemons_stopped=true kernel_never_started=true exports_never_activated=true original_controller_prepared=true original_controller_retained=true original_reservation=true foreign_stop=false original_stopped_observation=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_DONE"]
+        for ending in (b"\n",b"\r\n"):
+            checker.verify_source_owner_kernel_refusal(ending.join(lines)+ending,self.report)
+        variants=[lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)),lines+[b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_FAILED"]]
+        for old,new in ((b"original_daemons_stopped=true",b"original_daemons_stopped=false"),(b"release=false",b"release=true"),
+                        (b"retention_inferred=false",b"retention_inferred=true"),(b"foreign_stop=false",b"foreign_stop=true"),
+                        (b"original_controller_retained=true",b"original_controller_retained=false"),
+                        (b"original_reservation=true",b"original_reservation=false"),(b"phase=kernel-construct",b"phase=mountd-construct")):
+            variants.append([line.replace(old,new) for line in lines])
+        for variant in variants:
+            with self.subTest(variant=variant),self.assertRaises(ValueError):
+                checker.verify_source_owner_kernel_refusal(b"\n".join(variant),self.report)
+
     def test_partial_start_requires_original_rpc_stop_without_claiming_other_stops(self):
         lines=[b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",checker.SOURCE_POLICY,
                b"PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_ARMED original_rpcbind_ready=true mountd_constructor_refused=true mountd_started=false kernel_started=false exports_activated=false product=false scope=qemu-only",
@@ -367,7 +388,7 @@ class ShellModeTests(unittest.TestCase):
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -382,7 +403,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-binding; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -397,7 +418,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -412,7 +433,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-daemon-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -427,7 +448,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-policy-loss; }
         init = self.dispatch_init()
         stubs = '''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -442,7 +463,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-daemon-loss; }
         init=self.dispatch_init()
         stubs='''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_rpc_start_failure_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -457,7 +478,7 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-daemon-stop-loss; 
         init=self.dispatch_init()
         stubs='''proc_ready=0
 mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
-grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*) return 1;; esac; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_kernel_construct_refusal_fixture*) return 1;; esac; }
 mkdir() { :; }
 ip() { :; }
 reboot() { :; }
@@ -466,6 +487,21 @@ fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-partial-start; }
         completed=subprocess.run(["sh","-c",stubs+init],capture_output=True,timeout=2)
         self.assertEqual(completed.returncode,0,completed.stderr)
         self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_DONE",completed.stdout)
+        self.assertNotIn(b"FAILED",completed.stdout)
+
+    def test_actual_init_selects_kernel_constructor_refusal(self):
+        init=self.dispatch_init()
+        stubs='''proc_ready=0
+mount() { if [ "$2" = proc ]; then proc_ready=1; fi; }
+grep() { test "$proc_ready" = 1 || return; case "$2" in *source_loss_fixture*|*source_daemon_loss_fixture*|*source_owner_policy_loss_fixture*|*source_owner_daemon_loss_fixture*|*source_owner_stop_loss_fixture*|*source_owner_rpc_start_failure_fixture*) return 1;; esac; }
+mkdir() { :; }
+ip() { :; }
+reboot() { :; }
+fixture_probe() { test "$#" = 1 && test "$1" = --source-owner-kernel-refusal; }
+'''
+        completed=subprocess.run(["sh","-c",stubs+init],capture_output=True,timeout=2)
+        self.assertEqual(completed.returncode,0,completed.stderr)
+        self.assertIn(b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_DONE",completed.stdout)
         self.assertNotIn(b"FAILED",completed.stdout)
 
     def test_actual_image_staging_function_preserves_fixture_selection(self):

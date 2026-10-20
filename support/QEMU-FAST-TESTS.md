@@ -14,7 +14,7 @@ Separate server-cleanup roles accept no data roots and run with zero capabilitie
 The legacy source-loss constructor/role selector is unchanged. Go and native C
 selector tests reject missing/duplicate/mixed flags; C is exercised in its actual
 ARM role as well. Copied, model-backed and concurrently supervised Owners cannot
-perform the fault mutation. All eight optional NFS profiles pass, with this case
+perform the fault mutation. All nine optional NFS profiles pass, with this case
 also checked through the ordinary PowerShell wrapper. Guest90/helper60/wrapper360
 and the original operation/cleanup5s and RAM-only resource limits are unchanged.
 
@@ -54,6 +54,30 @@ nine fresh guests/one helper,27 receipt/shell and three loader groups. Existing
 90/60/360/5s limits, old role guards, privileges and default CI jobs are unchanged.
 Other acquisition/readiness/uncertain-constructor/close failures, complete
 quiescence, product bootstrap/recovery, full images and EX4 remain unqualified.
+
+### Kernel-constructor reservation conflict after daemon readiness
+
+`-FixtureMode source-owner-kernel-refusal` adds the exact
+`phantowd_nfs_source_owner_kernel_construct_refusal_fixture=1` source selector.
+One original controller is prepared and retained without starting NFSD. After
+actual rpcbind/mountd readiness, a second construction must refuse against that
+process-local reservation. No replacement backend, arbitrary PID/path or injected
+successful callback is used. A nil result never proves no hidden retained owner.
+
+The positive receipt requires original-reference validation, one reverse-order
+stop of acquired mountd/rpcbind, fresh original stopped observations and retained
+review/authority/FDs. Kernel Start must never be attempted; the original controller
+must still pass its read-only prepared-profile and process-local reservation
+observation afterwards. No kernel Stop/Close/replacement/global reset occurs.
+Missing export table is admissible only with established acquisition and actual
+stopped-child proof. Unknown/mixed frontiers and kernel-start attempts refuse.
+
+Cached and ordinary wrapper runs plus all eight previous profiles pass in ten
+fresh guests with one helper;29 receipt/shell+3 loader groups precede the guests.
+Existing90/60/360/5s limits, privileges, roles and default CI jobs are unchanged.
+This does not qualify hidden-constructor failures beyond this controlled conflict,
+partial kernel Start, sole OS-wide domain ownership, client quiescence, complete
+recovery, a full firmware image or EX4 hardware. All state exists in guest RAM.
 
 ## Optional retained NFS table consumer
 

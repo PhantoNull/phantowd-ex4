@@ -63,7 +63,7 @@ func parseOwnerLossSelector(data []byte, faultFlag string) (selected, valid bool
 			policy++
 		}
 		for _, prefix := range []string{"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=",
-			"phantowd_nfs_source_owner_policy_loss_fixture=", "phantowd_nfs_source_owner_daemon_loss_fixture=", "phantowd_nfs_source_owner_rpc_start_failure_fixture="} {
+			"phantowd_nfs_source_owner_policy_loss_fixture=", "phantowd_nfs_source_owner_daemon_loss_fixture=", "phantowd_nfs_source_owner_rpc_start_failure_fixture=", "phantowd_nfs_source_owner_kernel_construct_refusal_fixture="} {
 			if prefix != faultFlag && strings.HasPrefix(word, prefix) {
 				other++
 			}

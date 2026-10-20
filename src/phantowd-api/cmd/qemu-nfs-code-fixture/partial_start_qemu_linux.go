@@ -14,13 +14,18 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
+// Original independently prepared controller survives any fixture error.
+// No stop, close, release or global-reset operation targets this controller.
+var partialStartOriginalController *nfskernel.ControllerQEMU
+
 func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRuntimeQEMU, authority *sourcePolicyFixture,
-	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease) (result error) {
+	roots *nfsowner.ExportRootsQEMU, inputs *runtimebundle.NFSInputsQEMU, lease *mountowner.MountedVolumeSetLease, kernelRefusal bool) (result error) {
 	phase := "owner-construction"
 	defer func() {
 		if result != nil {
@@ -30,6 +35,17 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	owner, err := joined.NewServerOwnerFixtureQEMU(ctx)
 	if err != nil {
 		return err
+	}
+	if kernelRefusal {
+		phase = "original-controller-reservation"
+		partialStartOriginalController, err = nfskernel.OpenCodeQEMU(ctx)
+		if err != nil {
+			return err
+		}
+		if err := partialStartOriginalController.CheckPreparedQEMU(ctx); err != nil {
+			return err
+		}
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_ARMED original_prepared_controller=true original_reservation=true replacement=false kernel_started=false product=false scope=qemu-only")
 	}
 	phase = "owner-start"
 	err = owner.Start(ctx)
@@ -68,6 +84,17 @@ func runSourceOwnerPartialStart(ctx context.Context, joined *nfsowner.SourceRunt
 	}
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if kernelRefusal {
+		phase = "original-controller-still-prepared"
+		if err := partialStartOriginalController.CheckPreparedQEMU(ctx); err != nil {
+			return err
+		}
+		if after, err := sourceFDCount(); err != nil || after != retained {
+			return errors.New("prepared observation changed retained descriptor count")
+		}
+		fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_READY original_daemons_stopped=true kernel_never_started=true exports_never_activated=true original_controller_prepared=true original_controller_retained=true original_reservation=true foreign_stop=false original_stopped_observation=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only")
+		return nil
 	}
 	fmt.Println("PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_READY rpcbind_stopped=true mountd_never_started=true kernel_never_started=true exports_never_activated=true original_stopped_observation=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only")
 	return nil

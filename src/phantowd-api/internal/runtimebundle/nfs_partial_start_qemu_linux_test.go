@@ -43,27 +43,71 @@ func TestNFSSourcePartialStartBoundaryRefusesUnacquiredAndMixedComponents(t *tes
 		t.Fatal("bookkeeping frontier refused before original-reference validation")
 	}
 	for name, mutate := range map[string]func(*nfsServerQEMU){
-		"not-established": func(v *nfsServerQEMU) { v.rpcOnlyStartRefused = false },
-		"no-rpc":          func(v *nfsServerQEMU) { v.rpcbind = nil },
-		"mountd-acquired": func(v *nfsServerQEMU) { v.mountd = &nfsDaemonQEMU{} },
-		"kernel-acquired": func(v *nfsServerQEMU) { v.kernel = &nfskernel.ControllerQEMU{} },
-		"server-running":  func(v *nfsServerQEMU) { v.running = true },
-		"io-attempted":    func(v *nfsServerQEMU) { v.ioAttempted = true },
-		"exports":         func(v *nfsServerQEMU) { v.source.exportsLoaded = true },
-		"wrong-original":  func(v *nfsServerQEMU) { v.source.server = &nfsServerQEMU{} },
-		"wrong-code":      func(v *nfsServerQEMU) { v.rpcbind.code = &nfsCodeLifetimeQEMU{} },
-		"wrong-source":    func(v *nfsServerQEMU) { v.rpcbind.source = &NFSSourceAccessQEMU{} },
-		"never-started":   func(v *nfsServerQEMU) { v.rpcbind.attempted = false },
-		"not-ready":       func(v *nfsServerQEMU) { v.rpcbind.readyEvidence = false },
-		"unknown-rpc":     func(v *nfsServerQEMU) { v.rpcbind.review = true },
-		"wrong-role":      func(v *nfsServerQEMU) { v.rpcbind.mountd = true },
-		"closed-rpc":      func(v *nfsServerQEMU) { v.rpcbind.closed = true },
+		"not-established":        func(v *nfsServerQEMU) { v.rpcOnlyStartRefused = false },
+		"no-rpc":                 func(v *nfsServerQEMU) { v.rpcbind = nil },
+		"mountd-acquired":        func(v *nfsServerQEMU) { v.mountd = &nfsDaemonQEMU{} },
+		"kernel-acquired":        func(v *nfsServerQEMU) { v.kernel = &nfskernel.ControllerQEMU{} },
+		"kernel-start-attempted": func(v *nfsServerQEMU) { v.kernelStartAttempted = true },
+		"server-running":         func(v *nfsServerQEMU) { v.running = true },
+		"io-attempted":           func(v *nfsServerQEMU) { v.ioAttempted = true },
+		"exports":                func(v *nfsServerQEMU) { v.source.exportsLoaded = true },
+		"wrong-original":         func(v *nfsServerQEMU) { v.source.server = &nfsServerQEMU{} },
+		"wrong-code":             func(v *nfsServerQEMU) { v.rpcbind.code = &nfsCodeLifetimeQEMU{} },
+		"wrong-source":           func(v *nfsServerQEMU) { v.rpcbind.source = &NFSSourceAccessQEMU{} },
+		"never-started":          func(v *nfsServerQEMU) { v.rpcbind.attempted = false },
+		"not-ready":              func(v *nfsServerQEMU) { v.rpcbind.readyEvidence = false },
+		"unknown-rpc":            func(v *nfsServerQEMU) { v.rpcbind.review = true },
+		"wrong-role":             func(v *nfsServerQEMU) { v.rpcbind.mountd = true },
+		"closed-rpc":             func(v *nfsServerQEMU) { v.rpcbind.closed = true },
 	} {
 		t.Run(name, func(t *testing.T) {
 			v := makeBoundary()
 			mutate(v)
 			if v.rpcOnlyStartBoundary() {
 				t.Fatal("mixed or unacquired frontier accepted")
+			}
+		})
+	}
+}
+
+func TestNFSSourcePartialDaemonBoundaryRequiresOriginalAcquisitionAndNoKernelStart(t *testing.T) {
+	makeBoundary := func() *nfsServerQEMU {
+		source, code := &NFSSourceAccessQEMU{}, &nfsCodeLifetimeQEMU{}
+		v := &nfsServerQEMU{source: source, code: code, kernelConstructionRefused: true}
+		source.server, code.sourceAccess = v, source
+		for index, slot := range []**nfsDaemonQEMU{&v.rpcbind, &v.mountd} {
+			d := &nfsDaemonQEMU{code: code, source: source, child: &processowner.PinnedSet{}, program: &os.File{}, attempted: true, readyEvidence: true, pid: index + 2, mountd: index == 1}
+			d.original = d
+			*slot = d
+		}
+		return v
+	}
+	if !makeBoundary().daemonsOnlyStartBoundary() {
+		t.Fatal("bookkeeping frontier refused before original-reference validation")
+	}
+	for name, mutate := range map[string]func(*nfsServerQEMU){
+		"no-constructor-refusal": func(v *nfsServerQEMU) { v.kernelConstructionRefused = false },
+		"mixed-frontier":         func(v *nfsServerQEMU) { v.rpcOnlyStartRefused = true },
+		"kernel-result-present":  func(v *nfsServerQEMU) { v.kernel = &nfskernel.ControllerQEMU{} },
+		"kernel-start-attempted": func(v *nfsServerQEMU) { v.kernelStartAttempted = true },
+		"no-mountd":              func(v *nfsServerQEMU) { v.mountd = nil },
+		"no-rpcbind":             func(v *nfsServerQEMU) { v.rpcbind = nil },
+		"server-running":         func(v *nfsServerQEMU) { v.running = true },
+		"exports":                func(v *nfsServerQEMU) { v.source.exportsLoaded = true },
+		"wrong-original":         func(v *nfsServerQEMU) { v.source.server = &nfsServerQEMU{} },
+		"wrong-role":             func(v *nfsServerQEMU) { v.mountd.mountd = false },
+		"wrong-source":           func(v *nfsServerQEMU) { v.mountd.source = &NFSSourceAccessQEMU{} },
+		"wrong-code":             func(v *nfsServerQEMU) { v.mountd.code = &nfsCodeLifetimeQEMU{} },
+		"not-ready":              func(v *nfsServerQEMU) { v.mountd.readyEvidence = false },
+		"unknown-daemon":         func(v *nfsServerQEMU) { v.mountd.review = true },
+		"unstarted":              func(v *nfsServerQEMU) { v.mountd.attempted = false },
+		"closed":                 func(v *nfsServerQEMU) { v.mountd.closed = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			v := makeBoundary()
+			mutate(v)
+			if v.daemonsOnlyStartBoundary() {
+				t.Fatal("unknown or mixed acquisition frontier accepted")
 			}
 		})
 	}

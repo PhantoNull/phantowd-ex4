@@ -250,7 +250,17 @@ def verify_source_owner_partial_start(log, report):
     _verify_source_owner_fault(log, report, markers)
 
 
-def _verify_source_owner_fault(log, report, markers):
+def verify_source_owner_kernel_refusal(log, report):
+    markers = {SOURCE_POLICY: "policy",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_ARMED original_prepared_controller=true original_reservation=true replacement=false kernel_started=false product=false scope=qemu-only": "armed",
+               b"PHANTOWD_NFS_SERVER_KERNEL_CONSTRUCT_REFUSED original_daemons_ready=true kernel_start_attempted=false exports_activated=false retention_inferred=false product=false scope=qemu-only": "constructor-refused",
+               b"PHANTOWD_NFS_SERVER_FAILURE phase=kernel-construct": "detected",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_READY original_daemons_stopped=true kernel_never_started=true exports_never_activated=true original_controller_prepared=true original_controller_retained=true original_reservation=true foreign_stop=false original_stopped_observation=true review_retained=true source_refs_retained=true no_retry=true no_restart=true release=false product=false scope=qemu-only": "stopped-review",
+               b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_DONE": "done"}
+    _verify_source_owner_fault(log, report, markers, ["counts", "policy", "armed", "constructor-refused", "detected", "stopped-review", "done"])
+
+
+def _verify_source_owner_fault(log, report, markers, sequence=None):
     if len(log) > MAX_LOG:
         raise ValueError("log budget")
     counts = expected_counts(report)
@@ -266,7 +276,7 @@ def _verify_source_owner_fault(log, report, markers):
             seen.append(markers[line])
         else:
             raise ValueError("unknown failed or broadened independent daemon-loss receipt")
-    if seen != ["counts", "policy", "armed", "detected", "stopped-review", "done"]:
+    if seen != (sequence if sequence is not None else ["counts", "policy", "armed", "detected", "stopped-review", "done"]):
         raise ValueError("incomplete duplicate or reordered independent daemon-loss receipt")
 
 
@@ -330,15 +340,18 @@ def main():
         owner_peer = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-daemon-loss"
         owner_stop = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-daemon-stop-loss"
         partial_start = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-partial-start"
-        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and len(sys.argv) != 3:
+        kernel_refusal = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-kernel-refusal"
+        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and not kernel_refusal and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start else sys.argv[1:]
-        verifier = verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start or kernel_refusal else sys.argv[1:]
+        verifier = verify_source_owner_kernel_refusal if kernel_refusal else verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if partial_start:
+    if kernel_refusal:
+        print("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_RECEIPT_READY transport=LF-or-CRLF exact=true scope=owned-daemons-stop-original-controller-retained")
+    elif partial_start:
         print("PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_RECEIPT_READY transport=LF-or-CRLF exact=true scope=rpc-only-partial-start-stopped-review")
     elif owner_stop:
         print("PHANTOWD_NFS_SOURCE_OWNER_STOP_LOSS_RECEIPT_READY transport=LF-or-CRLF exact=true scope=explicit-stop-peer-loss-stopped-review")

@@ -24,6 +24,13 @@ observations permit missing etab only after actual RPC stopped proof at that
 established frontier. Review/references stay retained. Other partial-start,
 readiness and uncertain-constructor outcomes remain unqualified; no product
 constructor, privilege or generic Owner/process behavior changes.
+The next acquired frontier also passes: a real original prepared kernel
+reservation causes a second construction to refuse after both original daemons
+are ready. Compensation stops only mountd/rpcbind, never any kernel controller.
+The original controller remains read-only verified, prepared and retained with
+the same process-local reservation. This is not OS-wide sole-domain authority.
+Explicit kernel-start-attempt bookkeeping rejects partial listener/thread
+effects; nil kernel results do not authorize stop, close, replacement or reset.
 
 ## Existing evidence and the missing boundary
 

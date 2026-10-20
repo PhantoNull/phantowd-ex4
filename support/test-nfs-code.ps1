@@ -4,7 +4,7 @@
 param(
     [string]$BaseArtifactDirectory = (Join-Path $PSScriptRoot '../artifacts/qemu-armv5'),
     [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker/wsl/disk/docker_data.vhdx'),
-    [ValidateSet('code','source','source-loss','source-daemon-loss','source-owner-policy-loss','source-owner-daemon-loss','source-owner-daemon-stop-loss','source-owner-partial-start')][string]$FixtureMode = 'code'
+    [ValidateSet('code','source','source-loss','source-daemon-loss','source-owner-policy-loss','source-owner-daemon-loss','source-owner-daemon-stop-loss','source-owner-partial-start','source-owner-kernel-refusal')][string]$FixtureMode = 'code'
 )
 $ErrorActionPreference = 'Stop'
 $FixtureMode = $FixtureMode.ToLowerInvariant()

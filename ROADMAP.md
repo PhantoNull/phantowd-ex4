@@ -28,7 +28,7 @@ one original-reference compensation and independent fresh stopped observations.
 The missing original mountd does not prevent withdrawal, NFSD stop and original
 rpcbind settlement. Actual mountd Stop review/cause is retained, not relabelled
 normal success. Original policy/identity/storage/runtime authority stays held;
-retry/restart/release refuse. Eight optional profiles pass at unchanged budgets.
+retry/restart/release refuse. Nine optional profiles pass at unchanged budgets.
 The explicit-Stop variant also discovers that controlled exit without a prior
 Check or supervision: the same first admitted Stop retains its original
 cause/phase and compensates once, still returning review. Independent fresh
@@ -40,12 +40,19 @@ only acquired rpcbind; original stopped observations, retained authority/review
 and no retry/restart/release are mandatory. A nil component alone is not proof.
 No mountd, NFSD or export mutation is invented for an unstarted component.
 
+The two-daemon frontier also passes against a real independently prepared kernel
+reservation: a second construction refuses after original rpcbind/mountd readiness.
+Compensation stops only those original daemons; the original prepared controller
+and its process-local reservation stay retained and read-only verified. No kernel
+Stop/Close/replacement/reset is admitted. Nil does not mean never-acquired; an
+explicit before-effects kernel-start marker excludes listener/thread uncertainty.
+
 Remaining acceptance before complete service/product qualification:
 
 1. Other pre-dispatch/reference/admission failures during explicit Stop,
    other partial-start/failed-readiness/uncertain-constructor settlement, hard
-   crashes and independent
-   rpcbind/kernel loss. Do not infer these from the controlled graceful mountd
+   crashes, kernel Start listener/thread effects and independent rpcbind/kernel
+   loss. Do not infer these from the controlled graceful mountd
    exit detected by supervision or by its dedicated explicit-Stop variant.
 2. Identity, policy, source, code, channel and mutable-state faults, including
    close uncertainty, cancellation and combined outcomes; keep all original

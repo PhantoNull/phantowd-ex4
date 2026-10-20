@@ -246,7 +246,7 @@ original controls, empty exports, fixed listeners and original process/group
 absence before the join records the server absent. That diagnostic does not
 require healthy service admission, clear review or authorize release. Policy/
 identity claims remain valid; closure/retry/restart refuse and retained FDs stay
-stable. All eight profiles pass, including a separate ordinary-wrapper execution.
+stable. All nine profiles pass, including a separate ordinary-wrapper execution.
 
 The `source-owner-daemon-stop-loss` variant calls explicit Stop immediately
 after the same exit, with no intervening Check or supervision. The same first
@@ -265,6 +265,18 @@ stopped observations and actual RPC stopped-child proof qualify missing etab
 only for this frontier. Review, original causes and authority remain held;
 closure/retry/restart refuse with stable retained FDs. Nine fresh guests cover
 this variant twice and each prior profile once, with27 receipt/shell groups.
+
+The latest `source-owner-kernel-refusal` campaign prepares and retains an
+independent original kernel controller before original rpcbind/mountd readiness.
+Its real reservation refuses the server's second construction. The common
+acquired-only cleanup stops both original daemons in reverse dependency order,
+retains review/causes/claims/refs and invokes no kernel Stop/Close/replacement/
+reset. Fresh original stopped observations and the original prepared controller's
+read-only profile/reservation check remain mandatory. Nil is not never-acquired;
+unknown/mixed frontiers and any attempted kernel Start refuse this partial path.
+Ten fresh guests cover this case twice and eight prior profiles once, with29
+receipt/shell and three loader groups at unchanged budgets. The reservation is
+process-local, not sole OS-wide NFSD authority or product recovery.
 
 Other pre-dispatch/reference/admission failures, other partial-start/readiness/
 uncertain-constructor/close outcomes,

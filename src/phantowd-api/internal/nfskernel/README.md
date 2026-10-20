@@ -28,6 +28,18 @@ consumer settlement. Copies/invalid handles refuse. Uncertain transactions or
 closure retain review and original references; a second constructor cannot
 erase the first lifetime. JSON is refused and formatting is private.
 
+`CheckPreparedQEMU` is a distinct read-only observation of an original reserved
+but never-started controller. It verifies held namespace/control references,
+fresh empty-profile reads, the same process-local active reservation and an
+empty retained-failure census. It performs no transaction writes, Stop,
+Close, release, replacement or reset. An original controller remains prepared
+before/after the optional second-constructor-refusal fixture while only that
+server's acquired daemons are stopped. This is not OS-wide sole-domain authority.
+Unsupported lifecycle observations refuse; reference/profile uncertainty retains
+review and original references. Positive prepared observation is not stopped,
+closed or release authority. General constructor/read/close/cancellation faults
+and product integration remain unqualified.
+
 The optional code guest composes this with original live rpcbind/mountd and
 code/config/state/channel handles. It additionally requires accepted NFSv3 NULL
 RPC and verifies both original daemons/channels before and after kernel checks.

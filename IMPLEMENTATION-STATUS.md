@@ -17,8 +17,8 @@ observations establish absence without clearing review or releasing authority.
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
 targeted race-count3 and strict C-selector/receipt/dispatch tests pass. The latest
-campaign covers all eight optional profiles: the RPC-only partial-start case
-through cached and ordinary wrappers plus seven previous profiles in fresh guests.
+campaign covers all nine optional profiles: the kernel-constructor reservation
+conflict through cached and ordinary wrappers plus eight previous profiles.
 
 `source-owner-daemon-stop-loss` performs no Check or supervision between the
 controlled mountd exit and explicit Stop. The original Stop precheck previously
@@ -37,10 +37,21 @@ Fresh original stopped observations may accept a missing export table only at
 this established RPC-only boundary with verified stopped-child proof. Review,
 causes and authority remain retained; retry/restart/release refuse.
 
-Nine actual guests share one tested helper and unchanged source/base images;
-27 receipt/shell and three loader groups pass with unchanged deadlines.
+`source-owner-kernel-refusal` additionally retains one independently prepared
+controller and its process-local reservation. Actual rpcbind/mountd readiness
+then precedes a second constructor's real refusal. Acquired-only compensation
+now stops both original daemons in reverse order; it never invokes kernel Stop,
+Close, replacement or global reset. A fresh read-only original-controller
+observation confirms it remains prepared and retained. Nil is NOT interpreted
+as no acquired/hidden resources; an explicit kernel-start-attempt marker excludes
+partial listener/thread effects from this cleanup frontier. Review/causes/claims
+and descriptors remain held, with no retry/restart/release.
+
+Ten actual guests share one tested helper and unchanged source/base images;
+29 receipt/shell and three loader groups pass with unchanged deadlines.
 This does not qualify other pre-dispatch/reference/admission failures, hard
-crashes, other partial-start/readiness/uncertain-constructor frontiers, pending
+crashes, other partial-start/readiness/uncertain-constructor frontiers, kernel
+Start listener/thread effects, OS-wide domain ownership, pending
 I/O, complete faults, product recovery or EX4 hardware.
 
 ## Owner-backed real-NFS server calls in disposable QEMU

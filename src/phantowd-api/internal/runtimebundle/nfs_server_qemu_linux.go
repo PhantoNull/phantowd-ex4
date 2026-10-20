@@ -36,6 +36,8 @@ type nfsServerQEMU struct {
 	stopCheckPhase                               string
 	phase                                        string
 	rpcOnlyStartRefused                          bool
+	kernelConstructionRefused                    bool
+	kernelStartAttempted                         bool
 }
 
 type nfsServerTableQEMU struct {
@@ -210,10 +212,9 @@ func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCo
 	err := unix.Fstatat(int(s.state.root.Fd()), "nfs/etab", &named, unix.AT_SYMLINK_NOFOLLOW)
 	if err != nil {
 		// A consumed partial-start can legitimately have NO export table:
-		// only an established RPC-only boundary with actual stopped-child
-		// proof may admit absence. It is never inferred from nil components.
-		partial := reviewed && o.server.rpcOnlyStartBoundary() && o.server.stopAttempted &&
-			o.server.rpcbind.stopped && o.server.rpcbind.stoppedProof
+		// only an established pre-kernel-start boundary with actual acquired-
+		// child stopped proof may admit absence. Never infer it from nils.
+		partial := reviewed && o.server.partialStartStoppedProof()
 		if !errors.Is(err, unix.ENOENT) || o.consumed && !partial {
 			return err
 		}
@@ -303,9 +304,12 @@ func (v *nfsServerQEMU) start(ctx context.Context) error {
 	v.phase = "kernel-construct"
 	v.kernel, err = nfskernel.OpenCodeQEMU(ctx)
 	if err != nil {
+		v.kernelConstructionRefused = true // Does NOT mean no hidden retained controller.
+		fmt.Println("PHANTOWD_NFS_SERVER_KERNEL_CONSTRUCT_REFUSED original_daemons_ready=true kernel_start_attempted=false exports_activated=false retention_inferred=false product=false scope=qemu-only")
 		return err
 	}
 	v.phase = "kernel-start"
+	v.kernelStartAttempted = true // BEFORE any listener/thread transaction.
 	if err := v.kernel.Start(ctx); err != nil {
 		return err
 	}
