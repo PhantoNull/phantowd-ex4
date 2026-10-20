@@ -56,51 +56,68 @@ static int source_selector(void)
     return count == 1 ? 0 : -1;
 }
 
+static int source_cleanup_command(const char *command, size_t size);
+
 static int cleanup_selector(void)
 {
     char command[4097];
     int fd = open("/proc/cmdline", O_RDONLY | O_CLOEXEC);
     if (fd < 0) return -1;
     ssize_t size = read(fd, command, sizeof(command));
-    int closed = close(fd), count = 0;
+    int closed = close(fd);
     if (size <= 0 || size >= (ssize_t)sizeof(command) || closed) return -1;
     command[size] = 0;
-    char *save = NULL;
-    const char *prefix = "phantowd_nfs_source_loss_fixture=";
-    for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save)) {
-        if (!strncmp(word, prefix, strlen(prefix))) {
-            if (strcmp(word, "phantowd_nfs_source_loss_fixture=1")) return -1;
-            ++count;
-        }
-    }
-    return count == 1 ? 0 : -1;
+    return source_cleanup_command(command, (size_t)size);
 }
 
-static int server_cleanup_command(char *command, size_t size)
+enum nfs_fault_flag { FAULT_CODE, FAULT_SOURCE, FAULT_SOURCE_LOSS, FAULT_SOURCE_PEER, FAULT_OWNER_PEER, FAULT_OWNER_STOP };
+
+/* Bounded ASCII tokenization matching the Go fault-role grammar. No allocation,
+ * mutation or dependence on a terminating NUL beyond the supplied byte range. */
+static int fault_flags_command(const char *command, size_t size, unsigned char flags[6])
 {
     if (!size || size > 4096 || memchr(command, 0, size)) return -1;
-    const char *required[] = {"phantowd_nfs_code_fixture=", "phantowd_nfs_source_fixture=",
-                              "phantowd_nfs_source_owner_daemon_loss_fixture="};
-    const char *excluded[] = {"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=",
-                              "phantowd_nfs_source_owner_policy_loss_fixture="};
-    int count[3] = {0, 0, 0}, stop = 0;
-    const char *stop_prefix = "phantowd_nfs_source_owner_stop_loss_fixture=";
-    char *save = NULL;
-    for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save)) {
-        if (!strncmp(word, stop_prefix, strlen(stop_prefix))) {
-            if (strcmp(word, "phantowd_nfs_source_owner_stop_loss_fixture=1")) return -1;
-            ++stop;
-        }
-        for (int index = 0; index < 3; ++index) {
-            size_t length = strlen(required[index]);
-            if (!strncmp(word, required[index], length)) {
-                if (word[length] != '1' || word[length + 1]) return -1;
-                ++count[index];
+    static const char *values[] = {"phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1",
+        "phantowd_nfs_source_loss_fixture=1", "phantowd_nfs_source_daemon_loss_fixture=1",
+        "phantowd_nfs_source_owner_daemon_loss_fixture=1", "phantowd_nfs_source_owner_stop_loss_fixture=1"};
+    memset(flags, 0, 6);
+    size_t offset = 0;
+    while (offset < size) {
+        while (offset < size && strchr(" \t\r\n", command[offset])) ++offset;
+        if (offset == size) break;
+        size_t end = offset;
+        while (end < size && !strchr(" \t\r\n", command[end])) ++end;
+        int matched = -1;
+        for (int index = 0; index < 6; ++index) {
+            if (end - offset == strlen(values[index]) && !memcmp(command + offset, values[index], end - offset)) {
+                matched = index;
+                break;
             }
-            if (!strncmp(word, excluded[index], strlen(excluded[index]))) return -1;
         }
+        if (matched >= 0) {
+            if (flags[matched]) return -1;
+            flags[matched] = 1;
+        } else if (end - offset >= sizeof("phantowd_nfs_") - 1 &&
+                   !memcmp(command + offset, "phantowd_nfs_", sizeof("phantowd_nfs_") - 1)) return -1;
+        offset = end;
     }
-    return count[0] == 1 && count[1] == 1 && count[2] == 1 && stop <= 1 ? 0 : -1;
+    return 0;
+}
+
+static int source_cleanup_command(const char *command, size_t size)
+{
+    unsigned char flags[6];
+    if (fault_flags_command(command, size, flags)) return -1;
+    return flags[FAULT_CODE] && flags[FAULT_SOURCE] && flags[FAULT_SOURCE_LOSS] &&
+           !flags[FAULT_OWNER_PEER] && !flags[FAULT_OWNER_STOP] ? 0 : -1;
+}
+
+static int server_cleanup_command(const char *command, size_t size)
+{
+    unsigned char flags[6];
+    if (fault_flags_command(command, size, flags)) return -1;
+    return flags[FAULT_CODE] && flags[FAULT_SOURCE] && flags[FAULT_OWNER_PEER] &&
+           !flags[FAULT_SOURCE_LOSS] && !flags[FAULT_SOURCE_PEER] ? 0 : -1;
 }
 
 static int server_cleanup_selector(void)

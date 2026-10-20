@@ -311,6 +311,35 @@ class CodeReceiptTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
 class ShellModeTests(unittest.TestCase):
+    def test_fault_profile_c_truth_table_is_closed_and_bounded(self):
+        source = Path(__file__).parent / "nfs-table-bootstrap.c"
+        flags = ["phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1", "phantowd_nfs_source_loss_fixture=1", "phantowd_nfs_source_daemon_loss_fixture=1", "phantowd_nfs_source_owner_daemon_loss_fixture=1", "phantowd_nfs_source_owner_stop_loss_fixture=1"]
+        vectors=[]
+        for mask in range(64):
+            command="console=ttyAMA0 "+"\t".join(value for index,value in enumerate(flags) if mask & (1<<index))+"\r\nquiet"
+            vectors.append((command,mask in (7,15),mask in (19,51)))
+        for base in (" ".join(flags[:3])," ".join(flags[:4])," ".join((flags[0],flags[1],flags[4]))):
+            for extra in (flags[0],"phantowd_nfs_future_fixture=1","phantowd_nfs_future_fixture=0","phantowd_nfs_future_fixture","phantowd_nfs_source_owner_rpc_start_failure_fixture=1","phantowd_nfs_source_owner_kernel_construct_refusal_fixture=1","phantowd_nfs_source_owner_policy_loss_fixture=1"):
+                vectors.append((base+" "+extra,False,False))
+        body = ('#define main phantowd_original_bootstrap_main\n'
+                f'#include "{source.resolve().as_posix()}"\n#undef main\nint main(void) {{\n')
+        for index,(value,source_ok,server_ok) in enumerate(vectors):
+            body += (f'const char command{index}[] = {json.dumps(value)};\n'
+                     f'if ((source_cleanup_command(command{index},sizeof(command{index})-1)==0)!={int(source_ok)}) return 1;\n'
+                     f'if ((server_cleanup_command(command{index},sizeof(command{index})-1)==0)!={int(server_ok)}) return 2;\n')
+        body += ('const char no_terminator[]={112,104,97,110,116,111,119,100,95,110,102,115,95};\n'
+                 'if (!source_cleanup_command(no_terminator,sizeof(no_terminator)) || !server_cleanup_command(no_terminator,sizeof(no_terminator))) return 3;\n'
+                 'char big[4098]; memset(big,120,sizeof(big)); if (!source_cleanup_command(big,4097) || !server_cleanup_command(big,4097)) return 4;\n'
+                 'const char nul[]={120,0,120}; if (!source_cleanup_command(nul,sizeof(nul)) || !server_cleanup_command(nul,sizeof(nul))) return 5;\n'
+                 'return 0; }\n')
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture,output=Path(tmp)/"profiles.c",Path(tmp)/"profiles"
+            fixture.write_text(body)
+            built=subprocess.run(["cc","-std=c11","-O2","-Wall","-Wextra","-Werror",str(fixture),"-o",str(output)],capture_output=True,timeout=20)
+            self.assertEqual(built.returncode,0,built.stderr)
+            actual=subprocess.run([str(output)],capture_output=True,timeout=2)
+            self.assertEqual(actual.returncode,0,actual.stderr)
+
     def test_server_cleanup_selector_rejects_mixed_or_duplicate_profiles(self):
         source = Path(__file__).parent / "nfs-table-bootstrap.c"
         prefix = "phantowd_nfs_code_fixture=1 phantowd_nfs_source_fixture=1 "
@@ -322,7 +351,10 @@ class ShellModeTests(unittest.TestCase):
                     ("phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1",
                      "phantowd_nfs_code_fixture=0", "phantowd_nfs_source_fixture=0",
                      "phantowd_nfs_source_loss_fixture=1", "phantowd_nfs_source_daemon_loss_fixture=1",
-                     "phantowd_nfs_source_owner_policy_loss_fixture=1")]
+                     "phantowd_nfs_source_owner_policy_loss_fixture=1",
+                     "phantowd_nfs_source_owner_rpc_start_failure_fixture=1",
+                     "phantowd_nfs_source_owner_kernel_construct_refusal_fixture=1",
+                     "phantowd_nfs_future_fixture=1", "phantowd_nfs_future_fixture=0")]
         body = ('#define main phantowd_original_bootstrap_main\n'
                 f'#include "{source.resolve().as_posix()}"\n#undef main\n'
                 'int main(void) {\n'

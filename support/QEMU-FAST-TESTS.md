@@ -11,7 +11,8 @@ absence, protected claims, parent-closure refusal and stable retained FDs are
 required before the positive receipt. No review/retry/restart/release bypass.
 
 Separate server-cleanup roles accept no data roots and run with zero capabilities.
-The legacy source-loss constructor/role selector is unchanged. Go and native C
+The fixed source-loss ABI is preserved; dedicated fault selectors now reject
+sibling and unknown NFS flags. Go and native C
 selector tests reject missing/duplicate/mixed flags; C is exercised in its actual
 ARM role as well. Copied, model-backed and concurrently supervised Owners cannot
 perform the fault mutation. All nine optional NFS profiles pass, with this case
@@ -78,6 +79,25 @@ Existing90/60/360/5s limits, privileges, roles and default CI jobs are unchanged
 This does not qualify hidden-constructor failures beyond this controlled conflict,
 partial kernel Start, sole OS-wide domain ownership, client quiescence, complete
 recovery, a full firmware image or EX4 hardware. All state exists in guest RAM.
+
+### Closed dedicated process fault/withdrawal profiles
+
+The process-level source cleanup, combined source-peer fault and independent
+server-peer fault contexts use a closed six-flag grammar. The matching C source/
+server cleanup contexts use the same ASCII token boundaries. Only declared exact
+`=1` words are accepted, once; unknown/sibling NFS words, malformed values, NUL
+and oversize commands refuse. Non-NFS kernel boot parameters remain allowed.
+Ordinary source/data role selectors are deliberately unchanged.
+
+Native Go and compiled C tests reproduce the earlier sibling-profile admission
+before correction. Independent role truth tables cover all64 known combinations
+plus additional malformed/duplicate/future and byte-boundary controls. C consumes
+only the supplied range, without modifying input or reading a required extra NUL.
+CI and both API wrappers explicitly run the guarded Go cases; the mock-wrapper
+contract remains unchanged.30 receipt/shell groups and ten fresh guests across
+nine valid profiles pass with one helper/bootstrap and unchanged90/60/360/5s.
+No new role, privilege, product constructor, endpoint or persistent resource.
+This is fixture hardening, not legacy WD or complete runtime-profile qualification.
 
 ## Optional retained NFS table consumer
 

@@ -8,8 +8,8 @@ Status: dedicated Owner work approved for host/disposable QEMU. The `qemu`-tagge
 memory-model tests and a fixed original-source backend with actual NFS I/O.
 The controlled mountd-loss campaigns now check scheduled or explicit-Stop detection, one
 zero-capability/no-data-root compensation and independent stopped observations,
-without clearing review or releasing original authority. Legacy source-loss
-role guards and generic Owner/process semantics are unchanged. This does not
+without clearing review or releasing original authority. Fixed role ABIs and
+generic Owner/process semantics are unchanged. This does not
 qualify complete faults, a privileged product controller/bootstrap, automatic
 recovery or permission to operate an existing NAS.
 The explicit-Stop variant performs no intervening Check or supervision. Its
@@ -31,6 +31,14 @@ The original controller remains read-only verified, prepared and retained with
 the same process-local reservation. This is not OS-wide sole-domain authority.
 Explicit kernel-start-attempt bookkeeping rejects partial listener/thread
 effects; nil kernel results do not authorize stop, close, replacement or reset.
+
+Dedicated process fault/withdrawal contexts now use closed Go/C profile grammars
+instead of incomplete sibling exclusions. All64 known flag combinations and
+additional future/sibling/duplicate/bounded-byte controls are checked; unknown
+NFS words refuse. Ordinary source/data selectors and fixed role ABIs remain.
+Main CLI known-sibling checks already refused those mixes: this hardens lower
+QEMU-only guards, not WD legacy firmware or product authorization. Broader
+runtime/main profile coverage and the product control-domain gates stay open.
 
 ## Existing evidence and the missing boundary
 

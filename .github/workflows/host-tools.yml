@@ -403,7 +403,7 @@ jobs:
           go test -tags=qemu -race -count=1 -v ./internal/nfskernel
           go test -tags=qemu -race -count=1 -v -run '^TestNFS(Mountd|SourceMountd)(Startup|Access)' ./internal/processowner
           go test -tags=qemu -race -count=1 -v -run '^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd|Source|Daemon)' ./internal/runtimebundle
-          go test -tags=qemu -race -count=1 -v -run '^TestNFS(SourceRolesRefuseOrdinaryHost|WithdrawalRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
+          go test -tags=qemu -race -count=1 -v -run '^TestNFS(ServerPeerCommandRequiresDedicatedUnmixedProfile|FaultCommandProfilesAreClosed|SourceRolesRefuseOrdinaryHost|WithdrawalRolesRefuseOrdinaryHost|TableCaptureRefusesOrdinaryHost|DaemonRefusesOrdinaryHost|MountdRefusesOrdinaryHost)$' ./internal/processowner
           go test -tags=qemu -run '^TestHistoryViewDrafts' -count=1 -v ./internal/policytransaction
           go test -tags=qemu -run '^TestQEMUServiceStateBackend' -count=1 -v .
           go test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .

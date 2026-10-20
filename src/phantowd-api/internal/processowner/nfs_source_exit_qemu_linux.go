@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"strings"
 	"syscall"
 )
 
@@ -18,21 +17,7 @@ func nfsSourcePeerFaultGuardQEMU() bool {
 		return false
 	}
 	command, err := os.ReadFile("/proc/cmdline")
-	if err != nil || len(command) > 4096 {
-		return false
-	}
-	counts := [2]int{}
-	for _, word := range strings.Fields(string(command)) {
-		for index, prefix := range []string{"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture="} {
-			if strings.HasPrefix(word, prefix) {
-				if word != prefix+"1" {
-					return false
-				}
-				counts[index]++
-			}
-		}
-	}
-	return counts == [2]int{1, 1}
+	return err == nil && nfsSourcePeerCommandQEMU(command)
 }
 
 // Fixed fault injection into THIS original fixture child only. No PID, signal,

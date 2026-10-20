@@ -35,26 +35,14 @@ func NewNFSWithdrawalCaptureQEMU(role NFSWithdrawalOperationQEMU, bootstrap, inp
 		return nil, ErrInvalid
 	}
 	command, err := os.ReadFile("/proc/cmdline")
-	if err != nil || len(command) > 4096 {
-		return nil, ErrInvalid
-	}
-	count := 0
-	for _, word := range strings.Fields(string(command)) {
-		if strings.HasPrefix(word, "phantowd_nfs_source_loss_fixture=") {
-			if word != "phantowd_nfs_source_loss_fixture=1" {
-				return nil, ErrInvalid
-			}
-			count++
-		}
-	}
-	if count != 1 {
+	if err != nil || !nfsSourceCleanupCommandQEMU(command) {
 		return nil, ErrInvalid
 	}
 	return newNFSOwnedWithdrawalCaptureQEMU(string(role), bootstrap, input, objects, extra)
 }
 
-// A distinct fixed server-cleanup ABI. The legacy source-loss selector above
-// is unchanged; no caller chooses arguments, privileges or source directories.
+// A distinct fixed server-cleanup ABI. Both fault selectors reject sibling or
+// unknown NFS flags; no caller chooses arguments, privileges or source roots.
 func NewNFSServerWithdrawalCaptureQEMU(role NFSWithdrawalOperationQEMU, bootstrap, input *os.File, objects [4]*os.File, extra [6]*os.File) (*CaptureOwner, error) {
 	if !nfsServerPeerFaultGuardQEMU() {
 		return nil, ErrInvalid

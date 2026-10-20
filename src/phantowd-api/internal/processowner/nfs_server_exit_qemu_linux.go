@@ -7,37 +7,12 @@ package processowner
 import (
 	"context"
 	"os"
-	"strings"
 )
 
 func nfsServerPeerCommandQEMU(command []byte) bool {
-	if len(command) > 4096 {
-		return false
-	}
-	counts := [3]int{}
-	stop := 0
-	for _, word := range strings.Fields(string(command)) {
-		if strings.HasPrefix(word, "phantowd_nfs_source_owner_stop_loss_fixture=") {
-			if word != "phantowd_nfs_source_owner_stop_loss_fixture=1" {
-				return false
-			}
-			stop++
-		}
-		for index, prefix := range []string{"phantowd_nfs_code_fixture=", "phantowd_nfs_source_fixture=", "phantowd_nfs_source_owner_daemon_loss_fixture="} {
-			if strings.HasPrefix(word, prefix) {
-				if word != prefix+"1" {
-					return false
-				}
-				counts[index]++
-			}
-		}
-		for _, prefix := range []string{"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=", "phantowd_nfs_source_owner_policy_loss_fixture="} {
-			if strings.HasPrefix(word, prefix) {
-				return false
-			}
-		}
-	}
-	return counts == [3]int{1, 1, 1} && stop <= 1
+	flags, valid := nfsFaultFlagsQEMU(command)
+	return valid && flags[nfsFaultCodeQEMU] && flags[nfsFaultSourceQEMU] && flags[nfsFaultOwnerPeerQEMU] &&
+		!flags[nfsFaultSourceLossQEMU] && !flags[nfsFaultSourcePeerQEMU]
 }
 
 func nfsServerPeerFaultGuardQEMU() bool {
@@ -50,7 +25,7 @@ func nfsServerPeerFaultGuardQEMU() bool {
 
 // Dedicated independent-loss fixture only. Fixed original child/TERM; no PID,
 // signal, executable or backend comes from the caller. Generic launchers and
-// the old combined source-loss selector remain unchanged.
+// fixed role ABIs are unchanged; fault-profile selection is closed.
 func (s *PinnedSet) InterruptNFSServerMountdFixtureQEMU(ctx context.Context) error {
 	if !nfsServerPeerFaultGuardQEMU() {
 		return ErrInvalid

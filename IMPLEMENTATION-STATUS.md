@@ -8,8 +8,9 @@
 The optional `source-owner-daemon-loss` fixture now passes. After synthetic NFS
 I/O and the original mountd's controlled graceful exit, scheduled supervision
 detects the loss and admits one original-reference compensation. Dedicated
-server-withdrawal roles retain zero capabilities and no data roots; legacy
-source-loss role guards and generic process/Owner semantics are unchanged.
+server-withdrawal roles retain zero capabilities and no data roots; fixed role
+ABIs and generic process/Owner semantics are unchanged. Dedicated fault/withdrawal
+selectors now use the closed grammar described below.
 Exports are withdrawn and original NFSD/daemons stopped. A reviewed Stop still
 returns review: separate fresh control/listener/export and original-process
 observations establish absence without clearing review or releasing authority.
@@ -48,7 +49,20 @@ partial listener/thread effects from this cleanup frontier. Review/causes/claims
 and descriptors remain held, with no retry/restart/release.
 
 Ten actual guests share one tested helper and unchanged source/base images;
-29 receipt/shell and three loader groups pass with unchanged deadlines.
+30 receipt/shell and three loader groups pass with unchanged deadlines.
+
+The dedicated process fault/withdrawal guards previously accepted sibling flags
+that the main CLI already refused. Real Go and compiled native C parser tests
+reproduce that lower-boundary gap. Three Go contexts and both C cleanup contexts
+now share exact closed six-flag grammars: sibling/unknown NFS words, duplicates,
+malformed values, embedded NUL and oversize input refuse. Non-NFS boot arguments
+remain allowed. All 64 known-flag combinations are checked against independent
+role truth tables, with additional negative/bounded-byte controls. C parsing is
+bounded by the supplied length without mutation or an extra NUL dependency.
+Ordinary data/source selectors, fixed ABIs, privileges and budgets are unchanged;
+CI and both local API wrappers explicitly include the closed-grammar Go tests.
+This is QEMU-only fixture hardening, not a WD legacy vulnerability or product
+authorization change, and not complete coverage of every runtime profile family.
 This does not qualify other pre-dispatch/reference/admission failures, hard
 crashes, other partial-start/readiness/uncertain-constructor frontiers, kernel
 Start listener/thread effects, OS-wide domain ownership, pending

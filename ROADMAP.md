@@ -47,6 +47,13 @@ and its process-local reservation stay retained and read-only verified. No kerne
 Stop/Close/replacement/reset is admitted. Nil does not mean never-acquired; an
 explicit before-effects kernel-start marker excludes listener/thread uncertainty.
 
+Dedicated process fault/withdrawal selection is now closed in Go and C, with
+64 known-flag combinations and sibling/future/duplicate/bounded-byte controls.
+Valid legacy and server forms retain their ABIs; ordinary source/data roles and
+product authorization are unchanged. The exact guarded Go tests run in CI and
+both local wrappers. This does not qualify every runtime/main profile family
+or replace the remaining kernel Start and product-lifecycle acceptance below.
+
 Remaining acceptance before complete service/product qualification:
 
 1. Other pre-dispatch/reference/admission failures during explicit Stop,
