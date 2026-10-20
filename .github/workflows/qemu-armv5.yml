@@ -108,7 +108,7 @@ permissions:
 
 concurrency:
   group: qemu-armv5-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   qemu-and-dtb:

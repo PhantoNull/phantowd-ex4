@@ -37,6 +37,17 @@ def make_target_position(script, target):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_qemu_qualification_is_not_canceled_by_next_commit(self):
+        workflow = (ROOT / ".github/workflows/qemu-armv5.yml").read_text()
+        concurrency = re.search(r"(?m)^concurrency:\n((?:[ \t]+[^\n]*\n)+)",
+                                workflow)
+        self.assertIsNotNone(concurrency)
+        self.assertEqual(
+            concurrency.group(1).splitlines(),
+            ["  group: qemu-armv5-${{ github.ref }}",
+             "  cancel-in-progress: false"],
+        )
+
     def test_runtime_owner_staging_qualifies_supplied_physical_tmpfs(self):
         tests = ROOT / "support/tests"
         staging = (tests / "test-samba-root-staging.sh").read_text()
