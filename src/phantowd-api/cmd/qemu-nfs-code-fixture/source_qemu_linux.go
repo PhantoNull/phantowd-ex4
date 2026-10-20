@@ -47,10 +47,20 @@ func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
 			return errors.New("source fixture lacks complete actual mounted roster")
 		}
 		volume := storage.Volumes[0]
-		for _, name := range []string{"books", "archive"} {
+		for _, name := range []string{"books", "archive", "denied"} {
 			if err := os.Mkdir(filepath.Join(volume.MountPath, name), 0700); err != nil {
 				return err // Exclusive fixture preparation, never in a constructor.
 			}
+			if err := os.Chown(filepath.Join(volume.MountPath, name), 1000, 1000); err != nil {
+				return err
+			}
+		}
+		marker := filepath.Join(volume.MountPath, "archive/marker")
+		if err := os.WriteFile(marker, []byte("phantowd-source-private-ro\n"), 0400); err != nil {
+			return err
+		}
+		if err := os.Chown(marker, 1000, 1000); err != nil {
+			return err
 		}
 		build := func(generation uint64) (fileserviceplan.NFSv3Candidate, error) {
 			registry, err := serviceaccounts.New(1000, 2000)
@@ -65,7 +75,9 @@ func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
 						{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: volume.VolumeID, RelativePath: "books",
 							Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
 						{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: volume.VolumeID, RelativePath: "archive",
-							Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}}}
+							Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}},
+						{ID: "cccccccc-dddd-eeee-ffff-aaaaaaaaaaaa", VolumeID: volume.VolumeID, RelativePath: "denied",
+							Clients: []nfsconfig.Client{{Network: "192.0.2.0/24", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}}}
 			plan, err := fileserviceplan.Build(config, 0, fileserviceplan.IdentitySnapshot{Complete: true, Generation: generation,
 				Fingerprint: sha256.Sum256([]byte("synthetic-nfs-source-identity-only")), Registry: registry,
 				UnixUIDs: []uint32{1000}, UnixGIDs: []uint32{1000}, Samba: []fileserviceplan.SambaIdentity{}}, storage)
@@ -120,6 +132,10 @@ func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
 			!errors.Is(roots.Close(), nfsowner.ErrBusy) || !errors.Is(inputs[0].Close(), processowner.ErrBusy) ||
 			!errors.Is(lease.Close(), mountowner.ErrBusy) {
 			return errors.New("live join failed cancellation or parent closure exclusion")
+		}
+		phase = "original-source-nfs-access"
+		if err := joined.RunAccessFixtureQEMU(ctx); err != nil {
+			return err
 		}
 		if joined.Close() != nil || joined.Close() != nil || joined.Check(ctx) == nil || roots.Check(ctx) != nil || inputs[0].Check(ctx) != nil {
 			return errors.New("clean unstarted join release failed")
@@ -188,7 +204,7 @@ func probeSourceRuntime(ctx context.Context, expected []byte) (result error) {
 		if after, err := sourceFDCount(); err != nil || after != retained {
 			return errors.New("review released original references")
 		}
-		fmt.Println("PHANTOWD_NFS_SOURCE_READY original_roster=true roots=2 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only")
+		fmt.Println("PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only")
 		return nil
 	})
 }

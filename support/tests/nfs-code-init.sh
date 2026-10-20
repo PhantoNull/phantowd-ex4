@@ -12,6 +12,8 @@ prepare() {
         mount -t tmpfs -o mode=0755,size=1m,nosuid,nodev,noexec tmpfs /srv/phantowd/volumes || return 1
         mkdir /srv/phantowd/volumes/qemu-only || return 1
         mount -t ext2 -o rw,nosuid,nodev,noexec /dev/sdb /srv/phantowd/volumes/qemu-only || return 1
+        mount -t nfsd -o nosuid,nodev,noexec nfsd /proc/fs/nfsd || return 1
+        ip link set lo up || return 1
         return 0
     fi
     mount -t tmpfs -o mode=0755,size=32m,nosuid,nodev tmpfs /run || return 1

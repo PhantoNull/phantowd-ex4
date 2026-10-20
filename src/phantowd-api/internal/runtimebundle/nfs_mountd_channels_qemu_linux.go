@@ -17,6 +17,7 @@ import (
 )
 
 var nfsMountdChannelNamesQEMU = [...]string{"auth.unix.ip", "nfsd.export", "nfsd.fh"}
+var nfsSourceFlushNamesQEMU = [...]string{"auth.unix.ip", "auth.unix.gid", "nfsd.fh", "nfsd.export"}
 
 // NFSMountdChannelsQEMU retains metadata-only O_PATH references, never reads
 // or writes a kernel channel. It is not sole-writer/NFSD/policy authority.
@@ -27,12 +28,20 @@ type NFSMountdChannelsQEMU struct {
 	root           *os.File
 	files          [3]*os.File
 	metadata       [4]unix.Statx_t
+	flush          [4]*os.File
+	parents        [4]*os.File
+	flushMetadata  [4]unix.Statx_t
+	parentMetadata [4]unix.Statx_t
 	namespaces     [2]*os.File
 	ns             [2]unix.Stat_t
 	closed, review bool
 }
 
 func NewNFSMountdChannelsQEMU(ctx context.Context) (_ *NFSMountdChannelsQEMU, result error) {
+	return newNFSMountdChannelsQEMU(ctx, false)
+}
+
+func newNFSMountdChannelsQEMU(ctx context.Context, source bool) (_ *NFSMountdChannelsQEMU, result error) {
 	if ctx == nil || nfsCodeGuardQEMU() != nil {
 		return nil, ErrInvalid
 	}
@@ -72,17 +81,53 @@ func NewNFSMountdChannelsQEMU(ctx context.Context) (_ *NFSMountdChannelsQEMU, re
 	if err := mountdChannelStatQEMU(fd, true, &o.metadata[0]); err != nil {
 		return nil, err
 	}
-	for index, name := range nfsMountdChannelNamesQEMU {
-		fd, err := unix.Openat2(int(o.root.Fd()), name+"/channel", &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
-		if err != nil {
-			return nil, err
+	if source {
+		// Open each cache parent ONCE, then both children relative to that held
+		// directory. A fresh named parent lookup would invalidate channel ancestry.
+		for index, name := range nfsSourceFlushNamesQEMU {
+			parent, err := unix.Openat2(int(o.root.Fd()), name, &unix.OpenHow{Flags: unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+			if err != nil {
+				return nil, err
+			}
+			o.parents[index] = os.NewFile(uintptr(parent), "nfs-original-cache-parent")
+			if err := mountdChannelStatQEMU(parent, true, &o.parentMetadata[index]); err != nil {
+				return nil, err
+			}
+			flush, err := unix.Openat2(parent, "flush", &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+			if err != nil {
+				return nil, err
+			}
+			o.flush[index] = os.NewFile(uintptr(flush), "nfs-original-cache-flush")
+			if err := mountdChannelStatQEMU(flush, false, &o.flushMetadata[index]); err != nil {
+				return nil, err
+			}
+			for channelIndex, channelName := range nfsMountdChannelNamesQEMU {
+				if channelName != name {
+					continue
+				}
+				channel, err := unix.Openat2(parent, "channel", &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+				if err != nil {
+					return nil, err
+				}
+				o.files[channelIndex] = os.NewFile(uintptr(channel), "nfs-original-cache-channel")
+				if err := mountdChannelStatQEMU(channel, false, &o.metadata[channelIndex+1]); err != nil {
+					return nil, err
+				}
+			}
 		}
-		o.files[index] = os.NewFile(uintptr(fd), "nfs-original-cache-channel")
-		if err := mountdChannelStatQEMU(fd, false, &o.metadata[index+1]); err != nil {
-			return nil, err
-		}
-		if o.metadata[index+1].Mnt_id != o.metadata[0].Mnt_id {
-			return nil, ErrMismatch
+	} else {
+		for index, name := range nfsMountdChannelNamesQEMU {
+			fd, err := unix.Openat2(int(o.root.Fd()), name+"/channel", &unix.OpenHow{Flags: unix.O_PATH | unix.O_CLOEXEC, Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV})
+			if err != nil {
+				return nil, err
+			}
+			o.files[index] = os.NewFile(uintptr(fd), "nfs-original-cache-channel")
+			if err := mountdChannelStatQEMU(fd, false, &o.metadata[index+1]); err != nil {
+				return nil, err
+			}
+			if o.metadata[index+1].Mnt_id != o.metadata[0].Mnt_id {
+				return nil, ErrMismatch
+			}
 		}
 	}
 	if err := o.check(ctx); err != nil {
@@ -127,6 +172,16 @@ func (o *NFSMountdChannelsQEMU) check(ctx context.Context) error {
 	for index, file := range append([]*os.File{o.root}, o.files[:]...) {
 		var current unix.Statx_t
 		if file == nil || mountdChannelStatQEMU(int(file.Fd()), index == 0, &current) != nil || !sameMountdChannelQEMU(current, o.metadata[index]) {
+			return ErrMismatch
+		}
+	}
+	for i, file := range o.flush {
+		if file == nil {
+			continue
+		}
+		var st unix.Statx_t
+		if mountdChannelStatQEMU(int(file.Fd()), false, &st) != nil || !sameMountdChannelQEMU(st, o.flushMetadata[i]) ||
+			mountdChannelStatQEMU(int(o.parents[i].Fd()), true, &st) != nil || !sameMountdChannelQEMU(st, o.parentMetadata[i]) {
 			return ErrMismatch
 		}
 	}
@@ -189,6 +244,22 @@ func (o *NFSMountdChannelsQEMU) Close() error {
 	return nil
 }
 func (o *NFSMountdChannelsQEMU) release() error {
+	for i, file := range o.flush {
+		if file != nil {
+			if err := file.Close(); err != nil {
+				return err
+			}
+			o.flush[i] = nil
+		}
+	}
+	for i, file := range o.parents {
+		if file != nil {
+			if err := file.Close(); err != nil {
+				return err
+			}
+			o.parents[i] = nil
+		}
+	}
 	for index, file := range o.files {
 		if file != nil {
 			if err := file.Close(); err != nil {

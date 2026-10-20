@@ -147,6 +147,11 @@ func nfsRPCProcessQEMU(pid int, code *nfsCodeLifetimeQEMU, program *os.File, ino
 		expected["Uid:"] = "0 0 0 0"
 		expected["Gid:"] = "0 0 0 0"
 		expected["CapBnd:"] = "0000000000000000"
+		if code.sourceAccess != nil {
+			for _, name := range []string{"CapBnd:", "CapEff:", "CapPrm:"} {
+				expected[name] = "0000000000000004"
+			}
+		}
 	}
 	for _, line := range strings.Split(string(status), "\n") {
 		fields := strings.Fields(line)
@@ -205,6 +210,10 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 		return err
 	}
 	defer s.leave()
+	return probeNFSRPCBindLockedQEMU(ctx, inputs, s)
+}
+
+func probeNFSRPCBindLockedQEMU(ctx context.Context, inputs *NFSInputsQEMU, s *nfsCodeLifetimeQEMU) (result error) {
 	var child *processowner.PinnedSet
 	var bootstrap *os.File
 	phase := "inputs"
@@ -353,6 +362,10 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 	if err != nil || len(entries) != 1 || entries[0].Name() != "nfs" {
 		return errors.Join(ErrMismatch, err)
 	}
-	fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true product=false scope=qemu-only")
+	if s.sourceAccess != nil {
+		fmt.Println("PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only")
+	} else {
+		fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true product=false scope=qemu-only")
+	}
 	return nil
 }

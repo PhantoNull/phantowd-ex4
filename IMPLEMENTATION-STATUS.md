@@ -3,27 +3,38 @@
 
 # Implementation status
 
-## Original export roots joined to NFS inputs: QEMU-only preparation
+## Original export roots and real NFS access: QEMU-only fixture
 
 An internal typed join now reserves the original mounted-roster export roots
 and matching original code/config/state inputs. Complete candidate equivalence
 is checked at construction, without descriptor getters or replacement backends.
-Both parent closures are excluded while joined. Clean unstarted release frees
-only its reservations; changed/uncertain inputs retain review and original refs.
+Both parent closures are excluded while joined. Clean unstarted release or a
+verified-settled finite consumer frees only its reservations; changed/uncertain
+inputs retain review and original refs.
 Storage lease calls return before the runtime gate is entered, preventing a
 runtime-to-storage callback lock inversion. These checks are not atomic admission.
 
 The optional `support/test-nfs-code.ps1 -FixtureMode source` selects a separate
 bounded synthetic-source guest, not a default CI boot. A fresh regular 32 MiB
 tmpfs file is formatted and attached only as a QEMU snapshot. Guarded actual
-mount/roster leases supply two source directories; normal release, same-text
+mount/roster leases supply three private UID/GID1000 source directories; normal release, same-text
 different-evidence refusal and source replacement/restoration must preserve
 parent exclusion, review and descriptor balance. The original `code` mode keeps
 its complete loader/daemon/kernel campaign and unchanged 90/60/360 limits.
 
-This joins storage roots to runtime inputs only: policy/identity remain synthetic,
-no daemon receives source descriptors, no actual exports/data I/O occur in this
-source mode, and no product service, boot/recovery or hardware gate is qualified.
+The finite source consumer retains the original qualified volume root as a
+read-only mountpoint anchor and independently attaches original RW/RO data roots.
+Fixed source-only roles grant mountd three cache channels plus filehandle access;
+exportfs receives four flush controls instead. Both receive only DAC read/search
+capability after setup, not generic kernel/proc or service-launch authority.
+Required real client checks cover fsynced RW/readback through the original source
+FD, RO reads/EROFS, excluded-client refusal, all-squash1000, normal unmount,
+withdrawal, kernel/daemon stop and FD balance. Strict complete mountd transcripts
+refuse unknown warnings; fresh rmtab is prepared rather than ignoring its error.
+
+Policy/identity remain synthetic. Complete constructor, cancellation, drift and
+partial-start/stop faults, sole control-domain admission, protocol/recovery and
+product activation remain open. This is not a product backend or hardware gate.
 
 ## Original NFS input reservation: QEMU-only preparation
 

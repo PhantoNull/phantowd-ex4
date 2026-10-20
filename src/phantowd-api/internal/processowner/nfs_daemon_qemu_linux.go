@@ -31,6 +31,10 @@ func NewNFSRPCBindPinnedQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os
 }
 
 func newNFSFixedDaemonQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os.File, channels []*os.File) (_ *PinnedSet, result error) {
+	return newNFSFixedDaemonInputsQEMU(spec, bootstrap, objects, channels, func(file *os.File, index int) bool { return nfsKernelInputQEMU(file, index == 3) })
+}
+
+func newNFSFixedDaemonInputsQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os.File, channels []*os.File, valid func(*os.File, int) bool) (_ *PinnedSet, result error) {
 	s, err := NewPinnedSet([]MemberSpec{spec}, []*os.File{bootstrap})
 	if err != nil {
 		return nil, err
@@ -65,7 +69,7 @@ func newNFSFixedDaemonQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os.F
 			return nil, err
 		}
 		s.pins = append(s.pins, pin)
-		if !nfsKernelInputQEMU(pin, index == 3) {
+		if !valid(pin, index) {
 			return nil, ErrInvalid
 		}
 	}

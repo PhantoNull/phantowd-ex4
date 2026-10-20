@@ -28,14 +28,33 @@ class CodeReceiptTests(unittest.TestCase):
 
     def test_source_join_receipt_requires_its_own_complete_proof(self):
         source = [b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",
-                  b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=2 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_IO_READY original_sources=true private_0700=true rw=true ro_read=true ro_erofs=true denied_client=true anon_uid_gid=1000 fsynced=true clients_unmounted=true exports_withdrawn=true product=false scope=qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_KERNEL_READY original_control=true original_namespaces=true original_daemons_live=true threads=2 stop_verified=true fd_balance=true exports_withdrawn=true owner_backend=false product=false scope=qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_MOUNTD_READY original_channels=3 original_sources=3 filehandle_view=true private_view=true uid_gid=0 caps=dac-read-search listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_RPCBIND_READY original_inputs=true uid_gid=1 capabilities_zero=true listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only",
+                  b"PHANTOWD_NFS_SOURCE_READY original_roster=true roots=3 input_pair=true complete_candidate=true parent_closure_excluded=true copied_refused=true duplicate_refused=true canceled_unchanged=true mismatch_rollback=true normal_fd_balance=true source_replacement_review=true restored_refused=true original_refs_retained=true daemons=false kernel_backend=false product=false scope=disposable-qemu-only",
                   b"PHANTOWD_NFS_SOURCE_DONE"]
         for ending in (b"\n", b"\r\n"):
             checker.verify_source(ending.join(source) + ending, self.report)
-        for lines in ([source[0], source[2]], source + [source[1]], list(reversed(source)), self.lines,
+        variants = [source[:i] + source[i+1:] for i in range(len(source))]
+        variants += [source[:i] + [source[i]] + source[i:] for i in range(len(source))]
+        variants += [[source[0], source[-2].replace(b"roots=3", b"roots=2"), source[-1]],
+                     [line + b"\r\r" for line in source]]
+        for old, new in ((b"original_sources=true", b"original_sources=false"),
+                         (b"private_0700=true", b"private_0700=false"),
+                         (b"ro_erofs=true", b"ro_erofs=false"),
+                         (b"denied_client=true", b"denied_client=false"),
+                         (b"anon_uid_gid=1000", b"anon_uid_gid=0"),
+                         (b"clients_unmounted=true", b"clients_unmounted=false"),
+                         (b"exports_withdrawn=true", b"exports_withdrawn=false"),
+                         (b"caps=dac-read-search", b"caps=all"),
+                         (b"product=false", b"product=true")):
+            variants.append([line.replace(old, new) for line in source])
+        variants += [[source[0], source[2]], source + [source[1]], list(reversed(source)), self.lines,
                       source + [b"PHANTOWD_NFS_SOURCE_FAILED"], source + [checker.KERNEL],
                       [line.replace(b"daemons=false", b"daemons=true") for line in source],
-                      [line.replace(b"bytes=400", b"bytes=399") for line in source]):
+                      [line.replace(b"bytes=400", b"bytes=399") for line in source]]
+        for lines in variants:
             with self.subTest(lines=lines), self.assertRaises(ValueError):
                 checker.verify_source(b"\n".join(lines), self.report)
 

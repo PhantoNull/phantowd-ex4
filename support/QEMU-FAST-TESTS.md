@@ -109,13 +109,26 @@ The base and synthetic backing hashes must remain unchanged. No physical device,
 image build/pull, new volume, added default CI guest or host privilege is used.
 
 Two independently captured original NFS input lifetimes test normal and fault
-joins. The source profile requires two real O_PATH directories from the original
+joins. The source profile requires three real O_PATH directories from the original
 roster lease, exact candidate/evidence matching, parent-close exclusion,
 copy/duplicate/cancellation refusal, normal FD balance and sticky review after
 source replacement/restoration. Reviewed mount/qualification/roster/source/input
 references remain until VM disposal; that is not verified product teardown.
-Policy/identity are synthetic, no source descriptor reaches a daemon and there
-is no kernel/export mutation or NFS data I/O in this profile.
+The finite normal consumer now supplies original roots plus the original volume
+anchor to dedicated source roles. The anchor is read-only; only books has an RW
+view, while archive/denied remain RO. Mountd has three original cache channels,
+filehandle and read-only export features; exportfs has four original flush files
+and no filehandle. DAC read/search alone permits private0700 UID1000 traversal.
+No broad proc/dev/sys or threads/portlist view is granted to these children.
+
+The source receipt additionally requires real fsynced NFS RW/readback, original
+source inode/UID/GID verification, RO read/EROFS, denied client, ordinary client
+unmount, export withdrawal and complete normal kernel/daemon/FD settlement.
+The fixed client uses soft/nolock only to bound this disposable test; this is
+not a product client mount policy or NLM/NSM qualification. Exact mountd traces
+require two authorized reserved-port MOUNTs and the one intended denial; missing,
+partial or other diagnostics (including missing rmtab) refuse. Policy/identity,
+complete control-domain admission, faults, recovery and product service remain open.
 
 Separate strict source receipts reject missing/duplicate/reordered/altered,
 failed or mixed campaign markers and compare counts to independent code metadata.

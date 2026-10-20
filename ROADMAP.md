@@ -2055,10 +2055,13 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 runtime-input handles together with full candidate matching and both parents'
 Close exclusion. The separate fixed 32 MiB synthetic-source profile requires
 actual mounted-set authority, normal release/FD balance and retained review
-after path replacement/restoration. It does not supply live policy/identity
-leases, daemon source handoff, kernel/export ownership or actual NFS data I/O.
-Next compose those original authorities with fixed filehandle/cache controls
-and actual consumer readiness/settlement; do not widen the generic launcher.
+after path replacement/restoration. The finite source consumer now joins three
+original roots and a read-only original volume anchor to fixed filehandle/cache
+roles and actual RW/RO/denied-client NFS I/O, mapping and normal settlement.
+It does not supply live policy/identity leases, sole kernel/export ownership,
+complete faults or product startup/recovery. Next qualify cancellation, partial
+startup/withdrawal/stop, live source loss and retained uncertain consumers, then
+bind real policy/identity authorities; do not widen the generic launcher.
 
 **NFS input-reservation prerequisite:** the QEMU-only typed reservation now
 compares the complete candidate definition/evidence and blocks parent input

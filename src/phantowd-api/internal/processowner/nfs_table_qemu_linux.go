@@ -47,8 +47,12 @@ func nfsRuntimeFixtureGuardQEMU() bool {
 }
 
 func newNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ *CaptureOwner, result error) {
+	return newNFSCommandCaptureQEMU(executable, input, objects, "table-v1", nil, nil)
+}
+
+func newNFSCommandCaptureQEMU(executable, input *os.File, objects [4]*os.File, role string, extra []*os.File, valid func(*os.File, int) bool) (_ *CaptureOwner, result error) {
 	c, err := NewCapture(CaptureSpec{
-		ExecutableLabel: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{"table-v1"},
+		ExecutableLabel: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{role},
 		RunAs: &Credentials{UID: 0, GID: 0}, Timeout: 10 * time.Second, StopTimeout: time.Second,
 	}, executable, input)
 	if err != nil {
@@ -86,11 +90,22 @@ func newNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ 
 	if err != nil {
 		return nil, ErrInvalid
 	}
+	identities := make([]unix.Statx_t, len(extra))
+	for index, source := range extra {
+		pin, err := duplicateNFSKernelInputQEMU(source)
+		if err != nil {
+			return nil, err
+		}
+		c.fixtureInputs = append(c.fixtureInputs, pin)
+		if valid == nil || !valid(pin, index) || nfsSourceStatQEMU(pin, &identities[index]) != nil {
+			return nil, ErrInvalid
+		}
+	}
 	c.fixtureInputsValid = func() bool {
-		if len(c.fixtureInputs) != 4 {
+		if len(c.fixtureInputs) != 4+len(extra) {
 			return false
 		}
-		for index, pin := range c.fixtureInputs {
+		for index, pin := range c.fixtureInputs[:4] {
 			var st unix.Stat_t
 			original := metadata[index]
 			if !nfsTableObjectQEMU(pin, index) || unix.Fstat(int(pin.Fd()), &st) != nil ||
@@ -102,6 +117,12 @@ func newNFSTableCaptureQEMU(executable, input *os.File, objects [4]*os.File) (_ 
 				if err != nil || !sameCaptureObject(st, original) || current != digest {
 					return false
 				}
+			}
+		}
+		for index, pin := range c.fixtureInputs[4:] {
+			var current unix.Statx_t
+			if !valid(pin, index) || nfsSourceStatQEMU(pin, &current) != nil || !nfsSourceSameStatQEMU(current, identities[index]) {
+				return false
 			}
 		}
 		return true

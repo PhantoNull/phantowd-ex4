@@ -39,7 +39,7 @@ func nfsCompanionsLiveQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, channels
 			return errors.Join(ErrMismatch, err)
 		}
 	}
-	if companions[0].owner.CheckNFSRPCBindHandoffQEMU(ctx) != nil || companions[1].owner.CheckNFSMountdHandoffQEMU(ctx, false) != nil ||
+	if companions[0].owner.CheckNFSRPCBindHandoffQEMU(ctx) != nil || nfsMountdHandoffForInputsQEMU(ctx, s, companions[1].owner, false) != nil ||
 		channels.Check(ctx) != nil || observeNFSMountdChannelsQEMU(companions[1].pid, channels) != nil || s.revalidate(ctx) != nil {
 		return ErrMismatch
 	}
@@ -95,8 +95,16 @@ func probeNFSDKernelQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, channels *
 		if kernel.CheckRunning(ctx) != nil || nfsCompanionsLiveQEMU(ctx, s, channels, companions) != nil {
 			return ErrMismatch
 		}
+		if s.sourceAccess != nil {
+			if err := s.sourceAccess.exerciseIO(ctx, s); err != nil {
+				return err
+			}
+		}
 		return nil
 	}()
+	if checkErr != nil && s.sourceAccess != nil && (len(s.sourceAccess.mounts) != 0 || s.sourceAccess.capture != nil || s.sourceAccess.exportsLoaded) {
+		return checkErr
+	}
 	phase = "stop"
 	cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	stopErr := kernel.Stop(cleanup)
@@ -122,6 +130,10 @@ func probeNFSDKernelQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, channels *
 	if after, err := retainedFixtureFDCount(); err != nil || after != before || s.revalidate(ctx) != nil {
 		return errors.Join(ErrMismatch, err)
 	}
-	fmt.Println("PHANTOWD_NFS_KERNEL_READY original_control=true original_namespaces=true retained_ipv4_socket=true original_daemons_live=true null_rpc_v3=true threads=2 stop_verified=true fd_balance=true exports=false owner_backend=false product=false scope=qemu-only")
+	if s.sourceAccess != nil {
+		fmt.Println("PHANTOWD_NFS_SOURCE_KERNEL_READY original_control=true original_namespaces=true original_daemons_live=true threads=2 stop_verified=true fd_balance=true exports_withdrawn=true owner_backend=false product=false scope=qemu-only")
+	} else {
+		fmt.Println("PHANTOWD_NFS_KERNEL_READY original_control=true original_namespaces=true retained_ipv4_socket=true original_daemons_live=true null_rpc_v3=true threads=2 stop_verified=true fd_balance=true exports=false owner_backend=false product=false scope=qemu-only")
+	}
 	return nil
 }

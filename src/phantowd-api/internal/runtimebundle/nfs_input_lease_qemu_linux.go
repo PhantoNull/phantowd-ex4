@@ -22,6 +22,7 @@ type NFSInputLeaseQEMU struct {
 	original       *NFSInputLeaseQEMU
 	gate           chan struct{}
 	parent         *NFSInputsQEMU
+	consumer       *NFSSourceAccessQEMU
 	closed, review bool
 }
 
@@ -126,6 +127,9 @@ func (o *NFSInputLeaseQEMU) Close() error {
 		return err
 	}
 	defer func() { <-o.gate }()
+	if o.consumer != nil && !o.consumer.closed {
+		return processowner.ErrBusy
+	}
 	if o.review {
 		return ErrReviewRequired
 	}

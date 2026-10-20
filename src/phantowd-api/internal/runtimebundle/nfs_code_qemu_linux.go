@@ -40,6 +40,7 @@ type nfsCodeLifetimeQEMU struct {
 	cause     error
 	// One containing source/runtime lease, never a descriptor or launch getter.
 	sourceReserved bool
+	sourceAccess   *NFSSourceAccessQEMU
 	// Present together only for the separate complete input constructor.
 	configuration *retainedConfiguration
 	state         *retainedNFSStateQEMU
@@ -220,6 +221,11 @@ func (s *nfsCodeLifetimeQEMU) revalidate(ctx context.Context) error {
 		}
 		state := s.state.identity["."]
 		if err := nfsInputNamedRootQEMU(nfsStateViewQEMU, state.inode, state.mount, state.major, state.minor); err != nil {
+			return err
+		}
+	}
+	if s.sourceAccess != nil {
+		if err := s.sourceAccess.check(ctx); err != nil {
 			return err
 		}
 	}

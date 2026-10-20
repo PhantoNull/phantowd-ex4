@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -17,16 +18,20 @@ import (
 )
 
 // SourceRuntimeQEMU reserves ORIGINAL export roots and matching runtime inputs.
-// It starts no consumer and exposes no descriptors. This is NOT a policy or
-// identity lease, kernel backend, service settlement or product admission.
+// Construction starts no consumer and exposes no descriptors. Its one finite
+// access campaign is synthetic QEMU only, not policy/identity authority,
+// a complete kernel backend, fault-complete settlement or product admission.
 type SourceRuntimeQEMU struct {
-	original       *SourceRuntimeQEMU
-	gate           chan struct{}
-	roots          *ExportRootsQEMU
-	inputs         *runtimebundle.NFSInputsQEMU
-	lease          *runtimebundle.NFSInputLeaseQEMU
-	closed, review bool
-	cause          error
+	original                       *SourceRuntimeQEMU
+	gate                           chan struct{}
+	roots                          *ExportRootsQEMU
+	inputs                         *runtimebundle.NFSInputsQEMU
+	lease                          *runtimebundle.NFSInputLeaseQEMU
+	access                         *runtimebundle.NFSSourceAccessQEMU
+	accessVolume                   *os.File
+	accessAttempted, accessSettled bool
+	closed, review                 bool
+	cause                          error
 }
 
 type sourceRuntimeConstructionReview struct {
@@ -158,9 +163,9 @@ func (o *SourceRuntimeQEMU) Check(ctx context.Context) error {
 	return o.verify(ctx, s)
 }
 
-// Close releases ONLY a verified clean UNSTARTED join. It never closes either
-// parent. A future admitted consumer must prohibit release until verified absent.
-// Drift/uncertainty retains both reservations and original references.
+// Close releases only an unstarted join or its verified-settled finite fixture.
+// It never closes either parent. Drift/uncertainty retains both reservations
+// and original references; disposal of the VM is not product settlement.
 func (o *SourceRuntimeQEMU) Close() error {
 	ctx := context.Background()
 	if err := o.enter(ctx); err != nil {
@@ -172,6 +177,9 @@ func (o *SourceRuntimeQEMU) Close() error {
 	}
 	if o.closed {
 		return nil
+	}
+	if o.accessAttempted && !o.accessSettled {
+		return ErrBusy
 	}
 	s, err := o.roots.enter()
 	if err != nil {

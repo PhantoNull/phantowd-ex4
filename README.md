@@ -52,10 +52,12 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
-The optional NFS lane composes retained `exportfs -s`, rpcbind, mountd and an
-NFSD kernel lifetime in descriptor-bound views. It verifies NFSv3 NULL replies,
-original cache-channel/socket handles and stop, without exports or file I/O in
-that lane. This is not a complete NFS backend or product startup/recovery.
+The optional NFS `code` lane composes retained `exportfs -s`, rpcbind, mountd
+and NFSD without file I/O. Its separate `source` mode requires real NFSv3 I/O
+on three synthetic, original mounted-roster roots: RW, RO and an excluded client.
+It also requires original volume/namespace/control handles, UID/GID mapping,
+export withdrawal and verified daemon/kernel closure. Neither mode qualifies
+a complete NFS backend, product startup/recovery or access to physical disks.
 
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not

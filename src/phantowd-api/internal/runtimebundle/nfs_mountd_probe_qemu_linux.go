@@ -108,7 +108,11 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	if err != nil {
 		return err
 	}
-	channels, err = NewNFSMountdChannelsQEMU(ctx)
+	if s.sourceAccess != nil {
+		channels = s.sourceAccess.channels
+	} else {
+		channels, err = NewNFSMountdChannelsQEMU(ctx)
+	}
 	if err != nil {
 		return err
 	}
@@ -130,7 +134,14 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 		Executable: "/usr/sbin/phantowd-nfs-table-bootstrap", Args: []string{"mountd-v1"}, RunAs: &processowner.Credentials{UID: 0, GID: 0},
 		Ready: func(ctx context.Context) (bool, error) { return nfsRPCNullQEMU(ctx, true) }, ReadyTimeout: 5 * time.Second, ProbeInterval: 20 * time.Millisecond, StopTimeout: time.Second,
 	}}
-	child, err = processowner.NewNFSMountdPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, [4]*os.File{channels.files[0], channels.files[1], channels.files[2], channels.namespaces[0]})
+	if s.sourceAccess != nil {
+		a := s.sourceAccess
+		spec.Name = "nfs-source-mountd"
+		spec.Process.Args = []string{"mountd-source-v1"}
+		child, err = processowner.NewNFSSourceMountdPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, [4]*os.File{channels.files[0], channels.files[1], channels.files[2], channels.namespaces[0]}, [6]*os.File{a.data[0], a.data[1], a.data[2], a.filehandle, a.features, a.volume})
+	} else {
+		child, err = processowner.NewNFSMountdPinnedQEMU(spec, bootstrap, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, [4]*os.File{channels.files[0], channels.files[1], channels.files[2], channels.namespaces[0]})
+	}
 	if err != nil {
 		return err
 	}
@@ -149,7 +160,7 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	}
 	checkErr := func() error {
 		phase = "ready-handoff"
-		if started.State != processowner.StateReady || started.Generation != 1 || len(started.Members) != 1 || pid <= 0 || started.Members[0].Process.DiagnosticsTruncated || child.CheckNFSMountdHandoffQEMU(ctx, false) != nil {
+		if started.State != processowner.StateReady || started.Generation != 1 || len(started.Members) != 1 || pid <= 0 || started.Members[0].Process.DiagnosticsTruncated || nfsMountdHandoffForInputsQEMU(ctx, s, child, false) != nil {
 			return ErrMismatch
 		}
 		phase = "ready-listener"
@@ -164,6 +175,11 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 		phase = "ready-original-channels"
 		if err := observeNFSMountdChannelsQEMU(pid, channels); err != nil {
 			return err
+		}
+		if s.sourceAccess != nil {
+			if err := s.sourceAccess.checkView(pid); err != nil {
+				return err
+			}
 		}
 		if channels.Check(ctx) != nil || s.revalidate(ctx) != nil {
 			return ErrMismatch
@@ -198,7 +214,7 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	if inode, err := nfsRPCListenerQEMU(true); err != nil || inode != "" {
 		return errors.Join(ErrMismatch, err)
 	}
-	if child.CheckNFSMountdHandoffQEMU(ctx, true) != nil {
+	if nfsMountdHandoffForInputsQEMU(ctx, s, child, true) != nil {
 		return ErrMismatch
 	}
 	phase = "normal-close"
@@ -209,17 +225,33 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	if channels.Check(ctx) != nil || s.revalidate(ctx) != nil {
 		return ErrMismatch
 	}
-	if err := channels.Close(); err != nil {
-		return err
+	if s.sourceAccess == nil {
+		if err := channels.Close(); err != nil {
+			return err
+		}
 	}
 	if after, err := retainedFixtureFDCount(); err != nil || after != before {
 		return ErrMismatch
 	}
 	// NULL RPC does not publish exports or modify mutable NFS tables.
 	entries, err := os.ReadDir(nfsStateViewQEMU + "/nfs")
-	if err != nil || len(entries) != 0 {
+	if err != nil || s.sourceAccess == nil && len(entries) != 0 {
 		return errors.Join(ErrMismatch, err)
 	}
-	fmt.Println("PHANTOWD_NFS_MOUNTD_READY original_inputs=true original_channels=3 metadata_only_collector=true child_channels_rw=true private_view=true uid_gid=0 capabilities_zero=true listener_pid_bound=true null_rpc_v3=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true exports=false product=false scope=qemu-only")
+	if s.sourceAccess != nil {
+		fmt.Println("PHANTOWD_NFS_SOURCE_MOUNTD_READY original_channels=3 original_sources=3 filehandle_view=true private_view=true uid_gid=0 caps=dac-read-search listener_pid_bound=true stop_reaped=true fd_balance=true product=false scope=qemu-only")
+	} else {
+		fmt.Println("PHANTOWD_NFS_MOUNTD_READY original_inputs=true original_channels=3 metadata_only_collector=true child_channels_rw=true private_view=true uid_gid=0 capabilities_zero=true listener_pid_bound=true null_rpc_v3=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true exports=false product=false scope=qemu-only")
+	}
 	return nil
+}
+
+func nfsMountdHandoffForInputsQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, child *processowner.PinnedSet, stopped bool) error {
+	if s.sourceAccess != nil {
+		if s.sourceAccess.accessComplete {
+			return child.CheckNFSSourceMountdAccessHandoffQEMU(ctx, stopped)
+		}
+		return child.CheckNFSSourceMountdHandoffQEMU(ctx, stopped)
+	}
+	return child.CheckNFSMountdHandoffQEMU(ctx, stopped)
 }

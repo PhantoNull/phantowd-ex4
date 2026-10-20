@@ -449,10 +449,22 @@ Its gate precedes the source gate; storage lease calls return before runtime
 lease/code calls, followed by storage recheck. There is no runtime-to-storage
 callback or planner-derivation lock held across kernel/process operations.
 Matching immutable candidates is necessary, not a live policy/identity lease.
-Normal Close releases only an unstarted reservation. Source/input drift or
+Normal Close releases an unstarted reservation or its verified-settled finite
+source fixture. Source/input drift or
 uncertain post-reservation construction retains both parents and the ORIGINAL
 error chain; restoration cannot release or revive it. The complete constructor/
-close/concurrency fault matrix and an admitted-consumer lifecycle remain open.
+close/concurrency fault matrix and a product admitted-consumer lifecycle remain open.
+
+The separate source guest now has one fixed finite access consumer. Construction
+receives original descriptors under the containing join, never per-operation
+backends or a getter. It retains the qualified volume anchor (read-only in child
+views), three original data directories, original namespace/filehandle/features
+and cache references through normal consumer settlement. Mountd and exportfs
+have separate fixed grants; only DAC read/search is retained after setup.
+Actual synthetic NFS I/O, all-squash identity, RO/client denials and normal stop
+are required. Unknown active capture, mounted client, export or kernel outcome
+retains review and original consumers until VM disposal, not product recovery.
+Complete fault coverage and sole-domain/policy/identity authority remain open.
 
 - Fix the trusted kernel/backend implementation at construction. Operations take
   contexts, not replacement backends, executable paths, arguments or root lists.
