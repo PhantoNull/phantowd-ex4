@@ -40,6 +40,7 @@ jobs:
       - name: Build and boot non-flashable ARMv5 image
         run: |
           docker run --rm \
+            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
             "$BUILD_IMAGE" \
