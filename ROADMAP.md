@@ -60,8 +60,16 @@ Prerequisite now verified: private original socket identity (SOCKFS device/inode
 kernel cookie, IPv4 TCP/CLOEXEC) is captured and rechecked before attachment,
 around readiness and before stop/close. Real endpoint-seam replacement refuses;
 nine NFS profiles and API smoke/two clean state-reboot kernels pass. This is not
-an atomic FD lease, controller-level substitution/close-fault qualification or
-allocated-but-unattached cleanup; those remain part of item1 below.
+an atomic FD lease or controller-level substitution/close-fault qualification.
+
+The new `kernel-socket` component case additionally qualifies actual bind-
+EADDRINUSE before attachment: original unbound socket closed once, fresh empty
+NFSD profile and unchanged independent bound socket, review/cause/refs retained.
+There are no NFSD transaction writes, retries, release or restart. A separate
+read-only original witness records absence; ten optional profiles and API smoke/
+two clean state-reboot kernels pass. This is component-only: integrate it with
+the original server Owner/daemon/identity/storage/code/input authority before
+claiming attempted-kernel-start compensation. Other frontiers remain in item1.
 
 1. Other pre-dispatch/reference/admission failures during explicit Stop,
    other partial-start/failed-readiness/uncertain-constructor settlement, hard

@@ -18,9 +18,8 @@ observations establish absence without clearing review or releasing authority.
 Original policy/identity claims remain valid; parent closure, restart/retry and
 release refuse with stable retained descriptor counts. Complete native/Windows,
 targeted race-count3 and strict C-selector/receipt/dispatch tests pass. The latest
-socket-identity campaign covers all nine optional profiles: the kernel-
-constructor reservation conflict plus eight other profiles, without duplicating
-the unchanged wrapper lane.
+campaign covers all ten optional profiles: the kernel-socket component through
+cached and ordinary wrappers plus the nine previous code/source profiles.
 
 `source-owner-daemon-stop-loss` performs no Check or supervision between the
 controlled mountd exit and explicit Stop. The original Stop precheck previously
@@ -49,20 +48,33 @@ as no acquired/hidden resources; an explicit kernel-start-attempt marker exclude
 partial listener/thread effects from this cleanup frontier. Review/causes/claims
 and descriptors remain held, with no retry/restart/release.
 
-Nine actual NFS guests share one tested helper and unchanged source/base images;
-30 receipt/shell and three loader groups pass with unchanged deadlines.
+Eleven actual NFS guests share one tested helper and unchanged source/base images;
+32 receipt/shell and three loader groups pass with unchanged deadlines.
 
 The controller now captures the original socket's SOCKFS device/inode and
 nonzero kernel cookie, requiring IPv4 TCP/CLOEXEC. Startup, running observations
 and stop/close boundaries recheck that identity. A real host-socket test first
 reproduces replacement admission at the extracted legacy endpoint-check seam;
 the corrected check refuses an independent listener on the same endpoint
-without mutating it. Native race-count3, all nine NFS profiles, standard API/
-dashboard smoke and two clean state-reboot kernels pass: twelve guest boots
-total, with synthetic NFS policy/data persistence, access denial and teardown.
+without mutating it. Native race-count3 and the current guest campaigns below
+retain that original-identity requirement.
 This is not a full controller FD-table replacement/race proof or an atomic
-descriptor lease. Allocated-but-unattached startup cleanup remains unqualified;
-Stop still refuses an unstarted controller. No product activation is added.
+descriptor lease. No product activation is added.
+
+The optional `kernel-socket` fixture now qualifies one unstarted frontier: a
+separately held bound, non-listening socket makes the original controller's bind
+return EADDRINUSE. The baseline actual guest reaches that refusal but cannot
+settle its acquired socket. The new private record derives from the real bind
+result, not the selector. One Stop attempt verifies original refs/reservation,
+fresh empty NFSD profile and original unbound socket, closes only that socket
+and rechecks the empty profile without NFSD writes. Stop still returns reviewed
+failure with the original cause; a separate fresh original-lifetime witness
+records absence without retry/restart/release. Pre-cancel and copied/premature
+witness refusal, unchanged independent socket and retained original references
+are verified. The upper server Owner is deliberately not wired to this path.
+All ten modes plus API smoke/two clean state-reboot kernels pass: fourteen
+successful guest boots. Other bind/listen/partial-thread/close/cancellation
+frontiers, full controller FD races and product startup remain unqualified.
 
 The dedicated process fault/withdrawal guards previously accepted sibling flags
 that the main CLI already refused. Real Go and compiled native C parser tests

@@ -25,6 +25,7 @@ func main() {
 		return
 	}
 	sourceFixture := len(os.Args) == 2 && os.Args[1] == "--source-binding"
+	kernelSocket := len(os.Args) == 2 && os.Args[1] == "--kernel-socket-refusal"
 	sourceLoss := len(os.Args) == 2 && os.Args[1] == "--source-loss"
 	daemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-daemon-loss"
 	policyLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-policy-loss"
@@ -32,7 +33,7 @@ func main() {
 	kernelRefusal := len(os.Args) == 2 && os.Args[1] == "--source-owner-kernel-refusal"
 	ownerStopLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-stop-loss"
 	ownerDaemonLoss := len(os.Args) == 2 && os.Args[1] == "--source-owner-daemon-loss" || ownerStopLoss
-	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && !partialStart && !kernelRefusal && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
+	if (!sourceFixture && !sourceLoss && !daemonLoss && !policyLoss && !ownerDaemonLoss && !partialStart && !kernelRefusal && !kernelSocket && len(os.Args) != 1) || runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		os.Exit(1)
 	}
 	command, commandErr := os.ReadFile("/proc/cmdline")
@@ -43,6 +44,14 @@ func main() {
 	kernelSelected, kernelValid := parseOwnerLossSelector(command, "phantowd_nfs_source_owner_kernel_construct_refusal_fixture=")
 	if commandErr != nil || !selectorValid || selected != policyLoss || !peerValid || peerSelected != ownerDaemonLoss || !stopValid || stopSelected != ownerStopLoss || !partialValid || partialSelected != partialStart || !kernelValid || kernelSelected != kernelRefusal {
 		os.Exit(1)
+	}
+	if kernelSocket {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		if runKernelSocketRefusalQEMU(ctx, command) != nil {
+			os.Exit(1)
+		}
+		return
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-nfs-code-expected.json")
 	if err != nil {

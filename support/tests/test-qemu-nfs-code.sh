@@ -10,7 +10,7 @@ debugfs=${4:?pinned debugfs required}
 source_dir=${5:?source required}
 failure_log=${6:-}
 fixture_mode=${7:-code}
-case "$fixture_mode" in code|source|source-loss|source-daemon-loss|source-owner-policy-loss|source-owner-daemon-loss|source-owner-daemon-stop-loss|source-owner-partial-start|source-owner-kernel-refusal) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
+case "$fixture_mode" in code|kernel-socket|source|source-loss|source-daemon-loss|source-owner-policy-loss|source-owner-daemon-loss|source-owner-daemon-stop-loss|source-owner-partial-start|source-owner-kernel-refusal) ;; *) echo 'Unknown NFS fixture mode' >&2; exit 1 ;; esac
 tmpdir=${TMPDIR:-/tmp}
 case "$base:$target:$go_binary:$debugfs:$source_dir:$failure_log:$tmpdir" in
     *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
@@ -75,10 +75,12 @@ install_image_file "$scratch/expected.json" /usr/lib/phantowd/qemu-nfs-code-expe
 install_image_file "$scratch/probe" /usr/sbin/phantowd-nfs-code-fixture 0100555
 install_image_file "$scratch/launcher" /usr/sbin/phantowd-service-launcher 0100555
 install_image_file "$scratch/nfs-table-bootstrap" /usr/sbin/phantowd-nfs-table-bootstrap 0100555
-install_image_file "$source_dir/support/tests/nfs-code-init.sh" /usr/sbin/phantowd-nfs-code-init 0100555
+init_source="$source_dir/support/tests/nfs-code-init.sh"
+if [ "$fixture_mode" = kernel-socket ]; then init_source="$source_dir/support/tests/nfs-kernel-socket-init.sh"; fi
+install_image_file "$init_source" /usr/sbin/phantowd-nfs-code-init 0100555
 selector=
 set --
-if [ "$fixture_mode" != code ]; then
+if [ "$fixture_mode" != code ] && [ "$fixture_mode" != kernel-socket ]; then
     # Only this fresh regular RAM file is formatted, never a host block device.
     truncate -s 32M "$scratch/source.ext2"
     [ -f "$scratch/source.ext2" ] && [ ! -L "$scratch/source.ext2" ] || exit 1
@@ -109,7 +111,9 @@ child_pid=
 cat "$scratch/guest.log"
 verify_guest() {
     [ "$status" -eq 0 ] || return 1
-    if [ "$fixture_mode" != code ]; then
+    if [ "$fixture_mode" = kernel-socket ]; then
+        python3 -B "$source_dir/support/nfs-code-result.py" --kernel-socket "$scratch/guest.log" "$scratch/expected.json" || return 1
+    elif [ "$fixture_mode" != code ]; then
         if [ "$fixture_mode" = source-owner-kernel-refusal ]; then
             python3 -B "$source_dir/support/nfs-code-result.py" --source-owner-kernel-refusal "$scratch/guest.log" "$scratch/expected.json" || return 1
         elif [ "$fixture_mode" = source-owner-partial-start ]; then

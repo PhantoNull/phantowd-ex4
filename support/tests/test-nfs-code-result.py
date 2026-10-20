@@ -16,6 +16,22 @@ spec.loader.exec_module(checker)
 
 
 class CodeReceiptTests(unittest.TestCase):
+    def test_kernel_socket_component_receipt_is_exact_and_separate(self):
+        lines=[b"PHANTOWD_NFS_KERNEL_SOCKET_ARMED foreign_bound=true foreign_listening=false original_prepared=true scope=qemu-only",
+               b"PHANTOWD_NFS_KERNEL_SOCKET_READY actual_bind_refused=true owned_socket_closed=true original_control_retained=true foreign_socket_unchanged=true kernel_never_attached=true kernel_never_started=true review_retained=true no_retry=true no_restart=true release=false product=false scope=kernel-component-only",
+               b"PHANTOWD_NFS_KERNEL_SOCKET_DONE"]
+        for ending in (b"\n",b"\r\n"):
+            checker.verify_kernel_socket(ending.join(lines)+ending,self.report)
+        variants=[lines[:i]+lines[i+1:] for i in range(len(lines))]
+        variants += [lines[:i]+[lines[i]]+lines[i:] for i in range(len(lines))]
+        variants += [list(reversed(lines)),lines+[b"PHANTOWD_NFS_KERNEL_SOCKET_FAILED"],lines+[checker.READY]]
+        for old,new in ((b"owned_socket_closed=true",b"owned_socket_closed=false"),(b"foreign_socket_unchanged=true",b"foreign_socket_unchanged=false"),
+                        (b"no_retry=true",b"no_retry=false"),(b"release=false",b"release=true"),(b"product=false",b"product=true")):
+            variants.append([line.replace(old,new) for line in lines])
+        for variant in variants:
+            with self.assertRaises(ValueError):
+                checker.verify_kernel_socket(b"\n".join(variant),self.report)
+
     def test_kernel_constructor_refusal_requires_original_controller_and_daemon_stop(self):
         lines=[b"PHANTOWD_NFS_SOURCE_COUNTS files=4 aliases=0 bytes=400",checker.SOURCE_POLICY,
                b"PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_ARMED original_prepared_controller=true original_reservation=true replacement=false kernel_started=false product=false scope=qemu-only",
@@ -311,6 +327,24 @@ class CodeReceiptTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
 class ShellModeTests(unittest.TestCase):
+    def test_kernel_socket_init_is_component_only_and_failure_is_explicit(self):
+        actual=(Path(__file__).parent/"nfs-kernel-socket-init.sh").read_text()
+        for failure in ("none","mount","probe"):
+            with tempfile.TemporaryDirectory() as tmp:
+                versions=Path(tmp)/"versions"
+                script=actual.replace("/proc/fs/nfsd/versions",str(versions)).replace("/usr/sbin/phantowd-nfs-code-fixture","fixture_probe")
+                stubs=('mount() { printf "MOUNT %s\\n" "$*"; '+('return 1;' if failure=="mount" else ':;')+' }\n'
+                       'ip() { printf "IP %s\\n" "$*"; }\nreboot() { :; }\n'
+                       'fixture_probe() { test "$#" = 1 && test "$1" = --kernel-socket-refusal '+('&& false' if failure=="probe" else '')+'; }\n')
+                result=subprocess.run(["sh","-c",stubs+script],capture_output=True,timeout=2)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertIn(b"PHANTOWD_NFS_KERNEL_SOCKET_"+(b"DONE" if failure=="none" else b"FAILED"),result.stdout)
+                self.assertNotIn(b"/dev/",result.stdout)
+                if failure!="mount":
+                    self.assertEqual(versions.read_bytes(),b"-2 -4 +3\n")
+                else:
+                    self.assertFalse(versions.exists())
+
     def test_fault_profile_c_truth_table_is_closed_and_bounded(self):
         source = Path(__file__).parent / "nfs-table-bootstrap.c"
         flags = ["phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1", "phantowd_nfs_source_loss_fixture=1", "phantowd_nfs_source_daemon_loss_fixture=1", "phantowd_nfs_source_owner_daemon_loss_fixture=1", "phantowd_nfs_source_owner_stop_loss_fixture=1"]

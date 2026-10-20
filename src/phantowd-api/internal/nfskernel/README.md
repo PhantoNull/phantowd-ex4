@@ -37,10 +37,22 @@ to reject a replacement listener without changing it; valid ARMv5 fixtures and
 clean synthetic reboot/teardown retain their existing contracts.
 
 This is not an atomic FD-table lease or independent close authority. It does
-not exclude unrelated concurrent descriptor-table writers, qualify controller-
-level descriptor substitution/close faults, or admit cleanup of an allocated
-but never-attached socket: Stop still refuses an unstarted controller. Such
-partial-start settlement needs its own original-resource and uncertainty proof.
+not exclude unrelated concurrent descriptor-table writers or qualify
+controller-level descriptor substitution/close faults.
+
+One unstarted frontier is now qualified in the optional `kernel-socket` component
+fixture: this controller's real bind returns EADDRINUSE before listener attachment.
+The original cause is retained. Stop consumes one attempt, verifies original
+namespace/control/reservation references, a fresh empty NFSD profile and the
+original unbound non-listening socket, then closes only that descriptor once.
+Its number is quarantined before close; uncertain closure cannot retry. A fresh
+empty-profile check establishes absence, but Stop still returns reviewed failure.
+`CheckUnattachedStoppedQEMU` is the separate read-only original-lifetime witness;
+it cannot release references, clear review or restart. An independently held
+bound non-listening socket in the same process remains unchanged. Other bind/
+listen/attachment/thread/close faults are not qualified by this case. The upper
+source-server Owner still refuses attempted-kernel-start partial compensation;
+this component result does not authorize server/product activation.
 
 `CheckPreparedQEMU` is a distinct read-only observation of an original reserved
 but never-started controller. It verifies held namespace/control references,

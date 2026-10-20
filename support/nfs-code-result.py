@@ -10,6 +10,12 @@ import sys
 
 MAX_LOG = 4 << 20
 MAX_REPORT = 128 << 10
+KERNEL_SOCKET_ARMED = b"PHANTOWD_NFS_KERNEL_SOCKET_ARMED foreign_bound=true foreign_listening=false original_prepared=true scope=qemu-only"
+KERNEL_SOCKET_READY = (b"PHANTOWD_NFS_KERNEL_SOCKET_READY actual_bind_refused=true owned_socket_closed=true "
+                       b"original_control_retained=true foreign_socket_unchanged=true kernel_never_attached=true "
+                       b"kernel_never_started=true review_retained=true no_retry=true no_restart=true release=false "
+                       b"product=false scope=kernel-component-only")
+KERNEL_SOCKET_DONE = b"PHANTOWD_NFS_KERNEL_SOCKET_DONE"
 READY = (b"PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true "
          b"caller_copy_closed=true normal_fd_balance=true constructor_rollback=true "
          b"non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true "
@@ -101,6 +107,21 @@ def expected_counts(report):
             or total != expected["total_bytes"] or not 0 <= aliases <= 1024 - len(objects)):
         raise ValueError("fixture budget")
     return len(objects), aliases, total
+
+
+def verify_kernel_socket(log, report):
+    if len(log) > MAX_LOG:
+        raise ValueError("log budget")
+    expected_counts(report)  # Declared cached closure, NOT guest code/loader authority.
+    seen=[]
+    for raw in log.split(b"\n"):
+        line=raw[:-1] if raw.endswith(b"\r") else raw
+        if line.startswith(b"PHANTOWD_NFS_"):
+            if line not in (KERNEL_SOCKET_ARMED,KERNEL_SOCKET_READY,KERNEL_SOCKET_DONE):
+                raise ValueError("unknown failed or mixed kernel component receipt")
+            seen.append(line)
+    if seen != [KERNEL_SOCKET_ARMED,KERNEL_SOCKET_READY,KERNEL_SOCKET_DONE]:
+        raise ValueError("incomplete duplicate or reordered kernel component receipt")
 
 
 def verify(log, report):
@@ -341,15 +362,18 @@ def main():
         owner_stop = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-daemon-stop-loss"
         partial_start = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-partial-start"
         kernel_refusal = len(sys.argv) == 4 and sys.argv[1] == "--source-owner-kernel-refusal"
-        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and not kernel_refusal and len(sys.argv) != 3:
+        kernel_socket = len(sys.argv) == 4 and sys.argv[1] == "--kernel-socket"
+        if not source and not loss and not peer and not policy_loss and not owner_peer and not owner_stop and not partial_start and not kernel_refusal and not kernel_socket and len(sys.argv) != 3:
             raise ValueError("arguments")
-        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start or kernel_refusal else sys.argv[1:]
-        verifier = verify_source_owner_kernel_refusal if kernel_refusal else verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
+        args = sys.argv[2:] if source or loss or peer or policy_loss or owner_peer or owner_stop or partial_start or kernel_refusal or kernel_socket else sys.argv[1:]
+        verifier = verify_kernel_socket if kernel_socket else verify_source_owner_kernel_refusal if kernel_refusal else verify_source_owner_partial_start if partial_start else verify_source_owner_stop_loss if owner_stop else verify_source_owner_daemon_loss if owner_peer else verify_source_owner_policy_loss if policy_loss else verify_source_daemon_loss if peer else verify_source_loss if loss else verify_source if source else verify
         verifier(read_regular(args[0], MAX_LOG), read_regular(args[1], MAX_REPORT))
     except (ValueError, OSError, TypeError, KeyError, RecursionError):
         print("NFS code receipt refused", file=sys.stderr)
         return 1
-    if kernel_refusal:
+    if kernel_socket:
+        print("PHANTOWD_NFS_KERNEL_SOCKET_RECEIPT_READY transport=LF-or-CRLF exact=true scope=kernel-component-only")
+    elif kernel_refusal:
         print("PHANTOWD_NFS_SOURCE_OWNER_KERNEL_REFUSAL_RECEIPT_READY transport=LF-or-CRLF exact=true scope=owned-daemons-stop-original-controller-retained")
     elif partial_start:
         print("PHANTOWD_NFS_SOURCE_OWNER_PARTIAL_START_RECEIPT_READY transport=LF-or-CRLF exact=true scope=rpc-only-partial-start-stopped-review")

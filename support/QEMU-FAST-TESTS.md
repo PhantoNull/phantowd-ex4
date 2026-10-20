@@ -99,6 +99,26 @@ nine valid profiles pass with one helper/bootstrap and unchanged90/60/360/5s.
 No new role, privilege, product constructor, endpoint or persistent resource.
 This is fixture hardening, not legacy WD or complete runtime-profile qualification.
 
+## Optional unattached kernel-socket component
+
+The additional optional component profile is invoked through the host wrapper:
+
+```powershell
+.\support\test-nfs-code.ps1 -FixtureMode kernel-socket
+```
+
+It boots a dedicated guest init with no data disk or userspace NFS daemons.
+**Never execute that guest-init script on a host or NAS.** Use only the bounded
+QEMU wrapper. A separately held non-listening loopback socket causes a real bind
+EADDRINUSE; one original owned-socket close and fresh empty kernel profile are
+verified while original references/reservation, cause and review stay retained.
+Pre-cancel, copied/premature observation, retry/restart/release and replacement
+controller admission refuse; the independent socket stays unchanged. Receipt
+scope is `kernel-component-only`, not retained code/loader execution, complete
+server compensation or product activation. Ten optional modes/eleven NFS guests
+plus API smoke/two clean state-reboot kernels pass with unchanged90/60/360/5s
+NFS caps, caches, role privileges and no new default guest/job or image build.
+
 ## Optional retained NFS table consumer
 
 `support/test-nfs-code.ps1` keeps the existing90s guest/60s helper/360s work

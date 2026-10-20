@@ -7,6 +7,7 @@ package nfskernel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,6 +38,7 @@ type ControllerQEMU struct {
 	ns                               [2]unix.Stat_t
 	socket                           int
 	socketIdentity                   nfsSocketIdentityQEMU
+	unattached                       *unattachedSocketQEMU
 	started, stopped, closed, review bool
 	uncertain                        *os.File
 	phase                            string // Fixed fixture label only; no paths or source data.
@@ -241,8 +243,16 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 	if err != nil {
 		return k.retain()
 	}
-	if unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: [4]byte{127, 0, 0, 1}}) != nil || unix.Listen(fd, 64) != nil {
-		return k.retain()
+	k.phase = "bind-socket"
+	if err := unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+		if errors.Is(err, unix.EADDRINUSE) {
+			k.unattached = &unattachedSocketQEMU{bindCause: err}
+		}
+		return errors.Join(k.retain(), err)
+	}
+	k.phase = "listen-socket"
+	if err := unix.Listen(fd, 64); err != nil {
+		return errors.Join(k.retain(), err)
 	}
 	if checkNFSSocketQEMU(fd, k.socketIdentity) != nil {
 		return k.retain()
@@ -272,6 +282,9 @@ func (k *ControllerQEMU) Stop(ctx context.Context) error {
 		return err
 	}
 	defer k.leave()
+	if k.unattached != nil {
+		return k.stopUnattachedSocketQEMU(ctx)
+	}
 	if !k.started || k.stopped || k.socket < 0 || !matchesNFSSocketIdentityQEMU(k.socket, k.socketIdentity) {
 		return k.retain()
 	}
