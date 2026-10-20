@@ -120,9 +120,11 @@ reproduction, ordinary unclean boot recovery or physical-hardware qualification.
 
 ## Retained kernel component in the actual reboot fixture
 
-The `qemu && linux` component in
-[`nfs_kernel_control_qemu_linux.go`](../src/phantowd-api/nfs_kernel_control_qemu_linux.go)
-is admitted only by the fixed ARM/VersatilePB/synthetic-disk guard. It retains
+The shared `qemu && linux` [kernel component](../src/phantowd-api/internal/nfskernel/README.md)
+is used by the [original reboot wrapper](../src/phantowd-api/nfs_kernel_control_qemu_linux.go),
+which preserves its fixed ARM/VersatilePB/synthetic-disk guard and additionally
+requires the state-reboot selector. The separate code fixture constructor has
+its own fixed boot selector and receives no data disk. The component retains
 network and mount namespace files (NSFS/type/device/inode) and the original NFSD
 directory (filesystem magic and unique mount/device/inode). Complete operations
 are serialized on one OS thread, with original/path namespace/mount rechecks.
@@ -400,6 +402,24 @@ held namespace/root/channel identities, not current named-registry completeness
 or sole ownership. It does not expose `/proc/fs/nfsd`, flush/content files,
 publish exports, start NFSD or compose the existing kernel controller with a
 product Owner. Kernel admission, sources, faults and boot recovery remain below.
+
+## Kernel/userspace composition prerequisite (QEMU only)
+
+The optional code guest additionally composes that same concrete NFSD component
+inside the original live rpcbind/mountd and code/config/state/channel lifetime.
+The parent alone retains the NFSD control filesystem; the daemon gets no general
+proc or thread controls. Startup retains its actual IPv4 loopback TCP/2049 socket
+and starts two threads. Require accepted NFSv3 NULL, exact profile, actual socket
+address/accepting state and original daemon/channel observations. Stop verifies
+zero threads/no listeners and refused NFS connection while both daemons remain
+live. Uncertain kernel settlement retains both original daemon chains.
+
+Cache-channel capture uses thread-self under its existing OS-thread lock, not
+the process leader's potentially different namespace. The original separate
+two-kernel fixture still supplies its synthetic-disk/policy/data and independent
+Netlink checks through the shared controller. Neither path becomes a complete
+product backend. This code fixture has no exports/data I/O, fresh complete
+control-domain census, full faults, NLM/NSM or normal/unclean product boot recovery.
 
 ## Required kernel-backend construction and sole ownership
 

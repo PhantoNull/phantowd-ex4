@@ -17,7 +17,7 @@ class CodeReceiptTests(unittest.TestCase):
                                   "static_dependencies_resolved": True, "runtime_qualified": False,
                                   "execution_authorized": False, "total_bytes": 400,
                                   "objects": [{"size": 100, "bindings": ["one"]} for _ in range(4)]}).encode()
-        self.lines = [checker.TABLE, checker.MOUNTD, checker.RPCBIND, checker.INPUTS, b"PHANTOWD_NFS_CODE_COUNTS files=4 aliases=0 bytes=400", checker.READY, checker.DONE]
+        self.lines = [checker.TABLE, checker.KERNEL, checker.MOUNTD, checker.RPCBIND, checker.INPUTS, b"PHANTOWD_NFS_CODE_COUNTS files=4 aliases=0 bytes=400", checker.READY, checker.DONE]
 
     def test_lf_and_serial_crlf_have_same_exact_meaning(self):
         for ending in (b"\n", b"\r\n"):
@@ -38,6 +38,11 @@ class CodeReceiptTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             checker.verify(b"\n".join(without_mountd), self.report)
 
+    def test_old_mountd_only_receipt_cannot_claim_retained_kernel(self):
+        without_kernel = [line for line in self.lines if not line.startswith(b"PHANTOWD_NFS_KERNEL_")]
+        with self.assertRaises(ValueError):
+            checker.verify(b"\n".join(without_kernel), self.report)
+
     def test_missing_duplicate_reordered_or_failed_receipts_refuse(self):
         variants = [self.lines[:i] + self.lines[i+1:] for i in range(len(self.lines))]
         variants += [self.lines[:i] + [self.lines[i]] + self.lines[i:] for i in range(len(self.lines))]
@@ -49,11 +54,14 @@ class CodeReceiptTests(unittest.TestCase):
                          (b"bytes=400", b"bytes=399"), (b"service=false", b"service=true"),
                          (b"state_dirs=2", b"state_dirs=3"), (b"services=false", b"services=true"),
                          (b"kernel_control=false", b"kernel_control=true"),
-                         (b"uid_gid=1", b"uid_gid=0"), (b"nfsd=false", b"nfsd=true"),
+                         (b"uid_gid=1", b"uid_gid=0"), (b"nfsd=true", b"nfsd=false"),
                          (b"listener_pid_bound=true", b"listener_pid_bound=false"),
                          (b"original_channels=3", b"original_channels=0"),
                          (b"child_channels_rw=true", b"child_channels_rw=false"),
-                         (b"exports=false", b"exports=true")):
+                         (b"exports=false", b"exports=true"),
+                         (b"threads=2", b"threads=0"),
+                         (b"original_control=true", b"original_control=false"),
+                         (b"owner_backend=false", b"owner_backend=true")):
             variants.append([line.replace(old, new) for line in self.lines])
         variants.append([line + b"\r\r" for line in self.lines])
         for lines in variants:

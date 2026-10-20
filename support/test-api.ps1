@@ -32,6 +32,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
     go test -tags=qemu -count=1 ./internal/nfsowner
     if ($LASTEXITCODE -ne 0) { throw 'NFS lifetime tests failed.' }
+    go test -tags=qemu -count=1 ./internal/nfskernel
+    if ($LASTEXITCODE -ne 0) { throw 'NFS kernel component tests failed.' }
+    go test -tags=qemu -count=1 -run '^TestNFSMountdStartup' ./internal/processowner
+    if ($LASTEXITCODE -ne 0) { throw 'NFS startup fragmentation tests failed.' }
     go test -tags=qemu -count=1 -run '^TestNFS(Expected|Code|Configuration|Inputs|Table|RPCBind|Mountd)' ./internal/runtimebundle
     if ($LASTEXITCODE -ne 0) { throw 'NFS expected-code metadata tests failed.' }
     if ($IsLinux -or $env:OS -ne 'Windows_NT') {

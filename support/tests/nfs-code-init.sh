@@ -8,6 +8,7 @@ prepare() {
     mount -t sysfs sysfs /sys || return 1
     grep -Eq '(^| )phantowd_nfs_code_fixture=1( |$)' /proc/cmdline || return 1
     mount -t tmpfs -o mode=0755,size=32m,nosuid,nodev tmpfs /run || return 1
+    mount -t nfsd nfsd /proc/fs/nfsd || return 1
     ip link set lo up || return 1
 }
 if prepare && /usr/sbin/phantowd-nfs-code-fixture; then

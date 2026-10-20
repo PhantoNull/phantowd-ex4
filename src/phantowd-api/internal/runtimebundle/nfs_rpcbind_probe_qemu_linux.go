@@ -29,8 +29,6 @@ func rpcBindNullQEMU(ctx context.Context) (ready bool, result error) {
 }
 
 func nfsRPCNullQEMU(ctx context.Context, mountd bool) (ready bool, result error) {
-	operation, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
 	address := "127.0.0.1:111"
 	program, version := uint32(100000), uint32(2)
 	if mountd {
@@ -38,6 +36,12 @@ func nfsRPCNullQEMU(ctx context.Context, mountd bool) (ready bool, result error)
 		program = 100005
 		version = 3
 	}
+	return nfsFixedNullQEMU(ctx, address, program, version)
+}
+
+func nfsFixedNullQEMU(ctx context.Context, address string, program, version uint32) (ready bool, result error) {
+	operation, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 	conn, err := (&net.Dialer{}).DialContext(operation, "tcp4", address)
 	if err != nil {
 		if errors.Is(err, unix.ECONNREFUSED) {
@@ -294,7 +298,7 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 			return err
 		}
 		phase = "mountd-composition"
-		return probeNFSMountdQEMU(ctx, s, bootstrap)
+		return probeNFSMountdQEMU(ctx, s, bootstrap, nfsCompanionQEMU{child, member.PID})
 	}()
 	checkPhase := phase
 	if nfsMountdUnsettledQEMU {
@@ -349,6 +353,6 @@ func probeNFSRPCBindQEMU(ctx context.Context, inputs *NFSInputsQEMU) (result err
 	if err != nil || len(entries) != 1 || entries[0].Name() != "nfs" {
 		return errors.Join(ErrMismatch, err)
 	}
-	fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=false product=false scope=qemu-only")
+	fmt.Println("PHANTOWD_NFS_RPCBIND_READY original_inputs=true private_view=true uid_gid=1 effective_permitted_zero=true bounding=startup-only listener_pid_bound=true null_rpc=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true product=false scope=qemu-only")
 	return nil
 }

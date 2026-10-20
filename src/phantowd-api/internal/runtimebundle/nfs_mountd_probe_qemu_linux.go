@@ -80,7 +80,7 @@ func observeNFSMountdChannelsQEMU(pid int, channels *NFSMountdChannelsQEMU) erro
 
 // Caller holds the original NFS input gate and keeps the original rpcbind live
 // through mountd's registration/unregistration and complete normal settlement.
-func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *os.File) (result error) {
+func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *os.File, rpcbind nfsCompanionQEMU) (result error) {
 	if s == nil {
 		return ErrInvalid
 	}
@@ -176,9 +176,13 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 		if err != nil || observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
 			return errors.Join(ErrMismatch, err)
 		}
-		return nil
+		phase = "kernel-composition"
+		return probeNFSDKernelQEMU(ctx, s, channels, [2]nfsCompanionQEMU{rpcbind, {child, pid}})
 	}()
 	checkPhase := phase
+	if nfsKernelUnsettledQEMU {
+		return errors.Join(ErrReviewRequired, checkErr)
+	} // The kernel may still consume its original mountd/rpcbind inputs.
 	phase = "stop"
 	cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	stopped, stopErr := child.Stop(cleanup)
@@ -216,6 +220,6 @@ func probeNFSMountdQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, bootstrap *
 	if err != nil || len(entries) != 0 {
 		return errors.Join(ErrMismatch, err)
 	}
-	fmt.Println("PHANTOWD_NFS_MOUNTD_READY original_inputs=true original_channels=3 metadata_only_collector=true child_channels_rw=true private_view=true uid_gid=0 capabilities_zero=true listener_pid_bound=true null_rpc_v3=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=false exports=false product=false scope=qemu-only")
+	fmt.Println("PHANTOWD_NFS_MOUNTD_READY original_inputs=true original_channels=3 metadata_only_collector=true child_channels_rw=true private_view=true uid_gid=0 capabilities_zero=true listener_pid_bound=true null_rpc_v3=true stop_reaped=true listener_stopped=true fd_balance=true nfsd=true exports=false product=false scope=qemu-only")
 	return nil
 }

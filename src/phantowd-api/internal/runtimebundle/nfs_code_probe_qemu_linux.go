@@ -27,7 +27,8 @@ var nfsCodeProbeRetainedQEMU *NFSCodeQEMU
 // ProbeNFSCodeQEMU stages public guest code into its own bounded RAM mount.
 // Loader lists, exportfs -s and foreground rpcbind/mountd execute with fixed
 // profiles. Mountd sees only three original kernel cache channels, not a broad
-// proc view. No NFSD threads/data devices/product backend are activated.
+// proc view. A concrete retained NFSD lifetime is composed without exports,
+// data devices or a product backend.
 func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 	phase := "guard"
 	defer func() {
@@ -192,7 +193,7 @@ func ProbeNFSCodeQEMU(ctx context.Context, expected []byte) (result error) {
 		return errors.New("independent input capture erased earlier code review")
 	}
 	fmt.Printf("PHANTOWD_NFS_CODE_COUNTS files=%d aliases=%d bytes=%d\n", len(plan.files), len(plan.aliases), plan.bytes)
-	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-table-rpcbind-mountd scope=code-inputs-and-mountd-channels")
+	fmt.Println("PHANTOWD_NFS_CODE_READY original_pins=true namespace_bound=true caller_copy_closed=true normal_fd_balance=true constructor_rollback=true non_elf_refused=true same_bytes_overmount_refused=true restored_refused=true review_retained=true execution=loader-table-rpcbind-mountd-kernel scope=code-inputs-daemons-and-kernel")
 	return nil
 }
 

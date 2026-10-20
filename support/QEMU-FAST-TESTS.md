@@ -67,6 +67,25 @@ validate original held namespace/root/channel metadata, without claiming a fresh
 named registry or sole kernel authority. No general proc mount, NFSD controls,
 exports/data roots, product privilege/boot recovery or hardware operation.
 
+## Optional retained NFSD composition
+
+The same code guest composes a concrete retained NFSD kernel lifetime while
+both original daemon instances and code/config/state/channel references remain
+held. Require two threads, actual retained IPv4 loopback TCP/2049 socket, exact
+v3-only profile and accepted NFSv3 NULL. Kernel stop must verify zero threads,
+empty listeners and refused connection while both daemons remain live; then
+verify kernel FD balance before existing mountd/rpcbind closure. Uncertainty
+retains both chains. No export/data I/O or real nfsowner backend is implied.
+Every previous receipt and90/60/360limits remains mandatory; no default boot/job
+is added. The separate two-kernel I/O fixture uses the same concrete component
+with its original synthetic-disk admission and independent Netlink checks.
+
+Mountd's fixed readiness callback now waits for its complete exact startup
+stream before accepted RPC, inside the original5seconds. Proper byte prefixes
+are pending, unknown/trailing bytes refuse. This fixes actual asynchronous
+collection observed ending at `rpc.mountd: `, not a daemon-error whitelist.
+No timeout reset, explicit sleep, retry/restart or lifecycle-gate reentry.
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:

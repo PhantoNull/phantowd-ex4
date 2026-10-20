@@ -13,8 +13,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const nfsMountdHandoffQEMU = "PHANTOWD_NFS_MOUNTD_HANDOFF private_view=true capabilities_zero=true channels=3 active_interfaces=lo fixed_mountd=true\n"
-
 // NewNFSMountdPinnedQEMU fixes three original metadata-only kernel channel
 // references and their network namespace, in addition to the four NFS roles.
 // Only the containing trusted lifetime grants the fixed fixture consumer use.
@@ -25,7 +23,22 @@ func NewNFSMountdPinnedQEMU(spec MemberSpec, bootstrap *os.File, objects [4]*os.
 		spec.Process.ReadyTimeout != 5*time.Second || spec.Process.ProbeInterval != 20*time.Millisecond || spec.Process.StopTimeout != time.Second {
 		return nil, ErrInvalid
 	}
-	return newNFSFixedDaemonQEMU(spec, bootstrap, objects, channels[:])
+	s, err := newNFSFixedDaemonQEMU(spec, bootstrap, objects, channels[:])
+	if err != nil {
+		return nil, err
+	}
+	owner := s.set.members[0].owner
+	probe := s.set.members[0].spec.Ready
+	s.set.members[0].spec.Ready = func(ctx context.Context) (bool, error) {
+		// Diagnostics is independently synchronized. Do not reenter the Set or
+		// Owner lifecycle gates from its own readiness callback.
+		complete, err := NFSMountdStartupReadyQEMU(owner.Diagnostics())
+		if err != nil || !complete {
+			return false, err
+		}
+		return probe(ctx)
+	}
+	return s, nil
 }
 
 func duplicateNFSKernelInputQEMU(source *os.File) (*os.File, error) {
@@ -64,7 +77,7 @@ func (s *PinnedSet) CheckNFSMountdHandoffQEMU(ctx context.Context, stopped bool)
 		return err
 	}
 	defer func() { <-s.gate }()
-	wanted := nfsMountdHandoffQEMU + "rpc.mountd: Version 2.8.6 starting\n"
+	wanted := nfsMountdStartupQEMU
 	if stopped {
 		wanted += "rpc.mountd: Caught signal 15, un-registering and exiting.\n"
 	}

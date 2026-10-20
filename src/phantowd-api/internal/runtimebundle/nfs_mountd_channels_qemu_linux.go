@@ -64,7 +64,7 @@ func NewNFSMountdChannelsQEMU(ctx context.Context) (_ *NFSMountdChannelsQEMU, re
 			return nil, ErrMismatch
 		}
 	}
-	fd, err := unix.Open(fmt.Sprintf("/proc/%d/net/rpc", os.Getpid()), unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	fd, err := unix.Open("/proc/thread-self/net/rpc", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
 		return nil, err
 	}

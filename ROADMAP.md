@@ -2453,9 +2453,17 @@ storage. No production roster provider or activation path exists.
   The real ARM regression catches proc-network forced revalidation invalidating
   retained source dentries; check held metadata without named source rewalks.
   This is not fresh named-registry completeness or kernel sole ownership.
-  Next compose original kernel/export/source authority, actual data/permission
+  **Retained NFSD composition:** the same original daemon/input/channel lifetime
+  now encloses the concrete retained kernel controller: two threads, original
+  loopback TCP/2049 socket, accepted NFSv3 NULL, exact profile and live original
+  daemon observations. Verify kernel stop/refused connection/FD closure before
+  daemon teardown; uncertainty retains both daemon chains. One shared QEMU-only
+  implementation preserves the old reboot wrapper's synthetic-disk guard.
+  Fragmented startup notices are pending only within the existing readiness
+  budget; unknown output refuses. No general launcher/privilege expansion.
+  Next compose complete original domain/export/source authority, actual data/permission
   access, full stop/fault coverage and normal/unclean automatic recovery before
-  activation. Do not infer NFSD startup, exports or a product privilege design
+  activation. Do not infer exports, complete backend or a product privilege design
   from this root/capability-zero, lo-only/NIC-none fixture.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric

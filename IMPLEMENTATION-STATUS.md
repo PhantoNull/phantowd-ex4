@@ -3,6 +3,39 @@
 
 # Implementation status
 
+## Retained NFSD composed with original daemons in ARMv5 QEMU
+
+The optional NFS lane now starts two actual NFSD threads on a retained IPv4
+loopback TCP/2049 socket while the original rpcbind/mountd, code/config/state
+gate and three cache channels remain held. Accepted NFSv3 NULL, actual socket
+address/accepting state, exact v3-only profile and original live daemon/channel
+observations pass. One bounded kernel stop verifies zero threads/no listeners
+and refused NFS connection before daemon teardown. Kernel uncertainty retains
+both daemon/input chains. All earlier receipts and 90/60/360 bounds remain.
+
+One concrete `qemu`-only kernel component now serves this and the previous
+two-kernel fixture. Its reboot wrapper keeps the original synthetic-disk guard
+and adds an exact phase selector; no caller-selected backend or generic-launcher
+authority is introduced. Cache capture uses thread-self under its OS-thread lock.
+
+An actual intermittent startup failure captured diagnostic text ending at
+`rpc.mountd: ` after accepted RPC. The fixed constructor now waits for the
+complete exact startup stream within its original five-second budget. Proper
+prefixes are pending, unknown/trailing bytes refuse; no sleep, timeout increase,
+restart or whitelist. All prefixes have a deterministic regression test and the
+clean actual ARM composition passes after temporary diagnostics are removed.
+
+Whole Windows/pinned native checks, focused race3, eight strict receipt groups
+and three loader groups pass. The clean focused ARM guest and the standard
+smoke plus both independent state-reboot kernels pass on the same 1,392-file
+input vector. Existing real synthetic NFS reads/writes, RO/client denials,
+UID/GID mapping, identical policy/data/inode and teardown remain verified.
+This is clean synthetic reboot evidence, not unclean recovery or hardware I/O.
+
+This composed lane has no exports/data I/O or real nfsowner backend. Complete
+domain/source/policy/identity ownership, cache/client quiescence, faults, NLM/NSM,
+product boot recovery and physical/release gates remain open. No NAS operation.
+
 ## Composed retained mountd and kernel channels in ARMv5 QEMU
 
 The optional NFS lane composes actual foreground mountd while the original

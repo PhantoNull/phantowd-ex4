@@ -203,7 +203,12 @@ channel-open failure. Positive observations require the actual original ELF,
 owned listener/PID, private roots and all three original channel identities
 opened O_RDWR by that same process, including each private-view mount ID.
 Exact source-derived startup/normal-stop notices are required; warnings and
-unknown bytes refuse. Mountd's verified group/listener stop and descriptor
+unknown bytes refuse. The constructor's readiness probe waits for the complete
+exact startup stream before accepted RPC NULL. A proper prefix is pending only
+inside the original five-second deadline: asynchronous diagnostic collection
+can temporarily end at `rpc.mountd: ` even after the daemon is serving. No sleep,
+deadline reset, output whitelist or lifecycle-gate reentry is introduced.
+Mountd's verified group/listener stop and descriptor
 closure precede rpcbind teardown. Uncertain mountd settlement retains both
 daemons and their original inputs until disposable-guest destruction.
 
@@ -213,8 +218,33 @@ fails with ENOENT in d_set_mounted. Checks therefore validate held namespace,
 root and channel metadata without rewalking source names. This does NOT prove
 a fresh named registry, sole-writer ownership or complete kernel admission.
 The real ARM composition is the regression seam for this failure; host refusal
-tests cannot reproduce it. No NFSD threads, exports, data roots, product service
-backend/boot recovery, HTTP activation or physical operations are added.
+tests cannot reproduce it. The daemon receives no NFSD thread controls or data
+roots. The containing kernel phase below is separate from this daemon profile.
+
+## Original daemons composed with retained NFSD (QEMU only)
+
+The same optional guest now mounts the NFSD control filesystem in its parent
+namespace and uses the concrete shared [kernel component](../nfskernel/README.md)
+while both original daemon instances, code/config/state gate and cache-channel
+references remain held. Code/root/namespace admission and generic launchers do
+not change. Cache capture uses thread-self under the original OS-thread lock,
+not the possibly different process leader's network namespace.
+
+Startup requires the exact empty v3-only kernel profile, retains an actual IPv4
+loopback TCP/2049 socket, attaches its FD and starts two NFSD threads. Accepted
+NFSv3 NULL RPC, original socket address/accepting state, exact profile and live
+original daemon PID/generation/channel observations are required. After one
+bounded zero-thread/socket stop, the profile and refused NFS connection are
+checked while both daemons still respond. FD equality follows normal kernel
+reference closure, then existing mountd/rpcbind teardown. Kernel uncertainty
+retains both daemons and their input chain until disposable VM destruction.
+
+This phase has no exports/data roots or actual file I/O. It is not complete
+control-domain census, pending-I/O/cache/client quiescence, fault-complete
+backend admission, nfsowner activation, NLM/NSM, product privileges/recovery,
+HTTP activation or physical qualification. The existing separate two-boot
+synthetic I/O fixture uses the same kernel implementation with its original
+synthetic-disk guard and independent Netlink checks retained.
 
 ## Existing Samba runtime and observation work
 

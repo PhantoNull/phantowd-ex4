@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 	"golang.org/x/sys/unix"
 )
 
@@ -31,15 +32,7 @@ const nfsRebootPayload = "persistent-qemu-nfs-data\n"
 // The pinned guest has CONFIG_NFSD_V2 and CONFIG_NFSD_V4 disabled; kernel
 // svc_one_xprt_name reports transport/port, not listener address or family.
 func validateQEMUNFSKernelProfile(threads, versions, ports []byte, running bool) error {
-	wantThreads, wantPorts := "0\n", ""
-	if running {
-		wantThreads, wantPorts = "2\n", "tcp 2049\n"
-	}
-	if !bytes.Equal(threads, []byte(wantThreads)) || !bytes.Equal(versions, []byte("+3\n")) ||
-		!bytes.Equal(ports, []byte(wantPorts)) {
-		return errors.New("NFS reboot kernel profile mismatch")
-	}
-	return nil
+	return nfskernel.ValidateProfileQEMU(threads, versions, ports, running)
 }
 
 func checkQEMUNFSKernelProfile(running bool) error {
