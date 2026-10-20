@@ -149,7 +149,7 @@ func probeSourceRuntimeMode(ctx context.Context, expected []byte, sourceLoss, da
 		phase = "original-source-nfs-access"
 		if ownerDaemonLoss {
 			phase = "periodic-owner-daemon-loss"
-			return runSourceOwnerDaemonLoss(ctx, joined)
+			return runSourceOwnerDaemonLoss(ctx, joined, authority, roots, inputs[0], lease)
 		}
 		if policyLoss {
 			phase = "periodic-owner-policy-loss"

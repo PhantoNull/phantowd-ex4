@@ -50,7 +50,29 @@ func NewNFSWithdrawalCaptureQEMU(role NFSWithdrawalOperationQEMU, bootstrap, inp
 	if count != 1 {
 		return nil, ErrInvalid
 	}
-	return newNFSCommandCaptureQEMU(bootstrap, input, objects, string(role), extra[:], func(file *os.File, index int) bool {
+	return newNFSOwnedWithdrawalCaptureQEMU(string(role), bootstrap, input, objects, extra)
+}
+
+// A distinct fixed server-cleanup ABI. The legacy source-loss selector above
+// is unchanged; no caller chooses arguments, privileges or source directories.
+func NewNFSServerWithdrawalCaptureQEMU(role NFSWithdrawalOperationQEMU, bootstrap, input *os.File, objects [4]*os.File, extra [6]*os.File) (*CaptureOwner, error) {
+	if !nfsServerPeerFaultGuardQEMU() {
+		return nil, ErrInvalid
+	}
+	var abi string
+	switch role {
+	case NFSWithdrawOwnedQEMU:
+		abi = "withdraw-server-v1"
+	case NFSFlushOwnedQEMU:
+		abi = "flush-server-v1"
+	default:
+		return nil, ErrInvalid
+	}
+	return newNFSOwnedWithdrawalCaptureQEMU(abi, bootstrap, input, objects, extra)
+}
+
+func newNFSOwnedWithdrawalCaptureQEMU(role string, bootstrap, input *os.File, objects [4]*os.File, extra [6]*os.File) (*CaptureOwner, error) {
+	return newNFSCommandCaptureQEMU(bootstrap, input, objects, role, extra[:], func(file *os.File, index int) bool {
 		if index == 0 {
 			return nfsSourceObjectQEMU(file, 4)
 		}

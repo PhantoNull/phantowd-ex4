@@ -90,6 +90,10 @@ func (s *PinnedSet) CheckNFSSourceMountdReviewStopQEMU(ctx context.Context) erro
 	if !nfsSourcePeerFaultGuardQEMU() {
 		return ErrInvalid
 	}
+	return s.checkNFSSourceMountdReviewStopQEMU(ctx)
+}
+
+func (s *PinnedSet) checkNFSSourceMountdReviewStopQEMU(ctx context.Context) error {
 	if err := s.enter(ctx); err != nil {
 		return err
 	}

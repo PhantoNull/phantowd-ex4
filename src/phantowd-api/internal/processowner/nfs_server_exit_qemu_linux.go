@@ -50,3 +50,13 @@ func (s *PinnedSet) InterruptNFSServerMountdFixtureQEMU(ctx context.Context) err
 	}
 	return s.interruptNFSSourceMountdQEMU(ctx)
 }
+
+// Read-only original-source witness after Stop, not fault-injection authority.
+// It requires the fixed ARMv5/source fixture and the original completed Stop,
+// retained pins, generation and review. No signal, retry or release is admitted.
+func (s *PinnedSet) CheckNFSServerMountdReviewStopQEMU(ctx context.Context) error {
+	if !nfsSourceFixtureGuardQEMU() {
+		return ErrInvalid
+	}
+	return s.checkNFSSourceMountdReviewStopQEMU(ctx)
+}

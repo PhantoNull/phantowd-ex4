@@ -76,6 +76,40 @@ static int cleanup_selector(void)
     return count == 1 ? 0 : -1;
 }
 
+static int server_cleanup_command(char *command, size_t size)
+{
+    if (!size || size > 4096 || memchr(command, 0, size)) return -1;
+    const char *required[] = {"phantowd_nfs_code_fixture=", "phantowd_nfs_source_fixture=",
+                              "phantowd_nfs_source_owner_daemon_loss_fixture="};
+    const char *excluded[] = {"phantowd_nfs_source_loss_fixture=", "phantowd_nfs_source_daemon_loss_fixture=",
+                              "phantowd_nfs_source_owner_policy_loss_fixture="};
+    int count[3] = {0, 0, 0};
+    char *save = NULL;
+    for (char *word = strtok_r(command, " \t\r\n", &save); word; word = strtok_r(NULL, " \t\r\n", &save)) {
+        for (int index = 0; index < 3; ++index) {
+            size_t length = strlen(required[index]);
+            if (!strncmp(word, required[index], length)) {
+                if (word[length] != '1' || word[length + 1]) return -1;
+                ++count[index];
+            }
+            if (!strncmp(word, excluded[index], strlen(excluded[index]))) return -1;
+        }
+    }
+    return count[0] == 1 && count[1] == 1 && count[2] == 1 ? 0 : -1;
+}
+
+static int server_cleanup_selector(void)
+{
+    char command[4097];
+    int fd = open("/proc/cmdline", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return -1;
+    ssize_t size = read(fd, command, sizeof(command));
+    int closed = close(fd);
+    if (size <= 0 || size >= (ssize_t)sizeof(command) || closed) return -1;
+    command[size] = 0;
+    return server_cleanup_command(command, (size_t)size);
+}
+
 /* Separate shutdown-only ABI: feature=8, four flush nodes=9..12, netns=13.
  * No source directory or volume reference is passed to this program. */
 static int cleanup_inputs(void)
@@ -474,13 +508,16 @@ int main(int argc, char **argv)
         if (!strcmp(argv[1], "flush-source-v1")) source_role = 4;
         if (!strcmp(argv[1], "withdraw-owned-v1")) cleanup_role = 1;
         if (!strcmp(argv[1], "flush-owned-v1")) cleanup_role = 2;
+        if (!strcmp(argv[1], "withdraw-server-v1")) cleanup_role = 3;
+        if (!strcmp(argv[1], "flush-server-v1")) cleanup_role = 4;
     }
     int daemon = argc == 2 && !strcmp(argv[1], "rpcbind-v1");
     int mountd = argc == 2 && (!strcmp(argv[1], "mountd-v1") || source_role == 1);
     if (argc != 2 || (!daemon && !mountd && !source_role && !cleanup_role && strcmp(argv[1], "table-v1")) ||
         getuid() || geteuid() || getgid() || getegid() || getpgrp() != getpid())
         return refuse();
-    if (fixture_guard() || ((source_role || cleanup_role) && source_selector()) || (cleanup_role && cleanup_selector()))
+    if (fixture_guard() || ((source_role || cleanup_role) && source_selector()) ||
+        (cleanup_role && (cleanup_role <= 2 ? cleanup_selector() : server_cleanup_selector())))
         return refuse();
     if (descriptors(daemon || mountd) || (mountd && channel_inputs()) || (source_role && source_inputs()) || (cleanup_role && cleanup_inputs()))
         return refuse();
@@ -502,7 +539,7 @@ int main(int argc, char **argv)
     umask(0077);
     char *args[] = {"/usr/sbin/exportfs", "-s", NULL};
     char *source_args[] = {"/usr/sbin/exportfs", source_role == 2 ? "-r" : source_role == 3 ? "-au" : "-f", NULL};
-    char *cleanup_args[] = {"/usr/sbin/exportfs", cleanup_role == 1 ? "-au" : "-f", NULL};
+    char *cleanup_args[] = {"/usr/sbin/exportfs", (cleanup_role == 1 || cleanup_role == 3) ? "-au" : "-f", NULL};
     char *daemon_args[] = {"/usr/sbin/rpcbind", "-f", "-s", "-h", "127.0.0.1", NULL};
     char *mountd_args[] = {"/usr/sbin/rpc.mountd", "-F", "-N", "2", "-N", "4", "-V", "3", "-u", "-p", "20048", NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin", "LC_ALL=C", NULL};

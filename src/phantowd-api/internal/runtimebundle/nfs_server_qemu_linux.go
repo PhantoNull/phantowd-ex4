@@ -30,6 +30,8 @@ type nfsServerQEMU struct {
 	table                                        nfsServerTableQEMU
 	running, ioAttempted, stopAttempted, stopped bool
 	peerExitAttempted, peerExitVerified          bool
+	reviewStopVerified                           bool
+	reviewStopCause, peerStopCause               error
 	phase                                        string
 }
 
@@ -64,6 +66,9 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 		return ErrUnavailable
 	}
 	if o.review {
+		if operation == 3 || operation == 4 {
+			return o.reviewedServerOperation(ctx, operation)
+		}
 		return ErrReviewRequired
 	}
 	if o.sourceLoss || o.daemonLoss || operation > 4 {
@@ -112,7 +117,7 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 		return ErrReviewRequired
 	}
 	if operation == 4 {
-		return o.observeServerStopped(ctx, s)
+		return o.observeServerStopped(ctx, s, false)
 	}
 	if operation == 0 {
 		o.consumed, s.sourceAccess = true, o
@@ -153,7 +158,7 @@ func (o *NFSSourceAccessQEMU) serverOperation(ctx context.Context, operation uin
 // references. This is a fixed fixture profile, NOT sole-domain ownership,
 // complete export-cache census, remote-client quiescence or release authority.
 // Every legacy read gets a new transaction descriptor (no seek/stale snapshot).
-func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCodeLifetimeQEMU) error {
+func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCodeLifetimeQEMU, reviewed bool) error {
 	if o.exportsLoaded || o.capture != nil || len(o.mounts) != 0 || o.heldClient != nil || o.faultFile != nil {
 		return ErrUnavailable
 	}
@@ -209,6 +214,15 @@ func (o *NFSSourceAccessQEMU) observeServerStopped(ctx context.Context, s *nfsCo
 	}
 	if ok, err := nfsFixedNullQEMU(ctx, "127.0.0.1:2049", 100003, 3); err != nil || ok {
 		return errors.Join(ErrMismatch, err)
+	}
+	if reviewed {
+		if err := o.checkReferences(ctx); err != nil {
+			return err
+		}
+		if err := s.revalidateReferences(ctx); err != nil {
+			return err
+		}
+		return ctx.Err()
 	}
 	if err := o.check(ctx); err != nil {
 		return err

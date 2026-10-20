@@ -3,12 +3,15 @@
 
 # Dedicated NFS runtime ownership
 
-Status: dedicated Owner work approved for host/disposable QEMU. A `qemu`-tagged
-[lifecycle implementation](../src/phantowd-api/internal/nfsowner/README.md) now
-exists with a trusted synthetic backend. A separate retained NFSD kernel
-component now executes in the guarded reboot fixture below. These are not yet a
-complete service backend, privileged product controller, bootstrap or permission
-to operate an existing NAS.
+Status: dedicated Owner work approved for host/disposable QEMU. The `qemu`-tagged
+[lifecycle implementation](../src/phantowd-api/internal/nfsowner/README.md) includes
+memory-model tests and a fixed original-source backend with actual NFS I/O.
+The controlled mountd-loss campaign now checks scheduled detection, one
+zero-capability/no-data-root compensation and independent stopped observations,
+without clearing review or releasing original authority. Legacy source-loss
+role guards and generic Owner/process semantics are unchanged. This does not
+qualify complete faults, a privileged product controller/bootstrap, automatic
+recovery or permission to operate an existing NAS.
 
 ## Existing evidence and the missing boundary
 

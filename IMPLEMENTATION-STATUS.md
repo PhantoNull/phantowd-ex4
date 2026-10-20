@@ -3,21 +3,23 @@
 
 # Implementation status
 
-## Independent mountd-loss reproducer: verified gap, not a fix
+## Independent mountd loss: reviewed compensation in disposable QEMU
 
-The optional `source-owner-daemon-loss` fixture starts the original NFS Owner,
-completes synthetic I/O, and terminates only its original mountd before admitting
-exclusive one-second supervision. A scheduled scan detects the exit, but the
-actual ARMv5 reproducer then **fails** at `stopped-retained`: the reviewed lower
-runtime refuses normal stop and no verified-stop result is available. Review
-alone is not successful compensation. No cleanup/recovery semantics were changed.
+The optional `source-owner-daemon-loss` fixture now passes. After synthetic NFS
+I/O and the original mountd's controlled graceful exit, scheduled supervision
+detects the loss and admits one original-reference compensation. Dedicated
+server-withdrawal roles retain zero capabilities and no data roots; legacy
+source-loss role guards and generic process/Owner semantics are unchanged.
+Exports are withdrawn and original NFSD/daemons stopped. A reviewed Stop still
+returns review: separate fresh control/listener/export and original-process
+observations establish absence without clearing review or releasing authority.
 
-Complete Linux/Windows checks, native race-count3, strict receipt/dispatch tests
-and all five prior real-NFS/code profiles pass on the same unchanged inputs.
-This characterizes one controlled graceful exit; it does not qualify independent
-fault compensation, hard crashes, pending I/O, product startup or NAS hardware.
-The reproducer remains explicitly failing until its original-reference cleanup
-and separate actual stopped witness are implemented and verified.
+Original policy/identity claims remain valid; parent closure, restart/retry and
+release refuse with stable retained descriptor counts. Complete native/Windows,
+targeted race-count3, strict C-selector/receipt/dispatch tests and all six optional
+profiles pass. The new case passes both cached and ordinary-wrapper guests.
+This does not qualify hard crashes, exit first discovered during explicit Stop,
+partial startup, pending I/O, complete faults, product recovery or EX4 hardware.
 
 ## Owner-backed real-NFS server calls in disposable QEMU
 

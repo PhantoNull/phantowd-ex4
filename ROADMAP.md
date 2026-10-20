@@ -21,32 +21,33 @@ and audit; never replace failed results with selected passes or relax proofs.
 See [implementation status](IMPLEMENTATION-STATUS.md) and the
 [focused staging contract](support/QEMU-FAST-TESTS.md#smart-report-staging-checked-disposable-image).
 
-## Immediate NFS original-peer compensation packet
+## NFS reviewed-compensation checkpoint and remaining acceptance
 
-The opt-in `source-owner-daemon-loss` ARMv5 reproducer currently detects the
-original mountd exit through scheduled supervision, then fails stopped proof.
-The existing five code/source/policy-loss/combined profiles remain passing;
-this new reproducer is not an additional passing capability.
+The opt-in `source-owner-daemon-loss` case now verifies scheduled detection,
+one original-reference compensation and independent fresh stopped observations.
+The missing original mountd does not prevent withdrawal, NFSD stop and original
+rpcbind settlement. Actual mountd Stop review/cause is retained, not relabelled
+normal success. Original policy/identity/storage/runtime authority stays held;
+retry/restart/release refuse. Six optional profiles pass at unchanged budgets.
 
-Next acceptance work, before claiming independent-daemon compensation:
+Remaining acceptance before complete service/product qualification:
 
-1. Keep the original Owner/backend/join/runtime lifetime; admit at most one
-   bounded compensation after review without granting normal service authority.
-2. Withdraw owned exports and stop original NFSD/daemons using retained controls,
-   code, state and namespace references. A missing daemon must not prevent
-   settlement of remaining peers; do not reopen data by path or retry effects.
-3. Preserve original detection and stop errors. A reviewed Stop is not normal
-   success; independently verify original process wait/group absence, empty
-   export state, NFSD controls and fixed listener absence before reporting stop.
-4. Keep reviewed authority and original references; refuse restart/release and
-   test those refusals without changing generic process/Owner semantics.
-5. Run native/race checks before the explicit ARM test, then regress all existing
-   modes under their unchanged budgets. Extend identity/source/channel/state,
-   partial-start and uncertain-close coverage separately; no broad fault claim.
+1. Exit first discovered during an explicit Stop, partial-start/failed-readiness
+   settlement, hard crashes and independent rpcbind/kernel loss. Do not infer
+   these from the controlled graceful mountd exit detected by supervision.
+2. Identity, policy, source, code, channel and mutable-state faults, including
+   close uncertainty, cancellation and combined outcomes; keep all original
+   causes/references and prove each admitted effect cannot be retried.
+3. Complete NFSD/control-domain and export/cache ownership, client quiescence,
+   pending I/O, lock/reclaim/reconnect and cross-protocol behavior.
+4. Product authority/bootstrap/history composition, desired-state transitions
+   and qualified automatic normal/ordinary-unclean startup/recovery. A reviewed
+   single-use Owner is not that coordinator or a restart loop.
+5. Complete integration/audit, physical EX4 storage/thermal/network support,
+   legacy migration and tested recovery before installer/release admission.
 
-This packet adds no HTTP activation, product recovery/restart, physical-disk
-operation or hardware qualification. First-release normal/unclean automatic
-startup remains the separate required product contract below.
+This component adds no HTTP activation, new product privilege, physical-disk
+operation or hardware qualification. The full product contract remains below.
 
 ## Product contract
 

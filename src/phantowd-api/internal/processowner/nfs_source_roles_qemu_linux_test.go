@@ -27,6 +27,9 @@ func TestNFSSourceRolesRefuseOrdinaryHost(t *testing.T) {
 		}
 	}
 	for _, value := range []*processowner.PinnedSet{nil, {}} {
+		if value.CheckNFSServerMountdReviewStopQEMU(context.Background()) == nil {
+			t.Fatal("unowned server reviewed stop certified")
+		}
 		if value.InterruptNFSServerMountdFixtureQEMU(context.Background()) == nil {
 			t.Fatal("unowned independent server interruption admitted")
 		}
@@ -44,6 +47,9 @@ func TestNFSWithdrawalRolesRefuseOrdinaryHost(t *testing.T) {
 		t.Skip("positive proof requires the dedicated source-loss guest")
 	}
 	for _, role := range []processowner.NFSWithdrawalOperationQEMU{processowner.NFSWithdrawOwnedQEMU, processowner.NFSFlushOwnedQEMU, "exportfs-source-v1", "invalid"} {
+		if value, err := processowner.NewNFSServerWithdrawalCaptureQEMU(role, nil, nil, [4]*os.File{}, [6]*os.File{}); value != nil || err == nil {
+			t.Fatal("ordinary host acquired server withdrawal role")
+		}
 		if value, err := processowner.NewNFSWithdrawalCaptureQEMU(role, nil, nil, [4]*os.File{}, [6]*os.File{}); value != nil || err == nil {
 			t.Fatal("ordinary host acquired source-loss withdrawal role")
 		}

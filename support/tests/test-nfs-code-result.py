@@ -248,6 +248,34 @@ class CodeReceiptTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "actual POSIX shell required")
 class ShellModeTests(unittest.TestCase):
+    def test_server_cleanup_selector_rejects_mixed_or_duplicate_profiles(self):
+        source = Path(__file__).parent / "nfs-table-bootstrap.c"
+        prefix = "phantowd_nfs_code_fixture=1 phantowd_nfs_source_fixture=1 "
+        flag = "phantowd_nfs_source_owner_daemon_loss_fixture=1"
+        invalid = ["", prefix, flag, prefix+flag+" "+flag, prefix+flag.replace("=1","=0")]
+        invalid += [prefix+flag+" "+other for other in
+                    ("phantowd_nfs_code_fixture=1", "phantowd_nfs_source_fixture=1",
+                     "phantowd_nfs_code_fixture=0", "phantowd_nfs_source_fixture=0",
+                     "phantowd_nfs_source_loss_fixture=1", "phantowd_nfs_source_daemon_loss_fixture=1",
+                     "phantowd_nfs_source_owner_policy_loss_fixture=1")]
+        body = ('#define main phantowd_original_bootstrap_main\n'
+                f'#include "{source.resolve().as_posix()}"\n#undef main\n'
+                'int main(void) {\n'
+                f'char good[] = {json.dumps("console=ttyAMA0 "+prefix+flag+" ro")};\n'
+                'if (server_cleanup_command(good,strlen(good))) return 1;\n')
+        for index, value in enumerate(invalid):
+            body += (f'char bad{index}[] = {json.dumps(value)};\n'
+                     f'if (!server_cleanup_command(bad{index},strlen(bad{index}))) return 2;\n')
+        body += 'char big[4098]; memset(big,120,sizeof(big)); if (!server_cleanup_command(big,4097)) return 3; return 0; }\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture, output = Path(tmp)/"selector.c", Path(tmp)/"selector"
+            fixture.write_text(body)
+            built = subprocess.run(["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", str(fixture), "-o", str(output)],
+                                   capture_output=True, timeout=20)
+            self.assertEqual(built.returncode, 0, built.stderr)
+            actual = subprocess.run([str(output)], capture_output=True, timeout=2)
+            self.assertEqual(actual.returncode, 0, actual.stderr)
+
     def dispatch_init(self):
         init = (Path(__file__).parent / "nfs-code-init.sh").read_text()
         init, count = re.subn(r"^prepare_source_identity\(\) \{\n.*?^\}",

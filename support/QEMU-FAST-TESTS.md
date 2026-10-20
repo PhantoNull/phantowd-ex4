@@ -1,21 +1,27 @@
 # Fast API and file-service integration checks
 
-## Independent mountd-loss diagnostic (currently expected to fail)
+## Independent mountd-loss reviewed compensation
 
-`support/test-nfs-code.ps1 -FixtureMode source-owner-daemon-loss` is an opt-in
-reproducer, **not** a passing qualification lane. It performs actual synthetic
-NFS I/O, then admits one fixed graceful exit of the original mountd under the
-original Owner gate, before exclusive periodic supervision. A scheduled scan
-detects the exit, but the current ARMv5 run fails at `stopped-retained`: review
-prevents normal stop. No deadline or receipt is relaxed to accept that failure.
+`support/test-nfs-code.ps1 -FixtureMode source-owner-daemon-loss` now requires
+actual synthetic I/O, a fixed original mountd graceful exit under the original
+Owner gate, and subsequent scheduled detection. One retained-reference
+compensation withdraws exports and stops original NFSD/peers. Reviewed Stop is
+still an error; independent fresh stopped observations, original process/group
+absence, protected claims, parent-closure refusal and stable retained FDs are
+required before the positive receipt. No review/retry/restart/release bypass.
 
-The exact separate selector refuses mixed policy/source-loss profiles; copied,
-model-backed and concurrently supervised Owners cannot perform the mutation.
-Only original fixture references are used; no caller-selected PID/signal/path,
-product endpoint, NAS operation, new default job or persistent resource is added.
-Host/native/race checks and all five existing NFS profiles pass; those passes
-do not qualify this missing compensation path. Guest90/helper60/wrapper360 and
-the existing RAM-only resource limits remain unchanged.
+Separate server-cleanup roles accept no data roots and run with zero capabilities.
+The legacy source-loss constructor/role selector is unchanged. Go and native C
+selector tests reject missing/duplicate/mixed flags; C is exercised in its actual
+ARM role as well. Copied, model-backed and concurrently supervised Owners cannot
+perform the fault mutation. All six optional NFS profiles pass, with this case
+also checked through the ordinary PowerShell wrapper. Guest90/helper60/wrapper360
+and the original operation/cleanup5s and RAM-only resource limits are unchanged.
+
+No caller-selected PID/signal/path, product endpoint, NAS operation, new default
+job or persistent resource is added. This is a controlled graceful-exit case,
+not hard-crash, partial-start, explicit-Stop discovery, client quiescence,
+complete fault/recovery, full-image or hardware qualification.
 
 ## Optional retained NFS table consumer
 

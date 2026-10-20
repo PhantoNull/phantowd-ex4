@@ -89,6 +89,11 @@ server and retain review/references after restoration. It uses only fresh guest
 RAM policy state; this is one fault case, not complete service recovery or
 continuous request authorization.
 
+The optional `source-owner-daemon-loss` campaign additionally tests a controlled
+original mountd exit, scheduled detection and one retained-reference compensation.
+Fresh stopped observations retain review and authority; they do not permit a
+restart or certify complete faults, client quiescence or product recovery.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.

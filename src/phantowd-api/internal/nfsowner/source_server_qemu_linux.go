@@ -136,6 +136,11 @@ func (b *sourceServerBackendQEMU) VerifyReady(ctx context.Context) error {
 func (b *sourceServerBackendQEMU) Stop(ctx context.Context) error {
 	return b.operate(ctx, true, func(o *SourceRuntimeQEMU, _ *exportRoots) error {
 		if err := o.access.StopServerFixtureQEMU(ctx); err != nil {
+			// A reviewed Stop never becomes normal success. Only a separate
+			// fresh original-reference witness may record actual absence.
+			if o.access.CheckServerStoppedFixtureQEMU(ctx) == nil {
+				o.accessServer = false
+			}
 			return err
 		}
 		o.accessServer = false
@@ -217,9 +222,9 @@ func (o *SourceRuntimeQEMU) VerifyServerStoppedRetainedFixtureQEMU(ctx context.C
 	if s.runtime != o || s.closed || s.closeUncertain || s.verify(ctx) != nil {
 		return ErrReviewRequired
 	}
-	if err := o.lease.Check(ctx); err != nil {
-		return err
-	}
+	// The lower stopped reader rechecks the ORIGINAL lease/code/source/control
+	// references, including the distinct reviewed-retention path. A healthy
+	// admission check here would incorrectly reject that verified review state.
 	return o.access.CheckServerStoppedFixtureQEMU(ctx)
 }
 

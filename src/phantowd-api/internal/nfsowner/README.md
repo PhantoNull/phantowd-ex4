@@ -224,9 +224,9 @@ desired-enabled services after ordinary unclean shutdown remains required; the
 single-use Owner is not an automatic restart loop or a boot coordinator.
 See the [NFS runtime profile](../../../../support/NFS-RUNTIME-PROFILE.md).
 
-## Independent mountd-loss reproducer: cleanup not yet qualified
+## Independent mountd loss: verified reviewed compensation
 
-The optional `source-owner-daemon-loss` fixture exposes a current stop gap.
+The optional `source-owner-daemon-loss` fixture now passes in disposable ARMv5.
 `Owner.InjectSourceMountdExitFixtureQEMU` holds the original Owner gate through
 the fixed backend and lower original-child operation; it cannot bypass exclusive
 supervision, operate through a copied Owner or use a model backend. No PID,
@@ -236,11 +236,18 @@ The separate exact ARMv5/VersatilePB/source selector is mandatory.
 After successful synthetic I/O, the fixture terminates mountd BEFORE admitting
 supervision, so the mutation cannot contend with a scheduled check. Historical
 Running does not certify daemon health; the subsequent scheduled scan must
-detect the original exit. Actual ARMv5 detection passes, then stopped verification
-fails because reviewed lower access refuses normal stop. The fixture reports
-failure, not successful settlement; this is not a repair or a hard-crash test.
+detect the original exit. The reviewed access then admits one original-reference
+compensation, using separate zero-capability/no-data-root server withdrawal
+roles without relaxing the old source-loss selector. Original exports, NFSD and
+peers are stopped; actual reviewed mountd Stop/cause stays retained.
 
-Next work is one bounded original-reference compensation plus a distinct fresh
-stopped witness, while retaining review, original causes and all authority.
-Generic Stop/Close semantics, product activation/recovery and physical NAS
-operations remain unchanged. The existing five optional profiles still pass.
+Stop never becomes normal success. A separate fresh stopped observation checks
+original controls, empty exports, fixed listeners and original process/group
+absence before the join records the server absent. That diagnostic does not
+require healthy service admission, clear review or authorize release. Policy/
+identity claims remain valid; closure/retry/restart refuse and retained FDs stay
+stable. All six profiles pass, including a separate ordinary-wrapper execution.
+
+Partial-start/close uncertainty, hard crashes, explicit-Stop discovery, complete
+faults, domain/client quiescence and product bootstrap/recovery remain unqualified.
+Generic process/Owner semantics and physical NAS operations remain unchanged.

@@ -150,6 +150,10 @@ func (o *NFSSourceAccessQEMU) WithdrawSourceLossFixtureQEMU(ctx context.Context)
 }
 
 func (o *NFSSourceAccessQEMU) withdrawExportQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, role processowner.NFSWithdrawalOperationQEMU) error {
+	return o.withdrawOwnedExportQEMU(ctx, s, role, false)
+}
+
+func (o *NFSSourceAccessQEMU) withdrawOwnedExportQEMU(ctx context.Context, s *nfsCodeLifetimeQEMU, role processowner.NFSWithdrawalOperationQEMU, server bool) error {
 	if o.capture != nil || s.revalidateReferences(ctx) != nil || o.checkReferences(ctx) != nil {
 		return ErrMismatch
 	}
@@ -164,7 +168,11 @@ func (o *NFSSourceAccessQEMU) withdrawExportQEMU(ctx context.Context, s *nfsCode
 	}
 	extra := [6]*os.File{o.features, o.channels.flush[0], o.channels.flush[1], o.channels.flush[2], o.channels.flush[3], o.channels.namespaces[0]}
 	var err error
-	o.capture, err = processowner.NewNFSWithdrawalCaptureQEMU(role, o.bootstrap, o.input, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, extra)
+	if server {
+		o.capture, err = processowner.NewNFSServerWithdrawalCaptureQEMU(role, o.bootstrap, o.input, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, extra)
+	} else {
+		o.capture, err = processowner.NewNFSWithdrawalCaptureQEMU(role, o.bootstrap, o.input, [4]*os.File{s.code.root, s.configuration.contents.root, s.state.root, program}, extra)
+	}
 	if err != nil {
 		return err
 	}
