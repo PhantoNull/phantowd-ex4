@@ -1,5 +1,33 @@
 # Fast API and file-service integration checks
 
+## Failure-only planned data costs
+
+The existing QEMU `data`/`fault` paths retain all original guards, thirteen
+daemon checks and six fixed clients. On a failed inner data probe, a typed,
+cause-preserving annotation can emit `PHANTOWD_QEMU_PLANNED_DATA_COSTS`:
+attempted check/client counts, their nonoverlapping elapsed milliseconds and
+total probe time. The containing fixture can also emit
+`PHANTOWD_QEMU_PLANNED_PHASE_COSTS` on a data-phase failure: construction/startup,
+data-to-return and total wall intervals. These intervals include quarantine
+and return work, not CPU time, successful effects or an EX4 performance target.
+
+Rows are failure-only, fixed-key, canonical bounded integers. The parent drops
+invalid rows and deduplicates identical ones; successful child output remains
+the exact original proof, with its unchanged 1024-byte cap. No context, worker,
+startup40/data20/supervision20/subprocess90/guest180 limit changes. No new guest,
+job, product endpoint or device operation is introduced.
+
+Pinned Linux vet/unit/targeted race and host verifier controls pass. Focused
+normal data/fault guests pass without cost output. A single 0.75-CPU data
+control emits startup35108/data20050/total55158 ms and fails an identity worker
+post-admission deadline. No inner probe-cost row is emitted: the containing
+pre-check may have failed, or its post-check may have failed after a successful
+probe. This does not prove either ordering or reproduce the older final-daemon
+or hosted native180 failure. The inner cost emission/relay refusal controls are
+unit-tested, not yet observed on a failing ARM inner probe. Do not call the
+focused successes a timing fix or complete/hosted qualification, infer physical
+NAS budgets, or silently relax deadlines to conceal the failure.
+
 ## Failure-only source-fault checkpoint costs
 
 `support/test-samba-root.ps1 -Campaign file-source -DiagnosticLogs` retains the

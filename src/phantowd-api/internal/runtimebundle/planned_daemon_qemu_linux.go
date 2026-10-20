@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
@@ -85,14 +86,28 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 		}
 	}()
 	pid := r.daemonPID
+	costs := plannedDataCostClockQEMU{start: time.Now()}
+	defer func() { result = costs.annotate(result) }()
 	for _, operation := range []string{"rw-write", "rw-read", "ro-read", "ro-write", "escape", "ungranted"} {
-		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+		started := time.Now()
+		err := r.verifyNativeDaemonQEMU(ctx, pid)
+		costs.checks++
+		costs.checkTime += time.Since(started)
+		if err != nil {
 			return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 		}
-		if err := r.nativeDataClientQEMU(ctx, operation); err != nil {
+		started = time.Now()
+		err = r.nativeDataClientQEMU(ctx, operation)
+		costs.clients++
+		costs.clientTime += time.Since(started)
+		if err != nil {
 			return err
 		}
-		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+		started = time.Now()
+		err = r.verifyNativeDaemonQEMU(ctx, pid)
+		costs.checks++
+		costs.checkTime += time.Since(started)
+		if err != nil {
 			return nativeDataFailureQEMU(operation, nativeWorkerPostAdmissionQEMU, err)
 		}
 	}
@@ -126,7 +141,11 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 			return nativeDataFailureQEMU("denial", nativeWorkerResultQEMU, errors.New("planned SMB denial created an unintended file"))
 		}
 	}
-	if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+	started := time.Now()
+	err := r.verifyNativeDaemonQEMU(ctx, pid)
+	costs.checks++
+	costs.checkTime += time.Since(started)
+	if err != nil {
 		return nativeDataFailureQEMU("final-daemon", nativeWorkerPostAdmissionQEMU, err)
 	}
 	return nil

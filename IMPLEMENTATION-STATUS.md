@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Release gate restoration — local preflight, hosted qualification pending
+## Release gate restoration — hosted outcomes and local follow-up
 
 QEMU qualification keeps its existing per-ref concurrency group but no longer
 cancels an in-progress run on the next commit. A regression rejects the previous
@@ -11,10 +11,50 @@ setting. The isolated Samba-status experiment is now versioned with its fixed
 staging destinations and transcript controls. It is optional, synthetic and
 not a demonstrated cause or repair of the integration timeout.
 
-Local checks pass: 31 build-feedback tests, seven producer-transcript tests,
-workflow routing contracts, shell/Python lint and C syntax. The PR's full QEMU,
-independent reproducibility and Stage A compile-only runs have not run yet.
-No firmware runtime, artifact name, installability or flashability is changed.
+PR [#141](https://github.com/PhantoNull/phantowd-ex4/pull/141), head `81e3c58`,
+has a successful host-tool check. Its full QEMU run
+[39486838826](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39486838826)
+fails at the native guest's outer 180-second deadline, after authority closure.
+The expected old-consumer refusal is not evidence of its cause. Local native
+passes do not establish a hosted timing repair. The two-close-commit runtime
+acceptance test for noncancellation has not run; the setting/regression alone
+does not close it.
+
+One independent reproducibility run
+[39494761884](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39494761884)
+fails both builds on missing `/phantowd-qemu-fixture-tmp`; comparison is skipped.
+A two-file local fix adds only the missing scratch mount, with actual workflow
+argv and original download-patch fixture RED/GREEN controls. It has not been
+qualified by a fresh independent clean build. Stage A
+[39495242891](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39495242891)
+passes compile-only; all eight downloaded checksums match. It is not a hardware
+test, installable image or flash authorization.
+
+A separate QEMU-only workload candidate moves the independent
+descriptor-data profile from `native` to the existing `data` guest. All 44 proof
+rows and ten-campaign roster remain mandatory; parent FD equality and empty-only
+scaffold removal precede the original planned profile. The credential setup
+context differs from the old post-revocation trace; no continuous-identity proof
+is claimed for that independent profile. Host verifier (78), build-feedback (32),
+lint, pinned Linux API tests/vet and targeted race checks pass. The original
+ten-guest focused attempt passes service/native/candidate/lifecycle, then fails
+fault during the unchanged 20-second planned-data final daemon check. A single
+focused data attempt also fails there; the remaining five guests were not reached
+by the complete attempt. No complete-union, hosted fix or integration pass is
+claimed. No timeout or daemon verification fence is relaxed.
+
+Subsequent failure-only instrumentation preserves the original error chain,
+all thirteen daemon checks, six clients, strict child proof and output cap.
+Linux vet/unit/race and host controls pass. One normal data and one normal fault
+guest now pass, as does a 1.5-CPU control; these do not demonstrate a timing fix.
+A single 0.75-CPU control fails an identity worker's post-admission deadline:
+startup 35,108 ms, data 20,050 ms. The inner runtime-cost row is absent, which
+does not distinguish a failed pre-check from a failed post-check after a
+successful inner probe. That stage boundary remains to be measured. No further
+sample or complete/hosted qualification is inferred, and all budgets remain
+unchanged; simply taking five seconds from startup would exclude this sample.
+
+No product activation, artifact name, installability or flashability is changed.
 
 ## Host release planning: optional strict-upgrade prerequisite
 

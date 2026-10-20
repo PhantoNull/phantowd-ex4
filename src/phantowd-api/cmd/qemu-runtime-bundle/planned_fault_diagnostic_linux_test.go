@@ -17,6 +17,72 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
+func TestPlannedPhaseCostsRejectNoncanonicalOrImpossibleIntervals(t *testing.T) {
+	const row = "PHANTOWD_QEMU_PLANNED_PHASE_COSTS startup_ms=30100 data_ms=20040 total_ms=50140 scope=diagnostic-only\n"
+	if got := plannedPhaseCostDiagnosticQEMU(30100, 20040, 50140); got != row {
+		t.Fatal("phase intervals not formatted", got)
+	}
+	const proof = "exact-fixed-child-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row+row, proof); got != prefix+row {
+		t.Fatal("phase intervals not relayed once", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(row, "startup_ms=30100", "startup_ms=-1", 1),
+		strings.Replace(row, "startup_ms=30100", "startup_ms=030100", 1),
+		strings.Replace(row, "data_ms=20040", "data_ms=private-secret", 1),
+		strings.Replace(row, "total_ms=50140", "total_ms=50139", 1),
+		strings.Replace(row, "total_ms=50140", "total_ms=180001", 1),
+		strings.Replace(row, "total_ms=50140", "total_ms=18446744073709551616", 1),
+		strings.TrimSuffix(row, "\n") + " private-secret\n",
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), bad, proof); got != prefix {
+			t.Fatal("unsafe phase costs relayed", got)
+		}
+	}
+	if plannedPhaseCostDiagnosticQEMU(-1, 0, 0) != "" || plannedPhaseCostDiagnosticQEMU(1, 2, 2) != "" || plannedPhaseCostDiagnosticQEMU(1, 1, 180001) != "" {
+		t.Fatal("invalid local phase costs emitted")
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("phase costs weakened strict child proof", got)
+	}
+}
+
+func TestPlannedDataCostsAreBoundedRedactedAndNeverProof(t *testing.T) {
+	const row = "PHANTOWD_QEMU_PLANNED_DATA_COSTS checks=13 check_ms=15000 clients=6 client_ms=4200 total_ms=19900 scope=diagnostic-only\n"
+	data := runtimebundle.PlannedDataCostObservationQEMU{Present: true, Checks: 13, CheckMS: 15000, Clients: 6, ClientMS: 4200, TotalMS: 19900}
+	if got := plannedDataCostDiagnosticQEMU(data); got != row {
+		t.Fatal("fixed costs not formatted", got)
+	}
+	data.Present = false
+	if got := plannedDataCostDiagnosticQEMU(data); got != "" {
+		t.Fatal("missing cost observation emitted", got)
+	}
+	const proof = "exact-fixed-child-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row+row, proof); got != prefix+row {
+		t.Fatal("cost row not relayed exactly once", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(row, "checks=13", "checks=14", 1),
+		strings.Replace(row, "clients=6", "clients=7", 1),
+		strings.Replace(row, "check_ms=15000", "check_ms=015000", 1),
+		strings.Replace(row, "check_ms=15000", "check_ms=-1", 1),
+		strings.Replace(row, "client_ms=4200", "client_ms=private-secret", 1),
+		strings.Replace(row, "total_ms=19900", "total_ms=180001", 1),
+		strings.Replace(row, "total_ms=19900", "total_ms=19199", 1),
+		strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1),
+		strings.TrimSuffix(row, "\n") + " private-secret\n",
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), bad, proof); got != prefix {
+			t.Fatal("unsafe cost row relayed", got)
+		}
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("cost row weakened exact child proof", got)
+	}
+}
+
 func TestPlannedFaultFailureDiagnosticsAreFixedRedactedAndNotProof(t *testing.T) {
 	secret := errors.New("credential-and-private-path-must-not-leave-guest")
 	for _, tc := range []struct {

@@ -10,7 +10,38 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestPlannedDataCostAnnotationIsFailureOnlyAndCopiesCounters(t *testing.T) {
+	private := errors.New("private-path-and-credential")
+	cause := errors.Join(private, context.DeadlineExceeded, ErrReviewRequired)
+	clock := plannedDataCostClockQEMU{start: time.Now(), checks: 13, clients: 6,
+		checkTime: 12 * time.Millisecond, clientTime: 6 * time.Millisecond}
+	clock.start = clock.start.Add(-20 * time.Millisecond)
+	annotated := clock.annotate(cause)
+	clock.checks = 1
+	got := ObservePlannedDataCostsQEMU(annotated)
+	if !got.Present || got.Checks != 13 || got.Clients != 6 || got.CheckMS != 12 || got.ClientMS != 6 || got.TotalMS < 20 {
+		t.Fatal("cost annotation lost or retained mutable counters", got)
+	}
+	if !errors.Is(annotated, private) || !errors.Is(annotated, context.DeadlineExceeded) || !errors.Is(annotated, ErrReviewRequired) || strings.Contains(annotated.Error(), "private") {
+		t.Fatal("cost annotation changed or disclosed original refusal", annotated)
+	}
+	if clock.annotate(nil) != nil || ObservePlannedDataCostsQEMU(private).Present || ObservePlannedDataCostsQEMU(nil).Present {
+		t.Fatal("healthy or untyped error invented costs")
+	}
+	for _, invalid := range []plannedDataCostClockQEMU{
+		{}, {start: time.Now(), checks: 14}, {start: time.Now(), clients: 7},
+		{start: time.Now(), checkTime: -time.Nanosecond},
+		{start: time.Now(), clientTime: 181 * time.Second},
+		{start: time.Now().Add(time.Second)},
+	} {
+		if invalid.annotate(cause) != cause {
+			t.Fatal("invalid counters altered original refusal")
+		}
+	}
+}
 
 func TestNativeDataFailurePreservesCauseAndOnlyDisclosesFixedLabels(t *testing.T) {
 	private := errors.New("private-password/path\nPHANTOWD_FAKE_READY")

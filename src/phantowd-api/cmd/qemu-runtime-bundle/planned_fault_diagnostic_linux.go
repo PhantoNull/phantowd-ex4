@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
@@ -22,7 +23,61 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
-	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedDataCostDiagnosticQEMU(c runtimebundle.PlannedDataCostObservationQEMU) string {
+	if !c.Present {
+		return ""
+	}
+	row := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_DATA_COSTS checks=%d check_ms=%d clients=%d client_ms=%d total_ms=%d scope=diagnostic-only", c.Checks, c.CheckMS, c.Clients, c.ClientMS, c.TotalMS)
+	if !validPlannedDataCostDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedDataCostDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 7 || fields[0] != "PHANTOWD_QEMU_PLANNED_DATA_COSTS" || fields[6] != "scope=diagnostic-only" {
+		return false
+	}
+	keys := [...]string{"checks=", "check_ms=", "clients=", "client_ms=", "total_ms="}
+	var values [5]uint64
+	for index, key := range keys {
+		text, ok := strings.CutPrefix(fields[index+1], key)
+		value, err := strconv.ParseUint(text, 10, 32)
+		if !ok || err != nil || strconv.FormatUint(value, 10) != text || value > 180000 {
+			return false
+		}
+		values[index] = value
+	}
+	return values[0] <= 13 && values[2] <= 6 && values[1] <= values[4] && values[3] <= values[4]-values[1] &&
+		(values[0] != 0 || values[1] == 0) && (values[2] != 0 || values[3] == 0)
+}
+
+func plannedPhaseCostDiagnosticQEMU(startup, data, total int64) string {
+	row := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_PHASE_COSTS startup_ms=%d data_ms=%d total_ms=%d scope=diagnostic-only", startup, data, total)
+	if !validPlannedPhaseCostDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedPhaseCostDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 5 || fields[0] != "PHANTOWD_QEMU_PLANNED_PHASE_COSTS" || fields[4] != "scope=diagnostic-only" {
+		return false
+	}
+	keys := [...]string{"startup_ms=", "data_ms=", "total_ms="}
+	var values [3]uint64
+	for index, key := range keys {
+		text, ok := strings.CutPrefix(fields[index+1], key)
+		value, err := strconv.ParseUint(text, 10, 32)
+		if !ok || err != nil || strconv.FormatUint(value, 10) != text || value > 180000 {
+			return false
+		}
+		values[index] = value
+	}
+	return values[0] <= values[2] && values[1] <= values[2]-values[0]
 }
 
 func plannedDataFailureDiagnosticQEMU(data runtimebundle.NativeDataFailureObservationQEMU) string {
@@ -79,6 +134,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if (validPlannedDataCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
+			seen[line] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedSourceCostDiagnosticQEMU(fields) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)
