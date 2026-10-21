@@ -1,5 +1,34 @@
 # Fast API and file-service integration checks
 
+## Native-only qualification profile
+
+The dedicated `native` campaign selects a fixed QEMU-only profile once, before
+identity Owner admission. All complete checks, original references, proof
+rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
+
+| Scope | Status / control / revocation total | Idle / live / fresh login | Whole guest |
+| --- | --- | --- | --- |
+| Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
+| Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
+| Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
+
+The40s total covers three8s status inventories, one8s control and two100ms
+polls (32.2s). Shorter parent deadlines always win. Preparation20, enrollment75,
+backend-observation20, startup20, re-enable preparation20 and readiness/stop
+are unchanged. Independent phase caps are not reserved whole-guest runtime.
+The existing backend constructor keeps its old profile; only the dedicated
+credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
+or operation accepts a duration or replacement backend. The Python helper's
+fixed mapping gives only `native`360s; unknown names/duration arguments refuse.
+
+Regressions first fail on the old missing40/8/8 profile and45s live context.
+Fake-clock tests cover measured57.641s continuity, exact90s expiry, uncertainty,
+cancellation and separate15s authentication. Host adapter tests retain legacy
+limits and shorter parents. Full local ten-guest and own-head hosted checks
+are still required. This is a deliberate test-budget change, not a speedup,
+product SLA, EX4 measurement or installable image. Older dated records below
+describe their original profiles, not current-head qualification.
+
 ## Running qualification and pending queue are different evidence
 
 The static concurrency test checks configuration, not GitHub execution.
@@ -2138,7 +2167,7 @@ as the same timeout:
 | Native enrollment, 75 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Guest, native360 s; others180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2156,8 +2185,9 @@ preparation cannot begin enrollment; duplicate handoff cannot refresh its
 deadline and a late nil completion refuses. Accounting tests exercise the exact
 private helper used by the fixture, not synthetic identity or session authority.
 They cross the former60s cap, accept just before75s and refuse at75s, without
-wall-clock sleeps. Worker/readiness/stop, data20, live-session45 and guest180
-limits remain unchanged. No failed operation is retried. This fixture-only
+wall-clock sleeps. Data/readiness/stop limits remain unchanged. The dedicated
+native campaign uses the qualification profile above; other campaigns retain
+their old limits. No failed operation is retried. This fixture-only
 allowance change does not qualify a hosted timing fix or a product deadline.
 
 The2026-10-21 local candidate passes the focused native guest, all ten original
@@ -2173,8 +2203,8 @@ Idle-authentication failures can additionally carry one fixed, failure-only
 `native idle verification stage=` label: `daemon-before`, `target-login`,
 `peer-login` or `daemon-after`. The label is added only after runtime admission;
 unknown/unreached stages and nil errors cannot invent evidence. Original typed
-causes and sticky review remain. These are substeps of the SAME unchanged
-idle20 context, not four new budgets, worker results or success proofs.
+causes and sticky review remain. These are substeps of the SAME dedicated
+idle60 context, not four new budgets, worker results or success proofs.
 The final daemon check remains mandatory after both fresh clients return;
 successful login outcomes do not qualify its code/configuration/state checks.
 

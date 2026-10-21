@@ -163,9 +163,11 @@ worker bounds are unchanged. This is a point-in-time observation, not a retained
 session/data-handle lease, composed-storage fault, full changed-image audit,
 durable-reconnect/recovery or product service qualification.
 
-Complete native worker admissions require a separate fixed timing profile:
-status4/control4/aggregate20 seconds, while ordinary commands retain
-status2/control-at-most5/aggregate5. The aggregate native verification budget
+Complete native worker admissions use fixed profiles. Existing constructors
+retain status4/control4/aggregate20; only the dedicated credentials campaign
+selects `NewNativeQualificationBackendQEMU` before Owner admission for8/8/40.
+The profile is privately retained, not a per-operation argument. Ordinary
+commands retain status2/control-at-most5/aggregate5. The native verification budget
 covers one initial inventory, one control and two stable-absence inventories,
 plus one worker-sized margin for bounded parsing/polling. Unknown profiles
 refuse before effects, and shorter caller deadlines always win. No request can
@@ -174,10 +176,10 @@ profile truncates its final inventory when four measured workers each take
 about2.6 seconds; the independently capped control cannot consume the entire
 new aggregate budget. This fixture-only adjustment is not an EX4 performance
 specification or a product deadline change. All complete admissions remain.
-The controller retains separate startup20/idle20/session45-second phases and
-guest180. The QEMU native fixture now separates original preparation20 from
+The dedicated controller uses startup20/idle60/session90/fresh15 and guest360;
+other campaigns retain old phases and guest180. The fixture separates preparation20 from
 enrollment75 (formerly60; combined allowance95 instead of80, not a performance
-gain); worker/data/guest limits and shorter parent deadlines remain unchanged. Only the
+gain); data/readiness/stop and shorter parent deadlines remain unchanged. Only the
 exact changed-pair sentinel qualifies its post-revocation observation; nil
 means unchanged and uncertain outcomes preserve their causes without becoming
 revocation evidence. Ordinary non-root Linux timing tests cover the complete composite

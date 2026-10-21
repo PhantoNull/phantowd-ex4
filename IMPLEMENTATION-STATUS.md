@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Native-only QEMU profile candidate
+
+The explicitly approved candidate gives only `native` fixed status/control8,
+revocation40, idle60, active live90, fresh login15 and whole-guest360s. The
+profile is retained at backend construction before identity Owner admission;
+existing constructors keep4/4/20, other guests keep180s, ordinary commands keep
+2/5/5. Preparation20, enrollment75, startup20, data/readiness/stop and original
+checks/review/no-retry remain. Revocation40 covers the32.2s bounded sequence.
+
+Regressions first fail for the absent qualification profile and old45s live
+context. Focused tests cover measured57.641s continuity, exact90s expiry,
+separate15s authentication, shorter parents, unchanged legacy profiles and
+native-only campaign/deadline mapping. Python fixture tests and pinned Linux
+vet/API unit/selected QEMU race pass. The full original local lane verifies
+service/native/candidate/lifecycle/fault/data, then REFUSES exit: after-runtime
+data verification takes20.055s under the unchanged20s context, with review=true
+but deadline=false in the redacted error. The inner cause is not established
+by that timing alone. Held/file/file-source are unreached; the union refuses.
+All1486inputs stay unchanged during the run and seven base hashes still match.
+No same-source retry, push or new CI is performed. Complete ten-guest
+and own-head hosted checks remain required. No new hosted success, clean
+reproduction, product or EX4 qualification is claimed. See the
+[current contract](support/QEMU-FAST-TESTS.md#native-only-qualification-profile).
+
 ## Release gate restoration — hosted outcomes and local follow-up
 
 QEMU qualification keeps its existing per-ref concurrency group but no longer

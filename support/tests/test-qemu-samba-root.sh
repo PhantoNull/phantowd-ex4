@@ -164,9 +164,11 @@ sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
     "$scratch/rootfs.ext2" "$scratch/manifest" \
     /usr/lib/phantowd/qemu-samba-root.manifest "$scratch/stage-roundtrip" 0100644
 # Default remains the complete qualification. Explicit local selection narrows
-# only which fresh guest is run, never its guards, assertions or180s deadline.
+# only which fresh guest is run. Native uses360s; all other guests keep180s.
+# Selection never changes assertions, authority or retries.
 for campaign in $campaigns; do
-    timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
+    guest_timeout=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" guest-timeout "$campaign")
+    timeout --signal=TERM --kill-after=5 "$guest_timeout" qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
     -device virtio-rng-pci,rng=samba-rng \

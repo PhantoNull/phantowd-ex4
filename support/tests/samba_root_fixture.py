@@ -357,6 +357,15 @@ def select_campaigns(selection):
     return (selection,)
 
 
+def guest_timeout(phase):
+    """Fixed per-guest bounds, never caller-selected durations or retries."""
+    if (not isinstance(phase, str)
+            or phase not in (*FOCUSED_CAMPAIGNS, "pending",
+                             "pending-peer-exit", "pending-handle")):
+        raise ValueError("invalid guest campaign")
+    return 360 if phase == "native" else 180
+
+
 def diagnostic_record(log, phase, status):
     """Bounded escaped fixture telemetry, never campaign acceptance."""
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
@@ -511,6 +520,8 @@ def main():
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
     selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
+    deadline = sub.add_parser("guest-timeout")
+    deadline.add_argument("phase")
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
     diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
@@ -532,6 +543,8 @@ def main():
         print(f"Samba {args.phase} campaign verified")
     elif args.command == "select-campaigns":
         print(" ".join(select_campaigns(args.selection)))
+    elif args.command == "guest-timeout":
+        print(guest_timeout(args.phase))
     elif args.command == "diagnostic-log":
         if Path(args.log).is_symlink() or not Path(args.log).is_file():
             raise ValueError("regular fixture log required")

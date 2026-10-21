@@ -117,6 +117,28 @@ class SambaRootFixture(unittest.TestCase):
             fixture.check_campaign("\n".join(rows["native"] + [proof]),
                                    "native")
 
+    def test_guest_deadline_is_native_only_and_fixed(self):
+        phases = (*fixture.FOCUSED_CAMPAIGNS, "pending", "pending-peer-exit",
+                  "pending-handle")
+        helper = Path(fixture.__file__)
+        for phase in phases:
+            expected = 360 if phase == "native" else 180
+            self.assertEqual(fixture.guest_timeout(phase), expected)
+            result = subprocess.run(
+                [sys.executable, "-B", str(helper), "guest-timeout", phase],
+                capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout.strip(), str(expected))
+        for invalid in (None, True, 360, "all", "", "native ", "NATIVE",
+                        "../native", "service;360"):
+            with self.assertRaises(ValueError):
+                fixture.guest_timeout(invalid)
+        for args in (("unknown",), ("native", "360"), ()):
+            result = subprocess.run(
+                [sys.executable, "-B", str(helper), "guest-timeout", *args],
+                capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+
     @staticmethod
     def timing_row(operation="list", phase="pre-admission", elapsed=17,
                    remaining=45000, parent_done="false", failed="false",
@@ -2017,7 +2039,9 @@ class SambaRootFixture(unittest.TestCase):
         init = (root / "support/tests/samba-root-init.sh").read_text()
         self.assertIn("--pull never --network none --read-only", wrapper)
         self.assertNotIn("docker volume create", wrapper)
-        self.assertIn("timeout --signal=TERM --kill-after=5 180", driver)
+        self.assertIn('guest-timeout "$campaign"', driver)
+        self.assertIn('timeout --signal=TERM --kill-after=5 "$guest_timeout"',
+                      driver)
         self.assertIn("-nic none", driver)
         self.assertIn("rootwait ro", driver)
         self.assertIn("if=scsi,snapshot=on", driver)
