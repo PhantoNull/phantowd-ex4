@@ -176,8 +176,8 @@ new aggregate budget. This fixture-only adjustment is not an EX4 performance
 specification or a product deadline change. All complete admissions remain.
 The controller retains separate startup20/idle20/session45-second phases and
 guest180. The QEMU native fixture now separates original preparation20 from
-enrollment60 instead of sharing60 (combined allowance80, not a performance
-gain); worker limits and shorter parent deadlines remain unchanged. Only the
+enrollment75 (formerly60; combined allowance95 instead of80, not a performance
+gain); worker/data/guest limits and shorter parent deadlines remain unchanged. Only the
 exact changed-pair sentinel qualifies its post-revocation observation; nil
 means unchanged and uncertain outcomes preserve their causes without becoming
 revocation evidence. Ordinary non-root Linux timing tests cover the complete composite

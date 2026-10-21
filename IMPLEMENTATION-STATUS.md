@@ -11,14 +11,29 @@ setting. The isolated Samba-status experiment is now versioned with its fixed
 staging destinations and transcript controls. It is optional, synthetic and
 not a demonstrated cause or repair of the integration timeout.
 
-PR [#141](https://github.com/PhantoNull/phantowd-ex4/pull/141), head `81e3c58`,
-has a successful host-tool check. Its full QEMU run
+PR [#141](https://github.com/PhantoNull/phantowd-ex4/pull/141)'s original full QEMU run
 [39486838826](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39486838826)
 fails at the native guest's outer 180-second deadline, after authority closure.
 The expected old-consumer refusal is not evidence of its cause. Local native
-passes do not establish a hosted timing repair. The two-close-commit runtime
-acceptance test for noncancellation has not run; the setting/regression alone
-does not close it.
+passes do not establish a hosted timing repair. The subsequent original PR runs
+[39515955181](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39515955181)
+and [39516064895](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39516064895)
+were created59 seconds apart, with the first job running before the second push.
+Both completed failure, not cancellation: their cumulative enrollment60 context
+expired before native data/session proofs. This passes that specific two-commit
+noncancellation scenario, not other event/ref combinations or functional QEMU.
+
+An approved fixture-only follow-up raises enrollment60 to75 seconds, separately
+from preparation20 (combined allowance80 to95, not a performance improvement).
+Data20, all individual worker/startup/live/stop limits, guest180, parent bounds
+and no-retry rules remain unchanged. Actual-helper fake-clock tests are RED at60
+and GREEN at75, including success across the old cap and exact deadline refusal.
+Pinned Go1.26.8 Linux vet/API unit and selected QEMU race checks pass before ARM.
+All ten original local Samba guests, the original combined verifier and an
+independent strict captured-log replay pass, with all seven base hashes unchanged.
+This does not establish a cause or repair of the earlier held/data20 failure,
+hosted timing reliability, a full newly built image or clean reproducibility.
+The new source still needs its own hosted checks before integration.
 
 One independent reproducibility run
 [39494761884](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39494761884)

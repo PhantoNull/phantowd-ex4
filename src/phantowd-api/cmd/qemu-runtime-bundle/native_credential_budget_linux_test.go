@@ -31,13 +31,14 @@ func TestNativeCredentialBudgetPreparationCannotSpendEnrollment(t *testing.T) {
 			t.Fatal(err)
 		}
 		deadline, ok := enrollment.Deadline()
-		if !ok || time.Until(deadline) != 60*time.Second {
+		if !ok || time.Until(deadline) != 75*time.Second {
 			t.Errorf("enrollment inherits preparation cost: remaining=%v", time.Until(deadline))
 		}
 		if preparation.Err() != context.Canceled {
 			t.Error("preparation context still live after handoff")
 		}
-		time.Sleep(55 * time.Second)
+		// Cross the former60s cap without spending the new75s allowance.
+		time.Sleep(70 * time.Second)
 		if err := budget.CompleteEnrollment(nil); err != nil {
 			t.Errorf("separately bounded enrollment failed at elapsed=%v: %v", time.Since(started), err)
 		}
@@ -135,7 +136,7 @@ func TestNativeCredentialBudgetEnrollmentCannotReportLateOrUncertainSuccess(t *t
 				want := uncertain
 				switch scenario {
 				case "expired", "uncertain-and-expired":
-					time.Sleep(61 * time.Second)
+					time.Sleep(76 * time.Second)
 					want = context.DeadlineExceeded
 					if scenario == "uncertain-and-expired" {
 						result = uncertain
@@ -155,6 +156,33 @@ func TestNativeCredentialBudgetEnrollmentCannotReportLateOrUncertainSuccess(t *t
 				}
 				if err := budget.CompleteEnrollment(nil); !errors.Is(err, errNativeCredentialBudgetQEMU) {
 					t.Fatal("uncertain completion retried")
+				}
+			})
+		})
+	}
+}
+
+func TestNativeCredentialBudgetEnrollmentDeadlineBoundary(t *testing.T) {
+	for _, elapsed := range []time.Duration{75*time.Second - time.Nanosecond, 75 * time.Second} {
+		t.Run(elapsed.String(), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				budget, err := newNativeCredentialBudgetQEMU(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer budget.Close()
+				if _, err := budget.Enrollment(nil); err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(elapsed)
+				synctest.Wait()
+				err = budget.CompleteEnrollment(nil)
+				if elapsed < 75*time.Second {
+					if err != nil {
+						t.Fatal("in-budget enrollment refused:", err)
+					}
+				} else if !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatal("deadline boundary accepted a late nil:", err)
 				}
 			})
 		})

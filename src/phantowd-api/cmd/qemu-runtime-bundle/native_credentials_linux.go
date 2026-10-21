@@ -408,7 +408,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureBackendObservedQEMU, started)
 	// Authentication is another separately bounded phase. Native preparation20
-	// and enrollment60 no longer share a timer (combined allowance80, not60).
+	// and enrollment75 do not share a timer (combined allowance95, not80).
 	// Worker/service/stop limits are unchanged; the outer guest still has180s.
 	daemonContext, stopDaemonContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
 	defer stopDaemonContext()

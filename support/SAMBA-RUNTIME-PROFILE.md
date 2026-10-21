@@ -8,6 +8,13 @@ helper, activation permission or EX4 qualification. It is separate from the
 generic static non-root launcher, which remains unchanged. Do not run it on
 physical hardware or connect user data.
 
+The current fixture-only enrollment allowance is75 seconds (formerly60),
+separate from preparation20. Their combined allowance is95 instead of80 seconds;
+this is not a performance improvement. All worker, data, startup, live-session,
+stop and guest180 limits and no-retry rules remain unchanged. Historical timing
+and pass records below describe their original bounds, not current-head
+qualification. See the [current timer contract](QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
 Status results must arrive within their own child deadline as well as the
 caller deadline; a successful late result is cleared and refused without a
 second inventory or control. A non-root Linux negative regression reproduces
@@ -820,7 +827,7 @@ is removed. New host regressions cover the measured cumulative latency and
 the separate control cap; original full campaign/image/hosted qualification
 remains required. Diagnostic-only omissions/logs and an unsuccessful icount
 experiment are not part of the current profile.
-The native controller uses separate enrollment60, startup20, idle-disable20 and
+The native controller uses separate enrollment75, startup20, idle-disable20 and
 active-session45-second phases, within the same180-second guest bound. Earlier
 tight/shared envelopes fail closed on slower emulator scans; they are not
 product performance specifications. This focused local result does not qualify

@@ -2135,7 +2135,7 @@ as the same timeout:
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
-| Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Native enrollment, 75 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
 | Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
@@ -2148,14 +2148,26 @@ after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
 
-The QEMU-only native driver gives preparation20 and enrollment60 separate
-single-use phases instead of their former shared60 context. This raises the
-combined contextual allowance to80 seconds, not hashing throughput. A shorter
+The QEMU-only native driver gives preparation20 and enrollment75 separate
+single-use phases. Enrollment alone increases from60 to75 seconds; the combined
+contextual allowance increases from80 to95 seconds, not hashing throughput. A shorter
 original parent still bounds both. Failed, uncertain, expired or canceled
 preparation cannot begin enrollment; duplicate handoff cannot refresh its
 deadline and a late nil completion refuses. Accounting tests exercise the exact
 private helper used by the fixture, not synthetic identity or session authority.
-Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+They cross the former60s cap, accept just before75s and refuse at75s, without
+wall-clock sleeps. Worker/readiness/stop, data20, live-session45 and guest180
+limits remain unchanged. No failed operation is retried. This fixture-only
+allowance change does not qualify a hosted timing fix or a product deadline.
+
+The2026-10-21 local candidate passes the focused native guest, all ten original
+Samba campaigns and their complete-union verifier, plus independent strict
+replay of the captured logs. Each guest exits0 and all seven base hashes remain
+unchanged. Pinned Go1.26.8 Linux vet/API unit and selected QEMU race checks pass
+before the timed guest lane. A single local pass does not establish the cause
+or repair of the earlier held/data20 failure, hosted timing reliability, a full
+newly built image or independent clean reproduction. Own-head hosted checks
+remain required before integration.
 
 After revocation, only the exact changed-pair sentinel establishes a completed
 changed observation. An unchanged pair and an incomplete observation have

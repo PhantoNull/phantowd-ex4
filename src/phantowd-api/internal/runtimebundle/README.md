@@ -3,6 +3,13 @@
 
 # Internal code-only runtime bundle inspection
 
+The current QEMU-only native fixture gives enrollment75 seconds instead of60,
+separately from preparation20 (combined allowance95 instead of80). Worker/data/
+startup/live/stop and guest180 limits remain unchanged, with no retry. This is
+a test allowance, not a speedup, product deadline or new qualification. Historical
+pass records below retain their original timing scope; see the
+[current fixture contract](../../../../support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
 The separate `qemu && linux` server-observer runtime now joins original code
 and fixed-path/unique-mount binding, independently built static bootstrap,
 fixed rendered configuration, mutable-state directory identities, synthetic
