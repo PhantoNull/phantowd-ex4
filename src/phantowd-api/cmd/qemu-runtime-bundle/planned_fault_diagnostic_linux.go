@@ -24,7 +24,27 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
-	return output + plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+	return output + plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedAccessContextDiagnosticQEMU(smbexec.ObserveNativePlannedDataContextQEMU(err)) + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedAccessContextDiagnosticQEMU(state string) string {
+	row := "PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT state=" + state + " scope=diagnostic-only"
+	if !validPlannedAccessContextDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedAccessContextDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 3 || fields[0] != "PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT" || fields[2] != "scope=diagnostic-only" {
+		return false
+	}
+	switch fields[1] {
+	case "state=live", "state=canceled", "state=deadline":
+		return true
+	default:
+		return false
+	}
 }
 
 func plannedAccessStageDiagnosticQEMU(stage string) string {
@@ -155,7 +175,7 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
-		if (validPlannedAccessStageDiagnosticQEMU(fields) || validPlannedDataCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
+		if (validPlannedAccessStageDiagnosticQEMU(fields) || validPlannedAccessContextDiagnosticQEMU(fields) || validPlannedDataCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)
 			output.WriteByte('\n')

@@ -41,6 +41,17 @@ build backlog. See [GitHub's concurrency reference](https://docs.github.com/en/a
 
 ## Failure-only planned data costs
 
+An admitted data refusal can additionally emit
+`PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT state=live|canceled|deadline` with fixed
+`scope=diagnostic-only`. The wrapper snapshots `ctx.Err()` at the checked
+refusal BEFORE quarantine/stop, not during later cleanup. The label observes
+context state, never asserts the hidden error's cause or time remaining.
+It does not add a deadline to `errors.Is`, renew a context, alter review or
+skip any identity/storage/runtime check. Missing/unknown/unadmitted states
+and successful results emit nothing. The parent strictly validates and
+deduplicates the fixed row; original child1024-byte and exact-proof checks
+remain. A focused positive guest is not a reproduced failure or timing fix.
+
 Admitted planned-data failures also carry a fixed
 `PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE` stage: `before-runtime`, `runtime` or
 `after-runtime`. The private wrapper preserves the original cause and existing

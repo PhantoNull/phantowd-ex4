@@ -50,6 +50,69 @@ func TestNativePlannedDataBoundaryPreservesCauseAndOnlyFixedStages(t *testing.T)
 	}
 }
 
+func TestPlannedDataRefusalContextIsSnapshotNotCauseOrCleanupTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	state := nativePlannedRefusalContextQEMU(ctx)
+	cancel() // Models cancellation during later quarantine, not at the refusal.
+	private := errors.New("private-path-and-credential")
+	failure := &nativePlannedDataFailureQEMU{stage: "after-runtime", cause: private, refusalContext: state}
+	if ObserveNativePlannedDataContextQEMU(failure) != "live" || errors.Is(failure, context.Canceled) || !errors.Is(failure, private) {
+		t.Fatal("later cleanup cancellation rewrote the refusal or original cause")
+	}
+	if nativePlannedRefusalContextQEMU(ctx) != "canceled" {
+		t.Fatal("canceled state missing")
+	}
+	expired, stop := context.WithDeadline(context.Background(), time.Unix(1, 0))
+	defer stop()
+	if nativePlannedRefusalContextQEMU(expired) != "deadline" || nativePlannedRefusalContextQEMU(nil) != "" {
+		t.Fatal("invalid/expired context state")
+	}
+	failure.refusalContext = "deadline"
+	if ObserveNativePlannedDataContextQEMU(failure) != "deadline" || errors.Is(failure, context.DeadlineExceeded) {
+		t.Fatal("context observation was promoted into hidden error causality")
+	}
+	for _, bad := range []error{nil, private, (*nativePlannedDataFailureQEMU)(nil),
+		&nativePlannedDataFailureQEMU{stage: "after-runtime", refusalContext: "deadline"},
+		&nativePlannedDataFailureQEMU{stage: "private-stage", cause: private, refusalContext: "deadline"},
+		&nativePlannedDataFailureQEMU{stage: "after-runtime", cause: private, refusalContext: private.Error()},
+	} {
+		if ObserveNativePlannedDataContextQEMU(bad) != "" {
+			t.Fatal("unobserved or arbitrary context label accepted")
+		}
+	}
+}
+
+type refuseAfterAdmissionContextQEMU struct {
+	context.Context
+	calls int
+}
+
+func (c *refuseAfterAdmissionContextQEMU) Err() error {
+	c.calls++
+	if c.calls > 1 {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
+func TestPlannedDataActualRefusalCapturesContextBeforeQuarantine(t *testing.T) {
+	// Deliberately incomplete inputs: fail source verification before any OS
+	// operation. The zero runtime also refuses stop before process authority.
+	// This is a real method refusal test, NOT an admitted healthy NAS service.
+	s := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1), started: true,
+		inputs: NativePlannedInputsQEMU{Shares: &mountowner.ServiceSharePinsQEMU{},
+			Storage: &mountowner.MountedVolumeSet{}, Backend: &NativeBackendQEMU{runtime: &runtimebundle.NativeSambaRuntimeQEMU{}}}}
+	ctx := &refuseAfterAdmissionContextQEMU{Context: context.Background()}
+	err := s.VerifyDataAccess(ctx)
+	if err == nil || ObserveNativePlannedDataStageQEMU(err) != "before-runtime" || ObserveNativePlannedDataContextQEMU(err) != "deadline" ||
+		!s.review || s.closed || ctx.calls != 2 || errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("actual refusal lost context snapshot, invented cause or released review", err, ctx.calls)
+	}
+	if next := s.VerifyDataAccess(context.Background()); ObserveNativePlannedDataContextQEMU(next) != "" {
+		t.Fatal("already-reviewed refusal invented new observation", next)
+	}
+}
+
 func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *testing.T) {
 	ctx := context.Background()
 	for _, inputs := range []NativePlannedInputsQEMU{

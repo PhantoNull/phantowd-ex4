@@ -346,20 +346,24 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) (result
 	}
 	s.dataAttempted = true
 	stage := "before-runtime"
+	refusalContext := ""
 	defer func() {
 		if result != nil {
-			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result}
+			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result, refusalContext: refusalContext}
 		}
 	}()
 	if err := s.verify(ctx); err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
 		return s.quarantine(err)
 	}
 	stage = "runtime"
 	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
 		return s.quarantine(err)
 	}
 	stage = "after-runtime"
 	if err := s.verify(ctx); err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
 		return s.quarantine(err)
 	}
 	s.dataVerified = true
@@ -371,8 +375,9 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) (result
 // identity/cancellation and quarantine behavior remain available through Unwrap;
 // no raw cause, object, credential, successful result or new authority is exposed.
 type nativePlannedDataFailureQEMU struct {
-	stage string
-	cause error
+	stage          string
+	cause          error
+	refusalContext string
 }
 
 func (e *nativePlannedDataFailureQEMU) Error() string { return "planned data qualification failed" }
@@ -386,6 +391,41 @@ func ObserveNativePlannedDataStageQEMU(err error) string {
 	switch failure.stage {
 	case "before-runtime", "runtime", "after-runtime":
 		return failure.stage
+	default:
+		return ""
+	}
+}
+
+// Snapshot only when a checked operation refuses, BEFORE quarantine/stop.
+// This is context state at that boundary, not a claim about the hidden cause.
+// Never retain the context or join a newly observed deadline into that cause.
+func nativePlannedRefusalContextQEMU(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	switch ctx.Err() {
+	case nil:
+		return "live"
+	case context.Canceled:
+		return "canceled"
+	case context.DeadlineExceeded:
+		return "deadline"
+	default:
+		return ""
+	}
+}
+
+func ObserveNativePlannedDataContextQEMU(err error) string {
+	if ObserveNativePlannedDataStageQEMU(err) == "" {
+		return ""
+	}
+	var failure *nativePlannedDataFailureQEMU
+	if !errors.As(err, &failure) || failure == nil {
+		return ""
+	}
+	switch failure.refusalContext {
+	case "live", "canceled", "deadline":
+		return failure.refusalContext
 	default:
 		return ""
 	}

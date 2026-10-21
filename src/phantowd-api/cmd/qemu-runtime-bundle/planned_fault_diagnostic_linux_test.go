@@ -158,6 +158,36 @@ func TestPlannedFaultSubprocessDiagnosticsNeverRelayRawChildOutput(t *testing.T)
 	}
 }
 
+func TestPlannedFaultContextAtRefusalRelaysOnceWithoutBecomingCauseOrProof(t *testing.T) {
+	const proof = "exact-fixed-child-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	for _, state := range []string{"live", "canceled", "deadline"} {
+		row := "PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT state=" + state + " scope=diagnostic-only\n"
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row+row, proof); got != prefix+row {
+			t.Fatal("context-at-refusal observation missing or duplicated", got)
+		}
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "proof_match=false") {
+			t.Fatal("context telemetry became an exact child proof", got)
+		}
+	}
+	for _, invalid := range []string{"", "private-path", "deadline\nREADY", "deadline extra=private", "DEADLINE"} {
+		if plannedAccessContextDiagnosticQEMU(invalid) != "" {
+			t.Fatal("arbitrary context label rendered")
+		}
+	}
+	const row = "PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT state=deadline scope=diagnostic-only\n"
+	for _, bad := range []string{strings.Replace(row, "state=deadline", "state=private", 1), strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1), strings.TrimSuffix(row, "\n") + " private\n"} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), bad, proof); got != prefix {
+			t.Fatal("unsafe context row relayed", got)
+		}
+	}
+	var bounded nativeFaultOutput
+	diagnostics := plannedFaultFailureDiagnosticQEMU("data", context.DeadlineExceeded) + row + plannedAccessStageDiagnosticQEMU("after-runtime") + plannedPhaseCostDiagnosticQEMU(40000, 20000, 60000)
+	if _, err := bounded.Write([]byte(diagnostics)); err != nil {
+		t.Fatal("context row exceeds original bounded child output", err)
+	}
+}
+
 func TestPlannedFaultSubprocessRelaysOnlyFixedExitBoundaryOnce(t *testing.T) {
 	const proof = "exact-fixed-child-proof\n"
 	const row = "PHANTOWD_QEMU_PLANNED_EXIT_FAILURE phase=request busy=true scope=diagnostic-only\n"

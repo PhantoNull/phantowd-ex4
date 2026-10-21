@@ -3,6 +3,21 @@
 
 # Implementation status
 
+## Planned-data refusal context (local diagnostic candidate)
+
+The QEMU-only data wrapper additionally captures `ctx.Err()` as one fixed
+live/canceled/deadline label at the checked refusal, BEFORE quarantine/stop.
+This is neither hidden-error causality nor remaining monotonic time; live
+does not guarantee time remains. Original causes, review, all timers and
+the1024-byte child-output/exact-proof bounds remain. Unknown/unadmitted states
+emit nothing and success emits no row. Actual-method/helper and strict-relay
+tests pass with pinned Linux vet/unit/selected race checks.
+
+ONE focused ARMv5 `exit` probe and independent saved-log proof replay pass;
+no failure/context row occurs. That non-reproduction is not a demonstrated
+timing repair or replacement for the failed full ten-campaign gate below.
+No push, new hosted run, timer increase or product/NAS operation is performed.
+
 ## Native-only QEMU profile candidate
 
 The explicitly approved candidate gives only `native` fixed status/control8,
