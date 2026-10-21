@@ -2169,6 +2169,15 @@ or repair of the earlier held/data20 failure, hosted timing reliability, a full
 newly built image or independent clean reproduction. Own-head hosted checks
 remain required before integration.
 
+Idle-authentication failures can additionally carry one fixed, failure-only
+`native idle verification stage=` label: `daemon-before`, `target-login`,
+`peer-login` or `daemon-after`. The label is added only after runtime admission;
+unknown/unreached stages and nil errors cannot invent evidence. Original typed
+causes and sticky review remain. These are substeps of the SAME unchanged
+idle20 context, not four new budgets, worker results or success proofs.
+The final daemon check remains mandatory after both fresh clients return;
+successful login outcomes do not qualify its code/configuration/state checks.
+
 After revocation, only the exact changed-pair sentinel establishes a completed
 changed observation. An unchanged pair and an incomplete observation have
 distinct refusal messages; incomplete outcomes retain their typed causes.

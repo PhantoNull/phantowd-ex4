@@ -153,11 +153,42 @@ func TestNativeDaemonObservationRetainsUnavailableCauseAndReview(t *testing.T) {
 	if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, ErrUnavailable) || !runtime.owner.review {
 		t.Fatal("daemon refusal lost the original cause or sticky review", err)
 	}
+	if !strings.HasPrefix(err.Error(), "native idle verification stage=daemon-before: ") {
+		t.Fatal("admitted idle failure does not identify its first verification stage", err)
+	}
 	observed, observeErr := runtime.ObserveNativeWorkerFailureQEMU(context.Background())
 	if observeErr != nil || observed.Present {
 		t.Fatal("daemon inspection invented a credential worker failure", observed, observeErr)
 	}
 	if next := runtime.VerifyNativeIdleDisableQEMU(context.Background()); !errors.Is(next, ErrReviewRequired) {
 		t.Fatal("unavailable authority became reusable", next)
+	} else if strings.HasPrefix(next.Error(), "native idle verification stage=") {
+		t.Fatal("pre-admission refusal invented an idle verification stage", next)
+	}
+}
+
+func TestNativeIdleFailureLabelsPreserveCauseWithoutInventingAdmission(t *testing.T) {
+	cause := errors.Join(ErrMismatch, context.DeadlineExceeded)
+	for _, stage := range []string{"daemon-before", "target-login", "peer-login", "daemon-after"} {
+		t.Run(stage, func(t *testing.T) {
+			got := nativeIdleFailureQEMU(stage, cause)
+			if !errors.Is(got, cause) || !errors.Is(got, ErrMismatch) || !errors.Is(got, context.DeadlineExceeded) {
+				t.Fatal("idle diagnostic changed the original error chain", got)
+			}
+			if !strings.HasPrefix(got.Error(), "native idle verification stage="+stage+": ") {
+				t.Fatal("idle diagnostic did not use the fixed stage", got)
+			}
+			if got := nativeIdleFailureQEMU(stage, nil); got != nil {
+				t.Fatal("idle diagnostic invented a failure", got)
+			}
+		})
+	}
+	for _, stage := range []string{"", "unknown", "not-an-admitted-operation"} {
+		if got := nativeIdleFailureQEMU(stage, cause); got != cause {
+			t.Fatal("unknown/unreached stage invented a diagnostic claim", got)
+		}
+		if got := nativeIdleFailureQEMU(stage, nil); got != nil {
+			t.Fatal("unknown stage invented a failure", got)
+		}
 	}
 }

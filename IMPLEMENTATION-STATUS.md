@@ -35,6 +35,24 @@ This does not establish a cause or repair of the earlier held/data20 failure,
 hosted timing reliability, a full newly built image or clean reproducibility.
 The new source still needs its own hosted checks before integration.
 
+The original follow-up run
+[39577132055](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39577132055)
+at `720d138` fails later: enrollment completes in67,470 ms, then cumulative
+idle-authentication20 expires at20.048344 seconds. It is not data20 or guest180.
+A single unchanged-source local CPU control reproduces that outer boundary;
+strict replay refuses the incomplete proof. No further budget is increased.
+
+A local diagnostic candidate labels only admitted idle verification failures
+as daemon-before, target-login, peer-login or daemon-after. Original causes,
+sticky review and no-retry semantics remain; earlier refusals invent no stage.
+Actual-method regression is RED before/GREEN after; pinned Linux vet/API unit
+and selected QEMU race checks pass before timed guests. The0.625CPU native
+sample passes its original strict proofs; a0.5CPU sample fails at daemon-after,
+after both fresh-login checks returned their expected results. This local
+substage cannot be attributed to the unlabelled hosted failure. No code/timer
+optimization, hosted timing fix, complete ten-guest or clean-build pass is
+claimed for this diagnostic candidate. The final daemon check is retained.
+
 One independent reproducibility run
 [39494761884](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39494761884)
 fails both builds on missing `/phantowd-qemu-fixture-tmp`; comparison is skipped.
