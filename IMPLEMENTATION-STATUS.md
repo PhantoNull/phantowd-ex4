@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Latest local release-gate evidence (2026-10-21)
+
+Code checkpoint `3422636` passes all ten original Samba ARMv5 campaigns and
+their combined verifier in one normal two-CPU local wrapper execution
+(1,001.244 seconds). An independent replay of the saved logs passes each
+original campaign verifier and the complete union. All 1,486 source inputs
+remain unchanged during the run; all seven borrowed base-artifact hashes
+match. The temporary container is removed; no image or volume is created.
+
+This supersedes the earlier incomplete local result below for current-source
+campaign coverage, not its unexplained intermittent failure. Neither this run
+nor the focused positive reproduces that refusal; no new context-failure row
+is emitted. Only the approved native profile changes budgets. Planned
+startup40/data20/supervision20, fault subprocess90 and other guests180 remain.
+This is cached local Samba qualification, not a complete newly built image,
+hosted timing repair, independent clean reproduction or hardware validation.
+Own-head hosted QEMU and fresh independent reproducibility remain open.
+
 ## Planned-data refusal context (local diagnostic candidate)
 
 The QEMU-only data wrapper additionally captures `ctx.Err()` as one fixed
@@ -14,9 +32,9 @@ emit nothing and success emits no row. Actual-method/helper and strict-relay
 tests pass with pinned Linux vet/unit/selected race checks.
 
 ONE focused ARMv5 `exit` probe and independent saved-log proof replay pass;
-no failure/context row occurs. That non-reproduction is not a demonstrated
-timing repair or replacement for the failed full ten-campaign gate below.
-No push, new hosted run, timer increase or product/NAS operation is performed.
+no failure/context row occurs. The subsequent complete instrumented lane also
+passes as recorded above. Neither positive demonstrates a timing repair.
+No product/NAS operation or additional planned-service timer increase occurs.
 
 ## Native-only QEMU profile candidate
 
@@ -31,14 +49,15 @@ Regressions first fail for the absent qualification profile and old45s live
 context. Focused tests cover measured57.641s continuity, exact90s expiry,
 separate15s authentication, shorter parents, unchanged legacy profiles and
 native-only campaign/deadline mapping. Python fixture tests and pinned Linux
-vet/API unit/selected QEMU race pass. The full original local lane verifies
+vet/API unit/selected QEMU race pass. The FIRST full original local lane verifies
 service/native/candidate/lifecycle/fault/data, then REFUSES exit: after-runtime
 data verification takes20.055s under the unchanged20s context, with review=true
 but deadline=false in the redacted error. The inner cause is not established
 by that timing alone. Held/file/file-source are unreached; the union refuses.
 All1486inputs stay unchanged during the run and seven base hashes still match.
-No same-source retry, push or new CI is performed. Complete ten-guest
-and own-head hosted checks remain required. No new hosted success, clean
+That failed attempt is retained, not retried uninstrumented for a green.
+The subsequent diagnostic commit passes all ten guests as recorded above;
+own-head hosted checks remain required. No new hosted success, clean
 reproduction, product or EX4 qualification is claimed. See the
 [current contract](support/QEMU-FAST-TESTS.md#native-only-qualification-profile).
 

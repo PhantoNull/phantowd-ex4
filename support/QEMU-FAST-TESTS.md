@@ -24,8 +24,12 @@ fixed mapping gives only `native`360s; unknown names/duration arguments refuse.
 Regressions first fail on the old missing40/8/8 profile and45s live context.
 Fake-clock tests cover measured57.641s continuity, exact90s expiry, uncertainty,
 cancellation and separate15s authentication. Host adapter tests retain legacy
-limits and shorter parents. Full local ten-guest and own-head hosted checks
-are still required. This is a deliberate test-budget change, not a speedup,
+limits and shorter parents. Code checkpoint `3422636` passes the original
+ten-guest local lane and independent complete saved-log replay in one
+1,001.244-second execution. All 1,486 inputs and seven base hashes remain
+unchanged. Earlier exit/data20 refusal remains unexplained; the new diagnostic
+run emits no failure-context row. Own-head hosted checks and independent clean
+reproduction remain open. This is a deliberate test-budget change, not a speedup,
 product SLA, EX4 measurement or installable image. Older dated records below
 describe their original profiles, not current-head qualification.
 
@@ -35,8 +39,11 @@ The static concurrency test checks configuration, not GitHub execution.
 `cancel-in-progress: false` protects the active run; the default single-pending
 queue may still replace an obsolete waiting run. For the two-commit acceptance
 test, record the first run as `in_progress` before the second push, then retain
-both SHAs/run IDs through terminal status. That runtime test remains unrun.
-Do not infer its success from the unit test or broaden the queue to retain a
+both SHAs/run IDs through terminal status. PR runs `39515955181` and
+`39516064895`, created 59 seconds apart with the first already running, both
+finish failure rather than cancellation. This verifies that specific
+noncancellation scenario, not functional success or every event/ref combination.
+Do not infer success from the unit test or broaden the queue to retain a
 build backlog. See [GitHub's concurrency reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 
 ## Failure-only planned data costs
