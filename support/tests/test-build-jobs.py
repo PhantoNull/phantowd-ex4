@@ -25,7 +25,8 @@ class DriverJobsTests(unittest.TestCase):
                 start -= 1
             self.assertGreaterEqual(start, 0)
             blocks.append('\n'.join(lines[start:at + 1]))
-        self.assertEqual(len(blocks), 2)
+        # Original reconfigure/default plus the three named build targets.
+        self.assertEqual(len(blocks), 5)
         prefix = '''
 set -eu
 buildroot_source=/synthetic-not-opened
@@ -69,7 +70,7 @@ make() {
                 at += 1
                 block.append(lines[at])
             blocks.append('\n'.join(block))
-        self.assertEqual(len(blocks), 9)
+        self.assertEqual(len(blocks), 12)
         for block in blocks:
             with self.subTest(block=block):
                 self.assertIn('PARALLEL_JOBS="$build_jobs"', block)

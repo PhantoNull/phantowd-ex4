@@ -7,16 +7,15 @@ case "$repro_phase" in
     *) echo "Invalid independent-build phase: $repro_phase" >&2; exit 2 ;;
 esac
 
-# The ordinary integration lane remains one unchanged invocation. Independent
-# builds alone use sequential, separately bounded steps in one isolated volume.
-if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
 compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
 # A checkpoint describes this invocation, never a previous cached build.
+if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 if [ "${PHANTOWD_PREPARE_ONLY:-0}" != 1 ]; then
     rm -f "$compile_checkpoint"
+fi
 fi
 
 # This file is maintained by the project and contains no executable secrets.
@@ -28,6 +27,9 @@ fi
 build_jobs=$(python3 -B "$external_dir/support/container/build_jobs.py")
 printf 'PhantoWD build CPU budget: %s jobs\n' "$build_jobs"
 
+# The ordinary integration lane remains one unchanged invocation. Independent
+# builds alone use sequential, separately bounded steps in one isolated volume.
+if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
 buildroot_url="https://buildroot.org/downloads/$buildroot_archive"
 buildroot_signature="$buildroot_archive.sign"
@@ -40,6 +42,11 @@ mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 # Run the same cheap workflow/fuzz-roster contract as hosted host CI before
 # source authentication, host tests or any cached package/kernel rebuild.
 sh "$external_dir/support/test-firmware-workflow-paths.sh"
+
+shellcheck -s sh "$external_dir/support/container/build-qemu.sh" \
+    "$external_dir/support/container/run-repro-phase.sh"
+python3 -B "$external_dir/support/tests/test-repro-phases.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-repro-phases.py"
 
 shellcheck -s sh \
 	"$external_dir/support/compare-build-artifacts.sh" \
@@ -450,18 +457,12 @@ if [ "$repro_phase" = toolchain ]; then
 fi
 else
     # Re-derive fixed context, never source a generated shell-state file.
-    external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
-    workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
-    # shellcheck disable=SC1091
-    . "$external_dir/versions.env"
-    build_jobs=$(python3 -B "$external_dir/support/container/build_jobs.py")
     buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
     buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
     download_dir="$workspace_dir/dl"
     config_hash=$(sha256sum "$external_dir/configs/phantowd_qemu_armv5_defconfig" | cut -c1-16)
     output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
     [ -f "$output_dir/.config" ] || { echo 'Missing prepared configuration' >&2; exit 1; }
-    compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
     perl_patch="$external_dir/board/qemu/armv5/patches/perl/5.40.5/0001-Configure-date-stderr.patch"
     perl_patch_digest=$(sha256sum "$perl_patch" | cut -d ' ' -f 1)
     perl_inputs_stamp="$output_dir/.phantowd-host-perl-inputs.sha256"
