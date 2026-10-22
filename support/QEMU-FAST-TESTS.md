@@ -9,6 +9,7 @@ rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
 | Scope | Status / control / revocation total | Idle / live / fresh login | Whole guest |
 | --- | --- | --- | --- |
 | Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
+| Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
 | Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
 | Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
 
@@ -19,7 +20,34 @@ are unchanged. Independent phase caps are not reserved whole-guest runtime.
 The existing backend constructor keeps its old profile; only the dedicated
 credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
 or operation accepts a duration or replacement backend. The Python helper's
-fixed mapping gives only `native`360s; unknown names/duration arguments refuse.
+fixed mapping gives `native` and the six planned-service campaigns360s;
+unknown names/duration arguments refuse. Other profiles remain180s.
+
+## Planned-service qualification profile
+
+The fixed QEMU-only planned-data action has40 seconds, independently of its
+original40-second startup and20-second supervision contexts. Planned source,
+exit and file-source subprocesses have120 seconds, covering child preparation10,
+startup40, data40 and supervision20 (110 seconds of nominal nested allowance).
+Their original2-second command WaitDelay and1024-byte exact-proof cap remain.
+Original identity-fault parent40/child35 is separate and unchanged.
+
+Only `fault`, `data`, `exit`, `held`, `file` and `file-source` change their whole
+guest bound from180 to360 seconds. Native already uses360; service, candidate,
+lifecycle and all pending variants retain180. Fault's nominal preparation20,
+enrollment75, identity child40 and planned child120 sum255 seconds within360.
+These are cooperative context allowances, not a physical or scheduling SLA.
+No caller chooses a duration; no retry, fresh authority, worker/readiness/stop
+increase, skipped check, success-proof change or product timeout change is added.
+
+The previous hosted fault failed inside the fresh20-second data context:
+before2616ms, runtime17402ms and refusal20019ms, with13 mandatory daemon checks
+and six clients. That supports cumulative exhaustion, not a measured CPU cause
+or proof that the new allowance is sufficient. Fake-clock fixed-deadline and
+cancel tests plus actual-callsite wiring and exhaustive guest-mapping controls
+are required before the original ten local guests and own-head hosted gate.
+Qualification results must be recorded separately; this profile is not an
+optimization, complete-image reproduction or physical EX4 qualification.
 
 Regressions first fail on the old missing40/8/8 profile and45s live context.
 Fake-clock tests cover measured57.641s continuity, exact90s expiry, uncertainty,
@@ -2263,7 +2291,7 @@ its trigger, not that its intended setting was applied.
 
 The planned source/exit subprocess boundary also emits fixed-label
 `PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
-`deadline` flag describes the outer 90-second child context, `child_failed`
+`deadline` flag describes the outer fixed child context (currently120 seconds), `child_failed`
 describes the command result, and `proof_match` describes exact captured-proof
 equality. Validated, deduplicated `PHANTOWD_QEMU_PLANNED_FAULT_FAILURE` rows
 identify fixture phases and typed deadline/review membership without relaying

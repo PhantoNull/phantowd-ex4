@@ -117,12 +117,14 @@ class SambaRootFixture(unittest.TestCase):
             fixture.check_campaign("\n".join(rows["native"] + [proof]),
                                    "native")
 
-    def test_guest_deadline_is_native_only_and_fixed(self):
+    def test_guest_deadline_is_fixed_and_campaign_scoped(self):
         phases = (*fixture.FOCUSED_CAMPAIGNS, "pending", "pending-peer-exit",
                   "pending-handle")
         helper = Path(fixture.__file__)
         for phase in phases:
-            expected = 360 if phase == "native" else 180
+            extended = ("native", "fault", "data", "exit", "held", "file",
+                        "file-source")
+            expected = 360 if phase in extended else 180
             self.assertEqual(fixture.guest_timeout(phase), expected)
             result = subprocess.run(
                 [sys.executable, "-B", str(helper), "guest-timeout", phase],

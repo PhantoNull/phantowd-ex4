@@ -34,6 +34,11 @@ func nativePlannedSourceFaultSubprocessQEMU() error {
 	return nativePlannedFaultSubprocessQEMU("source")
 }
 
+// Fixed fixture allowance, separate from the original identity-fault child.
+func plannedFaultContextQEMU() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 120*time.Second)
+}
+
 func nativePlannedFaultSubprocessQEMU(fault string) error {
 	commandName, proof := "native-planned-source-fault", plannedSourceFaultChildProofQEMU
 	if fault == "exit" {
@@ -43,10 +48,10 @@ func nativePlannedFaultSubprocessQEMU(fault string) error {
 	} else if fault != "source" {
 		return errors.New("invalid fixed planned fault subprocess")
 	}
-	// NEW fixed fault action: preparation10/startup40/data20/supervision20.
-	// Original identity-fault40 and guest180 budgets are unchanged. Neither
+	// Fixed QEMU action: preparation10/startup40/data40/supervision20 inside120.
+	// The original identity-fault40 action is unchanged. Neither
 	// successful child output nor guest exit alone replaces parent FD/union checks.
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := plannedFaultContextQEMU()
 	defer cancel()
 	command := exec.CommandContext(ctx, "/usr/sbin/phantowd-runtime-bundle-probe", commandName)
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}

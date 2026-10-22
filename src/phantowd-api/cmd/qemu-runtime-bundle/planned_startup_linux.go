@@ -41,6 +41,11 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, "")
 }
 
+// Fixed fixture allowance: callers cannot select or renew the data deadline.
+func plannedDataContextQEMU() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 40*time.Second)
+}
+
 // The source-fault variant is reachable only through the fixed guarded child.
 // It shares real startup/access construction, not a fabricated healthy backend.
 func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
@@ -279,11 +284,11 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			return errors.New("planned startup incomplete live observation")
 		}
 		// The original startup/preparation remains bounded40. Data access is a
-		// NEW action with its OWN20-second budget, not leftovers from startup.
-		// Guest180/readiness12/worker4/stop bounds remain unchanged.
+		// NEW action with its OWN fixed40-second QEMU allowance, not leftovers
+		// from startup. Worker/readiness/stop and all authority checks stay fixed.
 		cancel()
 		dataStarted = time.Now()
-		dataCtx, cancelData := context.WithTimeout(context.Background(), 20*time.Second)
+		dataCtx, cancelData := plannedDataContextQEMU()
 		defer cancelData()
 		ctx = dataCtx
 		canceledData, cancelProbe := context.WithCancel(ctx)
@@ -304,7 +309,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			return errors.New("planned data lost continuous service authority")
 		}
 		// A separate supervised action must not spend leftover data/startup
-		// time. This keeps data20 and guest180/worker/readiness/stop unchanged.
+		// time. Its original20-second allowance and all checks remain unchanged.
 		cancelData()
 		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancelSupervise()
