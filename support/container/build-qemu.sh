@@ -1,6 +1,15 @@
 #!/bin/sh
 set -eu
 
+repro_phase=${PHANTOWD_REPRO_PHASE:-all}
+case "$repro_phase" in
+    all|toolchain|kernel|userspace|rootfs|boot) ;;
+    *) echo "Invalid independent-build phase: $repro_phase" >&2; exit 2 ;;
+esac
+
+# The ordinary integration lane remains one unchanged invocation. Independent
+# builds alone use sequential, separately bounded steps in one isolated volume.
+if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
@@ -433,6 +442,33 @@ if [ "$perl_package_rebuild" = 1 ]; then
         PARALLEL_JOBS="$build_jobs" host-perl-dirclean
 fi
 
+if [ "$repro_phase" = toolchain ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" toolchain
+    exit 0
+fi
+else
+    # Re-derive fixed context, never source a generated shell-state file.
+    external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
+    workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
+    # shellcheck disable=SC1091
+    . "$external_dir/versions.env"
+    build_jobs=$(python3 -B "$external_dir/support/container/build_jobs.py")
+    buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
+    buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
+    download_dir="$workspace_dir/dl"
+    config_hash=$(sha256sum "$external_dir/configs/phantowd_qemu_armv5_defconfig" | cut -c1-16)
+    output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
+    [ -f "$output_dir/.config" ] || { echo 'Missing prepared configuration' >&2; exit 1; }
+    compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
+    perl_patch="$external_dir/board/qemu/armv5/patches/perl/5.40.5/0001-Configure-date-stderr.patch"
+    perl_patch_digest=$(sha256sum "$perl_patch" | cut -d ' ' -f 1)
+    perl_inputs_stamp="$output_dir/.phantowd-host-perl-inputs.sha256"
+    cyclonedx_generator="$buildroot_source/utils/generate-cyclonedx"
+    smart_replay_archive="$download_dir/smartmontools/smartmontools-$SMART_REPLAY_VERSION.tar.gz"
+fi
+
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
 # Buildroot does not invalidate a configured kernel when only a fragment
@@ -443,6 +479,7 @@ linux_inputs_digest=$(python3 -B "$kernel_inputs_helper" fingerprint \
     "$external_dir" "$buildroot_source")
 linux_inputs_stamp="$output_dir/.phantowd-linux-inputs.sha256"
 linux_inputs_previous=
+if [ "$repro_phase" = all ] || [ "$repro_phase" = kernel ]; then
 if [ -f "$linux_inputs_stamp" ]; then
     linux_inputs_previous=$(cat "$linux_inputs_stamp")
 fi
@@ -452,6 +489,22 @@ if [ -f "$output_dir/build/linux-$LINUX_VERSION/.stamp_configured" ] && \
         BR2_DL_DIR="$download_dir" O="$output_dir" \
         PARALLEL_JOBS="$build_jobs" -j"$build_jobs" linux-reconfigure
 fi
+if [ "$repro_phase" = kernel ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" linux
+    exit 0
+fi
+fi
+
+if [ "$repro_phase" = userspace ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" target-finalize
+    exit 0
+fi
+
+if [ "$repro_phase" = all ] || [ "$repro_phase" = rootfs ]; then
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -521,6 +574,11 @@ sh "$external_dir/support/container/collect-buildroot-source.sh" \
 sh "$external_dir/support/container/test-volume-probe.sh" \
     "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
     "$buildroot_source/package/util-linux" "$output_dir/host/bin"
+
+if [ "$repro_phase" = rootfs ]; then
+    exit 0
+fi
+fi
 
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 save_qemu_failure_log() {
