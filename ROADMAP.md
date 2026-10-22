@@ -3203,6 +3203,49 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
 **State:** host verifier exists; target installer absent.
 **Depends on:** M1/M7/M8 and explicit boot/storage design approval.
 
+### G8: M10 qualification with one irreplaceable EX4
+
+**Decision: pending explicit owner selection; no default.** Only one EX4 is
+available and it must not be bricked. No target installer/writer implementation
+starts before this decision is recorded with its rationale. No option below
+authorizes NAND/flash/MTD/register operations, vendor helper execution or tests
+on valuable disks. Host/QEMU development may continue without closing M10.
+
+| Option | Evidence it can provide | Residual risk / prerequisite |
+| --- | --- | --- |
+| A. QEMU-only qualification, documented risk | Deterministic software/state-machine fixtures; signed-input and interruption refusals on synthetic storage | Cannot qualify EX4 bootloader, NAND/ECC/bad-block handling, rescue or power-loss recovery. A software-only result must not be labelled physically qualified or a proven safe installation. Any relaxation of existing M10 acceptance requires separate written approval. |
+| B. Defer target qualification until a second EX4 exists | Continue host/software work; preserve the only unit while preparing an exact-model sacrificial recovery campaign | M10 target qualification and installable release remain open. A second unit alone is insufficient: recovery, identity preservation and interruption tests must still pass. |
+| C. Stock recovery path, after M7.6b | An independently understood rescue body/reader/producer and boot-selection chain could support a reviewed recovery design | M7.6b must first reconcile both rescue readers and the producer/body, then demonstrate exact-model restoration. Static bit28 / 0x10108 evidence is not permission to write a register. Stock mtd_check is not a diagnostic or an established rescue procedure. |
+
+**Why no selection has been inferred:** a passing component or QEMU campaign
+does not establish recoverability of the only physical unit. Neither a familiar
+file signature nor legacy XOR/CRC establishes authenticity or a rollback path.
+No target layout (including A/B), fallback write path or installer command is
+selected by this page. The operator must choose a route, not merely acknowledge
+that backups exist; backups do not restore a bricked boot chain by themselves.
+
+**Decision record to complete:** selected option; approving owner/date; why that
+tradeoff is acceptable; retained unsupported claims; exact evidence that would
+reopen the decision. Current selection and rationale remain unapproved, not B
+by default and not an implicit waiver of M7/M8/M10 acceptance.
+
+**Evidence that can change the decision:** availability of a sacrificial exact
+model; independently reviewed M7.6b body/producer and reader agreement; a proven
+non-destructive recovery entry and restoration/interruption campaign; reviewed
+installation-layout and per-unit-identity preservation evidence; or an explicit
+decision to offer only a software-research artifact with unqualified physical
+installation risk. None is currently substituted by coverage or timing QEMU.
+
+**Stop conditions:** do not implement a target writer while selection is pending;
+stop if the proposed test can mutate the only EX4, attached valuable disks,
+boot environment, MTD or registers. Offline inspection must identify its input
+and limit first; unknown formats remain unknown rather than guessed safe.
+
+**Acceptance:** owner-approved decision/rationale and change-evidence recorded,
+then the selected route's actual qualification evidence. Documentation alone
+closes neither M7.6b nor M10. Thermal M7.3 is outside this release scope and is
+not used as the blocker for this decision.
+
 - **M10.1 — Installation layout decision.** Document space, wear, bootloader and
   rescue constraints, state/data separation and device identity preservation.
   A/B slots are a candidate, not an assumed fit or implementation. Static
