@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-14**. This is the product specification and work breakdown,
+Reviewed: **2026-10-15**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -448,8 +448,18 @@ button to an unqualified backend simply because the screen exists.
   state reboot. Next distinguish full process-group settlement, mapped/thread
   references and kernel deferred release with a deterministic lifecycle seam.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
-  changes use QEMU; board changes use the relevant current probe. Windows host
-  iteration has a no-Docker preflight and an optional Linux/amd64 test runner
+  changes use QEMU; board changes use the relevant current probe. QEMU
+  qualification must finish without cancellation by a subsequent commit on the
+  same ref. The release-gate restoration changes QEMU's cancellation policy and
+  versions a separate optional synthetic Samba-status diagnostic; local contract
+  tests pass, but its own hosted/full and independent reproduction gates remain
+  open. Neither diagnostic presence nor a passing transcript proves a timeout fix.
+  Host toolkit
+  CI selects and verifies the exact compiler from `GO_VERSION` in
+  `versions.env`, independently of module minimums; pin-only push/PR changes
+  trigger host checks. Local selector execution and path contracts pass;
+  exact-head hosted verification remains a separate gate.
+  Windows host iteration has a no-Docker preflight and an optional Linux/amd64 test runner
   that reuses only an already-present read-only Buildroot cache; it must not
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
@@ -2458,6 +2468,22 @@ stop conditions and suitable equipment/media; not ordinary software work.
   framing/checksum, selectors, timing, replies, asynchronous alarms and failure
   behavior. Console UART is not the management-controller UART. Validate parser
   fixtures before considering any transmitted control command.
+  **M7.2a — passive receive restart (host-only):** static byte-identical final/
+  older daemon and direct RS232-read evidence establish immediate0xfa restart.
+  Decoder refuses interrupted standalone frames and recovers following frames
+  without inventing button events, independent of capture chunk boundaries.
+  Keep15-byte buffering and unknown checksum status. Generic ACK flag evidence
+  does not establish command correlation. No serial opener/transmitter, safe fan
+  setting, active hardware or complete wire-protocol qualification is provided.
+  **M7.2b — length-specific passive dispatch (host-only):** classify7-byte
+  thermistor replies by fixed03/08 prefix plus supported sensor1/2 and status
+  families40/41/42 by byte1; only MCUVer is eligible at15bytes. Leave13-byte
+  envelopes unclassified because the legacy RTC path bypasses selector checks.
+  Preserve raw dispatch bytes, bounded diagnostics, unknown integrity and no
+  temperature conversion. Acceptance: actual regression failures before fixes,
+  all38templates across3lengths, sensor/status byte boundaries, capture splits,
+  CLI behavior and complete Windows/pinned Linux vet/race/fixed-count fuzz.
+  This does not establish checksum/payload validity or authorize hardware I/O.
 - **M7.3 — Cooling safety.** Independently measure temperature and fan/tach
   behavior. Define startup-safe fan state, unavailable/stale sensor handling,
   controller/daemon failure, overtemperature and safe shutdown. Do not disable
@@ -2473,6 +2499,37 @@ stop conditions and suitable equipment/media; not ordinary software work.
   bad-block policy, vendor headers/checksums, boot validation, environment and
   device identity dependencies. Verify backups and an independent rescue path.
   A raw image copy or recognizable SquashFS magic is insufficient.
+  **M7.6a — stock source/configuration cross-check (partial, offline):**
+  hash-bound GPL configuration/Orion/core ECC evidence selects software Hamming,
+  not the compiled-out RS override or its `nandEcc=` parser. For observed
+  2048/64 geometry the source path implies 256-byte steps, three ECC bytes per
+  step and OOB positions 40–63; this is not a measured page decode, exact build
+  reproduction or U-Boot parity. Final `chk_image` separately selects an mtd4
+  fallback from a register bit and seeks 5 MiB + 4 KiB in a requested 10 MiB packed
+  dump; unchecked command/seek/write results prevent a restore guarantee.
+  Acceptance still requires reconciling both rescue readers/producers and the
+  register writer, a reviewed raw-versus-logical capture specification with
+  identity/ECC/bad-block preservation, and independent bootloader-readable
+  restore/interruption drills on sacrificial EX4 hardware before any writer.
+  See the [source anchors and remaining gates](board/wd/ex4/NAND-RECOVERY-RESEARCH.md).
+  **M7.6b — rescue identity and legacy mutation boundary (partial, offline):**
+  final updater merger rewrites only its 2 KiB binary header plus an
+  identity-bearing config text file, with unchecked I/O and pathname reopen;
+  its serial-derived field labelled "key" does not establish cryptography or
+  explain the inner rescue body. Synthetic host inspector tests retain this
+  field's opacity through success/refusal/errors without mutating input.
+  Host rescue read errors now discard private reader text/unwrap chains; shared
+  checksum guards require full declared consumption and refuse mixed EOF/error
+  outcomes. Actual REDs cover privacy and XOR-preserving truncation; Windows/
+  pinned Linux toolkit, focused race3 and the existing10,000-case fuzz campaign
+  pass, including a real temporary file truncated after stat. This does not
+  establish source immutability or qualify physical rescue/installation.
+  Static `mtd_check` main can select destructive UBIFS config reinitialization
+  and return zero without verified remount; its stock init invocation is
+  conditional on USB detection/retry state. Never execute it as a diagnostic.
+  Acceptance still needs an independently evidenced rescue body producer/
+  payload, register writer, exact-unit capture design and recovery drill;
+  no new payload parser, legacy-helper execution or installer is authorized.
 
 **Start in:** [EX4 board research](board/wd/ex4/README.md),
 `board/wd/ex4/`, `configs/`, `tools/phantowd-lab/mcuproto/`,
@@ -3223,6 +3280,32 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   toolkit vet/tests/race3 and 10,000 structural fuzz executions pass. No CLI,
   signature/trust-root/schema change, target installer, firmware build or device
   operation; release and recovery qualification remain separate.
+  **M10.2e — host body-read diagnostic redaction (partial; locally tested):**
+  response headers do not end the transport-error boundary. Manifest/signature
+  reads and payload streaming now redact reader errors using the existing
+  request wrapper, preserving programmatic cause/cancellation without exposing
+  signed URLs in public messages. Real local HTTP/TLS plus an external-reader
+  one-byte fault reproduces manifest and payload disclosure twice each before
+  their separate fixes. All three asset stages refuse without later downloads,
+  retry or positive verification, close once and clean temporary staging.
+  Whole Windows toolkit vet/tests and pinned Go1.26.8 Linux whole toolkit
+  vet/tests/race plus reader race-count3 pass. This is synthetic error-injection
+  evidence, not an observed public GitHub credential leak. No API/schema/CLI,
+  trust root, redirect, byte/timeout limit, firmware build or device change.
+  **M10.2f — opt-in host strict-upgrade prerequisite (partial; host-tested):**
+  `--require-upgrade` requires valid caller-supplied `--current-version` and
+  refuses equal/older authenticated releases before payload I/O/staging.
+  Existing advisory-only mode and exit status remain unchanged. Keep separate
+  metadata-only `upgrade_prerequisite` evidence, never weaken the full-payload
+  `update_policy` contract. Preserve signature/schema/model/revision/channel,
+  signed GitHub tag and minimum-installer gates; a newer version still requires
+  complete size/hash verification. Acceptance: CLI failure before implementation,
+  immutable/nil/zero metadata boundaries, version/pre-release limits, missing/
+  invalid input before HTTP/files, local unavailable-payload refusal, HTTP request
+  counts, staging failure sentinel with positive control, preceding-gate and
+  corrupt-payload refusals, legacy advisory behavior and whole host vet/race/fuzz.
+  This is not installed-state attestation, durable anti-rollback, owner-approved
+  downgrade recovery, signing/trust provisioning or target installation.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation

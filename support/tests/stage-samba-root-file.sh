@@ -22,6 +22,9 @@ case "$destination:$mode" in
     /usr/sbin/phantowd-runtime-owner-init:0100755|\
     /usr/sbin/phantowd-samba-owner-probe:0100755|\
     /usr/sbin/phantowd-samba-root-init:0100755|\
+    /usr/sbin/phantowd-status-producer-deadline:0100755|\
+    /usr/bin/smbstatus:0100755|\
+    /usr/lib/libsmbconf.so.0.0.1:0100755|\
     /usr/lib/phantowd/qemu-samba-root.manifest:0100644) ;;
     *) exit 1 ;;
 esac

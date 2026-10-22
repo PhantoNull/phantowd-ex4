@@ -8,6 +8,14 @@ helper, activation permission or EX4 qualification. It is separate from the
 generic static non-root launcher, which remains unchanged. Do not run it on
 physical hardware or connect user data.
 
+The dedicated `native` campaign now fixes status/control8 and revocation40
+before identity Owner admission, with idle60/live90/fresh15 and guest360s.
+Other campaigns keep their old4/4/20 profile and180s guest; ordinary commands
+keep2/5/5. Preparation20, enrollment75, startup20, data/readiness/stop, original
+checks and no-retry remain. These are test bounds, not a speedup or product SLA.
+Historical records below retain their original timing scope; see the
+[current profile contract](QEMU-FAST-TESTS.md#native-only-qualification-profile).
+
 Status results must arrive within their own child deadline as well as the
 caller deadline; a successful late result is cleared and refused without a
 second inventory or control. A non-root Linux negative regression reproduces
@@ -810,7 +818,7 @@ Both clients and the daemon settle before original code/config/state release;
 final FD equality and unchanged base remain mandatory.
 
 The initial result included complete before/after admissions in native
-status4/revocation10-second budgets. The current private QEMU phase profile
+status4/revocation10-second budgets. The legacy private QEMU phase profile
 retains status4, independently caps control4 and uses aggregate20 seconds:
 three complete status workers plus one control and bounded parsing/polling.
 Ordinary adapter status2/revocation5 is unchanged. Profiles are fixed internal
@@ -820,8 +828,9 @@ is removed. New host regressions cover the measured cumulative latency and
 the separate control cap; original full campaign/image/hosted qualification
 remains required. Diagnostic-only omissions/logs and an unsuccessful icount
 experiment are not part of the current profile.
-The native controller uses separate enrollment60, startup20, idle-disable20 and
-active-session45-second phases, within the same180-second guest bound. Earlier
+The dedicated native controller uses enrollment75, startup20, idle-disable60
+and active-session90 seconds within its360s guest. Other campaigns keep their
+original phases and guest180. Earlier
 tight/shared envelopes fail closed on slower emulator scans; they are not
 product performance specifications. This focused local result does not qualify
 full images/hosted checks, durable reconnect/in-flight handles, continuous

@@ -10,7 +10,7 @@ jobs:
   build:
     name: Clean build ${{ matrix.instance }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +40,7 @@ jobs:
       - name: Build and boot non-flashable ARMv5 image
         run: |
           docker run --rm \
+            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
             "$BUILD_IMAGE" \

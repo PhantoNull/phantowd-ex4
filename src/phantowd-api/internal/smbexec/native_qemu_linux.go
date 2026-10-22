@@ -24,14 +24,26 @@ import (
 // The runtime owns code/config/state and can be released only after workers
 // settle. This guarded fixture is not product startup or an HTTP surface.
 type NativeBackendQEMU struct {
-	inner    *Backend
-	runtime  *runtimebundle.NativeSambaRuntimeQEMU
-	mu       sync.RWMutex
-	closed   bool
-	closeErr error
+	inner         *Backend
+	runtime       *runtimebundle.NativeSambaRuntimeQEMU
+	mu            sync.RWMutex
+	closed        bool
+	closeErr      error
+	qualification bool // Fixed at construction, never chosen per operation.
 }
 
 func NewNativeBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU) (*NativeBackendQEMU, error) {
+	return newNativeBackendQEMU(ctx, runtime, false)
+}
+
+// NewNativeQualificationBackendQEMU is only for the dedicated native campaign.
+// Its fixed8/8/40 profile is retained before identity Owner admission; there
+// is no duration argument, per-operation selector or product entry point.
+func NewNativeQualificationBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU) (*NativeBackendQEMU, error) {
+	return newNativeBackendQEMU(ctx, runtime, true)
+}
+
+func newNativeBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU, qualification bool) (*NativeBackendQEMU, error) {
 	if ctx == nil || runtime == nil {
 		return nil, ErrInvalid
 	}
@@ -51,8 +63,15 @@ func NewNativeBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSamb
 		return nil, errors.Join(err, config.Close())
 	}
 	return &NativeBackendQEMU{
-		inner: &Backend{config: config, runner: &nativeRunnerQEMU{runtime: runtime}}, runtime: runtime,
+		inner: &Backend{config: config, runner: &nativeRunnerQEMU{runtime: runtime}}, runtime: runtime, qualification: qualification,
 	}, nil
+}
+
+func (b *NativeBackendQEMU) revocationProfileQEMU() revocationProfile {
+	if b.qualification {
+		return nativeQEMUQualificationProfile
+	}
+	return nativeQEMURevocationProfile
 }
 
 type nativeRunnerQEMU struct {
@@ -176,7 +195,7 @@ func (b *NativeBackendQEMU) Disable(ctx context.Context, account serviceaccounts
 	}
 	// Retained workers include complete before/after admission. Use the fixed
 	// fixture-only phase budget, not the ordinary command adapter's SLA.
-	return b.inner.disableWithProfile(ctx, account, nativeQEMURevocationProfile)
+	return b.inner.disableWithProfile(ctx, account, b.revocationProfileQEMU())
 }
 
 func (b *NativeBackendQEMU) Close() error {

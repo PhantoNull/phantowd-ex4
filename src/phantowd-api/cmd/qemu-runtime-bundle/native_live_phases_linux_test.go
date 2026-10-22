@@ -14,7 +14,7 @@ import (
 )
 
 // The native campaign calls this same runner. Model the observed completed
-// 44.714s continuity phase plus fresh authentication, not fabricated authority.
+// 57.641s continuity phase plus fresh authentication, not fabricated authority.
 func TestNativeLivePhasesCompletedContinuityLeavesFullAuthenticationBudget(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		started := time.Now()
@@ -22,10 +22,10 @@ func TestNativeLivePhasesCompletedContinuityLeavesFullAuthenticationBudget(t *te
 		completed := false
 		err := runNativeLivePhasesQEMU(context.Background(), func(ctx context.Context) error {
 			live = ctx
-			if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) != 45*time.Second {
-				t.Fatal("continuity lacks the original fixed 45-second budget")
+			if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) != 90*time.Second {
+				t.Fatal("continuity lacks the approved fixed90-second qualification budget")
 			}
-			time.Sleep(44714 * time.Millisecond)
+			time.Sleep(57641 * time.Millisecond)
 			return ctx.Err()
 		}, func(ctx context.Context) error {
 			if live.Err() != context.Canceled {
@@ -38,7 +38,7 @@ func TestNativeLivePhasesCompletedContinuityLeavesFullAuthenticationBudget(t *te
 			completed = true
 			return ctx.Err()
 		})
-		if err != nil || !completed || time.Since(started) != 54714*time.Millisecond {
+		if err != nil || !completed || time.Since(started) != 67641*time.Millisecond {
 			t.Fatalf("completed continuity starved authentication: completed=%t elapsed=%v err=%v", completed, time.Since(started), err)
 		}
 	})
@@ -61,7 +61,7 @@ func TestNativeLivePhasesUncertainOrLateContinuityNeverAuthenticates(t *testing.
 					case "uncertain":
 						return uncertain
 					case "expired", "uncertain-and-expired":
-						time.Sleep(45 * time.Second)
+						time.Sleep(90 * time.Second)
 						want = context.DeadlineExceeded
 						if scenario == "uncertain-and-expired" {
 							return uncertain
@@ -189,5 +189,16 @@ func TestNativeLivePhasesInvalidInputsHaveNoEffects(t *testing.T) {
 				t.Fatal("invalid/canceled fixture performed work", err, effects)
 			}
 		})
+	}
+}
+
+func TestOnlyNativeCredentialsSelectsQualificationProfile(t *testing.T) {
+	for campaign := nativeCredentialsCampaignQEMU; campaign <= nativePendingHandleCampaignQEMU; campaign++ {
+		if got := nativeCredentialUsesQualificationQEMU(campaign); got != (campaign == nativeCredentialsCampaignQEMU) {
+			t.Fatalf("qualification profile escaped dedicated native campaign: %d %t", campaign, got)
+		}
+	}
+	if nativeCredentialUsesQualificationQEMU(nativeCredentialCampaignQEMU(255)) {
+		t.Fatal("unknown campaign selected qualification profile")
 	}
 }

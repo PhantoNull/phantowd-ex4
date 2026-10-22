@@ -25,20 +25,6 @@ No legacy disk layout is product-qualified for migration; see the
 requires qualified board support, disk compatibility, signed updates and
 demonstrated recovery. Development and QEMU testing do not require a NAS.
 
-## Follow current development
-
-`main` is the reviewed public source snapshot; newer integrated work may live
-on `develop`. Neither branch is an installable release. Promotions require
-passing host tests, ARMv5 QEMU integration and EX4 compile-only checks for the
-promoted commit; a compile-only result does not replace integration testing.
-
-For the latest integrated scope, see the
-[development implementation status](https://github.com/PhantoNull/phantowd-ex4/blob/develop/IMPLEMENTATION-STATUS.md)
-and [development roadmap](https://github.com/PhantoNull/phantowd-ex4/blob/develop/ROADMAP.md).
-Those documents describe `develop`, not necessarily this checkout. Check the
-workflow's exact commit and conclusion before relying on a build. Feature-branch
-work remains unqualified until its own checks and integration review pass.
-
 ## Current capabilities
 
 The current source implements and tests components, not a production appliance.
@@ -56,7 +42,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
 | Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture with retained code/configuration, mutable-state directory lifetimes and descriptor handoff, separate read-only code/service views with copied-object refusal, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Product-authorized runtime inputs, complete descriptor-bound construction, identity/state/storage composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
-| Release tooling | Host-only deterministic unsigned manifest producer and exact-byte signature/payload verification | Trusted provenance/staging, key provisioning/signing, target transaction, recovery and release qualification |
+| Release tooling | Host-only deterministic unsigned manifest producer, bounded GitHub reader with redacted request/body errors, and exact-byte signature/payload verification | Trusted provenance/staging, key provisioning/signing, target transaction, recovery and release qualification |
 
 The API/dashboard are development-only and guest-loopback-only by default.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
