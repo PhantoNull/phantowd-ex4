@@ -26,21 +26,39 @@ unknown names/duration arguments refuse. Other profiles remain180s.
 ## Planned-service qualification profile
 
 The fixed QEMU-only planned-data action has40 seconds, independently of its
-original40-second startup and20-second supervision contexts. Planned source,
-exit and file-source subprocesses have120 seconds, covering child preparation10,
-startup40, data40 and supervision20 (110 seconds of nominal nested allowance).
+original40-second startup and fixed40-second supervision contexts. Supervision
+includes holder preparation, complete observations, fault and verified closure;
+it is not only the post-fault wait. Planned source, exit and file-source
+subprocesses have150 seconds, covering child preparation10, startup40, data40
+and supervision40 (130 seconds of nominal nested allowance plus20 of slack).
 Their original2-second command WaitDelay and1024-byte exact-proof cap remain.
 Original identity-fault parent40/child35 is separate and unchanged.
 
 Only `fault`, `data`, `exit`, `held`, `file` and `file-source` change their whole
 guest bound from180 to360 seconds. Native already uses360; service, candidate,
 lifecycle and all pending variants retain180. Fault's nominal preparation20,
-enrollment75, identity child40 and planned child120 sum255 seconds within360.
+enrollment75, identity child40 and planned child150 sum285 seconds within360.
 These are cooperative context allowances, not a physical or scheduling SLA.
+The existing whole-guest mapping is unchanged by this supervision increment.
 No caller chooses a duration; no retry, fresh authority, worker/readiness/stop
 increase, skipped check, success-proof change or product timeout change is added.
 
-The previous hosted fault failed inside the fresh20-second data context:
+Two independent clean builds of `61ec142` fail inside the fresh20-second
+supervision scope: one reaches source cover at19659ms, the other completes
+holder observations at14108ms but not the first full scan before20096ms.
+A controlled original-profile0.75CPU probe reproduces the latter failure at
+20125ms; its enclosing120-second child has not expired. These observations
+support scope exhaustion, not a measured cause of hosted CPU contention or
+exclusion of every race. Ordinary adapter revocation20 and all other native20
+contexts are separate and unchanged; do not replace20 globally.
+
+The fixed constructor regression must first fail on actual20/120 deadlines,
+then prove exact40/150 expiry and cancellation. Structural negative controls
+also reject a detached timer, wrong cancellation, context rebinding or a
+qualifier receiving a different context. These tests supplement the original
+full guest proofs; they do not demonstrate a runtime repair by themselves.
+
+An earlier hosted fault failed inside the fresh20-second data context:
 before2616ms, runtime17402ms and refusal20019ms, with13 mandatory daemon checks
 and six clients. That supports cumulative exhaustion, not a measured CPU cause
 or proof that the new allowance is sufficient. Fake-clock fixed-deadline and
@@ -2291,7 +2309,8 @@ its trigger, not that its intended setting was applied.
 
 The planned source/exit subprocess boundary also emits fixed-label
 `PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
-`deadline` flag describes the outer fixed child context (currently120 seconds), `child_failed`
+`deadline` flag describes the outer fixed child context (currently150 seconds),
+`child_failed`
 describes the command result, and `proof_match` describes exact captured-proof
 equality. Validated, deduplicated `PHANTOWD_QEMU_PLANNED_FAULT_FAILURE` rows
 identify fixture phases and typed deadline/review membership without relaying

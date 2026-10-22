@@ -36,7 +36,7 @@ func nativePlannedSourceFaultSubprocessQEMU() error {
 
 // Fixed fixture allowance, separate from the original identity-fault child.
 func plannedFaultContextQEMU() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 120*time.Second)
+	return context.WithTimeout(context.Background(), 150*time.Second)
 }
 
 func nativePlannedFaultSubprocessQEMU(fault string) error {
@@ -48,7 +48,7 @@ func nativePlannedFaultSubprocessQEMU(fault string) error {
 	} else if fault != "source" {
 		return errors.New("invalid fixed planned fault subprocess")
 	}
-	// Fixed QEMU action: preparation10/startup40/data40/supervision20 inside120.
+	// Fixed QEMU action: preparation10/startup40/data40/supervision40 inside150.
 	// The original identity-fault40 action is unchanged. Neither
 	// successful child output nor guest exit alone replaces parent FD/union checks.
 	ctx, cancel := plannedFaultContextQEMU()

@@ -46,6 +46,12 @@ func plannedDataContextQEMU() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 40*time.Second)
 }
 
+// This fixed QEMU scope includes holder preparation and complete observations.
+// Keep the constructor attached to the real qualifier context, not a spare timer.
+func plannedSupervisionContextQEMU() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 40*time.Second)
+}
+
 // The source-fault variant is reachable only through the fixed guarded child.
 // It shares real startup/access construction, not a fabricated healthy backend.
 func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
@@ -309,9 +315,10 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			return errors.New("planned data lost continuous service authority")
 		}
 		// A separate supervised action must not spend leftover data/startup
-		// time. Its original20-second allowance and all checks remain unchanged.
+		// time. Its fixed40-second QEMU allowance includes holder preparation
+		// and complete scans; worker/stop limits and all checks remain unchanged.
 		cancelData()
-		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
+		superviseCtx, cancelSupervise := plannedSupervisionContextQEMU()
 		defer cancelSupervise()
 		ctx = superviseCtx
 		phase = "supervision"
