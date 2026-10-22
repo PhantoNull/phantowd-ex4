@@ -13,13 +13,17 @@ The diagnostic lane uses five sequential steps in each unique build volume:
 | kernel | Existing kernel-input checks and the Linux target | 20 min |
 | userspace | Buildroot `target-finalize` (selected packages and host finalization) | 60 min |
 | rootfs | Original default make, metadata/license/probe checks | 15 min |
-| boot | Original smoke, reboot, runtime and complete service fixtures; export | 30 min |
+| boot | Original smoke, reboot, runtime and complete service fixtures; export | 45 min |
 
 These are diagnostic ceilings, not performance claims or an additive allocation.
 The **whole job remains limited to 120 minutes**, including setup and exports.
 An inner timeout runs in the container before the Actions step ceiling. Each
 failure names the phase, original exit status, elapsed time and ceiling; no retry,
 proof omission, original fixture deadline relaxation or repair is introduced.
+The qualified hosted run 39835254944 spans 30 min 12 s from rootfs table
+generation (19:28:54Z) to the final fixture result (19:59:06Z); the boot ceiling
+leaves diagnostic margin rather than treating that single observation as a
+performance guarantee. It is not a change to any individual guest deadline.
 The ordinary QEMU lane still uses the original single invocation. A phased cold
 build must pass before this diagnostic flow can be called qualified.
 

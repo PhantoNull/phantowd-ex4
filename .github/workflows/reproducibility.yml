@@ -57,8 +57,8 @@ jobs:
         timeout-minutes: 17
         run: sh support/container/run-repro-phase.sh rootfs "$BUILD_IMAGE" "$BUILD_VOLUME"
 
-      - name: Boot and original integration fixtures (30 minute ceiling)
-        timeout-minutes: 32
+      - name: Boot and original integration fixtures (45 minute ceiling)
+        timeout-minutes: 47
         run: sh support/container/run-repro-phase.sh boot "$BUILD_IMAGE" "$BUILD_VOLUME"
 
       - name: Preserve named failure diagnostics

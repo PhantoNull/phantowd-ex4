@@ -31,7 +31,7 @@ class ReproPhases(unittest.TestCase):
     def test_each_phase_has_its_own_budget_and_label(self):
         for phase, seconds in (("toolchain", 2400), ("kernel", 1200),
                                ("userspace", 3600), ("rootfs", 900),
-                               ("boot", 1800)):
+                               ("boot", 2700)):
             with self.subTest(phase=phase):
                 result, args = self.invoke(phase)
                 self.assertEqual(result.returncode, 0, result.stderr)

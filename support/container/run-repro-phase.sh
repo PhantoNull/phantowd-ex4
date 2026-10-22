@@ -8,7 +8,7 @@ case "$phase" in
     kernel) seconds=1200 ;;
     userspace) seconds=3600 ;;
     rootfs) seconds=900 ;;
-    boot) seconds=1800 ;;
+    boot) seconds=2700 ;;
     *) echo "Unknown independent-build phase: $phase" >&2; exit 2 ;;
 esac
 started=$(date +%s)

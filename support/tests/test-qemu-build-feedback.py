@@ -39,7 +39,7 @@ def make_target_position(script, target):
 class BuildFeedbackTests(unittest.TestCase):
     def test_reproducibility_full_builder_receives_fixture_scratch(self):
         step = workflow_step(
-            "Boot and original integration fixtures (30 minute ceiling)",
+            "Boot and original integration fixtures (45 minute ceiling)",
             "reproducibility.yml")
         self.assertIn('run: sh support/container/run-repro-phase.sh boot ',
                       step)
