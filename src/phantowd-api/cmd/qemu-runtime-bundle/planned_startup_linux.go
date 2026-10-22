@@ -56,9 +56,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			// inner probe separately accounts daemon checks and SMB clients.
 			// No success proof, budget, context or teardown behavior changes.
 			if fault == "" {
-				fmt.Fprint(os.Stderr, plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(result)))
-				fmt.Fprint(os.Stderr, plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(result)))
-				fmt.Fprint(os.Stderr, plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(result)))
+				fmt.Fprint(os.Stderr, plannedDataRefusalDiagnosticQEMU(result))
 			}
 			ended := time.Now()
 			fmt.Fprint(os.Stderr, plannedPhaseCostDiagnosticQEMU(dataStarted.Sub(started).Milliseconds(), ended.Sub(dataStarted).Milliseconds(), ended.Sub(started).Milliseconds()))

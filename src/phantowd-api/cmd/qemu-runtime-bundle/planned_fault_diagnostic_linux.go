@@ -24,7 +24,21 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
-	return output + plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedAccessContextDiagnosticQEMU(smbexec.ObserveNativePlannedDataContextQEMU(err)) + plannedAccessCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostsQEMU(err)) + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) + plannedCheckCostDiagnosticQEMU(runtimebundle.ObservePlannedCheckCostsQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+	return output + plannedDataRefusalDiagnosticQEMU(err) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+// Direct data and fault consumers share the same failure-only observations.
+// Each observer returns only an immutable, typed snapshot; no work is retried.
+func plannedDataRefusalDiagnosticQEMU(err error) string {
+	if err == nil {
+		return ""
+	}
+	return plannedAccessStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) +
+		plannedAccessContextDiagnosticQEMU(smbexec.ObserveNativePlannedDataContextQEMU(err)) +
+		plannedAccessCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostsQEMU(err)) +
+		plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) +
+		plannedDataCostDiagnosticQEMU(runtimebundle.ObservePlannedDataCostsQEMU(err)) +
+		plannedCheckCostDiagnosticQEMU(runtimebundle.ObservePlannedCheckCostsQEMU(err))
 }
 
 func plannedAccessContextDiagnosticQEMU(state string) string {
