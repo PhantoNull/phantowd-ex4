@@ -262,6 +262,8 @@ func TestNativePlannedDataRefusesAbsentCanceledAndBusyAuthority(t *testing.T) {
 	}
 	if err := service.VerifyDataAccess(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		t.Fatal("unstarted planned service admitted a data operation:", err)
+	} else if ObserveNativePlannedDataCostsQEMU(err).Present {
+		t.Fatal("unadmitted operation invented coordinator timing")
 	}
 }
 

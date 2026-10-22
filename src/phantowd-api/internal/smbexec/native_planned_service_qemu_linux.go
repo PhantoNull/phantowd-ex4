@@ -347,23 +347,34 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) (result
 	s.dataAttempted = true
 	stage := "before-runtime"
 	refusalContext := ""
+	clock := nativePlannedAccessCostClockQEMU{start: time.Now()}
+	var refusalCosts NativePlannedDataCostsObservationQEMU
 	defer func() {
 		if result != nil {
-			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result, refusalContext: refusalContext}
+			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result, refusalContext: refusalContext, costs: refusalCosts}
 		}
 	}()
-	if err := s.verify(ctx); err != nil {
+	err := s.verify(ctx)
+	clock.mark()
+	if err != nil {
 		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
 	stage = "runtime"
-	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
+	err = s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx)
+	clock.mark()
+	if err != nil {
 		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
 	stage = "after-runtime"
-	if err := s.verify(ctx); err != nil {
+	err = s.verify(ctx)
+	clock.mark()
+	if err != nil {
 		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
 	s.dataVerified = true
@@ -378,6 +389,7 @@ type nativePlannedDataFailureQEMU struct {
 	stage          string
 	cause          error
 	refusalContext string
+	costs          NativePlannedDataCostsObservationQEMU
 }
 
 func (e *nativePlannedDataFailureQEMU) Error() string { return "planned data qualification failed" }

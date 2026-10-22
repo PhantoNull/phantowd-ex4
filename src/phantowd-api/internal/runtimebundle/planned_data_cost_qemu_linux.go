@@ -17,6 +17,8 @@ type plannedDataCostClockQEMU struct {
 	start                 time.Time
 	checks, clients       int
 	checkTime, clientTime time.Duration
+	checkSamples          [13]time.Duration
+	samplesRecorded       int
 }
 
 type PlannedDataCostObservationQEMU struct {
@@ -26,8 +28,27 @@ type PlannedDataCostObservationQEMU struct {
 }
 
 type plannedDataCostFailureQEMU struct {
-	cause error
-	costs PlannedDataCostObservationQEMU
+	cause  error
+	costs  PlannedDataCostObservationQEMU
+	checks PlannedCheckCostObservationQEMU
+}
+
+// Ordered elapsed times for the existing fixed checks, never CPU time or proof.
+// Arrays are copied into the failure; no callback or retained mutable observer.
+type PlannedCheckCostObservationQEMU struct {
+	Present bool
+	Checks  int
+	MS      [13]int64
+}
+
+func (c *plannedDataCostClockQEMU) recordCheck(elapsed time.Duration) {
+	index := c.checks
+	c.checks++
+	c.checkTime += elapsed
+	if index >= 0 && index < len(c.checkSamples) && c.samplesRecorded == index && elapsed >= 0 {
+		c.checkSamples[index] = elapsed
+		c.samplesRecorded++
+	}
 }
 
 func (e *plannedDataCostFailureQEMU) Error() string { return "planned data diagnostic" }
@@ -42,7 +63,39 @@ func (c *plannedDataCostClockQEMU) annotate(err error) error {
 	if !validPlannedDataCostsQEMU(costs) {
 		return err
 	}
-	return &plannedDataCostFailureQEMU{cause: err, costs: costs}
+	checks := PlannedCheckCostObservationQEMU{}
+	if c.checks > 0 && c.samplesRecorded == c.checks {
+		checks.Present, checks.Checks = true, c.checks
+		for i := 0; i < c.checks; i++ {
+			checks.MS[i] = c.checkSamples[i].Milliseconds()
+		}
+	}
+	return &plannedDataCostFailureQEMU{cause: err, costs: costs, checks: checks}
+}
+
+func validPlannedCheckCostsQEMU(c PlannedCheckCostObservationQEMU, aggregate PlannedDataCostObservationQEMU) bool {
+	if !c.Present || c.Checks < 1 || c.Checks > len(c.MS) || c.Checks != aggregate.Checks {
+		return false
+	}
+	var sum int64
+	for i, ms := range c.MS {
+		if ms < 0 || ms > 180000 || (i >= c.Checks && ms != 0) {
+			return false
+		}
+		sum += ms
+	}
+	// Each sample is rounded down independently. Do not attribute rounding
+	// differences to missing work or accept a sequence detached from its sum.
+	return sum <= aggregate.CheckMS && aggregate.CheckMS-sum < int64(c.Checks)
+}
+
+func ObservePlannedCheckCostsQEMU(err error) PlannedCheckCostObservationQEMU {
+	var failure *plannedDataCostFailureQEMU
+	if !errors.As(err, &failure) || failure == nil || failure.cause == nil ||
+		!validPlannedDataCostsQEMU(failure.costs) || !validPlannedCheckCostsQEMU(failure.checks, failure.costs) {
+		return PlannedCheckCostObservationQEMU{}
+	}
+	return failure.checks
 }
 
 func validPlannedDataCostsQEMU(c PlannedDataCostObservationQEMU) bool {

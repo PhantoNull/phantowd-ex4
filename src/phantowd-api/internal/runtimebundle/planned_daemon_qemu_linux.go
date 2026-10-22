@@ -91,8 +91,7 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 	for _, operation := range []string{"rw-write", "rw-read", "ro-read", "ro-write", "escape", "ungranted"} {
 		started := time.Now()
 		err := r.verifyNativeDaemonQEMU(ctx, pid)
-		costs.checks++
-		costs.checkTime += time.Since(started)
+		costs.recordCheck(time.Since(started))
 		if err != nil {
 			return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 		}
@@ -105,8 +104,7 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 		}
 		started = time.Now()
 		err = r.verifyNativeDaemonQEMU(ctx, pid)
-		costs.checks++
-		costs.checkTime += time.Since(started)
+		costs.recordCheck(time.Since(started))
 		if err != nil {
 			return nativeDataFailureQEMU(operation, nativeWorkerPostAdmissionQEMU, err)
 		}
@@ -143,8 +141,7 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 	}
 	started := time.Now()
 	err := r.verifyNativeDaemonQEMU(ctx, pid)
-	costs.checks++
-	costs.checkTime += time.Since(started)
+	costs.recordCheck(time.Since(started))
 	if err != nil {
 		return nativeDataFailureQEMU("final-daemon", nativeWorkerPostAdmissionQEMU, err)
 	}
