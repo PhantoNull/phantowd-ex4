@@ -336,7 +336,7 @@ func (s *NativePlannedServiceQEMU) Start(ctx context.Context) error {
 
 // VerifyDataAccess is a fixed disposable qualification through this service's
 // startup-bound runtime. It accepts no replacement authority or command.
-func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
+func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) (result error) {
 	if err := s.enter(ctx); err != nil {
 		return err
 	}
@@ -345,18 +345,102 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
 		return runtimebundle.ErrReviewRequired
 	}
 	s.dataAttempted = true
-	if err := s.verify(ctx); err != nil {
+	stage := "before-runtime"
+	refusalContext := ""
+	clock := nativePlannedAccessCostClockQEMU{start: time.Now()}
+	var refusalCosts NativePlannedDataCostsObservationQEMU
+	defer func() {
+		if result != nil {
+			result = &nativePlannedDataFailureQEMU{stage: stage, cause: result, refusalContext: refusalContext, costs: refusalCosts}
+		}
+	}()
+	err := s.verify(ctx)
+	clock.mark()
+	if err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
-	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
+	stage = "runtime"
+	err = s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx)
+	clock.mark()
+	if err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
-	if err := s.verify(ctx); err != nil {
+	stage = "after-runtime"
+	err = s.verify(ctx)
+	clock.mark()
+	if err != nil {
+		refusalContext = nativePlannedRefusalContextQEMU(ctx)
+		refusalCosts = clock.observe(stage)
 		return s.quarantine(err)
 	}
 	s.dataVerified = true
 	s.publish()
 	return nil
+}
+
+// Diagnostic-only boundary after admitted data qualification. Original error
+// identity/cancellation and quarantine behavior remain available through Unwrap;
+// no raw cause, object, credential, successful result or new authority is exposed.
+type nativePlannedDataFailureQEMU struct {
+	stage          string
+	cause          error
+	refusalContext string
+	costs          NativePlannedDataCostsObservationQEMU
+}
+
+func (e *nativePlannedDataFailureQEMU) Error() string { return "planned data qualification failed" }
+func (e *nativePlannedDataFailureQEMU) Unwrap() error { return e.cause }
+
+func ObserveNativePlannedDataStageQEMU(err error) string {
+	var failure *nativePlannedDataFailureQEMU
+	if !errors.As(err, &failure) || failure == nil || failure.cause == nil {
+		return ""
+	}
+	switch failure.stage {
+	case "before-runtime", "runtime", "after-runtime":
+		return failure.stage
+	default:
+		return ""
+	}
+}
+
+// Snapshot only when a checked operation refuses, BEFORE quarantine/stop.
+// This is context state at that boundary, not a claim about the hidden cause.
+// Never retain the context or join a newly observed deadline into that cause.
+func nativePlannedRefusalContextQEMU(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	switch ctx.Err() {
+	case nil:
+		return "live"
+	case context.Canceled:
+		return "canceled"
+	case context.DeadlineExceeded:
+		return "deadline"
+	default:
+		return ""
+	}
+}
+
+func ObserveNativePlannedDataContextQEMU(err error) string {
+	if ObserveNativePlannedDataStageQEMU(err) == "" {
+		return ""
+	}
+	var failure *nativePlannedDataFailureQEMU
+	if !errors.As(err, &failure) || failure == nil {
+		return ""
+	}
+	switch failure.refusalContext {
+	case "live", "canceled", "deadline":
+		return failure.refusalContext
+	default:
+		return ""
+	}
 }
 
 func (s *NativePlannedServiceQEMU) stop() error {

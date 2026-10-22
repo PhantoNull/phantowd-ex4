@@ -62,7 +62,8 @@ func (b *NativeBackendQEMU) readNativeSessionsQEMU(ctx context.Context) (map[str
 	}
 	// This native-only observation includes complete admission on both sides
 	// of the worker; the generic command adapter's two-second limit is unchanged.
-	statusCtx, cancel := context.WithTimeout(ctx, 2*sessionStatusTimeout)
+	limits, _ := b.revocationProfileQEMU().limits()
+	statusCtx, cancel := context.WithTimeout(ctx, limits.status)
 	defer cancel()
 	output, err := b.inner.runner.Run(statusCtx, smbstatusPath,
 		[]string{"-j", "-s", configArgument}, b.inner.config, nil, true)

@@ -41,12 +41,23 @@ func TestRevocationRefusesUnknownProfileBeforeAnyCommand(t *testing.T) {
 		return nil, nil
 	})}
 	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
-	for _, profile := range []revocationProfile{0, 3, 255} {
+	for _, profile := range []revocationProfile{0, 4, 255} {
 		if limits, ok := profile.limits(); ok || limits != (revocationLimits{}) {
 			t.Fatal("unknown profile returned partial limits", profile, limits, ok)
 		}
 		if err := backend.disableWithProfile(context.Background(), account, profile); err != ErrInvalid || calls != 0 {
 			t.Fatal("unknown profile dispatched a command", profile, err, calls)
 		}
+	}
+}
+
+func TestNativeQualificationProfileCoversCompleteSequence(t *testing.T) {
+	limits, ok := nativeQEMUQualificationProfile.limits()
+	if !ok || limits != (revocationLimits{40 * time.Second, 8 * time.Second, 8 * time.Second}) {
+		t.Fatal("native qualification limits are not the fixed40/8/8 profile", limits, ok)
+	}
+	phaseBound := time.Duration(1+stableAbsentSessionInventories)*limits.status + limits.control + time.Duration(stableAbsentSessionInventories)*sessionPollInterval
+	if phaseBound != 32200*time.Millisecond || limits.total <= phaseBound {
+		t.Fatal("qualification profile cannot cover bounded complete revocation", limits, phaseBound)
 	}
 }

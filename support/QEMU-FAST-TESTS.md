@@ -1,5 +1,152 @@
 # Fast API and file-service integration checks
 
+## Native-only qualification profile
+
+The dedicated `native` campaign selects a fixed QEMU-only profile once, before
+identity Owner admission. All complete checks, original references, proof
+rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
+
+| Scope | Status / control / revocation total | Idle / live / fresh login | Whole guest |
+| --- | --- | --- | --- |
+| Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
+| Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
+| Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
+| Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
+
+The40s total covers three8s status inventories, one8s control and two100ms
+polls (32.2s). Shorter parent deadlines always win. Preparation20, enrollment75,
+backend-observation20, startup20, re-enable preparation20 and readiness/stop
+are unchanged. Independent phase caps are not reserved whole-guest runtime.
+The existing backend constructor keeps its old profile; only the dedicated
+credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
+or operation accepts a duration or replacement backend. The Python helper's
+fixed mapping gives `native` and the six planned-service campaigns360s;
+unknown names/duration arguments refuse. Other profiles remain180s.
+
+## Planned-service qualification profile
+
+The fixed QEMU-only planned-data action has40 seconds, independently of its
+original40-second startup and fixed40-second supervision contexts. Supervision
+includes holder preparation, complete observations, fault and verified closure;
+it is not only the post-fault wait. Planned source, exit and file-source
+subprocesses have150 seconds, covering child preparation10, startup40, data40
+and supervision40 (130 seconds of nominal nested allowance plus20 of slack).
+Their original2-second command WaitDelay and1024-byte exact-proof cap remain.
+Original identity-fault parent40/child35 is separate and unchanged.
+
+Only `fault`, `data`, `exit`, `held`, `file` and `file-source` change their whole
+guest bound from180 to360 seconds. Native already uses360; service, candidate,
+lifecycle and all pending variants retain180. Fault's nominal preparation20,
+enrollment75, identity child40 and planned child150 sum285 seconds within360.
+These are cooperative context allowances, not a physical or scheduling SLA.
+The existing whole-guest mapping is unchanged by this supervision increment.
+No caller chooses a duration; no retry, fresh authority, worker/readiness/stop
+increase, skipped check, success-proof change or product timeout change is added.
+
+Two independent clean builds of `61ec142` fail inside the fresh20-second
+supervision scope: one reaches source cover at19659ms, the other completes
+holder observations at14108ms but not the first full scan before20096ms.
+A controlled original-profile0.75CPU probe reproduces the latter failure at
+20125ms; its enclosing120-second child has not expired. These observations
+support scope exhaustion, not a measured cause of hosted CPU contention or
+exclusion of every race. Ordinary adapter revocation20 and all other native20
+contexts are separate and unchanged; do not replace20 globally.
+
+The fixed constructor regression must first fail on actual20/120 deadlines,
+then prove exact40/150 expiry and cancellation. Structural negative controls
+also reject a detached timer, wrong cancellation, context rebinding or a
+qualifier receiving a different context. These tests supplement the original
+full guest proofs; they do not demonstrate a runtime repair by themselves.
+
+An earlier hosted fault failed inside the fresh20-second data context:
+before2616ms, runtime17402ms and refusal20019ms, with13 mandatory daemon checks
+and six clients. That supports cumulative exhaustion, not a measured CPU cause
+or proof that the new allowance is sufficient. Fake-clock fixed-deadline and
+cancel tests plus actual-callsite wiring and exhaustive guest-mapping controls
+are required before the original ten local guests and own-head hosted gate.
+Qualification results must be recorded separately; this profile is not an
+optimization, complete-image reproduction or physical EX4 qualification.
+
+Regressions first fail on the old missing40/8/8 profile and45s live context.
+Fake-clock tests cover measured57.641s continuity, exact90s expiry, uncertainty,
+cancellation and separate15s authentication. Host adapter tests retain legacy
+limits and shorter parents. Code checkpoint `3422636` passes the original
+ten-guest local lane and independent complete saved-log replay in one
+1,001.244-second execution. All 1,486 inputs and seven base hashes remain
+unchanged. Earlier exit/data20 refusal remains unexplained; the new diagnostic
+run emits no failure-context row. Own-head hosted checks and independent clean
+reproduction remain open. This is a deliberate test-budget change, not a speedup,
+product SLA, EX4 measurement or installable image. Older dated records below
+describe their original profiles, not current-head qualification.
+
+## Running qualification and pending queue are different evidence
+
+The static concurrency test checks configuration, not GitHub execution.
+`cancel-in-progress: false` protects the active run; the default single-pending
+queue may still replace an obsolete waiting run. For the two-commit acceptance
+test, record the first run as `in_progress` before the second push, then retain
+both SHAs/run IDs through terminal status. PR runs `39515955181` and
+`39516064895`, created 59 seconds apart with the first already running, both
+finish failure rather than cancellation. This verifies that specific
+noncancellation scenario, not functional success or every event/ref combination.
+Do not infer success from the unit test or broaden the queue to retain a
+build backlog. See [GitHub's concurrency reference](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
+## Failure-only planned data costs
+
+An admitted data refusal can additionally emit
+`PHANTOWD_QEMU_PLANNED_ACCESS_CONTEXT state=live|canceled|deadline` with fixed
+`scope=diagnostic-only`. The wrapper snapshots `ctx.Err()` at the checked
+refusal BEFORE quarantine/stop, not during later cleanup. The label observes
+context state, never asserts the hidden error's cause or time remaining.
+It does not add a deadline to `errors.Is`, renew a context, alter review or
+skip any identity/storage/runtime check. Missing/unknown/unadmitted states
+and successful results emit nothing. The parent strictly validates and
+deduplicates the fixed row; original child1024-byte and exact-proof checks
+remain. A focused positive guest is not a reproduced failure or timing fix.
+
+Admitted planned-data failures also carry a fixed
+`PHANTOWD_QEMU_PLANNED_ACCESS_FAILURE` stage: `before-runtime`, `runtime` or
+`after-runtime`. The private wrapper preserves the original cause and existing
+quarantine/stop behavior; an unadmitted operation, missing typed error, unknown
+stage or success cannot manufacture this row. Parent relay validates/deduplicates
+it without accepting it as proof or changing the 1024-byte child-output cap.
+Linux cause/redaction/strict-proof controls and targeted race pass. One complete
+Samba attempt passes seven guests, then held reports `after-runtime` and an
+identity worker pre-admission deadline at data20 (startup31253/data20067 ms).
+Thus the inner probe returned nil before the final identity verification failed;
+it does not establish final identity/service authority or a qualified held guest.
+The last two guests were not reached. Captured-log replay independently refuses
+the failed guest and incomplete union. Failure relay is unit-tested; this actual
+ARM stage observation is from the direct held path, not a failed fault child.
+No original budget, daemon fence, identity recheck or complete gate is waived.
+
+The existing QEMU `data`/`fault` paths retain all original guards, thirteen
+daemon checks and six fixed clients. On a failed inner data probe, a typed,
+cause-preserving annotation can emit `PHANTOWD_QEMU_PLANNED_DATA_COSTS`:
+attempted check/client counts, their nonoverlapping elapsed milliseconds and
+total probe time. The containing fixture can also emit
+`PHANTOWD_QEMU_PLANNED_PHASE_COSTS` on a data-phase failure: construction/startup,
+data-to-return and total wall intervals. These intervals include quarantine
+and return work, not CPU time, successful effects or an EX4 performance target.
+
+Rows are failure-only, fixed-key, canonical bounded integers. The parent drops
+invalid rows and deduplicates identical ones; successful child output remains
+the exact original proof, with its unchanged 1024-byte cap. No context, worker,
+startup40/data20/supervision20/subprocess90/guest180 limit changes. No new guest,
+job, product endpoint or device operation is introduced.
+
+Pinned Linux vet/unit/targeted race and host verifier controls pass. Focused
+normal data/fault guests pass without cost output. A single 0.75-CPU data
+control emits startup35108/data20050/total55158 ms and fails an identity worker
+post-admission deadline. No inner probe-cost row is emitted: the containing
+pre-check may have failed, or its post-check may have failed after a successful
+probe. This does not prove either ordering or reproduce the older final-daemon
+or hosted native180 failure. The inner cost emission/relay refusal controls are
+unit-tested, not yet observed on a failing ARM inner probe. Do not call the
+focused successes a timing fix or complete/hosted qualification, infer physical
+NAS budgets, or silently relax deadlines to conceal the failure.
+
 ## Failure-only source-fault checkpoint costs
 
 `support/test-samba-root.ps1 -Campaign file-source -DiagnosticLogs` retains the
@@ -2081,10 +2228,10 @@ as the same timeout:
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
-| Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Native enrollment, 75 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Guest, native360 s; others180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2094,14 +2241,36 @@ after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
 
-The QEMU-only native driver gives preparation20 and enrollment60 separate
-single-use phases instead of their former shared60 context. This raises the
-combined contextual allowance to80 seconds, not hashing throughput. A shorter
+The QEMU-only native driver gives preparation20 and enrollment75 separate
+single-use phases. Enrollment alone increases from60 to75 seconds; the combined
+contextual allowance increases from80 to95 seconds, not hashing throughput. A shorter
 original parent still bounds both. Failed, uncertain, expired or canceled
 preparation cannot begin enrollment; duplicate handoff cannot refresh its
 deadline and a late nil completion refuses. Accounting tests exercise the exact
 private helper used by the fixture, not synthetic identity or session authority.
-Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+They cross the former60s cap, accept just before75s and refuse at75s, without
+wall-clock sleeps. Data/readiness/stop limits remain unchanged. The dedicated
+native campaign uses the qualification profile above; other campaigns retain
+their old limits. No failed operation is retried. This fixture-only
+allowance change does not qualify a hosted timing fix or a product deadline.
+
+The2026-10-21 local candidate passes the focused native guest, all ten original
+Samba campaigns and their complete-union verifier, plus independent strict
+replay of the captured logs. Each guest exits0 and all seven base hashes remain
+unchanged. Pinned Go1.26.8 Linux vet/API unit and selected QEMU race checks pass
+before the timed guest lane. A single local pass does not establish the cause
+or repair of the earlier held/data20 failure, hosted timing reliability, a full
+newly built image or independent clean reproduction. Own-head hosted checks
+remain required before integration.
+
+Idle-authentication failures can additionally carry one fixed, failure-only
+`native idle verification stage=` label: `daemon-before`, `target-login`,
+`peer-login` or `daemon-after`. The label is added only after runtime admission;
+unknown/unreached stages and nil errors cannot invent evidence. Original typed
+causes and sticky review remain. These are substeps of the SAME dedicated
+idle60 context, not four new budgets, worker results or success proofs.
+The final daemon check remains mandatory after both fresh clients return;
+successful login outcomes do not qualify its code/configuration/state checks.
 
 After revocation, only the exact changed-pair sentinel establishes a completed
 changed observation. An unchanged pair and an incomplete observation have
@@ -2140,7 +2309,8 @@ its trigger, not that its intended setting was applied.
 
 The planned source/exit subprocess boundary also emits fixed-label
 `PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
-`deadline` flag describes the outer 90-second child context, `child_failed`
+`deadline` flag describes the outer fixed child context (currently150 seconds),
+`child_failed`
 describes the command result, and `proof_match` describes exact captured-proof
 equality. Validated, deduplicated `PHANTOWD_QEMU_PLANNED_FAULT_FAILURE` rows
 identify fixture phases and typed deadline/review membership without relaying

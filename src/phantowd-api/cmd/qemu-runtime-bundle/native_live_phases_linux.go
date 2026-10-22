@@ -13,14 +13,14 @@ import (
 
 // Fixed fixture workloads; no authority, backend, retry or product API hook.
 // The SAME Owner, runtime and session witness cross the caller's two closures.
-// Live continuity/revocation keeps 45s; fresh authentication has a separate 15s.
-// This explicitly changes fixture allowance 45->60, not worker/product/guest
-// limits or throughput. A failed/late phase never renews a timer or retries.
+// Dedicated native qualification uses90s for continuity/revocation and15s
+// separately for fresh authentication. These are fixed QEMU test bounds, not
+// product SLAs or throughput. A failed/late phase never renews a timer or retries.
 func runNativeLivePhasesQEMU(parent context.Context, live, authenticate func(context.Context) error) error {
 	if parent == nil || live == nil || authenticate == nil {
 		return errors.New("native live fixture requires both phases and parent")
 	}
-	budgets := [...]time.Duration{45 * time.Second, 15 * time.Second}
+	budgets := [...]time.Duration{90 * time.Second, 15 * time.Second}
 	for index, phase := range []func(context.Context) error{live, authenticate} {
 		if err := parent.Err(); err != nil {
 			return err

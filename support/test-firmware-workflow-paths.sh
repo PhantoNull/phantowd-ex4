@@ -306,6 +306,15 @@ for path in 'support/test-runtime-loader.ps1' \
     'support/tests/samba_root_fixture.py' \
     'support/tests/test-samba-root-fixture.py' \
     'support/tests/test-qemu-samba-root.sh' \
+    'support/tests/stage-samba-root-file.sh' \
+    'support/test-samba-status-producer.ps1' \
+    'support/tests/build-samba-status-producer-experiment.sh' \
+    'support/tests/fixtures/samba-status-source-errors.patch' \
+    'support/tests/samba-status-producer-deadline.c' \
+    'support/tests/samba-status-producer-init.sh' \
+    'support/tests/samba_status_producer_fixture.py' \
+    'support/tests/test-qemu-samba-status-producer.sh' \
+    'support/tests/test-samba-status-producer-fixture.py' \
     'support/container/qemu_kernel_inputs.py' \
     'support/tests/test-qemu-kernel-inputs.py'; do
     require_triggered_path "$host_workflow" "$path"

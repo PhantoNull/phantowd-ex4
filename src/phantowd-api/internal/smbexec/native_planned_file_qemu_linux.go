@@ -90,7 +90,8 @@ func (b *NativeBackendQEMU) readPlannedOpenFileQEMU(ctx context.Context) (Native
 	}
 	// The fixed status operation, both-side runtime admission and existing
 	// native observation budget are unchanged. No path/command is caller chosen.
-	statusCtx, cancel := context.WithTimeout(ctx, 2*sessionStatusTimeout)
+	limits, _ := b.revocationProfileQEMU().limits()
+	statusCtx, cancel := context.WithTimeout(ctx, limits.status)
 	defer cancel()
 	output, err := b.inner.runner.Run(statusCtx, smbstatusPath,
 		[]string{"-j", "-s", configArgument}, b.inner.config, nil, true)

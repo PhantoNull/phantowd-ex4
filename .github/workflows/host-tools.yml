@@ -56,6 +56,15 @@ on:
       - 'support/tests/samba_root_fixture.py'
       - 'support/tests/test-samba-root-fixture.py'
       - 'support/tests/test-qemu-samba-root.sh'
+      - 'support/tests/stage-samba-root-file.sh'
+      - 'support/test-samba-status-producer.ps1'
+      - 'support/tests/build-samba-status-producer-experiment.sh'
+      - 'support/tests/fixtures/samba-status-source-errors.patch'
+      - 'support/tests/samba-status-producer-deadline.c'
+      - 'support/tests/samba-status-producer-init.sh'
+      - 'support/tests/samba_status_producer_fixture.py'
+      - 'support/tests/test-qemu-samba-status-producer.sh'
+      - 'support/tests/test-samba-status-producer-fixture.py'
       - 'support/tests/runtime_loader_fixture.py'
       - 'support/tests/test-runtime-loader-fixture.py'
       - 'support/tests/test-qemu-runtime-loader.sh'
@@ -138,6 +147,15 @@ on:
       - 'support/tests/samba_root_fixture.py'
       - 'support/tests/test-samba-root-fixture.py'
       - 'support/tests/test-qemu-samba-root.sh'
+      - 'support/tests/stage-samba-root-file.sh'
+      - 'support/test-samba-status-producer.ps1'
+      - 'support/tests/build-samba-status-producer-experiment.sh'
+      - 'support/tests/fixtures/samba-status-source-errors.patch'
+      - 'support/tests/samba-status-producer-deadline.c'
+      - 'support/tests/samba-status-producer-init.sh'
+      - 'support/tests/samba_status_producer_fixture.py'
+      - 'support/tests/test-qemu-samba-status-producer.sh'
+      - 'support/tests/test-samba-status-producer-fixture.py'
       - 'support/tests/runtime_loader_fixture.py'
       - 'support/tests/test-runtime-loader-fixture.py'
       - 'support/tests/test-qemu-runtime-loader.sh'
@@ -266,7 +284,9 @@ jobs:
         run: python3 -B support/tests/test-atomic-dispatch-fixture.py
 
       - name: Verify Samba-root experiment refusals
-        run: python3 -B support/tests/test-samba-root-fixture.py
+        run: |
+          python3 -B support/tests/test-samba-root-fixture.py
+          python3 -B support/tests/test-samba-status-producer-fixture.py
 
       - name: Verify Samba wrapper defaults and bounded command boundary
         shell: pwsh

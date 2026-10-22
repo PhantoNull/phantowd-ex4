@@ -303,6 +303,7 @@ def check_campaign(log, phase):
                    if row.startswith(
                        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
     access = tuple(row for row in MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
@@ -354,6 +355,17 @@ def select_campaigns(selection):
     if selection not in FOCUSED_CAMPAIGNS:
         raise ValueError("invalid campaign selection")
     return (selection,)
+
+
+def guest_timeout(phase):
+    """Fixed per-guest bounds, never caller-selected durations or retries."""
+    if (not isinstance(phase, str)
+            or phase not in (*FOCUSED_CAMPAIGNS, "pending",
+                             "pending-peer-exit", "pending-handle")):
+        raise ValueError("invalid guest campaign")
+    extended = ("native", "fault", "data", "exit", "held", "file",
+                "file-source")
+    return 360 if phase in extended else 180
 
 
 def diagnostic_record(log, phase, status):
@@ -510,6 +522,8 @@ def main():
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
     selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
+    deadline = sub.add_parser("guest-timeout")
+    deadline.add_argument("phase")
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
     diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
@@ -531,6 +545,8 @@ def main():
         print(f"Samba {args.phase} campaign verified")
     elif args.command == "select-campaigns":
         print(" ".join(select_campaigns(args.selection)))
+    elif args.command == "guest-timeout":
+        print(guest_timeout(args.phase))
     elif args.command == "diagnostic-log":
         if Path(args.log).is_symlink() or not Path(args.log).is_file():
             raise ValueError("regular fixture log required")

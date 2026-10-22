@@ -13,8 +13,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 LOG_HELPER = ROOT / "support/container/save-qemu-failure-log.sh"
 
 
-def workflow_step(name):
-    workflow = (ROOT / ".github/workflows/qemu-armv5.yml").read_text()
+def workflow_step(name, filename="qemu-armv5.yml"):
+    workflow = (ROOT / ".github/workflows" / filename).read_text()
     step = workflow.split(f"      - name: {name}\n")[1]
     return step.split("      - name:")[0]
 
@@ -37,6 +37,48 @@ def make_target_position(script, target):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_reproducibility_full_builder_receives_fixture_scratch(self):
+        step = workflow_step("Build and boot non-flashable ARMv5 image",
+                             "reproducibility.yml")
+        body = step.split("        run: |\n", 1)[1]
+        command = "\n".join(line[10:] for line in body.splitlines()
+                            if line.startswith("          "))
+        # Capture the real shell-expanded Docker argv at its external boundary;
+        # do not launch Docker, run the builder, or claim a full workflow pass.
+        result = subprocess.run(
+            ["sh", "-eu", "-c",
+             "docker() { printf '%s\\n' \"$@\"; }\n" + command],
+            cwd=ROOT, text=True, capture_output=True,
+            env=dict(os.environ, BUILD_VOLUME="fixture-volume",
+                     BUILD_IMAGE="fixture-builder"), check=True,
+        )
+        arguments = result.stdout.splitlines()
+        self.assertEqual(arguments[:2], ["run", "--rm"])
+        self.assertEqual(arguments[-1],
+                         "/external/support/container/build-qemu.sh")
+        mounts = []
+        for index, argument in enumerate(arguments):
+            if argument == "--tmpfs":
+                mounts.append(arguments[index + 1])
+            elif argument.startswith("--tmpfs="):
+                mounts.append(argument.split("=", 1)[1])
+        self.assertEqual(
+            [mount for mount in mounts
+             if mount.split(":", 1)[0] == "/phantowd-qemu-fixture-tmp"],
+            ["/phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m"],
+        )
+
+    def test_qemu_running_and_single_pending_configuration_contract(self):
+        workflow = (ROOT / ".github/workflows/qemu-armv5.yml").read_text()
+        concurrency = re.search(r"(?m)^concurrency:\n((?:[ \t]+[^\n]*\n)+)",
+                                workflow)
+        self.assertIsNotNone(concurrency)
+        self.assertEqual(
+            concurrency.group(1).splitlines(),
+            ["  group: qemu-armv5-${{ github.ref }}",
+             "  cancel-in-progress: false"],
+        )
+
     def test_runtime_owner_staging_qualifies_supplied_physical_tmpfs(self):
         tests = ROOT / "support/tests"
         staging = (tests / "test-samba-root-staging.sh").read_text()
