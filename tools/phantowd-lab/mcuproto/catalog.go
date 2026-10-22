@@ -6,9 +6,10 @@
 // serial-port or transmit support.
 package mcuproto
 
-// Selector is a recovered four-byte table template. Static analysis shows
-// receive dispatch uses the first three bytes. The fourth byte remains
-// metadata/default evidence, not a fully assigned wire field.
+// Selector is a recovered four-byte table template, not a complete wire frame.
+// Receive handlers differ in length and compare one, two or three prefix bytes;
+// DecodeReceive implements the supported classifications. The fourth template
+// byte remains metadata/default evidence, not a fully assigned wire field.
 type Selector struct {
 	Name     string  `json:"name"`
 	Template [4]byte `json:"template"`

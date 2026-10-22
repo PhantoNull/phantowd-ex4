@@ -8,6 +8,7 @@ package smbexec
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,101 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
+
+func TestNativePlannedDataBoundaryPreservesCauseAndOnlyFixedStages(t *testing.T) {
+	private := errors.New("private-credential/path\nFAKE_READY")
+	for _, stage := range []string{"before-runtime", "runtime", "after-runtime"} {
+		cause := errors.Join(private, context.DeadlineExceeded, runtimebundle.ErrReviewRequired)
+		failure := &nativePlannedDataFailureQEMU{stage: stage, cause: cause}
+		wrapped := errors.Join(errors.New("outer-private-context"), failure)
+		if got := ObserveNativePlannedDataStageQEMU(wrapped); got != stage {
+			t.Fatal("fixed boundary not observed", got)
+		}
+		if !errors.Is(wrapped, private) || !errors.Is(wrapped, context.DeadlineExceeded) || !errors.Is(wrapped, runtimebundle.ErrReviewRequired) || strings.Contains(failure.Error(), "private") {
+			t.Fatal("annotation changed or disclosed cause")
+		}
+	}
+	for _, invalid := range []error{nil, private, (*nativePlannedDataFailureQEMU)(nil),
+		&nativePlannedDataFailureQEMU{stage: "runtime"},
+		&nativePlannedDataFailureQEMU{stage: private.Error(), cause: private},
+	} {
+		if got := ObserveNativePlannedDataStageQEMU(invalid); got != "" {
+			t.Fatal("missing or arbitrary stage accepted", got)
+		}
+	}
+	first := &nativePlannedDataFailureQEMU{stage: "before-runtime", cause: private}
+	second := &nativePlannedDataFailureQEMU{stage: "after-runtime", cause: context.Canceled}
+	if got := ObserveNativePlannedDataStageQEMU(errors.Join(first, second)); got != "before-runtime" {
+		t.Fatal("later cleanup displaced first boundary", got)
+	}
+	var absent *NativePlannedServiceQEMU
+	if err := absent.VerifyDataAccess(context.Background()); !errors.Is(err, ErrInvalid) || ObserveNativePlannedDataStageQEMU(err) != "" {
+		t.Fatal("unadmitted service invented a data boundary", err)
+	}
+}
+
+func TestPlannedDataRefusalContextIsSnapshotNotCauseOrCleanupTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	state := nativePlannedRefusalContextQEMU(ctx)
+	cancel() // Models cancellation during later quarantine, not at the refusal.
+	private := errors.New("private-path-and-credential")
+	failure := &nativePlannedDataFailureQEMU{stage: "after-runtime", cause: private, refusalContext: state}
+	if ObserveNativePlannedDataContextQEMU(failure) != "live" || errors.Is(failure, context.Canceled) || !errors.Is(failure, private) {
+		t.Fatal("later cleanup cancellation rewrote the refusal or original cause")
+	}
+	if nativePlannedRefusalContextQEMU(ctx) != "canceled" {
+		t.Fatal("canceled state missing")
+	}
+	expired, stop := context.WithDeadline(context.Background(), time.Unix(1, 0))
+	defer stop()
+	if nativePlannedRefusalContextQEMU(expired) != "deadline" || nativePlannedRefusalContextQEMU(nil) != "" {
+		t.Fatal("invalid/expired context state")
+	}
+	failure.refusalContext = "deadline"
+	if ObserveNativePlannedDataContextQEMU(failure) != "deadline" || errors.Is(failure, context.DeadlineExceeded) {
+		t.Fatal("context observation was promoted into hidden error causality")
+	}
+	for _, bad := range []error{nil, private, (*nativePlannedDataFailureQEMU)(nil),
+		&nativePlannedDataFailureQEMU{stage: "after-runtime", refusalContext: "deadline"},
+		&nativePlannedDataFailureQEMU{stage: "private-stage", cause: private, refusalContext: "deadline"},
+		&nativePlannedDataFailureQEMU{stage: "after-runtime", cause: private, refusalContext: private.Error()},
+	} {
+		if ObserveNativePlannedDataContextQEMU(bad) != "" {
+			t.Fatal("unobserved or arbitrary context label accepted")
+		}
+	}
+}
+
+type refuseAfterAdmissionContextQEMU struct {
+	context.Context
+	calls int
+}
+
+func (c *refuseAfterAdmissionContextQEMU) Err() error {
+	c.calls++
+	if c.calls > 1 {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
+func TestPlannedDataActualRefusalCapturesContextBeforeQuarantine(t *testing.T) {
+	// Deliberately incomplete inputs: fail source verification before any OS
+	// operation. The zero runtime also refuses stop before process authority.
+	// This is a real method refusal test, NOT an admitted healthy NAS service.
+	s := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1), started: true,
+		inputs: NativePlannedInputsQEMU{Shares: &mountowner.ServiceSharePinsQEMU{},
+			Storage: &mountowner.MountedVolumeSet{}, Backend: &NativeBackendQEMU{runtime: &runtimebundle.NativeSambaRuntimeQEMU{}}}}
+	ctx := &refuseAfterAdmissionContextQEMU{Context: context.Background()}
+	err := s.VerifyDataAccess(ctx)
+	if err == nil || ObserveNativePlannedDataStageQEMU(err) != "before-runtime" || ObserveNativePlannedDataContextQEMU(err) != "deadline" ||
+		!s.review || s.closed || ctx.calls != 2 || errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("actual refusal lost context snapshot, invented cause or released review", err, ctx.calls)
+	}
+	if next := s.VerifyDataAccess(context.Background()); ObserveNativePlannedDataContextQEMU(next) != "" {
+		t.Fatal("already-reviewed refusal invented new observation", next)
+	}
+}
 
 func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *testing.T) {
 	ctx := context.Background()
@@ -166,6 +262,8 @@ func TestNativePlannedDataRefusesAbsentCanceledAndBusyAuthority(t *testing.T) {
 	}
 	if err := service.VerifyDataAccess(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		t.Fatal("unstarted planned service admitted a data operation:", err)
+	} else if ObserveNativePlannedDataCostsQEMU(err).Present {
+		t.Fatal("unadmitted operation invented coordinator timing")
 	}
 }
 

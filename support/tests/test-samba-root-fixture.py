@@ -56,6 +56,7 @@ def campaign_rows():
     candidate = next(row for row in fixture.MARKERS if row.startswith(
         "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
     access = tuple(row for row in fixture.MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
@@ -90,6 +91,56 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_descriptor_data_proof_belongs_once_to_existing_data_guest(self):
+        rows = campaign_rows()
+        proof = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY"))
+        rows["native"] = [row for row in rows["native"] if row != proof]
+        data = [row for row in rows["data"] if row != proof]
+        startup = next(row for row in data if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY"))
+        data.insert(data.index(startup), proof)
+        rows["data"] = data
+        fixture.check_campaign("\n".join(rows["native"]), "native")
+        fixture.check_campaign("\n".join(data), "data")
+        self.assertEqual(fixture.select_campaigns("all"),
+                         ("service", "native", "candidate", "lifecycle",
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"))
+        logs = ["\n".join(rows[phase])
+                for phase in fixture.select_campaigns("all")]
+        fixture.check_campaigns(*logs)
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(row for row in data
+                                             if row != proof), "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(rows["native"] + [proof]),
+                                   "native")
+
+    def test_guest_deadline_is_fixed_and_campaign_scoped(self):
+        phases = (*fixture.FOCUSED_CAMPAIGNS, "pending", "pending-peer-exit",
+                  "pending-handle")
+        helper = Path(fixture.__file__)
+        for phase in phases:
+            extended = ("native", "fault", "data", "exit", "held", "file",
+                        "file-source")
+            expected = 360 if phase in extended else 180
+            self.assertEqual(fixture.guest_timeout(phase), expected)
+            result = subprocess.run(
+                [sys.executable, "-B", str(helper), "guest-timeout", phase],
+                capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout.strip(), str(expected))
+        for invalid in (None, True, 360, "all", "", "native ", "NATIVE",
+                        "../native", "service;360"):
+            with self.assertRaises(ValueError):
+                fixture.guest_timeout(invalid)
+        for args in (("unknown",), ("native", "360"), ()):
+            result = subprocess.run(
+                [sys.executable, "-B", str(helper), "guest-timeout", *args],
+                capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+
     @staticmethod
     def timing_row(operation="list", phase="pre-admission", elapsed=17,
                    remaining=45000, parent_done="false", failed="false",
@@ -602,7 +653,9 @@ class SambaRootFixture(unittest.TestCase):
         startup = next(row for row in fixture.MARKERS if row.startswith(
             "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY"))
         rows = [*fixture.MARKERS[:3], CENSUS,
-                fixture.MARKERS[native_split], startup,
+                fixture.MARKERS[native_split],
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY")), startup,
                 marker, next(row for row in fixture.MARKERS if row.startswith(
                     "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
                 next(row for row in fixture.MARKERS if row.startswith(
@@ -647,6 +700,8 @@ class SambaRootFixture(unittest.TestCase):
         data = next(row for row in fixture.MARKERS if row.startswith(
             "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY"))
         rows = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[split],
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY")),
                 marker, data,
                 next(row for row in fixture.MARKERS if row.startswith(
                     "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
@@ -702,6 +757,7 @@ class SambaRootFixture(unittest.TestCase):
         native = [*fixture.MARKERS[:3], CENSUS,
                   *(row for row in fixture.MARKERS[native_split:-4]
                     if row != planned and not row.startswith((
+                        "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
@@ -1985,7 +2041,9 @@ class SambaRootFixture(unittest.TestCase):
         init = (root / "support/tests/samba-root-init.sh").read_text()
         self.assertIn("--pull never --network none --read-only", wrapper)
         self.assertNotIn("docker volume create", wrapper)
-        self.assertIn("timeout --signal=TERM --kill-after=5 180", driver)
+        self.assertIn('guest-timeout "$campaign"', driver)
+        self.assertIn('timeout --signal=TERM --kill-after=5 "$guest_timeout"',
+                      driver)
         self.assertIn("-nic none", driver)
         self.assertIn("rootwait ro", driver)
         self.assertIn("if=scsi,snapshot=on", driver)

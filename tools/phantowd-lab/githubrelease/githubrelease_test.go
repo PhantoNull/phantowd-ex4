@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -326,6 +327,115 @@ func TestInspectInstallerPrerequisiteFollowsSignedTagAndTargetChecks(t *testing.
 				t.Fatalf("installer preflight crossed preceding gate: result=%+v err=%v", result, err)
 			}
 		})
+	}
+}
+
+func TestInspectRequiredUpgradeBeforePayloadDownload(t *testing.T) {
+	for _, test := range []struct {
+		current string
+		payload int
+		invalid bool
+	}{
+		{"", 1, false}, {"v0.0.9", 1, false}, {"v0.1.0-rc.1", 1, false},
+		{"v0.1.0", 0, false}, {"v0.2.0", 0, false},
+		{"v00.1.0", 0, true}, {strings.Repeat("v", 129), 0, true},
+	} {
+		t.Run(test.current, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			fixture.serve(t, true, nil)
+			options := fixture.options()
+			options.RequireUpgradeFrom = test.current
+			result, err := Inspect(context.Background(), options)
+			policy := result.Verification.UpgradePrerequisite
+			if (err != nil) != test.invalid || fixture.payloadRequests != test.payload ||
+				result.Verification.Valid != (test.payload == 1) || result.Verification.ArtifactsChecked != (test.payload == 1) ||
+				result.Verification.InstallationAuthorized || result.Verification.HardwareQualified || result.Verification.UpdatePolicy != nil {
+				t.Fatalf("upgrade boundary changed: result=%+v err=%v payloads=%d", result, err, fixture.payloadRequests)
+			}
+			if test.invalid {
+				if fixture.metadataRequests != 0 || fixture.manifestRequests != 0 || fixture.signatureRequests != 0 || policy != nil {
+					t.Fatal("invalid current version reached HTTP or gained prerequisite evidence")
+				}
+				return
+			}
+			if fixture.metadataRequests != 1 || fixture.manifestRequests != 1 || fixture.signatureRequests != 1 {
+				t.Fatal("metadata was retried or skipped")
+			}
+			if test.current == "" {
+				if policy != nil {
+					t.Fatal("omitted prerequisite changed legacy behavior")
+				}
+			} else if policy == nil || !policy.Evaluated || policy.StrictlyNewer != (test.payload == 1) || policy.InstallationAuthorized {
+				t.Fatalf("wrong metadata prerequisite: %+v", policy)
+			}
+		})
+	}
+}
+
+func TestInspectUpgradePrerequisiteDoesNotBypassAuthenticationOrPayload(t *testing.T) {
+	for _, mutation := range []string{"signature", "target", "channel", "signed tag", "installer", "payload"} {
+		t.Run(mutation, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			switch mutation {
+			case "signature":
+				fixture.signature[0] ^= 1
+			case "target":
+				fixture.optionsRevision = "board-r2"
+			case "signed tag":
+				fixture.optionsTag, fixture.releaseTag = "v0.2.0", "v0.2.0"
+			case "payload":
+				fixture.payload[0] ^= 1
+			}
+			fixture.serve(t, true, nil)
+			options := fixture.options()
+			options.RequireUpgradeFrom = "v0.0.9"
+			options.InstallerVersion = "v0.1.0"
+			if mutation == "installer" {
+				options.InstallerVersion = "v0.0.9"
+			}
+			if mutation == "channel" {
+				options.Channel = "beta"
+			}
+			result, err := Inspect(context.Background(), options)
+			wantPayload := 0
+			if mutation == "payload" {
+				wantPayload = 1
+			}
+			if err != nil || result.Verification.Valid || fixture.payloadRequests != wantPayload ||
+				result.Verification.ArtifactsChecked != (wantPayload == 1) ||
+				(result.Verification.UpgradePrerequisite != nil) != (wantPayload == 1) ||
+				result.Verification.InstallationAuthorized || result.Verification.HardwareQualified {
+				t.Fatalf("%s gate bypassed: %+v err=%v", mutation, result, err)
+			}
+		})
+	}
+}
+
+func TestInspectNonUpgradeRefusesBeforeTemporaryStaging(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("synthetic payload"))
+	fixture.serve(t, true, nil)
+	blocked := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blocked, []byte("synthetic staging sentinel"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, blocked)
+	}
+	options := fixture.options()
+	options.RequireUpgradeFrom = "v0.1.0"
+	result, err := Inspect(context.Background(), options)
+	if err != nil || result.Verification.Valid || result.Verification.ArtifactsChecked || fixture.payloadRequests != 0 ||
+		result.Verification.UpgradePrerequisite == nil || result.Verification.UpgradePrerequisite.StrictlyNewer {
+		t.Fatalf("equal release attempted staging: %+v err=%v", result, err)
+	}
+	// Positive control: the same authenticated release with a lower supplied
+	// current version reaches MkdirTemp and fails on the deliberate file parent.
+	options.RequireUpgradeFrom = "v0.0.9"
+	result, err = Inspect(context.Background(), options)
+	if err == nil || !strings.Contains(err.Error(), "create temporary release-check directory") || fixture.payloadRequests != 0 ||
+		result.Verification.UpgradePrerequisite == nil || !result.Verification.UpgradePrerequisite.StrictlyNewer ||
+		result.Verification.Valid || result.Verification.ArtifactsChecked {
+		t.Fatalf("staging sentinel did not distinguish gate from failure: %+v err=%v", result, err)
 	}
 }
 
@@ -683,6 +793,7 @@ type releaseFixture struct {
 	signedRedirects   bool
 	assetURLQuery     bool
 	metadataTransform func(string) string
+	metadataRequests  int
 	manifestRequests  int
 	signatureRequests int
 	payloadRequests   int
@@ -737,6 +848,7 @@ func (f *releaseFixture) serve(t *testing.T, prerelease bool, payloadOverride []
 			return
 		}
 		if r.URL.Path == "/repos/PhantoNull/phantowd-ex4/releases/tags/"+f.optionsTag {
+			f.metadataRequests++
 			f.writeRelease(w, prerelease)
 			return
 		}

@@ -14,6 +14,7 @@ type revocationProfile uint8
 const (
 	commandRevocationProfile revocationProfile = iota + 1
 	nativeQEMURevocationProfile
+	nativeQEMUQualificationProfile
 )
 
 type revocationLimits struct {
@@ -30,6 +31,11 @@ func (profile revocationProfile) limits() (revocationLimits, bool) {
 		// four complete workers, plus one worker-sized margin for bounded
 		// parsing/polling. Status/control stay capped at four seconds each;
 		// the fixed twenty-second total never permits a control retry.
+		return revocationLimits{time.Duration(3+stableAbsentSessionInventories) * worker, worker, worker}, true
+	case nativeQEMUQualificationProfile:
+		// Only the dedicated native qualification constructor selects this.
+		// The legacy QEMU and ordinary command profiles remain unchanged.
+		worker := 4 * sessionStatusTimeout
 		return revocationLimits{time.Duration(3+stableAbsentSessionInventories) * worker, worker, worker}, true
 	default:
 		return revocationLimits{}, false

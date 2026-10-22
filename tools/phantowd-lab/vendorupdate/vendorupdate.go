@@ -268,7 +268,8 @@ func InspectLogicalImage(r io.ReaderAt, size int64) (LogicalImage, error) {
 
 // InspectRescueImage validates a regular-file copy of the packed logical
 // rescue format. It never exposes the two per-device MAC fields present in the
-// legacy header and makes no physical NAND/OOB/ECC claim.
+// legacy header or the opaque per-unit slot labelled "key" by the stock merger.
+// It makes no physical NAND/OOB/ECC or inner-payload-layout claim.
 func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 	report := RescueImage{
 		Format:           "wd-mycloud-ex4-legacy-logical-rescue",
@@ -282,7 +283,8 @@ func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 	}
 	header := make([]byte, RescueHeaderSize)
 	if err := readAtFull(r, header, 0); err != nil {
-		return report, fmt.Errorf("read rescue header: %w", err)
+		// Reader errors can carry paths or per-unit details; do not retain them.
+		return report, errors.New("read rescue header failed")
 	}
 	report.PayloadLength = int64(le32(header[0x14:]))
 	report.ExpectedPayloadXOR = le32(header[0x18:])
@@ -309,7 +311,7 @@ func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 	report.TrailingBytes = size - RescueHeaderSize - report.PayloadLength
 	actual, err := xorRange(r, RescueHeaderSize, report.PayloadLength)
 	if err != nil {
-		return report, fmt.Errorf("checksum rescue payload: %w", err)
+		return report, errors.New("checksum rescue payload failed")
 	}
 	report.ActualPayloadXOR = actual
 	report.XORValid = actual == report.ExpectedPayloadXOR
@@ -471,6 +473,9 @@ func validateRange(offset, length, size int64) error {
 
 func readAtFull(r io.ReaderAt, data []byte, offset int64) error {
 	n, err := r.ReadAt(data, offset)
+	if err != nil && err != io.EOF {
+		return err
+	}
 	if n == len(data) {
 		return nil
 	}
@@ -489,8 +494,10 @@ func xorRange(r io.ReaderAt, offset, length int64) (uint32, error) {
 	word := make([]byte, 4)
 	wordLength := 0
 	var checksum uint32
+	var observed int64
 	for {
 		n, err := reader.Read(buffer)
+		observed += int64(n)
 		for _, value := range buffer[:n] {
 			word[wordLength] = value
 			wordLength++
@@ -500,7 +507,11 @@ func xorRange(r io.ReaderAt, offset, length int64) (uint32, error) {
 				clear(word)
 			}
 		}
-		if errors.Is(err, io.EOF) {
+		if err == io.EOF {
+			// A missing zero word can preserve XOR: EOF alone is not completion.
+			if observed != length {
+				return 0, io.ErrUnexpectedEOF
+			}
 			break
 		}
 		if err != nil {

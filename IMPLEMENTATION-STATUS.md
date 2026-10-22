@@ -3,6 +3,231 @@
 
 # Implementation status
 
+## Latest local release-gate evidence (2026-10-21)
+
+Code checkpoint `3422636` passes all ten original Samba ARMv5 campaigns and
+their combined verifier in one normal two-CPU local wrapper execution
+(1,001.244 seconds). An independent replay of the saved logs passes each
+original campaign verifier and the complete union. All 1,486 source inputs
+remain unchanged during the run; all seven borrowed base-artifact hashes
+match. The temporary container is removed; no image or volume is created.
+
+This supersedes the earlier incomplete local result below for current-source
+campaign coverage, not its unexplained intermittent failure. Neither this run
+nor the focused positive reproduces that refusal; no new context-failure row
+is emitted. Only the approved native profile changes budgets. Planned
+startup40/data20/supervision20, fault subprocess90 and other guests180 remain.
+This is cached local Samba qualification, not a complete newly built image,
+hosted timing repair, independent clean reproduction or hardware validation.
+Own-head hosted QEMU and fresh independent reproducibility remain open.
+
+## Planned-data refusal context (local diagnostic candidate)
+
+The QEMU-only data wrapper additionally captures `ctx.Err()` as one fixed
+live/canceled/deadline label at the checked refusal, BEFORE quarantine/stop.
+This is neither hidden-error causality nor remaining monotonic time; live
+does not guarantee time remains. Original causes, review, all timers and
+the1024-byte child-output/exact-proof bounds remain. Unknown/unadmitted states
+emit nothing and success emits no row. Actual-method/helper and strict-relay
+tests pass with pinned Linux vet/unit/selected race checks.
+
+ONE focused ARMv5 `exit` probe and independent saved-log proof replay pass;
+no failure/context row occurs. The subsequent complete instrumented lane also
+passes as recorded above. Neither positive demonstrates a timing repair.
+No product/NAS operation or additional planned-service timer increase occurs.
+
+## Native-only QEMU profile candidate
+
+The explicitly approved candidate gives only `native` fixed status/control8,
+revocation40, idle60, active live90, fresh login15 and whole-guest360s. The
+profile is retained at backend construction before identity Owner admission;
+existing constructors keep4/4/20, other guests keep180s, ordinary commands keep
+2/5/5. Preparation20, enrollment75, startup20, data/readiness/stop and original
+checks/review/no-retry remain. Revocation40 covers the32.2s bounded sequence.
+
+Regressions first fail for the absent qualification profile and old45s live
+context. Focused tests cover measured57.641s continuity, exact90s expiry,
+separate15s authentication, shorter parents, unchanged legacy profiles and
+native-only campaign/deadline mapping. Python fixture tests and pinned Linux
+vet/API unit/selected QEMU race pass. The FIRST full original local lane verifies
+service/native/candidate/lifecycle/fault/data, then REFUSES exit: after-runtime
+data verification takes20.055s under the unchanged20s context, with review=true
+but deadline=false in the redacted error. The inner cause is not established
+by that timing alone. Held/file/file-source are unreached; the union refuses.
+All1486inputs stay unchanged during the run and seven base hashes still match.
+That failed attempt is retained, not retried uninstrumented for a green.
+The subsequent diagnostic commit passes all ten guests as recorded above;
+own-head hosted checks remain required. No new hosted success, clean
+reproduction, product or EX4 qualification is claimed. See the
+[current contract](support/QEMU-FAST-TESTS.md#native-only-qualification-profile).
+
+## Release gate restoration — hosted outcomes and local follow-up
+
+QEMU qualification keeps its existing per-ref concurrency group but no longer
+cancels an in-progress run on the next commit. A regression rejects the previous
+setting. The isolated Samba-status experiment is now versioned with its fixed
+staging destinations and transcript controls. It is optional, synthetic and
+not a demonstrated cause or repair of the integration timeout.
+
+PR [#141](https://github.com/PhantoNull/phantowd-ex4/pull/141)'s original full QEMU run
+[39486838826](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39486838826)
+fails at the native guest's outer 180-second deadline, after authority closure.
+The expected old-consumer refusal is not evidence of its cause. Local native
+passes do not establish a hosted timing repair. The subsequent original PR runs
+[39515955181](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39515955181)
+and [39516064895](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39516064895)
+were created59 seconds apart, with the first job running before the second push.
+Both completed failure, not cancellation: their cumulative enrollment60 context
+expired before native data/session proofs. This passes that specific two-commit
+noncancellation scenario, not other event/ref combinations or functional QEMU.
+
+An approved fixture-only follow-up raises enrollment60 to75 seconds, separately
+from preparation20 (combined allowance80 to95, not a performance improvement).
+Data20, all individual worker/startup/live/stop limits, guest180, parent bounds
+and no-retry rules remain unchanged. Actual-helper fake-clock tests are RED at60
+and GREEN at75, including success across the old cap and exact deadline refusal.
+Pinned Go1.26.8 Linux vet/API unit and selected QEMU race checks pass before ARM.
+All ten original local Samba guests, the original combined verifier and an
+independent strict captured-log replay pass, with all seven base hashes unchanged.
+This does not establish a cause or repair of the earlier held/data20 failure,
+hosted timing reliability, a full newly built image or clean reproducibility.
+The new source still needs its own hosted checks before integration.
+
+The original follow-up run
+[39577132055](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39577132055)
+at `720d138` fails later: enrollment completes in67,470 ms, then cumulative
+idle-authentication20 expires at20.048344 seconds. It is not data20 or guest180.
+A single unchanged-source local CPU control reproduces that outer boundary;
+strict replay refuses the incomplete proof. No further budget is increased.
+
+A local diagnostic candidate labels only admitted idle verification failures
+as daemon-before, target-login, peer-login or daemon-after. Original causes,
+sticky review and no-retry semantics remain; earlier refusals invent no stage.
+Actual-method regression is RED before/GREEN after; pinned Linux vet/API unit
+and selected QEMU race checks pass before timed guests. The0.625CPU native
+sample passes its original strict proofs; a0.5CPU sample fails at daemon-after,
+after both fresh-login checks returned their expected results. This local
+substage cannot be attributed to the unlabelled hosted failure. No code/timer
+optimization, hosted timing fix, complete ten-guest or clean-build pass is
+claimed for this diagnostic candidate. The final daemon check is retained.
+
+One independent reproducibility run
+[39494761884](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39494761884)
+fails both builds on missing `/phantowd-qemu-fixture-tmp`; comparison is skipped.
+A two-file local fix adds only the missing scratch mount, with actual workflow
+argv and original download-patch fixture RED/GREEN controls. It has not been
+qualified by a fresh independent clean build. Stage A
+[39495242891](https://github.com/PhantoNull/phantowd-ex4/actions/runs/39495242891)
+passes compile-only; all eight downloaded checksums match. It is not a hardware
+test, installable image or flash authorization.
+
+A separate QEMU-only workload candidate moves the independent
+descriptor-data profile from `native` to the existing `data` guest. All 44 proof
+rows and ten-campaign roster remain mandatory; parent FD equality and empty-only
+scaffold removal precede the original planned profile. The credential setup
+context differs from the old post-revocation trace; no continuous-identity proof
+is claimed for that independent profile. Host verifier (78), build-feedback (32),
+lint, pinned Linux API tests/vet and targeted race checks pass. The original
+ten-guest focused attempt passes service/native/candidate/lifecycle, then fails
+fault during the unchanged 20-second planned-data final daemon check. A single
+focused data attempt also fails there; the remaining five guests were not reached
+by the complete attempt. No complete-union, hosted fix or integration pass is
+claimed. No timeout or daemon verification fence is relaxed.
+
+Subsequent failure-only instrumentation preserves the original error chain,
+all thirteen daemon checks, six clients, strict child proof and output cap.
+Linux vet/unit/race and host controls pass. One normal data and one normal fault
+guest now pass, as does a 1.5-CPU control; these do not demonstrate a timing fix.
+A single 0.75-CPU control fails an identity worker's post-admission deadline:
+startup 35,108 ms, data 20,050 ms. The inner runtime-cost row is absent, which
+does not distinguish a failed pre-check from a failed post-check after a
+successful inner probe; that particular sample remains ambiguous. A subsequent
+single complete Samba attempt, with a fixed typed stage observer, passes
+service/native/candidate/lifecycle/fault/data/exit, then fails held at
+`after-runtime`: the inner data probe returned success, but fresh identity
+verification encounters a worker pre-admission deadline. Startup is 31,253 ms,
+data-to-return 20,067 ms. Held is not qualified; file/file-source are unreached.
+Independent captured-log replay accepts the seven passing guests and refuses
+held and the incomplete union. This is not a reproduced cause or repair of
+the old hosted native180 failure. All budgets remain unchanged; taking five
+seconds from startup would exclude the earlier 35,108-ms sample.
+
+No product activation, artifact name, installability or flashability is changed.
+
+## Host release planning: optional strict-upgrade prerequisite
+
+Both host release inspectors now support `--require-upgrade` with a valid
+caller-supplied current version. After authentication/exact target/channel,
+signed GitHub tag and optional minimum-installer gates, equal/older releases
+refuse before payload I/O or temporary staging. The separate metadata-only
+`upgrade_prerequisite` does not weaken full-artifact `update_policy` evidence.
+Newer releases still require complete payload verification; the old advisory
+mode and exit status remain unchanged without the flag.
+
+The actual CLI initially rejects the missing option; focused local controls
+now pass for version/input/authority boundaries, preceding gates, corrupt
+payloads, real HTTP request counts and unavailable staging with a positive
+control. Whole Windows and pinned Go1.26.8 Linux toolkit vet/unit/race pass;
+the runner's five existing fixed-count fuzz campaigns also pass. No installed-state
+attestation, persistent anti-rollback, signing/manifest schema change, device
+installer, firmware/hardware operation or native timing waiver is introduced.
+
+## Passive controller: length-specific receive classification
+
+The host-only decoder now uses the receive handler's length and fixed prefix,
+not a blanket three-byte match. Thermistor sensor1/2 replies and status families
+with variable payload bytes are recognized. Only MCUVer is classified at15bytes;
+13-byte RTC envelopes remain unknown because their stock branch does not
+validate selectors. Long button-shaped envelopes cannot change replayed button
+state. The JSON shape is unchanged; `dispatch_key` remains raw bytes1..3 and
+`known` means classification, not integrity, device state or execution evidence.
+
+Three regressions fail before their respective fixes and pass afterward.
+Catalog/length, raw sensor/status byte boundaries, every mixed-capture split
+and CLI controls pass locally. Whole Windows and pinned Linux checks pass,
+including Linux race and five fixed-count fuzz campaigns (450,000 executions).
+No temperature lookup,
+serial opener/transmitter, hardware test or cooling qualification is added.
+Checksums and active controller support remain unqualified.
+
+## Host CI compiler selection
+
+The host-tool workflow now selects the exact `GO_VERSION` from `versions.env`
+instead of interpreting the toolkit module's minimum Go requirement as its
+compiler pin. It refuses missing, malformed or duplicate pins without sourcing
+the lock file, then checks the installed SDK version before vet/race/fuzz tests.
+Pin-only changes trigger both push and PR host checks. Sixteen local execution
+fixtures and the existing workflow path contracts pass; own hosted qualification
+is separate. Module requirements, target inputs and QEMU timeouts are unchanged.
+
+## Passive EX4 controller research: restart framing and generic ACK boundary
+
+Offline ARM disassembly verifies immediate0xfa receive restart and a direct
+RS232 read wrapper. The host-only decoder now abandons interrupted prefixes,
+recovers following frames and refuses restarted standalone candidates before
+selector/button classification. Two RED regressions precede the fixes; whole
+Windows and pinned Linux toolkit checks, Linux race and all five fixed-count
+fuzz campaigns pass. Static ACK handling uses a generic flag, not an
+independently verified per-command execution receipt. Checksums, payloads,
+thermal safety, ACK ordering and active controller support remain unqualified.
+There is no serial/device opener or transmitter and no firmware/hardware test
+or activation in this increment. This is not checksum/payload or thermal
+qualification and does not repair the independent native integration timeout.
+
+## Host release downloads: response-body error redaction
+
+M10.2e extends the existing fixed public transport-error boundary to manifest,
+signature and payload body reads. The original cause/cancellation remains
+available programmatically, but reader-supplied signed URLs do not appear in
+public error messages. Separate manifest/payload RED regressions reproduce
+twice each; all three asset-stage controls pass, including one read/close,
+no retry/later download, no verification success and staging cleanup.
+Whole Windows toolkit vet/tests, pinned Linux Go1.26.8 whole toolkit vet/tests/
+race and reader race-count3 pass locally. Faults are injected after one byte
+from a real local HTTP/TLS response, not observed public GitHub outages.
+No target installer, trust provisioning, firmware/ARM build, product service
+or hardware qualification is added; publication/own hosted checks are separate.
+
 ## Complete cached code checkpoint; source-loss cause still open
 
 Code checkpoint `5245ada` now passes the original complete cached lane: host

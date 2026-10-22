@@ -1,0 +1,105 @@
+From: PhantoWD EX4 contributors
+Subject: [EXPERIMENT, NOT QUALIFIED] Fail malformed session status
+
+Do not report an incomplete session traversal as an empty successful JSON
+inventory. Preserve positive callback early-stop behavior, but retain negative
+callback or watched-header parse errors even when TDB returns a record count.
+JSON is emitted only after successful preparation and traversal.
+
+This is not a claim that every status producer failure is covered.
+
+--- a/source3/lib/dbwrap/dbwrap_watch.c
++++ b/source3/lib/dbwrap/dbwrap_watch.c
+@@ -655,6 +655,7 @@
+ struct dbwrap_watched_traverse_state {
+ 	int (*fn)(struct db_record *rec, void *private_data);
+ 	void *private_data;
++	bool failed;
+ };
+ 
+ static int dbwrap_watched_traverse_fn(struct db_record *rec,
+@@ -663,10 +664,12 @@
+ 	struct dbwrap_watched_traverse_state *state = private_data;
+ 	struct db_record prec = *rec;
+ 	bool ok;
++	int ret;
+ 
+ 	ok = dbwrap_watch_rec_parse(rec->value, NULL, NULL, &prec.value);
+ 	if (!ok) {
+-		return 0;
++		state->failed = true;
++		return -1;
+ 	}
+ 	if (prec.value.dsize == 0) {
+ 		return 0;
+@@ -674,7 +677,11 @@
+ 	}
+ 	prec.value_valid = true;
+ 
+-	return state->fn(&prec, state->private_data);
++	ret = state->fn(&prec, state->private_data);
++	if (ret < 0) {
++		state->failed = true;
++	}
++	return ret;
+ }
+ 
+ static int dbwrap_watched_traverse(struct db_context *db,
+@@ -690,7 +697,7 @@
+ 
+ 	status = dbwrap_traverse(
+ 		ctx->backend, dbwrap_watched_traverse_fn, &state, &ret);
+-	if (!NT_STATUS_IS_OK(status)) {
++	if (!NT_STATUS_IS_OK(status) || state.failed) {
+ 		return -1;
+ 	}
+ 	return ret;
+@@ -710,7 +717,7 @@
+ 
+ 	status = dbwrap_traverse_read(
+ 		ctx->backend, dbwrap_watched_traverse_fn, &state, &ret);
+-	if (!NT_STATUS_IS_OK(status)) {
++	if (!NT_STATUS_IS_OK(status) || state.failed) {
+ 		return -1;
+ 	}
+ 	return ret;
+--- a/source3/utils/status.c
++++ b/source3/utils/status.c
+@@ -701,7 +701,7 @@
+ 		d_printf("%-7s %-12s %-12s %-41s %-17s %-20s %-21s\n", "PID", "Username", "Group", "Machine", "Protocol Version", "Encryption", "Signing");
+ 		d_printf("----------------------------------------------------------------------------------------------------------------------------------------\n");
+ 	} else {
+-		add_section_to_json(state, "sessions");
++		return add_section_to_json(state, "sessions");
+ 	}
+ 	return 0;
+ 
+@@ -1212,8 +1212,17 @@
+ 	}
+ 
+ 	if ( show_processes ) {
+-		prepare_sessionid(&state);
+-		sessionid_traverse_read(traverse_sessionid, &state);
++		NTSTATUS session_status;
++		if (prepare_sessionid(&state) != 0) {
++			ret = 1;
++			goto done;
++		}
++		session_status = sessionid_traverse_read(traverse_sessionid, &state);
++		if (!NT_STATUS_IS_OK(session_status)) {
++			fprintf(stderr, "Session inventory unavailable\n");
++			ret = 1;
++			goto done;
++		}
+ 
+ 		if (processes_only) {
+ 			goto done;
+@@ -1300,7 +1309,7 @@
+ 	cmdline_messaging_context_free();
+ 	poptFreeContext(pc);
+ #ifdef HAVE_JANSSON
+-	if (state.json_output) {
++	if (state.json_output && ret == 0) {
+ 		d_printf("%s\n", json_to_string(frame, &state.root_json));
+ 	}
+ 	json_free(&state.root_json);

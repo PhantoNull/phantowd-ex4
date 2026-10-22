@@ -41,13 +41,36 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, "")
 }
 
+// Fixed fixture allowance: callers cannot select or renew the data deadline.
+func plannedDataContextQEMU() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 40*time.Second)
+}
+
+// This fixed QEMU scope includes holder preparation and complete observations.
+// Keep the constructor attached to the real qualifier context, not a spare timer.
+func plannedSupervisionContextQEMU() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 40*time.Second)
+}
+
 // The source-fault variant is reachable only through the fixed guarded child.
 // It shares real startup/access construction, not a fabricated healthy backend.
 func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
+	started := time.Now()
+	var dataStarted time.Time
 	phase := "construction"
 	defer func() {
 		if fault != "" {
 			fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
+		}
+		if result != nil && phase == "data" && !dataStarted.IsZero() {
+			// Failure-only wall intervals include quarantine/return work. The
+			// inner probe separately accounts daemon checks and SMB clients.
+			// No success proof, budget, context or teardown behavior changes.
+			if fault == "" {
+				fmt.Fprint(os.Stderr, plannedDataRefusalDiagnosticQEMU(result))
+			}
+			ended := time.Now()
+			fmt.Fprint(os.Stderr, plannedPhaseCostDiagnosticQEMU(dataStarted.Sub(started).Milliseconds(), ended.Sub(dataStarted).Milliseconds(), ended.Sub(started).Milliseconds()))
 		}
 	}()
 	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" {
@@ -267,10 +290,11 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			return errors.New("planned startup incomplete live observation")
 		}
 		// The original startup/preparation remains bounded40. Data access is a
-		// NEW action with its OWN20-second budget, not leftovers from startup.
-		// Guest180/readiness12/worker4/stop bounds remain unchanged.
+		// NEW action with its OWN fixed40-second QEMU allowance, not leftovers
+		// from startup. Worker/readiness/stop and all authority checks stay fixed.
 		cancel()
-		dataCtx, cancelData := context.WithTimeout(context.Background(), 20*time.Second)
+		dataStarted = time.Now()
+		dataCtx, cancelData := plannedDataContextQEMU()
 		defer cancelData()
 		ctx = dataCtx
 		canceledData, cancelProbe := context.WithCancel(ctx)
@@ -291,9 +315,10 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			return errors.New("planned data lost continuous service authority")
 		}
 		// A separate supervised action must not spend leftover data/startup
-		// time. This keeps data20 and guest180/worker/readiness/stop unchanged.
+		// time. Its fixed40-second QEMU allowance includes holder preparation
+		// and complete scans; worker/stop limits and all checks remain unchanged.
 		cancelData()
-		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
+		superviseCtx, cancelSupervise := plannedSupervisionContextQEMU()
 		defer cancelSupervise()
 		ctx = superviseCtx
 		phase = "supervision"

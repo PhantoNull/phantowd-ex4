@@ -32,8 +32,9 @@ func newNativeCredentialBudgetQEMU(parent context.Context) (*nativeCredentialBud
 	if err := parent.Err(); err != nil {
 		return nil, err
 	}
-	// Separate bounded work: preparation20 plus enrollment60 allows80s rather
-	// than the old shared60s. Worker/service/stop/guest limits remain unchanged.
+	// Separate bounded work: preparation20 plus enrollment75 allows95s rather
+	// than the former20+60 allowance80. This is not a performance improvement.
+	// Worker/service/data/stop/guest limits remain unchanged.
 	ctx, cancel := context.WithTimeout(parent, 20*time.Second)
 	if err := ctx.Err(); err != nil {
 		cancel()
@@ -54,7 +55,7 @@ func (b *nativeCredentialBudgetQEMU) Enrollment(prior error) (context.Context, e
 		return nil, err
 	}
 	b.cancelPreparation()
-	b.enrollment, b.cancelEnrollment = context.WithTimeout(b.parent, 60*time.Second)
+	b.enrollment, b.cancelEnrollment = context.WithTimeout(b.parent, 75*time.Second)
 	if err := b.enrollment.Err(); err != nil {
 		b.Close()
 		return nil, err

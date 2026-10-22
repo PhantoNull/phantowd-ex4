@@ -140,23 +140,42 @@ func (r *NativeSambaRuntimeQEMU) VerifyNativeIdleDisableQEMU(ctx context.Context
 	if r.closed || r.owner.review || r.pending != nil || r.daemonPID == 0 {
 		return ErrReviewRequired
 	}
+	stage := "daemon-before"
 	defer func() {
 		if result != nil {
 			r.owner.review = true
+			result = nativeIdleFailureQEMU(stage, result)
 		}
 	}()
 	if err := r.verifyNativeDaemonQEMU(ctx, r.daemonPID); err != nil {
 		return err
 	}
+	stage = "target-login"
 	authenticated, denied, err := r.nativeClientQEMU(ctx, "qpmanaged", false)
 	if err != nil || authenticated || !denied {
 		return errors.Join(ErrMismatch, err)
 	}
+	stage = "peer-login"
 	authenticated, _, err = r.nativeClientQEMU(ctx, "qpsecond", false)
 	if err != nil || !authenticated {
 		return errors.Join(ErrMismatch, err)
 	}
+	stage = "daemon-after"
 	return r.verifyNativeDaemonQEMU(ctx, r.daemonPID)
+}
+
+// Failure-only fixture diagnostics, not an admission or a worker observation.
+// Unknown/unreached stages cannot add a label; nil never becomes a failure.
+func nativeIdleFailureQEMU(stage string, cause error) error {
+	if cause == nil {
+		return nil
+	}
+	switch stage {
+	case "daemon-before", "target-login", "peer-login", "daemon-after":
+		return fmt.Errorf("native idle verification stage=%s: %w", stage, cause)
+	default:
+		return cause
+	}
 }
 
 func (r *NativeSambaRuntimeQEMU) StopNativeDaemonQEMU(ctx context.Context) error {

@@ -26,8 +26,8 @@ boundary, not a qualified controller driver or permission to transmit commands.
 
 ```text
 phantowd-lab build-release-manifest --artifacts DIR --public-key FILE --release-version VERSION --channel stable|beta|nightly --model ID --revision ID --source-commit SHA --buildroot-version VERSION --kernel-version VERSION --minimum-installer VERSION --artifact NAME:ROLE [--revision ID ...] [--artifact NAME:ROLE ...]
-phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
-phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
+phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
+phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
@@ -163,7 +163,8 @@ changed opened size, short/long reads and observed metadata drift fail closed.
 The report covers bytes read during that check only; a future device updater
 must verify again immediately before installation. Exit status is `0` only
 when the signature, metadata, target, and every artifact pass; `2` means a parsed
-release is invalid for that key/target or one or more payloads fail; `1` is
+release is invalid for that key/target, a requested prerequisite refuses it,
+or one or more payloads fail; `1` is
 reserved for usage, input, or structural errors.
 
 Both release-inspection commands optionally accept `--current-version` with the
@@ -174,6 +175,20 @@ the installed version is caller-supplied, no anti-rollback state is persisted,
 and the result never authorizes installation. A same-version release or
 downgrade is reported as not monotonic but does not change the release-integrity
 exit status.
+
+Add `--require-upgrade` to require a strictly newer signed release **before**
+payload reads/downloads or temporary payload staging. This opt-in mode requires
+a valid `--current-version`; missing/malformed syntax returns exit `1` before
+opening CLI input files or making HTTP requests. Signature/schema/exact-target/
+channel, GitHub signed-tag and optional minimum-installer checks still precede
+the comparison. An equal/older version returns exit `2`, with
+`upgrade_prerequisite` metadata-only evidence and `artifacts_checked: false`.
+A newer version must still pass all payload size/hash checks. The separate
+`update_policy` keeps its existing full-verification meaning; without the new
+flag, existing advisory behavior and exit status are unchanged.
+
+This avoids unnecessary host downloads; it is not device attestation, durable
+anti-rollback protection, a rollback exception or installation permission.
 
 Both commands also accept optional `--installer-version`. After signed metadata
 and target checks, `installer_policy` compares that caller-supplied version
@@ -277,6 +292,24 @@ PhantoWD parser gate, not a claim that every stock-device rescue record uses
 this exact encoding. Its 2 KiB header schema comes from static GPL-binary
 analysis and still needs corroboration from an exact-device logical rescue
 read; it is not a rescue writer or restore procedure.
+
+Static final-firmware analysis also identifies an opaque 64-byte per-unit
+header field labelled "key" by the stock merger, populated from serial-related
+input. This does not establish cryptographic semantics. The inspector does not
+decode or expose that slot. Synthetic success/refusal/error tests check JSON
+and formatted-report redaction plus unchanged input bytes; differing slot
+contents produce identical public reports. No real per-unit material is used.
+Header/payload reader failures return fixed messages without retaining the raw
+reader error or its unwrap chain. Checksum observation must consume the full
+declared range: early EOF is an I/O error even when omitted zero bytes preserve
+XOR. A complete read ending in ordinary EOF remains supported; an additional
+read error is not a completion certificate. The exact-read checks also cover the
+shared logical-image checksum path; raw-error redaction above is rescue-specific.
+Neither guarantees that files cannot change during inspection. The existing
+bounded `FuzzInspect` campaign additionally tests
+coherent rescue images with generated data up to64KiB plus a missing zero-word tail.
+These tests do not qualify an inner rescue payload or authorize restoration;
+see the [board recovery research](../../board/wd/ex4/NAND-RECOVERY-RESEARCH.md).
 
 `inspect-gpt-image` inspects only bounded GPT metadata in a caller-supplied
 regular image file. It checks the protective MBR, primary and backup headers,
@@ -569,9 +602,40 @@ shown above):
 aggregate counts, architectures, interpreters and required-library frequencies.
 
 The MCU decoder recognizes the statically recovered 7-, 13-, and 15-byte
-receive envelopes and classifies the first three selector bytes. It reports
-checksums as `unknown-not-validated`; the fourth selector-template byte,
-variable payloads, ACK correlation, and thermal fail-safe behavior remain
+receive envelopes. Handler classification is length-specific:
+
+| Envelope | Supported classification |
+| --- | --- |
+| 7 bytes | Three-byte catalog prefixes, except the version handler; thermistor prefix `03 08` with sensor byte `01` or `02`; status families `40`, `41`, `42` by their first byte only |
+| 13 bytes | Retained as an unknown envelope: the stock RTC branch bypasses selector validation, so matching its first bytes is not enough to establish a catalog identity |
+| 15 bytes | Only the `MCUVer` handler, with its three-byte catalog prefix |
+
+`dispatch_key` always retains raw bytes 1 through 3, including bytes which are
+payload in the variable-prefix families; it is not a universal fixed selector.
+`known` means a supported handler classification, not integrity, device state
+or command completion. The fourth template byte remains catalog metadata.
+The thermistor sensor byte selects the stock SATA/main destinations, but the
+decoder deliberately does not convert the raw lookup input into a temperature:
+physical calibration, valid range and units remain unqualified. It does not
+reproduce the legacy receiver's unchecked lookup or other side effects.
+
+The decoder reports
+every new `0xfa` as a fresh frame start, abandoning any incomplete prefix and
+counting it as malformed; input chunk boundaries do not change that result.
+Standalone decoding rejects interior start markers without assigning a selector
+or button event, while retaining only the existing bounded raw diagnostic.
+This follows the final firmware's `up_read_daemon` restart branch at0x88f8–0x8908;
+`librs232.so`'s `RS232_Read` at0x904–0x924 directly wraps `read` without an escape
+decoder. This is static host-receiver evidence, not an observed hardware trace.
+These are ELF virtual addresses, not device-register addresses. Input SHA-256:
+`up_read_daemon` `66da626b7a96922a6c3875f5e956cd488281a13225e7c27ce8d6756193f84d18`;
+`librs232.so` `de585e83da528c704f1d37524ccc7cd0e76684cb7863223f61857176c9b29794`.
+The stock ACK handler writes a generic XMLDB flag, and the sender tests that
+flag; recognizing an ACK selector does not confirm a particular command.
+
+The decoder still reports
+checksums as `unknown-not-validated`; complete payload interpretation,
+ACK correlation, and thermal fail-safe behavior remain
 research questions. Synthetic replay is not proof that active hardware control
 is safe.
 
