@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## M4 NFS running lifetime — memory-only prerequisite
+
+QEMU-tagged Start/Stop/Close now models disabled policy, partial startup,
+independent bounded settlement and retained review. Host regressions and a
+mandatory guest receipt cover this scope; fresh monitoring, a kernel backend,
+product activation and M4 completion remain separate. Compilation is not ARM
+execution; qualification must name the exact source and run.
+
+## M4 prepared NFS lifetime — QEMU-only prerequisite
+
+Captures one candidate/backend; serialized input/stopped checks precede release.
+Uncertain closure retains review without retry; canceled/copy/missing handles
+refuse. Host tests and a required memory-only guest proof cover this slice, not
+server startup, kernel authority, service recovery, activation or M4 completion.
+
+## M4.1 typed NFSv3 request — internal prerequisite
+
+`Plan.NFSv3TCPCandidate` derives TCP/AUTH_SYS-only table/root/client requests
+from the same validated Plan and six-field freshness tuple. Caller and returned
+slice mutation cannot change them; zero/unsupported candidates and JSON refuse,
+while explicit empty policy means disabled. Per-client RO/RW is not broadened.
+Planner cases cover these contracts, including mixed Kerberos refusal without
+changing the ordinary preview. The existing QEMU Owner/roster fixture now
+requires an exact marker after same-Plan, copy and stale-storage checks.
+This is not a retained lease, kernel control, activation, HTTP endpoint or
+M4 completion. Compilation alone does not qualify the ARMv5 fixture.
+
 ## Latest local release-gate evidence (2026-10-21)
 
 Code checkpoint `3422636` passes all ten original Samba ARMv5 campaigns and

@@ -216,6 +216,19 @@ installed, consumed by libc or bound to the running Samba daemon. A future
 constructor must qualify fresh same-object configuration/state and retained
 identity/storage ownership without holding the pure callback across I/O.
 
+## Typed NFSv3 request
+
+`Plan.NFSv3TCPCandidate` derives an immutable TCP/AUTH_SYS-only request from
+the same Plan's export table, volume tuple, per-client rules and freshness.
+Returned roots/clients are independent copies; all six freshness fields bind
+the request, and both JSON directions refuse. Explicit empty policy is disabled,
+not equivalent to a zero/missing Plan. Unsupported security refuses without
+downgrading the general desired preview. RO/RW rules remain per export/client.
+The QEMU Owner/roster fixture requires the exact typed-candidate marker after
+checking one read-only request, copy isolation and stale-storage refusal.
+This is not a retained lease, parser qualification, mount/export authority,
+service startup or HTTP operation. Product lifecycle qualification remains open.
+
 ## Remaining M4.1 work
 
 The identity Owner evidence adapter is host-tested and exercised in ARMv5 QEMU
