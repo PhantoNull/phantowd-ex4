@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M10 verify-only installation preview — host prerequisite
+
+The host CLI verifies signed metadata, exact model/revision/channel, payloads
+and declared versions, then refuses installation with unassigned destinations
+and no write operations. Unknown current state is explicit. G8 option B,
+unqualified recovery and an unapproved physical layout remain blockers.
+This is not target installation, trusted staging or M10 qualification.
+
 ## M4 NFS running lifetime — memory-only prerequisite
 
 QEMU-tagged Start/Stop/Close now models disabled policy, partial startup,

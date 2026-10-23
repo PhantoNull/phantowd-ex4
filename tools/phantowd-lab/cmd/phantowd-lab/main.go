@@ -53,6 +53,8 @@ func run(args []string, output io.Writer) (int, error) {
 
 	case "inspect-release":
 		return inspectRelease(args[1:], output)
+	case "plan-install":
+		return inspectLocalRelease(args[1:], output, true)
 
 	case "inspect-update":
 		if len(args) != 2 {
@@ -349,7 +351,15 @@ func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
 }
 
 func inspectRelease(args []string, output io.Writer) (int, error) {
-	flags := flag.NewFlagSet("inspect-release", flag.ContinueOnError)
+	return inspectLocalRelease(args, output, false)
+}
+
+func inspectLocalRelease(args []string, output io.Writer, planMode bool) (int, error) {
+	command := "inspect-release"
+	if planMode {
+		command = "plan-install"
+	}
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	manifestPath := flags.String("manifest", "", "signed manifest JSON file")
 	signaturePath := flags.String("signature", "", "detached raw Ed25519 signature file")
@@ -359,14 +369,30 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	revision := flags.String("revision", "", "exact requested hardware revision")
 	channel := flags.String("channel", "", "expected release channel: stable, beta, or nightly")
 	currentVersion := flags.String("current-version", "", "installed vMAJOR.MINOR.PATCH for optional monotonic-upgrade assessment")
-	requireUpgrade := flags.Bool("require-upgrade", false, "refuse equal/older signed releases before payload I/O; requires --current-version")
+	requireUpgrade := new(bool)
+	if !planMode {
+		requireUpgrade = flags.Bool("require-upgrade", false, "refuse equal/older signed releases before payload I/O; requires --current-version")
+	}
 	installerVersion := flags.String("installer-version", "", "caller-supplied installer version for optional signed-minimum preflight")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *manifestPath == "" || *signaturePath == "" || *publicKeyPath == "" || *artifactDir == "" || *modelID == "" || *revision == "" || *channel == "" {
+		if planMode {
+			return 1, errors.New("usage: phantowd-lab plan-install --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly --installer-version VERSION [--current-version VERSION]")
+		}
 		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]")
 	}
 	if *requireUpgrade {
 		if _, err := releaseverify.CompareVersions(*currentVersion, *currentVersion); err != nil {
 			return 1, errors.New("--require-upgrade requires --current-version with strict v-prefixed SemVer syntax")
+		}
+	}
+	if planMode {
+		if _, err := releaseverify.CompareVersions(*installerVersion, *installerVersion); err != nil {
+			return 1, errors.New("--installer-version is required with strict v-prefixed SemVer syntax")
+		}
+		if *currentVersion != "" {
+			if _, err := releaseverify.CompareVersions(*currentVersion, *currentVersion); err != nil {
+				return 1, errors.New("--current-version must use strict v-prefixed SemVer syntax")
+			}
 		}
 	}
 	manifest, _, err := openRegular(*manifestPath)
@@ -393,6 +419,19 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	publicKey, err := io.ReadAll(io.LimitReader(publicKeyFile, 33))
 	if err != nil || len(publicKey) != 32 {
 		return 1, errors.New("cannot read trusted Ed25519 public key")
+	}
+	if planMode {
+		plan, err := releaseverify.PreviewInstallation(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel, *installerVersion, *currentVersion)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, plan); err != nil {
+			return 1, err
+		}
+		if !plan.Verification.Valid {
+			return 2, nil
+		}
+		return 3, nil
 	}
 	var report releaseverify.Report
 	if *requireUpgrade {

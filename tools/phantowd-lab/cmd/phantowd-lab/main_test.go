@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/releaseverify"
 )
 
 func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
@@ -69,6 +71,37 @@ func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
 		t.Fatalf("unexpected verifier report: %s", output.String())
 	}
 
+	t.Run("verify-only installation preview", func(t *testing.T) {
+		planArgs := append(append([]string(nil), args...), "--installer-version", "v0.1.0", "--current-version", "v0.0.9")
+		planArgs[0] = "plan-install"
+		var output bytes.Buffer
+		code, err := run(planArgs, &output)
+		var plan releaseverify.InstallationPreview
+		if err != nil || code != 3 || json.Unmarshal(output.Bytes(), &plan) != nil || !plan.Verification.Valid || plan.Status != "refused" || plan.InstallationAuthorized || plan.WriteOperations == nil || len(plan.WriteOperations) != 0 || len(plan.LogicalPayloads) != 1 {
+			t.Fatal("CLI did not distinguish verified inputs from refused placement", code, err, output.String())
+		}
+		after, err := os.ReadFile(filepath.Join(artifactDir, "rootfs.swu"))
+		if err != nil || !bytes.Equal(after, payload) {
+			t.Fatal("CLI altered payload", err)
+		}
+		for _, current := range []string{"", "v0.1.0"} {
+			args := append(append([]string(nil), planArgs[:len(planArgs)-1]...), current)
+			output.Reset()
+			code, err := run(args, &output)
+			var again releaseverify.InstallationPreview
+			if err != nil || json.Unmarshal(output.Bytes(), &again) != nil || again.InstallationAuthorized || len(again.WriteOperations) != 0 {
+				t.Fatal("CLI published uncertain version planning", err)
+			}
+			if current == "" && (code != 3 || !again.Verification.Valid || again.Verification.UpgradePrerequisite != nil) || current != "" && (code != 2 || again.Verification.ArtifactsChecked || len(again.LogicalPayloads) != 0) {
+				t.Fatal("CLI confused unknown state with an upgrade or read rejected payloads", code)
+			}
+		}
+		output.Reset()
+		code, err = run(append(planArgs, "--require-upgrade=false"), &output)
+		if code != 1 || err == nil || output.Len() != 0 {
+			t.Fatal("plan accepted an advisory-policy override", code, err)
+		}
+	})
 	upgradeArgs := append(append([]string(nil), args...), "--current-version", "v0.0.9")
 	output.Reset()
 	code, err = run(upgradeArgs, &output)
