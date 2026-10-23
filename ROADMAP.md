@@ -3211,6 +3211,42 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
 **State:** host verifier exists; target installer absent.
 **Depends on:** M1/M7/M8 and explicit boot/storage design approval.
 
+### G8: Qualifying M10 while preserving the only EX4
+
+**Owner-selected option B (2026-10-22): defer target qualification until a
+second, sacrificial EX4 exists.** This is an explicit choice, not a default.
+The only available EX4 must be preserved; no option authorizes a write to it.
+
+| Option | What it establishes | Remaining prerequisite or risk |
+| --- | --- | --- |
+| A. QEMU only, documented physical risk | Software verification and synthetic state/refusal tests | Does not qualify EX4 NAND/ECC, bootloader, rescue or power loss; cannot establish a safe installation. |
+| B. Defer target qualification | Host/software development continues while the only unit is preserved | A second exact-model unit is necessary, then recovery, interruption and identity-preservation drills must still pass. |
+| C. Stock recovery path first | A reviewed recovery design grounded in stock readers, producer and boot selection | Requires M7.6b body-format reconciliation and demonstrated exact-model restoration; two readers and a plausible offset are insufficient. |
+
+**Reason:** neither backups nor green QEMU components restore an unproven boot
+chain. Static bit28 / `0x10108` observations do not authorize a register write;
+`mtd_check` is not diagnostic. Legacy XOR/CRC is not cryptographic authenticity.
+
+**Unblocked now:** a host-only, verify-only installer interface: signed release,
+model/payload/version verification, explicit boot/state-layout review and dry-run
+planning. Plans describe logical destinations and required evidence, never
+executable write commands. Missing or ambiguous layout/recovery evidence must
+produce refusal. No NAND/MTD/device writer, flash backend or vendor execution
+is added; passing this interface does not make an artifact installable.
+
+**Parked:** target installation, physical M10 qualification and an installable
+release. No A/B layout is assumed and no M7/M8/M10 acceptance is waived. Thermal
+M7.3 is outside this release task and is not the blocker for this decision.
+
+**Evidence to reconsider:** an available sacrificial exact-model EX4, reviewed
+M7.6b producer/body/reader agreement, demonstrated recovery entry and restoration
+under interruption, and reviewed layout/per-unit identity preservation. A new
+route needs an explicit owner decision; coverage or QEMU timings are insufficient.
+
+**Stop conditions:** any path that can alter the only EX4, its boot environment,
+NAND/MTD/registers or valuable disks; any attempt to treat unknown body/layout
+fields as verified. This written decision closes neither M7.6b nor M10.
+
 - **M10.1 — Installation layout decision.** Document space, wear, bootloader and
   rescue constraints, state/data separation and device identity preservation.
   A/B slots are a candidate, not an assumed fit or implementation. Static
