@@ -42,7 +42,7 @@ func TestImageSetReportsPartitionSpaceWithoutMigrationCapacity(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.Schema != 4 || report.Authorized || len(report.Inputs) != 1 || report.Inputs[0].Index != 1 || len(report.Inputs[0].Partitions) != 1 {
+	if report.Schema != 5 || report.Authorized || len(report.Inputs) != 1 || report.Inputs[0].Index != 1 || len(report.Inputs[0].Partitions) != 1 {
 		t.Fatalf("unexpected set report: %s", output.String())
 	}
 	partition := report.Inputs[0].Partitions[0]

@@ -2569,6 +2569,9 @@ not host/QEMU progress.
   open. No filesystem is mounted to produce these counters. The image-set
   report carries them by input/partition, withholds conflicting ext/MD layers
   and never infers a cross-image or array capacity total.
+  Feature declarations and unclassified bits also remain explicit; selected
+  constraints require review without inspecting file contents or claiming
+  kernel/product feature support. A quiet review is not migration admission.
 - **M8.3 — Import identity and settings.** Preserve qualified volume/array identity,
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.

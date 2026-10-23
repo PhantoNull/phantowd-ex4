@@ -124,7 +124,7 @@ func TestInspectExtSpaceJSONDistinguishesZeroFromUnobserved(t *testing.T) {
 				test.mutate(sb)
 			}
 			report, err := InspectExtSuperblock(bytes.NewReader(image), int64(len(image)), 40, 49)
-			if err != nil || report.SchemaVersion != 3 {
+			if err != nil || report.SchemaVersion != 4 {
 				t.Fatalf("report contract: %+v %v", report, err)
 			}
 			encoded, err := json.Marshal(report)

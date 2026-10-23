@@ -1011,6 +1011,7 @@ type storageImageSetPartitionSummary struct {
 	MDV090Status           diskimage.MDV090Status `json:"md_v0_90_status"`
 
 	ExtSpaceCounters *diskimage.ExtSpaceCounters `json:"ext_space_counters"`
+	ExtFeatureReview *diskimage.ExtFeatureReview `json:"ext_feature_review"`
 }
 
 type storageImageSetInputSummary struct {
@@ -1055,7 +1056,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	result := storageImageSetAssessment{
 		Format:          "phantowd-read-only-storage-image-set-observation",
-		SchemaVersion:   4,
+		SchemaVersion:   5,
 		Status:          "incomplete",
 		WDCompatibility: "unqualified",
 		Inputs:          []storageImageSetInputSummary{},
@@ -1083,6 +1084,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	gptUnsupported := false
 	needsReview := false
 	extFilesystemNeedsReview := false
+	extFeatureNeedsReview := false
 	layerConflict := false
 
 	for inputIndex, path := range args {
@@ -1116,6 +1118,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			partitionSummary := storageImageSetPartitionSummary{
 				Number: partition.Number, ExtStatus: partition.Ext.Status,
 				ExtSpaceCounters:       partition.Ext.SpaceCounters,
+				ExtFeatureReview:       partition.Ext.FeatureReview,
 				ExtFilesystemState:     partition.Ext.FilesystemState,
 				ExtCleanUnmount:        partition.Ext.CleanUnmount,
 				ExtNeedsJournalRepair:  partition.Ext.NeedsJournalRecovery,
@@ -1132,6 +1135,9 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			}
 			if partition.Ext.Status == diskimage.ExtStatusCandidate {
 				candidateStorageLayers++
+				if partition.Ext.FeatureReview == nil || partition.Ext.FeatureReview.Required {
+					needsReview, extFeatureNeedsReview = true, true
+				}
 				if partition.Ext.FilesystemIdentityFingerprint == "" {
 					needsReview = true
 				} else {
@@ -1266,6 +1272,9 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	if extFilesystemNeedsReview {
 		result.Findings = append(result.Findings, "an ext-family superblock is not marked clean, records errors or unknown state flags, or indicates journal/orphan recovery; no repair or recovery was attempted")
+	}
+	if extFeatureNeedsReview {
+		result.Findings = append(result.Findings, "an ext candidate declares features requiring review or unclassified feature bits; file contents and feature compatibility were not assessed")
 	}
 	if err := writeJSON(output, result); err != nil {
 		return 1, err

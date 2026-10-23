@@ -69,6 +69,7 @@ type ExtReport struct {
 	Limitations                   []string  `json:"limitations"`
 
 	SpaceCounters *ExtSpaceCounters `json:"space_counters"`
+	FeatureReview *ExtFeatureReview `json:"feature_review"`
 }
 
 // ExtSpaceCounters records superblock values, not live allocator availability.
@@ -216,6 +217,13 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 		report.FilesystemIdentityFingerprint = fingerprint("phantowd-ext-uuid-v1\n", superblock[0x68:0x78])
 	}
 	report.Status = ExtStatusCandidate
+	report.FeatureReview = reviewExtFeatures(report.FeatureCompat, report.FeatureIncompat, report.FeatureROCompat)
+	report.FeatureReview.ExternalJournalReference = revision == 1 &&
+		(!allZero(superblock[0xd0:0xe0]) || binary.LittleEndian.Uint32(superblock[0xe4:0xe8]) != 0)
+	if report.FeatureReview.ExternalJournalReference {
+		report.FeatureReview.Reasons = append(report.FeatureReview.Reasons, "external-journal-reference")
+		report.FeatureReview.Required = true
+	}
 	unreservedBlocks := uint64(0)
 	if freeBlockCount > reservedBlocks {
 		unreservedBlocks = freeBlockCount - reservedBlocks
@@ -236,7 +244,7 @@ func extSuperblockChecksum(superblock []byte) uint32 {
 func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 	return ExtReport{
 		Format:                   "phantowd-ext-superblock-inspection",
-		SchemaVersion:            3,
+		SchemaVersion:            4,
 		Status:                   ExtStatusUnsupported,
 		FilesystemFamily:         "unknown",
 		PartitionFirstLBA:        firstLBA,
