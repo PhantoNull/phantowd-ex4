@@ -1,6 +1,24 @@
 name: Independent build reproducibility
 
 on:
+  schedule:
+    - cron: '17 3 * * 1'
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/reproducibility.yml'
+      - 'versions.env'
+      - 'configs/**'
+      - 'package/**'
+      - 'board/**'
+      - '!board/**/*.md'
+      - 'external.*'
+      - 'Config.in'
+      - '.dockerignore'
+      - 'support/docker/**'
+      - 'support/container/build-qemu*'
+      - 'support/compare-build-artifacts.sh'
+      - 'support/test-compare-build-artifacts.sh'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +47,9 @@ jobs:
         run: sh support/test-firmware-version-locks.sh
 
       - name: Test artifact comparison policy
-        run: sh support/test-compare-build-artifacts.sh
+        run: |
+          sh support/test-compare-build-artifacts.sh
+          python3 -B support/tests/test-repro-phases.py
 
       - name: Build pinned environment
         run: docker build --file support/docker/Dockerfile --tag "$BUILD_IMAGE" .
@@ -37,14 +57,36 @@ jobs:
       - name: Create isolated Buildroot workspace
         run: docker volume create "$BUILD_VOLUME"
 
-      - name: Build and boot non-flashable ARMv5 image
-        run: |
-          docker run --rm \
-            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
-            --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
-            "$BUILD_IMAGE" \
-            /external/support/container/build-qemu.sh
+      # Per-phase ceilings do not extend the shared 120-minute job budget.
+      # Each inner timeout precedes its Actions step ceiling for a named error.
+      - name: Toolchain and host preflight (40 minute ceiling)
+        timeout-minutes: 42
+        run: sh support/container/run-repro-phase.sh toolchain "$BUILD_IMAGE" "$BUILD_VOLUME"
+
+      - name: Kernel (20 minute ceiling)
+        timeout-minutes: 22
+        run: sh support/container/run-repro-phase.sh kernel "$BUILD_IMAGE" "$BUILD_VOLUME"
+
+      - name: Userspace (60 minute ceiling)
+        timeout-minutes: 62
+        run: sh support/container/run-repro-phase.sh userspace "$BUILD_IMAGE" "$BUILD_VOLUME"
+
+      - name: Rootfs and metadata preflight (15 minute ceiling)
+        timeout-minutes: 17
+        run: sh support/container/run-repro-phase.sh rootfs "$BUILD_IMAGE" "$BUILD_VOLUME"
+
+      - name: Boot and original integration fixtures (45 minute ceiling)
+        timeout-minutes: 47
+        run: sh support/container/run-repro-phase.sh boot "$BUILD_IMAGE" "$BUILD_VOLUME"
+
+      - name: Preserve named failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-repro-failure-${{ matrix.instance }}
+          path: artifacts/qemu-armv5/*-failure.log
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Compile non-flashable EX4 DTB research output
         run: |
@@ -96,16 +138,27 @@ jobs:
           persist-credentials: false
 
       - name: Download first build
+        timeout-minutes: 3
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: phantowd-repro-one
           path: ${{ runner.temp }}/build-one
 
       - name: Download second build
+        timeout-minutes: 3
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: phantowd-repro-two
           path: ${{ runner.temp }}/build-two
 
       - name: Verify complete inventories and byte-for-byte identity
-        run: sh support/compare-build-artifacts.sh "$RUNNER_TEMP/build-one" "$RUNNER_TEMP/build-two"
+        timeout-minutes: 2
+        run: |
+          started=$(date +%s)
+          if timeout --signal=TERM --kill-after=10 90 sh support/compare-build-artifacts.sh "$RUNNER_TEMP/build-one" "$RUNNER_TEMP/build-two"; then
+            echo "PHANTOWD_REPRO_COMPARE_DONE elapsed_seconds=$(($(date +%s) - started))"
+          else
+            status=$?
+            echo "::error::PHANTOWD_REPRO_COMPARE_FAILED status=$status elapsed_seconds=$(($(date +%s) - started))" >&2
+            exit "$status"
+          fi

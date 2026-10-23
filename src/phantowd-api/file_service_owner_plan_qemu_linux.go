@@ -22,6 +22,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
@@ -197,11 +198,42 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 		if _, err := json.Marshal(plan); err == nil {
 			return errors.New("QEMU lock-coherent plan became serializable")
 		}
+		candidate, err := plan.NFSv3TCPCandidate()
+		if err != nil {
+			return errors.New("QEMU coherent Plan did not produce its typed NFS candidate")
+		}
+		enabled, table, roots, err := candidate.Documents()
+		stale := freshness
+		stale.StorageFingerprint[0] ^= 1
+		if err != nil || !enabled || table != exports || len(roots) != 1 ||
+			roots[0].ID != config.NFS.Exports[0].ID || roots[0].Volume != bindings[0] ||
+			roots[0].RelativePath != "books" || !roots[0].ReadOnly ||
+			!slices.Equal(roots[0].Clients, config.NFS.Exports[0].Clients) ||
+			!candidate.FreshAgainst(freshness) || candidate.FreshAgainst(stale) {
+			return errors.New("QEMU typed NFS candidate lost its same-Plan policy/storage binding")
+		}
+		roots[0].Clients[0].AnonymousUID++
+		_, _, original, err := candidate.Documents()
+		if err != nil || len(original) != 1 || !slices.Equal(original[0].Clients, config.NFS.Exports[0].Clients) {
+			return errors.New("QEMU typed NFS candidate leaked mutable client rules")
+		}
+		if _, err := json.Marshal(candidate); err == nil {
+			return errors.New("QEMU typed NFS candidate became serializable")
+		}
 		after, err := owner.FileServiceSnapshot(ctx)
 		if err != nil || after.Fingerprint != before.Fingerprint {
 			return errors.New("QEMU candidate construction changed or invalidated identity/passdb evidence")
 		}
 		fmt.Println("PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only")
+		fmt.Println("PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only")
+		if err := nfsowner.ExercisePreparedQEMU(candidate, freshness); err != nil {
+			return err
+		}
+		fmt.Println("PHANTOWD_NFS_PREPARED_LIFETIME_READY prepared_close=true duplicate_close_inert=true memory_only=true kernel_backend=false activation=false scope=disposable-qemu-only")
+		if err := nfsowner.ExerciseRunningQEMU(candidate, freshness); err != nil {
+			return err
+		}
+		fmt.Println("PHANTOWD_NFS_RUNNING_LIFETIME_READY start_stop_close=true partial_start_review=true memory_only=true kernel_backend=false restart=false activation=false scope=disposable-qemu-only")
 		return exerciseQEMUOwnerSambaNSSPlan(ctx, owner, mountedSet, account)
 	})
 }

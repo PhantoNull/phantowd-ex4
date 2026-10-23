@@ -38,21 +38,25 @@ def make_target_position(script, target):
 
 class BuildFeedbackTests(unittest.TestCase):
     def test_reproducibility_full_builder_receives_fixture_scratch(self):
-        step = workflow_step("Build and boot non-flashable ARMv5 image",
-                             "reproducibility.yml")
-        body = step.split("        run: |\n", 1)[1]
-        command = "\n".join(line[10:] for line in body.splitlines()
-                            if line.startswith("          "))
+        step = workflow_step(
+            "Boot and original integration fixtures (45 minute ceiling)",
+            "reproducibility.yml")
+        self.assertIn('run: sh support/container/run-repro-phase.sh boot ',
+                      step)
+        driver = ROOT / "support/container/run-repro-phase.sh"
         # Capture the real shell-expanded Docker argv at its external boundary;
         # do not launch Docker, run the builder, or claim a full workflow pass.
         result = subprocess.run(
             ["sh", "-eu", "-c",
-             "docker() { printf '%s\\n' \"$@\"; }\n" + command],
+             "docker() { printf 'ARG:%s\\n' \"$@\"; }\n"
+             "set -- boot fixture-builder fixture-volume\n"
+             f". {shlex.quote(str(driver))}"],
             cwd=ROOT, text=True, capture_output=True,
             env=dict(os.environ, BUILD_VOLUME="fixture-volume",
                      BUILD_IMAGE="fixture-builder"), check=True,
         )
-        arguments = result.stdout.splitlines()
+        arguments = [line[4:] for line in result.stdout.splitlines()
+                     if line.startswith("ARG:")]
         self.assertEqual(arguments[:2], ["run", "--rm"])
         self.assertEqual(arguments[-1],
                          "/external/support/container/build-qemu.sh")

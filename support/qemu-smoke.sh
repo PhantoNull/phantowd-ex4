@@ -264,6 +264,18 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'ARMv5 Owner-backed read-only identity/passdb observation did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            printf 'QEMU typed NFS candidate proof missing\n' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_NFS_PREPARED_LIFETIME_READY prepared_close=true duplicate_close_inert=true memory_only=true kernel_backend=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            printf 'QEMU prepared NFS lifetime proof missing\n' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_NFS_RUNNING_LIFETIME_READY start_stop_close=true partial_start_review=true memory_only=true kernel_backend=false restart=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU running NFS lifetime proof missing' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1

@@ -112,6 +112,7 @@ concurrency:
 
 jobs:
   qemu-and-dtb:
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') && !(github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'chore/promote-')) }}
     name: Build QEMU baseline and EX4 research DTB
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -204,6 +205,19 @@ jobs:
             --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             phantowd/buildroot:ci \
             /external/support/container/build-ex4-dtb.sh
+
+      - name: Record exact tested research source
+        run: |
+          mkdir -p "$RUNNER_TEMP/qemu-research-source"
+          printf '%s\n' 'format=phantowd-qemu-research-source-v1' "run=$GITHUB_RUN_ID" "checkout=$(git rev-parse HEAD)" "tree=$(git rev-parse 'HEAD^{tree}')" 'flashable=no' > "$RUNNER_TEMP/qemu-research-source/source.txt"
+
+      - name: Upload tested research source receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-qemu-research-source
+          path: ${{ runner.temp }}/qemu-research-source
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload non-flashable QEMU artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

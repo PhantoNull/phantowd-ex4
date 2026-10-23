@@ -52,6 +52,26 @@ substitute for clean package/kernel builds or hardware qualification.
 Do not hide failures with retries, relaxed guards, fabricated observations or
 lazy unmounts.
 
+## Qualified main promotions
+
+Promotions use `chore/promote-...` branches and an exact qualified source tree.
+Do not use `[skip ci]`: the lightweight **Promotion tree identity** check must
+run. Include exactly one `Qualified-Commit: <40-hex SHA>` and one
+`Qualified-QEMU-Run: <run ID>` trailer in the promotion commit. The run must be
+the successful exact-head QEMU baseline with its small research-source receipt;
+skipped jobs and receipt/checkout-tree mismatches refuse. The check compares the proposed
+snapshot and prospective merge tree, then checks the actual main merge on push.
+Require this named check on `main`; a skipped/missing required check must not
+permit promotion. Firmware QEMU replay is skipped for these main snapshots;
+manual qualification and development gates retain their existing budgets.
+
+Independent reproducibility runs every Monday at 03:17 UTC on the default
+branch once this workflow is promoted there, and on relevant `develop` input
+pushes. The default-branch schedule cannot establish qualification for newer
+unpromoted development commits. Manual dispatch remains available; see the
+[schedule rules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+and [skip rules](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs).
+
 ## Documentation is part of the change
 
 Before a behavior-changing PR is ready:
