@@ -241,7 +241,8 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 		return ErrInvalid
 	}
 	// Match the exact persistence decoding contract, including encoded size.
-	if _, err := s.codec.Decode(bytes.NewReader(data)); err != nil {
+	persisted, err := s.codec.Decode(bytes.NewReader(data))
+	if err != nil {
 		return ErrInvalid
 	}
 	current, err := s.load()
@@ -254,6 +255,10 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 	}
 	if currentRevision != expected {
 		return ErrConflict
+	}
+	if currentRevision != 0 && s.codec.ValidateTransition != nil &&
+		s.codec.ValidateTransition(current, persisted) != nil {
+		return ErrInvalid
 	}
 	// Only the single reserved pending file is disposable. It is never a
 	// recovery candidate; refusal of suspicious entries preserves evidence.
