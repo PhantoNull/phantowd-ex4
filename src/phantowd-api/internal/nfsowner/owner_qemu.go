@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package nfsowner implements an experimental prepared-input lifetime only.
-// It has no kernel backend, server startup or product constructor.
+// Package nfsowner implements an experimental memory-only service lifetime.
+// It has no kernel backend or product constructor.
 package nfsowner
 
 import (
@@ -19,11 +19,15 @@ import (
 var ErrInvalid = errors.New("invalid NFS owner")
 var ErrReviewRequired = errors.New("NFS owner requires review")
 var ErrBusy = errors.New("NFS owner busy")
+var ErrState = errors.New("NFS owner transition refused")
 
 type State string
 
 const (
 	Prepared       State = "prepared"
+	Disabled       State = "disabled"
+	Running        State = "running"
+	Stopped        State = "stopped"
 	Closed         State = "closed"
 	ReviewRequired State = "review-required"
 )
@@ -32,6 +36,9 @@ const (
 type QEMUBackend interface {
 	CheckInputs(context.Context, fileserviceplan.NFSv3Candidate) error
 	VerifyStopped(context.Context) error
+	Start(context.Context) error
+	VerifyReady(context.Context) error
+	Stop(context.Context) error
 	Release(context.Context) error
 }
 
@@ -41,11 +48,13 @@ type Owner struct {
 	backend   QEMUBackend
 	candidate fileserviceplan.NFSv3Candidate
 	state     State
+	enabled   bool
 }
 
 // NewQEMU performs no I/O. The caller retains ownership on construction error.
 func NewQEMU(candidate fileserviceplan.NFSv3Candidate, backend QEMUBackend) (*Owner, error) {
-	if _, _, _, err := candidate.Documents(); err != nil || backend == nil {
+	enabled, _, _, err := candidate.Documents()
+	if err != nil || backend == nil {
 		return nil, ErrInvalid
 	}
 	switch v := reflect.ValueOf(backend); v.Kind() {
@@ -54,7 +63,7 @@ func NewQEMU(candidate fileserviceplan.NFSv3Candidate, backend QEMUBackend) (*Ow
 			return nil, ErrInvalid
 		}
 	}
-	o := &Owner{backend: backend, candidate: candidate, state: Prepared, gate: make(chan struct{}, 1)}
+	o := &Owner{backend: backend, candidate: candidate, state: Prepared, enabled: enabled, gate: make(chan struct{}, 1)}
 	o.original = o
 	return o, nil
 }
@@ -69,6 +78,11 @@ func (o *Owner) Close(ctx context.Context) error {
 	}
 	if o.state == Closed {
 		return nil
+	}
+	if o.state == Running {
+		if err := o.stop(ctx); err != nil {
+			return err
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

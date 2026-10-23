@@ -43,6 +43,10 @@ func TestPreparedOwnerKeepsUncertainClosureForReview(t *testing.T) {
 }
 
 func preparedInputs(t *testing.T) (fileserviceplan.NFSv3Candidate, *preparedBackend) {
+	return lifetimeInputs(t, false)
+}
+
+func lifetimeInputs(t *testing.T, enabled bool) (fileserviceplan.NFSv3Candidate, *preparedBackend) {
 	t.Helper()
 	registry, err := serviceaccounts.New(1000, 2000)
 	if err != nil {
@@ -52,6 +56,10 @@ func preparedInputs(t *testing.T) (fileserviceplan.NFSv3Candidate, *preparedBack
 	shares := shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
 		Volumes: []shareconfig.Volume{{ID: "bulk", FilesystemUUID: uuid}}, Users: []shareconfig.User{}, Shares: []shareconfig.Share{}}
 	policy := nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1, Exports: []nfsconfig.Export{}}
+	if enabled {
+		policy.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "bulk", RelativePath: "books",
+			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}
+	}
 	plan, err := fileserviceplan.Build(fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1, Shares: shares, NFS: policy}, 0,
 		fileserviceplan.IdentitySnapshot{Complete: true, Generation: 1, Fingerprint: sha256.Sum256([]byte("synthetic-nfs-identity")), Registry: registry, UnixUIDs: []uint32{1000}, UnixGIDs: []uint32{1000}, Samba: []fileserviceplan.SambaIdentity{}},
 		fileserviceplan.StorageSnapshot{Complete: true, Generation: 1, Volumes: []fileserviceplan.ObservedVolume{{VolumeID: "bulk", FilesystemUUID: uuid, MountPath: shareconfig.VolumeMountRoot + "/bulk", Compatibility: fileserviceplan.CompatibilityQualified, MountID: 73, DeviceMajor: 9, DeviceMinor: 1}}})
@@ -94,6 +102,11 @@ func TestPreparedOwnerCopyCannotConsumeOriginal(t *testing.T) {
 	}
 	if _, err := copy.Observe(); !errors.Is(err, ErrInvalid) {
 		t.Fatal("copied observation admitted", err)
+	}
+	for _, call := range []func(context.Context) error{copy.Start, copy.Stop} {
+		if err := call(context.Background()); !errors.Is(err, ErrInvalid) {
+			t.Fatal("copied lifecycle admitted", err)
+		}
 	}
 	if err := owner.Close(context.Background()); err != nil {
 		t.Fatal(err)
@@ -163,8 +176,10 @@ func TestPreparedOwnerSerializesWholeClosure(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if err := owner.Close(context.Background()); !errors.Is(err, ErrBusy) {
-		t.Fatal("concurrent close admitted", err)
+	for _, call := range []func(context.Context) error{owner.Close, owner.Start, owner.Stop} {
+		if err := call(context.Background()); !errors.Is(err, ErrBusy) {
+			t.Fatal("concurrent transition admitted", err)
+		}
 	}
 	if _, err := owner.Observe(); !errors.Is(err, ErrBusy) {
 		t.Fatal("partial transition observed", err)
