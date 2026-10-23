@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M10.1 installation layout review — design input only
+
+The EX4 review records candidate layouts without selecting a default, physical
+capacity/wear and state/identity constraints, updater versus boot trust and
+recovery evidence still needed. GPL source distinguishes partition-parser
+precedence from the board fallback table. This is offline documentation, not
+an approved layout, writer or M10.1 qualification; G8 option B remains in force.
+
 ## M8.2 offline ext space counters — partial assessment
 
 The host inspector's nested ext schema3 records free/reserved blocks and bytes,

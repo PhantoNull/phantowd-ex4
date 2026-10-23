@@ -4,6 +4,10 @@ This directory is reserved for board-specific Buildroot support: kernel and
 bootloader configuration fragments, device-tree work, root-filesystem overlay,
 post-build scripts, image assembly, and recovery documentation.
 
+The [installation layout review](INSTALLATION-DESIGN.md) records candidates,
+space/state/trust requirements and unresolved recovery evidence. It selects no
+production layout and provides no installation or device-write procedure.
+
 Known discovery baseline:
 
 - vendor firmware 2.13.108;

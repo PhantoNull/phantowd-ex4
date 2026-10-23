@@ -3267,7 +3267,11 @@ fields as verified. This written decision closes neither M7.6b nor M10.
   it must preserve user data and per-unit identity, tolerate data disks being
   absent/replaced, and have bootloader-readable rollback proven on sacrificial
   exact-model hardware before a writer is implemented. See the
-  [EX4 board research status](board/wd/ex4/README.md).
+  [EX4 board research status](board/wd/ex4/README.md) and the
+  [installation layout review](board/wd/ex4/INSTALLATION-DESIGN.md). The latter
+  records candidate tradeoffs, capacity/wear, state/identity and trust contracts;
+  it is not design approval or M10.1 closure. GPL parser precedence also means
+  the board's fallback partition table cannot be taken as the installation map.
 - **M10.2 — Trust and release discovery.** Retrieve immutable GitHub Release
   metadata/assets; verify signatures against pinned trust roots, exact model/
   revision/channel, hashes and version policy before writes. HTTPS alone is
