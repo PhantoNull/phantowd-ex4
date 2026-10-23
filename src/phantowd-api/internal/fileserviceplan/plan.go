@@ -132,6 +132,7 @@ type Plan struct {
 	sambaNSS            string
 	sambaManagementNSS  sambaLookupDocuments
 	nfsConfig           string
+	nfsRoots            []NFSExportRoot
 	requirements        []string
 }
 
@@ -195,6 +196,10 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 		})
 	}
 	slices.SortFunc(bindings, func(a, b VolumeBinding) int { return strings.Compare(string(a.VolumeID), string(b.VolumeID)) })
+	nfsRoots, err := nfsCandidateRoots(config.NFS, bindings)
+	if err != nil {
+		return Plan{}, err
+	}
 
 	return Plan{
 		schemaVersion: 1,
@@ -204,7 +209,7 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 			StorageGeneration: storage.Generation, StorageFingerprint: fingerprintStorageSnapshot(storage),
 		},
 		scope: "candidate-only", activationAvailable: false, applied: false, runtimeValidated: false,
-		volumes: bindings, sambaConfig: preview.Samba.Sections, sambaPolicy: cloneSambaPolicy(config.Shares), nfsConfig: preview.NFS.Table,
+		volumes: bindings, sambaConfig: preview.Samba.Sections, sambaPolicy: cloneSambaPolicy(config.Shares), nfsConfig: preview.NFS.Table, nfsRoots: nfsRoots,
 		sambaPasswd: passwd, sambaGroup: group, sambaNSS: nss,
 		sambaManagementNSS: managementNSS,
 		requirements:       slices.Clone(preview.Requirements),

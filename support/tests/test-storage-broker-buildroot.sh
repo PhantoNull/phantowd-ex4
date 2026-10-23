@@ -389,4 +389,10 @@ process_owner_failed_start_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_PROCESS
 grep -F "$process_owner_failed_start_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke assertion must match the failed-start review marker'
 
+nfs_typed_candidate_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_NFS_TYPED_CANDIDATE_READY[^\"]*\)").*/\1/p' \
+    "$repo_root/src/phantowd-api/file_service_owner_plan_qemu_linux.go")
+[ -n "$nfs_typed_candidate_marker" ] || fail 'typed NFS candidate fixture must declare its proof'
+grep -F "$nfs_typed_candidate_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU driver must require the exact typed NFS candidate proof'
+
 printf 'Read-only storage broker Buildroot contracts passed\n'

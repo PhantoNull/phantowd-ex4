@@ -3,6 +3,18 @@
 
 # Implementation status
 
+## M4.1 typed NFSv3 request — internal prerequisite
+
+`Plan.NFSv3TCPCandidate` derives TCP/AUTH_SYS-only table/root/client requests
+from the same validated Plan and six-field freshness tuple. Caller and returned
+slice mutation cannot change them; zero/unsupported candidates and JSON refuse,
+while explicit empty policy means disabled. Per-client RO/RW is not broadened.
+Planner cases cover these contracts, including mixed Kerberos refusal without
+changing the ordinary preview. The existing QEMU Owner/roster fixture now
+requires an exact marker after same-Plan, copy and stale-storage checks.
+This is not a retained lease, kernel control, activation, HTTP endpoint or
+M4 completion. Compilation alone does not qualify the ARMv5 fixture.
+
 ## Latest local release-gate evidence (2026-10-21)
 
 Code checkpoint `3422636` passes all ten original Samba ARMv5 campaigns and

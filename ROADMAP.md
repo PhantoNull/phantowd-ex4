@@ -1418,7 +1418,11 @@ storage. No production roster provider or activation path exists.
   snapshots, qualified volume/UUID/anchor bindings, SMB account/passdb identity,
   NFS numeric identities, readonly constraints and exact revision/generation
   freshness. Its candidate is non-serializable and has no apply operation. A
-  local ARMv5 QEMU fixture now checks the combined SMB candidate with target
+  dedicated NFSv3/TCP/AUTH_SYS request now preserves that same Plan's table,
+  volume/root/client rules and all freshness fields; empty policy is disabled,
+  zero/unsupported candidates refuse. Host regressions and the QEMU Owner/roster
+  proof are required; this request is not a retained service or export authority.
+  A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.
   `identityowner.SetDesiredState` now supplies a separately revisioned,
