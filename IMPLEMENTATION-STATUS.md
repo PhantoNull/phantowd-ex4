@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M4 NFS running lifetime — memory-only prerequisite
+
+QEMU-tagged Start/Stop/Close now models disabled policy, partial startup,
+independent bounded settlement and retained review. Host regressions and a
+mandatory guest receipt cover this scope; fresh monitoring, a kernel backend,
+product activation and M4 completion remain separate. Compilation is not ARM
+execution; qualification must name the exact source and run.
+
 ## M4 prepared NFS lifetime — QEMU-only prerequisite
 
 Captures one candidate/backend; serialized input/stopped checks precede release.
