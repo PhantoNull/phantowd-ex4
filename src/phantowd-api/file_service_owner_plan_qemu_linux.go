@@ -22,6 +22,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
@@ -225,6 +226,10 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 		}
 		fmt.Println("PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only")
 		fmt.Println("PHANTOWD_NFS_TYPED_CANDIDATE_READY profile=v3-tcp-authsys same_plan=true root_tuple=true client_rules=true immutable=true freshness_bound=true serialized=false authority=false scope=disposable-qemu-only")
+		if err := nfsowner.ExercisePreparedQEMU(candidate, freshness); err != nil {
+			return err
+		}
+		fmt.Println("PHANTOWD_NFS_PREPARED_LIFETIME_READY prepared_close=true duplicate_close_inert=true memory_only=true kernel_backend=false activation=false scope=disposable-qemu-only")
 		return exerciseQEMUOwnerSambaNSSPlan(ctx, owner, mountedSet, account)
 	})
 }

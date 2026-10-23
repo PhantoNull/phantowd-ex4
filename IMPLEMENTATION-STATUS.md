@@ -3,6 +3,13 @@
 
 # Implementation status
 
+## M4 prepared NFS lifetime — QEMU-only prerequisite
+
+Captures one candidate/backend; serialized input/stopped checks precede release.
+Uncertain closure retains review without retry; canceled/copy/missing handles
+refuse. Host tests and a required memory-only guest proof cover this slice, not
+server startup, kernel authority, service recovery, activation or M4 completion.
+
 ## M4.1 typed NFSv3 request — internal prerequisite
 
 `Plan.NFSv3TCPCandidate` derives TCP/AUTH_SYS-only table/root/client requests

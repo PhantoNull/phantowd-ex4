@@ -1422,6 +1422,8 @@ storage. No production roster provider or activation path exists.
   volume/root/client rules and all freshness fields; empty policy is disabled,
   zero/unsupported candidates refuse. Host regressions and the QEMU Owner/roster
   proof are required; this request is not a retained service or export authority.
+  Prepared NFS closure checks fixed inputs and stopped state before release;
+  uncertainty retains review. Full service lifecycle remains separate.
   A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.

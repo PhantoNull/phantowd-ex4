@@ -26,6 +26,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'A local Go 1.26+ compiler is required.' }
     go vet ./...
     if ($LASTEXITCODE -ne 0) { throw 'Go static checks failed.' }
+    go test -tags=qemu -count=1 ./internal/nfsowner
+    if ($LASTEXITCODE -ne 0) { throw 'Prepared NFS lifetime tests failed.' }
     go test -count=1 "-coverprofile=$coverageFile" ./...
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNetworkPolicy|TestQEMUISCSIPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD)$' -count=1 .
