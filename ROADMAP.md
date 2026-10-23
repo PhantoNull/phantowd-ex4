@@ -3350,6 +3350,15 @@ fields as verified. This written decision closes neither M7.6b nor M10.
   corrupt-payload refusals, legacy advisory behavior and whole host vet/race/fuzz.
   This is not installed-state attestation, durable anti-rollback, owner-approved
   downgrade recovery, signing/trust provisioning or target installation.
+  **M10.2g — Host verify-only installation preview (partial).** Reuse signed
+  target/channel, minimum-installer, strict-upgrade and payload verification.
+  Require a valid installer version; absent installed version stays unknown.
+  Verified logical payloads have no physical destination and no write operations.
+  Always refuse installation under G8 B, unknown recovery and unapproved layout;
+  list space/wear, boot/rescue, state/data, device identity, interruption/rollback
+  and payload-format review. No executor, target operation or installable artifact.
+  Acceptance: invalid inputs fail before I/O; rejected bundles produce no plan;
+  valid synthetic bundles remain refused and input bytes unchanged.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
