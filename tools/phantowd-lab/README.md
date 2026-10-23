@@ -352,9 +352,15 @@ disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
 GUIDs may appear as declarations only. It never opens a block device or
 modifies an image. An ext-family candidate not marked clean, recording errors
 or unknown state flags, or indicating journal/orphan recovery is held as
-`incomplete`; the tool never runs repair or recovery. Set schema **3** includes
+`incomplete`; the tool never runs repair or recovery. Set schema **4** retains
 `ext_filesystem_state` and independent `ext_needs_orphan_recovery` summaries;
 these review findings return exit `2`, even when the raw clean bit is set.
+Each partition now includes `ext_space_counters`: recorded ext free/reserved
+values or null when absent, invalid, unsupported or conflicting with an MD
+candidate. Values remain scoped to the input ordinal and partition number,
+never summed across cloned images, components or arrays. A duplicate identity
+still requires review. These are not live allocator or migration capacity;
+the nested `migration_capacity_qualified` flag always remains false.
 Inputs are not locked or snapshotted, so callers must use
 stable offline copies and prevent concurrent modification during inspection.
 
@@ -464,7 +470,7 @@ orphan-present feature; it does not follow or validate an orphan chain/file.
 Journal recovery remains a separate flag. A single-partition exit `0` is still
 only structural recognition, not a safe-mount verdict. The whole-image envelope
 remains schema **2**, with nested ext report **3**; the image-set assessment is
-schema **3**. Flag definitions follow the
+schema **4**. Flag definitions follow the
 [upstream ext superblock documentation](https://www.kernel.org/doc/html/latest/filesystems/ext4/super.html)
 and recovery indicators are cross-checked against
 [Linux v6.18 ext4](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/super.c).

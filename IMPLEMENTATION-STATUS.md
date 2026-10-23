@@ -12,6 +12,9 @@ feature are refused; subtraction clamps at zero. Migration capacity is always
 unqualified, including clean/checksummed inputs. Host tests exercise synthetic
 regular images and the existing e2fsprogs superblock fixture; no mount, physical
 disk access, allocator admission or complete migration assessment is qualified.
+Image-set schema4 carries the counters by input/partition, with null for
+conflicting ext/MD candidates and no inferred capacity total. Duplicate images
+retain separate recorded observations and still require review.
 
 ## M10 verify-only installation preview — host prerequisite
 

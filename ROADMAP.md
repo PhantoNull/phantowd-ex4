@@ -2566,7 +2566,9 @@ not host/QEMU progress.
   Inconsistent reservations refuse observation. This is superblock evidence,
   not allocator availability or migration admission; required migration space,
   ownership/ACLs, configuration retention and exact-model qualification remain
-  open. No filesystem is mounted to produce these counters.
+  open. No filesystem is mounted to produce these counters. The image-set
+  report carries them by input/partition, withholds conflicting ext/MD layers
+  and never infers a cross-image or array capacity total.
 - **M8.3 — Import identity and settings.** Preserve qualified volume/array identity,
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.

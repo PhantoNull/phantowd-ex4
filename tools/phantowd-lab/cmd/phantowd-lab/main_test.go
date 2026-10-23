@@ -786,7 +786,7 @@ func TestInspectStorageImageSetComparesMDV10ComponentsWithoutWriting(t *testing.
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatalf("invalid JSON report: %v: %s", err, output.String())
 	}
-	if report.SchemaVersion != 3 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
+	if report.SchemaVersion != 4 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
 		report.MutationsPerformed || report.AssemblyPerformed || report.MountPerformed ||
 		len(report.MDV10Comparison.Arrays) != 1 || report.MDV10Comparison.Arrays[0].Status != "metadata-consistent" ||
 		report.MDV10Comparison.Arrays[0].ObservedActiveRoles != 2 {
@@ -1178,7 +1178,7 @@ func TestInspectStorageImageSetRequiresReviewForExtOrphansAndUnknownState(t *tes
 			if test.wantCode == 2 && report.Status != "incomplete" {
 				t.Fatal("recovery or unknown state not held for review", report.Status)
 			}
-			if report.SchemaVersion != 3 || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
+			if report.SchemaVersion != 4 || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
 				t.Fatal("missing versioned complete partition summary")
 			}
 			partition := report.Inputs[0].PartitionObservations[0]
