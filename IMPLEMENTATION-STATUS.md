@@ -1303,6 +1303,22 @@ direct children reaped. These passing samples cannot explain the older1.929s
 capture. Linux wait accounting can include descendants the original child reaped,
 not unrelated server/host work; wall-minus-CPU is not I/O wait.
 
+### Session producer: silent malformed-record failure reproduced
+
+A separate no-daemon ARMv5 experiment now reproduces a silent omission in the
+pinned Samba 4.22.11 producer. A new synthetic TDB contains one malformed watched
+record, retained by a live TDB context and verified byte-identical before/after.
+The healthy empty control and malformed case both return exit zero, empty
+sessions and no stderr. Thus even the strict stderr guard below cannot certify
+complete source traversal. No live account, share, NAS or physical disk is used.
+
+An experimental source patch compiles, but its staged-library experiment still
+fails the real regression. It remains outside automatic package patches; it is
+not a fix, complete-image qualification or product absence authority. The
+[optional standalone test](support/QEMU-FAST-TESTS.md#standalone-session-producer-regression)
+uses existing artifacts and disposable RAM only. Callback, partial traversal,
+JSON failure and ordinary live-session coverage remain required.
+
 ### Session database failure: strict STATUS refusal, not producer completeness
 
 An explicit disposable ARMv5 probe reproduces a real Samba 4.22.11 behavior:

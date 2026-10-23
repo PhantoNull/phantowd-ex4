@@ -148,8 +148,41 @@ REA-native Evidence or a proof of every direct/indirect producer. It narrows the
 boundary: this traced path consumes an already rescue-classified input; it does
 not explain how that input's body was originally generated. Do not derive its
 layout from the normal update container or the separate `0x501000` reader.
-The actual rescue body producer, selector-register writer and stock bootloader
-handoff remain unresolved; no extractor, writer or installer is added.
+The actual rescue body producer, originating selector-register setter and stock
+bootloader handoff remain unresolved; no extractor, writer or installer is added.
+
+### Linux board initialization preserves an existing selector
+
+The same GPL kernel archive contains a source-level writer in
+`arch/arm/mach-kirkwood/kw_family/boardEnv/mvBoardEnvLib.c`, lines106-157
+(SHA-256 `68513642bf16df0a42db4266388f182a83cf037b7c3a82e533219b2236114d54`).
+After its board-ID guard and GPIO/NAND setup, `mvBoardEnvInit` reads offset
+`0x10108` and branches on bit28:
+
+| Bit28 at that read | Source writes |
+| --- | --- |
+| Set | `0x10020000` to offset `0x10100`, then `0x10000000` to `0x10108` |
+| Clear | `0x20000000` to offset `0x10108` |
+
+Both branches preserve whether bit28 was set; they do not explain its initial
+clear-to-set transition. These are whole-register writes, not masked updates:
+other blink bits are not preserved. The adjacent comment names MPP26/bit26,
+but the actual constants select bit28/bit29. It is not a reliable pin/LED map.
+
+`rd88f6282-a-setup.c`, lines65-79 and101-108, calls this function from its
+machine initializer before controller initialization. The supplied `.config`
+selects that machine, and the Kirkwood Makefile includes the board-environment
+object. `mvOs.h` routes register accesses through the virtual register base;
+`kirkwood.h` and `common.c` map offset `0x10108` to physical `0xf1010108` in
+the default, non-warm-reset mapping. The alternate mapping must not be ignored.
+
+This is static GPL-source evidence, not confirmation that the final distributed
+kernel executes this exact path. Identical bundled kernel-image hashes do not
+independently reproduce its source/configuration. The originating setter,
+intervening/later writes, stock U-Boot handoff and rescue behavior still require
+separate evidence. Do not copy this initialization or write the register to
+experiment with recovery. NAND stays disabled and all physical recovery gates
+remain open.
 
 ## `mtd_check` is not a diagnostic command
 

@@ -419,6 +419,39 @@ also rejects a failed/mixed source campaign rather than silently ignoring it.
 The Windows mode parameter is syntax-checked; actual qualification uses the
 same shell driver against the existing pinned read-only cache.
 
+## Standalone session producer regression
+
+**Deferred development work.** This optional experiment is not a default CI
+campaign, package patch or product feature. It remains unqualified; do not
+interpret a successful compile as a repair.
+
+This is an explicit development diagnostic, not a default CI campaign or
+product activation. It uses a compatible existing base and pinned SDK without
+building images, pulling containers or creating volumes:
+
+```powershell
+.\support\test-samba-status-producer.ps1
+```
+
+The stock 4.22.11 producer currently **fails this regression**: a synthetic
+malformed watched record can become a successful empty session result with
+no stderr. Empty and malformed sources are newly allocated in guest tmpfs;
+the holder remains open, exact dump and whole-database hashes are checked
+before/after, and no daemon, accounts, shares or physical disks are involved.
+The original rootfs is read-only and its disposable RAM copy uses a snapshot.
+A fixed test-only exec helper retains a four-second alarm; the guest cap is
+60 seconds and the ordinary wrapper cap is 180 seconds. SIGALRM, timeout or
+command-not-found results do not qualify explicit producer refusal.
+
+`-SourcePatchExperiment` additionally copies the existing Samba build to a
+bounded 768 MiB RAM shadow, keeping the persistent SDK read-only. Its separate
+build cap is 240 seconds and whole-wrapper cap 480 seconds; guest and command
+caps do not change. This experiment is **not passing** and is outside automatic
+package patches. A successful compile or empty control does not qualify it.
+No other campaign, API service or complete image is tested by this command.
+Do not add it to CI as a passing job or use its output for product session
+absence until the regression and live-session/error coverage are qualified.
+
 ## Optional Samba status-source refusal probe
 
 With the existing compatible base and pinned workspace available, run:

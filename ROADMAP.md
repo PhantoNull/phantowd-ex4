@@ -2205,6 +2205,12 @@ Equal text/revisions do not replace retained policy/identity/storage provenance.
 Samba 4.22.11 can return exit zero and decodable empty sessions after a source
 database open failure. The QEMU STATUS boundary now refuses unexpected stderr
 without diagnostic-text matching; this does not qualify producer completeness.
+The standalone no-daemon ARMv5 regression additionally establishes a silent
+malformed watched-record omission: exact retained source, exit0, empty sessions,
+no stderr, unchanged base. Its experimental source patch is NOT qualified;
+successful compilation still produces a failing staged-library experiment.
+It is not installed as an automatic package patch. See the
+[standalone diagnostic](support/QEMU-FAST-TESTS.md#standalone-session-producer-regression).
 Before product absence/revocation admission, reproduce init/open, traversal,
 partial/malformed-record, callback and JSON failures and establish a strict
 all-or-error producer result. Checking only outer traversal NTSTATUS is not
@@ -2215,9 +2221,10 @@ closure, descriptor and fixed-budget proofs. See the
 
 Session-only revocation/continuity now selects `-j -p`; the native helper has a
 separate fixed verb, while tree/open-file consumers retain full status. This
-does not repair discarded session traversal status. The next producer slice
-must first reproduce malformed-record/callback-stop and serializer failure on
-synthetic state, then make those failures explicit and all-or-error. Do not
+does not repair discarded session traversal status. After the reproduced
+watched-record omission, qualify its correction and reproduce callback-stop,
+partial-record and serializer failures on synthetic state, then make those
+failures explicit and all-or-error. Do not
 treat normal empty JSON, source-path existence, a clean stderr or successful
 outer traversal status as a completion certificate. Qualify both healthy and
 faulted actual ARM producer paths before product absence authority; retain
@@ -2959,7 +2966,9 @@ storage. No production roster provider or activation path exists.
   require explicit failure with no accepted partial/empty absence result.
   Trace propagation through `sessionid_tdb.c`, `smbXsrv_session.c` and dbwrap;
   checking only the top status may miss callback-stop semantics. This is a
-  static finding, not a reproduced binary failure. Qualify a bounded producer
+  broader static finding. A standalone synthetic ARMv5 watched-record omission
+  is now reproduced with exact unchanged TDB bytes and silent exit0/empty JSON;
+  the experimental patch still fails and is not product-qualified. Qualify a bounded producer
   before any product revocation/absence authority. Do not adopt processes-only
   flags as a timing fix without equivalent complete-session/error coverage.
   - Audit `prepareRetainedCode`, ordinary/Samba Owner construction, configuration
