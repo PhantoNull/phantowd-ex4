@@ -28,6 +28,7 @@ boundary, not a qualified controller driver or permission to transmit commands.
 phantowd-lab build-release-manifest --artifacts DIR --public-key FILE --release-version VERSION --channel stable|beta|nightly --model ID --revision ID --source-commit SHA --buildroot-version VERSION --kernel-version VERSION --minimum-installer VERSION --artifact NAME:ROLE [--revision ID ...] [--artifact NAME:ROLE ...]
 phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
 phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
+phantowd-lab plan-install --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly --installer-version VERSION [--current-version VERSION]
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
