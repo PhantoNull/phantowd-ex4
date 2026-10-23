@@ -56,6 +56,28 @@ programs or extract a complete new tree for this check.
 | `drivers/mtd/nand/nand_ecc.c` | `8f04e40be8512ca6b3db8ef61f6e27354a17dd7eeddc4993008f2aff9907e252` |
 | `arch/arm/plat-orion/mv_hal/gpp/mvGppRegs.h` | `ce5cf0bb2c4391a950ebbfae90b8b199499c7490039115f51ce5014e3c0ba3ec` |
 
+## GPL dump lengths do not identify a rescue body
+
+The verified outer GPL archive contains 22,007 entries, including 166 nested
+archives. The previously extracted local `firmware/` and `kernel/` directories
+are only a partial view. An outer-name inventory is not a content search of all
+nested packages and cannot prove that every possible producer is absent.
+
+Its `Open_Source_packages/mtd-utils-20080508.tar.gz` is 378,738 bytes, SHA-256
+`4b227e9beb69c45bb1c8105687dffffef08095ebe91a0b253906f02f845b725e`.
+Member `mtd-utils-20080508/nanddump.c` has SHA-256
+`65a1fea3b4eec1966a942ab8a2e9d2befa4ef55ea22b6478644846f9900fed46`.
+Lines257-272 set a physical end address from the requested length and iterate
+within it. Lines283-285 omit bad pages without extending that end address;
+lines334-335 skip OOB output when requested. Thus this source's length option
+does not guarantee that many retained output bytes. A requested 10 MiB window
+cannot establish a 10 MiB file or the size of an inner rescue component.
+
+This is static GPL-source evidence, not an independently reproduced final
+`nanddump` binary. No utility was run and no flash data was read. The fixed
+reader offset below, this source behavior and a normal update archive still do
+not assign the rescue body's components or qualify recovery.
+
 ## Rescue readers are not one format
 
 The final `chk_image` is 9,923 bytes, SHA-256
