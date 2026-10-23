@@ -1,13 +1,21 @@
 #!/bin/sh
 set -eu
 
+repro_phase=${PHANTOWD_REPRO_PHASE:-all}
+case "$repro_phase" in
+    all|toolchain|kernel|userspace|rootfs|boot) ;;
+    *) echo "Invalid independent-build phase: $repro_phase" >&2; exit 2 ;;
+esac
+
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
 compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
 # A checkpoint describes this invocation, never a previous cached build.
+if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 if [ "${PHANTOWD_PREPARE_ONLY:-0}" != 1 ]; then
     rm -f "$compile_checkpoint"
+fi
 fi
 
 # This file is maintained by the project and contains no executable secrets.
@@ -19,6 +27,9 @@ fi
 build_jobs=$(python3 -B "$external_dir/support/container/build_jobs.py")
 printf 'PhantoWD build CPU budget: %s jobs\n' "$build_jobs"
 
+# The ordinary integration lane remains one unchanged invocation. Independent
+# builds alone use sequential, separately bounded steps in one isolated volume.
+if [ "$repro_phase" = all ] || [ "$repro_phase" = toolchain ]; then
 buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
 buildroot_url="https://buildroot.org/downloads/$buildroot_archive"
 buildroot_signature="$buildroot_archive.sign"
@@ -31,6 +42,11 @@ mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 # Run the same cheap workflow/fuzz-roster contract as hosted host CI before
 # source authentication, host tests or any cached package/kernel rebuild.
 sh "$external_dir/support/test-firmware-workflow-paths.sh"
+
+shellcheck -s sh "$external_dir/support/container/build-qemu.sh" \
+    "$external_dir/support/container/run-repro-phase.sh"
+python3 -B "$external_dir/support/tests/test-repro-phases.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-repro-phases.py"
 
 shellcheck -s sh \
 	"$external_dir/support/compare-build-artifacts.sh" \
@@ -433,6 +449,27 @@ if [ "$perl_package_rebuild" = 1 ]; then
         PARALLEL_JOBS="$build_jobs" host-perl-dirclean
 fi
 
+if [ "$repro_phase" = toolchain ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" toolchain
+    exit 0
+fi
+else
+    # Re-derive fixed context, never source a generated shell-state file.
+    buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
+    buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
+    download_dir="$workspace_dir/dl"
+    config_hash=$(sha256sum "$external_dir/configs/phantowd_qemu_armv5_defconfig" | cut -c1-16)
+    output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
+    [ -f "$output_dir/.config" ] || { echo 'Missing prepared configuration' >&2; exit 1; }
+    perl_patch="$external_dir/board/qemu/armv5/patches/perl/5.40.5/0001-Configure-date-stderr.patch"
+    perl_patch_digest=$(sha256sum "$perl_patch" | cut -d ' ' -f 1)
+    perl_inputs_stamp="$output_dir/.phantowd-host-perl-inputs.sha256"
+    cyclonedx_generator="$buildroot_source/utils/generate-cyclonedx"
+    smart_replay_archive="$download_dir/smartmontools/smartmontools-$SMART_REPLAY_VERSION.tar.gz"
+fi
+
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
 # Buildroot does not invalidate a configured kernel when only a fragment
@@ -443,6 +480,7 @@ linux_inputs_digest=$(python3 -B "$kernel_inputs_helper" fingerprint \
     "$external_dir" "$buildroot_source")
 linux_inputs_stamp="$output_dir/.phantowd-linux-inputs.sha256"
 linux_inputs_previous=
+if [ "$repro_phase" = all ] || [ "$repro_phase" = kernel ]; then
 if [ -f "$linux_inputs_stamp" ]; then
     linux_inputs_previous=$(cat "$linux_inputs_stamp")
 fi
@@ -452,6 +490,22 @@ if [ -f "$output_dir/build/linux-$LINUX_VERSION/.stamp_configured" ] && \
         BR2_DL_DIR="$download_dir" O="$output_dir" \
         PARALLEL_JOBS="$build_jobs" -j"$build_jobs" linux-reconfigure
 fi
+if [ "$repro_phase" = kernel ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" linux
+    exit 0
+fi
+fi
+
+if [ "$repro_phase" = userspace ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" target-finalize
+    exit 0
+fi
+
+if [ "$repro_phase" = all ] || [ "$repro_phase" = rootfs ]; then
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -521,6 +575,11 @@ sh "$external_dir/support/container/collect-buildroot-source.sh" \
 sh "$external_dir/support/container/test-volume-probe.sh" \
     "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
     "$buildroot_source/package/util-linux" "$output_dir/host/bin"
+
+if [ "$repro_phase" = rootfs ]; then
+    exit 0
+fi
+fi
 
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 save_qemu_failure_log() {
