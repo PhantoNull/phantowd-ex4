@@ -38,6 +38,9 @@ type Codec[T any] struct {
 	Decode      func(io.Reader) (T, error)
 	Validate    func(T) error
 	Revision    func(T) uint64
+
+	// Optional trusted pure check between decoded states; no mutation, I/O or reentry.
+	ValidateTransition func(current, next T) error
 }
 
 func (codec Codec[T]) valid() bool {

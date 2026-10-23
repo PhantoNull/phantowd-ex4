@@ -31,6 +31,7 @@ func Open(directory string) (*Store, error) {
 	return revisionstore.OpenWithCodec(directory, revisionstore.Codec[fileservice.Config]{
 		CurrentName: "file-services.json", PendingName: ".file-services.pending",
 		MaxBytes: fileservice.MaxConfigBytes, Decode: fileservice.DecodeConfig, Validate: fileservice.Config.Validate,
-		Revision: func(c fileservice.Config) uint64 { return c.Revision },
+		Revision:           func(c fileservice.Config) uint64 { return c.Revision },
+		ValidateTransition: fileservice.ValidateRetainedNFSBindings,
 	})
 }
