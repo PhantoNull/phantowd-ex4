@@ -1,5 +1,21 @@
 # Host release verification boundary
 
+## Verify-only installation preview
+
+`PreviewInstallation` and the host `plan-install` command reuse signature,
+exact target/channel, minimum-installer and full payload checks. A valid
+installer version is mandatory; a supplied current version must admit a strict
+upgrade. Omitted current state is explicitly unknown, never proof of a pristine
+device. Versions and targets are caller declarations, not device observations.
+
+Even verified bytes produce status `refused`, authorization false, an empty
+write list and logical payload destinations `unassigned`. G8 option B parks
+target qualification; recovery, physical layout and payload format still need
+review. There is no executor, device destination or physical write command.
+Verification is point-in-time, not retained staging or installation authority.
+CLI exits: 1 for input/structure/I/O error, 2 for failed verification or upgrade
+prerequisite, 3 for verified bytes with installation refused. It never exits 0.
+
 ## Opt-in strict-upgrade preflight
 
 `InspectUpgrade` requires a valid caller-supplied current version, then checks
