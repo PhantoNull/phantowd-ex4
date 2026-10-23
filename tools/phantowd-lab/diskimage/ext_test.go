@@ -251,7 +251,7 @@ func TestInspectExtSuperblockOrphanIndicatorsAreBoundedAndIndependent(t *testing
 			original := append([]byte(nil), sb...)
 			reader := fixedMetadataReader{offset: 40*logicalSectorBytes + extSuperblockOffset, data: sb}
 			report, err := InspectExtSuperblock(reader, 128*logicalSectorBytes, 40, 49)
-			if err != nil || report.Status != ExtStatusCandidate || report.SchemaVersion != 3 ||
+			if err != nil || report.Status != ExtStatusCandidate || report.SchemaVersion != 4 ||
 				report.SuperblockChecksumStatus != "valid" || report.NeedsOrphanRecovery != test.wantOrphan ||
 				report.NeedsJournalRecovery != test.wantJournal || report.BlockDeviceOpened || report.MutationsPerformed || report.MountPerformed {
 				t.Fatalf("wrong bounded recovery observation: %+v err=%v", report, err)

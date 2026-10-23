@@ -13,16 +13,19 @@ an approved layout, writer or M10.1 qualification; G8 option B remains in force.
 
 ## M8.2 offline ext space counters — partial assessment
 
-The host inspector's nested ext schema3 records free/reserved blocks and bytes,
+The host inspector's nested ext schema4 records free/reserved blocks and bytes,
 including 64-bit counters. Zero remains explicit; unavailable observations are
 null. Reservations exceeding filesystem bounds or high counters without their
 feature are refused; subtraction clamps at zero. Migration capacity is always
 unqualified, including clean/checksummed inputs. Host tests exercise synthetic
 regular images and the existing e2fsprogs superblock fixture; no mount, physical
 disk access, allocator admission or complete migration assessment is qualified.
-Image-set schema4 carries the counters by input/partition, with null for
+Image-set schema5 carries the counters by input/partition, with null for
 conflicting ext/MD candidates and no inferred capacity total. Duplicate images
 retain separate recorded observations and still require review.
+Named ext declarations, unclassified feature masks and selected fixed reasons
+now hold a candidate for review. No file contents, encryption keys or external
+journal are read; recognized flags do not establish supported migration.
 
 ## M10 verify-only installation preview — host prerequisite
 

@@ -352,7 +352,7 @@ disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
 GUIDs may appear as declarations only. It never opens a block device or
 modifies an image. An ext-family candidate not marked clean, recording errors
 or unknown state flags, or indicating journal/orphan recovery is held as
-`incomplete`; the tool never runs repair or recovery. Set schema **4** retains
+`incomplete`; the tool never runs repair or recovery. Set schema **5** retains
 `ext_filesystem_state` and independent `ext_needs_orphan_recovery` summaries;
 these review findings return exit `2`, even when the raw clean bit is set.
 Each partition now includes `ext_space_counters`: recorded ext free/reserved
@@ -463,14 +463,14 @@ for a plausible superblock, `2` for absent/damaged/unsupported metadata and
 `1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
 block device, mounts, or writes the input image.
 
-Ext report schema **3** retains the raw clean bit independently from errors,
+Ext report schema **4** retains the raw clean bit independently from errors,
 unknown state flags and recovery indicators. `needs_orphan_recovery` observes
 the orphan-processing state bit, a nonzero legacy orphan-list head, or the
 orphan-present feature; it does not follow or validate an orphan chain/file.
 Journal recovery remains a separate flag. A single-partition exit `0` is still
 only structural recognition, not a safe-mount verdict. The whole-image envelope
-remains schema **2**, with nested ext report **3**; the image-set assessment is
-schema **4**. Flag definitions follow the
+remains schema **2**, with nested ext report **4**; the image-set assessment is
+schema **5**. Flag definitions follow the
 [upstream ext superblock documentation](https://www.kernel.org/doc/html/latest/filesystems/ext4/super.html)
 and recovery indicators are cross-checked against
 [Linux v6.18 ext4](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/super.c).
@@ -483,6 +483,18 @@ reports `space_counters: null`. Inconsistent reserved counters are damaged,
 not a capacity estimate. These are offline counters, not live allocator,
 quota, recovery, freshness or migration-space proof:
 `migration_capacity_qualified` always remains false. No filesystem is mounted.
+
+`feature_review` names declared bits using the
+[Linux v6.18 definitions](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/ext4.h#L2043-L2098),
+retains unclassified bits separately for all three feature families and gives
+fixed review reasons for selected constraints such as encryption, journal-device
+declarations, MMP, inline data, casefold, quotas, bigalloc and verity. Separate
+nonzero external-journal UUID/device references also require review; only their
+presence is returned. These flags
+declare what may be present; no file contents, keys or external journal are read.
+Unvalidated metadata returns null. The image-set `ext_feature_review` keeps a
+candidate `incomplete` when review is required. A known flag or `required:false`
+does not establish PhantoWD support, WD compatibility, integrity or mount safety.
 
 `inspect-md-v1.2-partition` first requires a structurally valid GPT, then reads
 only one Linux native MD metadata v1.2 component superblock at its
