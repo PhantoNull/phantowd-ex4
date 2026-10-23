@@ -3,6 +3,16 @@
 
 # Implementation status
 
+## M8.2 offline ext space counters — partial assessment
+
+The host inspector's nested ext schema3 records free/reserved blocks and bytes,
+including 64-bit counters. Zero remains explicit; unavailable observations are
+null. Reservations exceeding filesystem bounds or high counters without their
+feature are refused; subtraction clamps at zero. Migration capacity is always
+unqualified, including clean/checksummed inputs. Host tests exercise synthetic
+regular images and the existing e2fsprogs superblock fixture; no mount, physical
+disk access, allocator admission or complete migration assessment is qualified.
+
 ## M10 verify-only installation preview — host prerequisite
 
 The host CLI verifies signed metadata, exact model/revision/channel, payloads

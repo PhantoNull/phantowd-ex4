@@ -2561,6 +2561,12 @@ not host/QEMU progress.
   uncertainties, required owner actions, free-space needs and exact unsupported
   features. Explicitly assess ownership/ACLs, shares and iSCSI backing objects.
   A recognizable filesystem does not establish safe assembly or migration.
+  The host ext inspector now records free/reserved counters, including 64-bit
+  values, with explicit zero versus unobserved/null and bounded subtraction.
+  Inconsistent reservations refuse observation. This is superblock evidence,
+  not allocator availability or migration admission; required migration space,
+  ownership/ACLs, configuration retention and exact-model qualification remain
+  open. No filesystem is mounted to produce these counters.
 - **M8.3 — Import identity and settings.** Preserve qualified volume/array identity,
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.
