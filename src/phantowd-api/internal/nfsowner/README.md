@@ -17,5 +17,8 @@ No kernel backend, polling supervisor, HTTP or product activation exists.
 
 Linux/QEMU ExportRootsQEMU separately captures original-lease directory metadata
 and retains uncertain construction/closure. Native refusal/privacy/model tests
-exist; positive ARM capture and the complete source-fault guest matrix remain
-unqualified. No descriptor getter, data access or service join is supplied.
+and a guarded ARM fixture cover mixed roots, whole-volume capture, missing and
+symlink refusal, parent-close exclusion and replacement/restoration review.
+Known disposal after path drift is not uncertain-close recovery; real close
+failure injection and the complete fault matrix remain unqualified. No descriptor
+getter, data access or service join is supplied.
