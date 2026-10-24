@@ -3,6 +3,13 @@
 
 # Internal code-only runtime bundle inspection
 
+`DecodeNFSExpectedQEMU` consumes bounded six-entry NFS build metadata against
+a separately supplied expected root digest, returning only the existing inert
+Plan. Explicit flags, complete bindings, aggregate budgets and strict JSON are
+required. Focused normal/race tests run before the ARM build. This unsigned
+fixture input is not trusted provenance, retained code or execution authority;
+image generation, service configuration/state and the NFS kernel join remain open.
+
 The dedicated QEMU-only native campaign fixes status/control8 and revocation40
 at backend construction, plus idle60/live90/fresh15 and guest360s. Preparation20,
 enrollment75, startup20, data/readiness/stop and no-retry remain. Other campaigns

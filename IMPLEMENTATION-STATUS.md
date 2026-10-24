@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## M4 NFS build-report consumer — inert QEMU prerequisite
+
+The internal consumer requires the complete six-entry report and a separately
+supplied expected root digest. It rejects partial/ambiguous metadata and applies
+whole-set file, binding and byte bounds before returning the existing code Plan.
+Focused normal/race tests run before the ARM build. Unsigned report acceptance
+is not provenance, retained code, a generated-image hook or service activation;
+configuration/state/kernel lifecycle and the managed NFS join remain absent.
+
 ## M4 NFS userspace inventory — static prerequisite
 
 The host tool derives one bounded six-entry NFS userspace dependency union,
