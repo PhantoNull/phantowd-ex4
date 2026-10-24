@@ -3,6 +3,31 @@
 
 # Internal code-only runtime bundle inspection
 
+`DecodeNFSExpectedQEMU` consumes bounded six-entry NFS build metadata against
+a separately supplied expected root digest, returning only the existing inert
+Plan. Explicit flags, complete bindings, aggregate budgets and strict JSON are
+required. Focused normal/race tests run before the ARM build. This unsigned
+fixture input is not trusted provenance, retained code or execution authority;
+service configuration/state and the NFS kernel join remain open.
+
+`ProbeNFSCodeQEMU` is a separate fixed-board disposable fixture: generated build
+metadata plus an independent inventory are staged into a read-only tmpfs tree.
+It revalidates retained references after closing a duplicate caller input,
+releases them, refuses reuse and compares descriptor counts. It returns only
+an observation. No NFS executable, RPC, kernel service or export is started;
+construction/close uncertainty and product composition remain unqualified.
+
+For a focused offline run inside the existing Linux SDK environment:
+
+```sh
+TMPDIR=/bounded-tmpfs sh support/tests/test-qemu-nfs-inputs.sh \
+  /qualified-artifacts /sdk/target /sdk/host/bin/go /sdk/host/sbin/debugfs /source
+```
+
+Use absolute paths, a bounded tmpfs and the matching extracted public target.
+The driver checks the baseline manifest, uses a temporary snapshot copy and
+removes its own image, binaries and Go caches. It never creates Docker volumes.
+
 The dedicated QEMU-only native campaign fixes status/control8 and revocation40
 at backend construction, plus idle60/live90/fresh15 and guest360s. Preparation20,
 enrollment75, startup20, data/readiness/stop and no-retry remain. Other campaigns

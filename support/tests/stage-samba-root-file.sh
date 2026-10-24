@@ -20,6 +20,9 @@ case "$destination:$mode" in
     /usr/sbin/phantowd-runtime-bundle-probe:0100755|\
     /usr/sbin/phantowd-runtime-metadata-tests:0100755|\
     /usr/sbin/phantowd-runtime-owner-init:0100755|\
+    /usr/sbin/phantowd-nfs-inputs-init:0100755|\
+    /usr/lib/phantowd/qemu-nfs-inputs.json:0100644|\
+    /usr/lib/phantowd/qemu-nfs-expected-root:0100644|\
     /usr/sbin/phantowd-samba-owner-probe:0100755|\
     /usr/sbin/phantowd-samba-root-init:0100755|\
     /usr/sbin/phantowd-status-producer-deadline:0100755|\
