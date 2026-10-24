@@ -3,6 +3,13 @@
 
 # Implementation status
 
+## M4 retained NFS export bindings — desired-state prerequisite
+
+Both Linux policy stores reject source changes for NFS IDs retained across two
+revisions, preserving current/pending state on refusal. Client edits remain
+allowed. This is not a historical ID ledger, filesystem identity check,
+restore-preview admission or service activation.
+
 ## M10.1 installation layout review — design input only
 
 The EX4 review records candidate layouts without selecting a default, physical

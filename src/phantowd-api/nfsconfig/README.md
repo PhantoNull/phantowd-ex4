@@ -40,8 +40,11 @@ The policy rejects unrestricted /0 rules, wildcards, DNS/netgroup selectors,
 multicast/reserved IPv4 ranges, mapped IPv6 forms, noncanonical prefixes and
 overlapping client rules. Export paths must be relative and non-overlapping
 on each volume. UUID fsids exclude the special NFSv4 root/0 identity. The
-future store must preserve fsid bindings across revisions, not recycle an ID
-for an unrelated export or filesystem.
+file-service and coherent NAS stores preserve logical volume ID, configured
+filesystem UUID and relative path for export IDs retained across adjacent
+revisions. Client-policy edits remain allowed. Deleted-ID reuse needs a future
+historical ledger; filesystem identity, restore-preview admission and service
+activation remain unqualified.
 
 ## Rendering and access boundaries
 

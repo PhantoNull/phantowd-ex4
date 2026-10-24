@@ -34,6 +34,13 @@ on:
       - 'support/tests/smart-replay-arm-init.sh'
       - 'support/tests/smart-replay-corpus.py'
       - 'tools/phantowd-lab/**'
+      - 'src/phantowd-api/fileservice/**'
+      - 'src/phantowd-api/nfsconfig/**'
+      - 'src/phantowd-api/shareconfig/**'
+      - 'src/phantowd-api/fileservicestore/**'
+      - 'src/phantowd-api/internal/revisionstore/**'
+      - 'src/phantowd-api/internal/naspolicy/**'
+      - 'src/phantowd-api/internal/naspolicystore/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
@@ -130,6 +137,13 @@ on:
       - 'support/tests/smart-replay-arm-init.sh'
       - 'support/tests/smart-replay-corpus.py'
       - 'tools/phantowd-lab/**'
+      - 'src/phantowd-api/fileservice/**'
+      - 'src/phantowd-api/nfsconfig/**'
+      - 'src/phantowd-api/shareconfig/**'
+      - 'src/phantowd-api/fileservicestore/**'
+      - 'src/phantowd-api/internal/revisionstore/**'
+      - 'src/phantowd-api/internal/naspolicy/**'
+      - 'src/phantowd-api/internal/naspolicystore/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
@@ -240,6 +254,14 @@ jobs:
         with:
           go-version: ${{ steps.host_go.outputs.version }}
           cache-dependency-path: tools/phantowd-lab/go.mod
+
+      - name: Verify retained NFS bindings on disposable Linux state
+        working-directory: src/phantowd-api
+        env:
+          GOPROXY: off
+          GOTOOLCHAIN: local
+          GOFLAGS: -mod=vendor
+        run: go test -race -count=3 ./fileservice ./internal/revisionstore ./fileservicestore ./internal/naspolicystore
 
       - name: Verify host-tool packages
         working-directory: tools/phantowd-lab
