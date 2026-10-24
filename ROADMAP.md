@@ -1427,6 +1427,10 @@ storage. No production roster provider or activation path exists.
   partial effects and bounded settlement. A serialized fresh memory check now
   brackets readiness/stopped proof with input checks, retaining review on failure.
   Polling supervision and kernel/product lifecycle remain separately unqualified.
+  Storage-only candidate comparison and a fixed original-roster lease fixture
+  prepare source capture; constructor-review classification is model-only and
+  grants no authority. Actual root capture and existing process-constructor
+  integration remain separate, not implied by adding the rollback utility.
   A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.

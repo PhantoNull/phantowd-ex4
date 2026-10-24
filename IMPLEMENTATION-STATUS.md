@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M4 NFS source prerequisites — not root capture
+
+Candidate storage comparison includes the complete original roster fingerprint.
+A fixed guest observes its original mounted lease and refuses a changed owner;
+constructor-error classification is exercised as a model with that lease retained.
+The small rollback helper changes no existing process Owner. Root capture,
+policy/identity retention, kernel backend and product activation remain separate.
+
 ## M4 NFS lifetime fresh check — memory-only prerequisite
 
 The QEMU-only Owner checks original inputs around readiness/stopped proof under
