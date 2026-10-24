@@ -7,8 +7,11 @@
 
 Both Linux policy stores reject source changes for NFS IDs retained across two
 revisions, preserving current/pending state on refusal. Client edits remain
-allowed. This is not a historical ID ledger, filesystem identity check,
-restore-preview admission or service activation.
+allowed. File-service restore previews check the same bindings against freshly
+loaded state after revision matching; initial previews remain available. The
+editor offers client-rule changes and requires a new export for a new source.
+Preview is not a reservation or service activation. Historical ID tracking and
+actual filesystem identity remain unqualified.
 
 ## M10.1 installation layout review — design input only
 

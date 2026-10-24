@@ -1415,10 +1415,7 @@ async function testServiceEditingContracts() {
   assert.deepEqual(result.shares.volumes, c.shares.volumes);
   assert.deepEqual(result.shares.users, c.shares.users);
   assert.deepEqual(result.nfs.exports, c.nfs.exports, "SMB removal touched NFS");
-  result = edit("nfs-properties", nfs, { path: "new-nfs-path" }); shared(result);
-  assert.equal(result.nfs.exports[0].id, c.nfs.exports[0].id);
-  assert.deepEqual(result.nfs.exports[0].clients, c.nfs.exports[0].clients);
-  assert.deepEqual(result.shares.shares, c.shares.shares);
+  assert.throws(() => edit("nfs-properties", nfs, { path: "new-nfs-path" }), /new export/i);
   result = edit("nfs-client-upsert", nfs, { "nfs-access": "rw", uid: "1000", gid: "1000" }); shared(result);
   assert.equal(result.nfs.exports[0].clients[0].anonymous_uid, 1000);
   assert.deepEqual(result.nfs.exports[0].clients[1], c.nfs.exports[0].clients[1]);
@@ -1476,10 +1473,29 @@ async function testServiceEditorInteraction() {
   assert.equal(elements["service-target"].value, "", "selection resets after commit");
   elements["service-target"].value = `nfs:${c.nfs.exports[0].id}`;
   context.selectServiceTarget();
+  assert.equal(elements["service-action"].value, "nfs-client-upsert", "NFS selection offers an allowed edit");
+  assert.doesNotMatch(markup, /option value="nfs-properties"/);
   assert.equal(elements["policy-nfs-enabled"].value, "on");
   elements["service-member"].value = "192.0.2.11/32"; context.selectServiceMember();
   assert.equal(elements["policy-network"].value, "192.0.2.11/32");
   assert.equal(elements["policy-nfs-access"].value, "rw");
+  elements["policy-nfs-access"].value = "ro";
+  await context.prepareServiceEdit();
+  const previewRequests = () => requests.filter(({ path }) => path === "/api/v1/file-services/preview");
+  const proposed = JSON.parse(previewRequests().at(-1).options.body).nfs.exports;
+  const sources = (exports) => exports.map((e) => [e.id, e.volume_id, e.relative_path]);
+  assert.deepEqual(sources(proposed), sources(c.nfs.exports), "client edit preserves NFS sources");
+  assert.equal(proposed[0].clients.find((rule) => rule.network === "192.0.2.11/32").access, "ro");
+  assert.equal(elements["service-save"].disabled, false);
+  const previewsBeforeRefusal = previewRequests().length;
+  // A stale/direct invocation must discard the previous review before any request.
+  elements["service-action"].value = "nfs-properties";
+  await context.prepareServiceEdit();
+  assert.equal(previewRequests().length, previewsBeforeRefusal);
+  assert.equal(elements["service-save"].disabled, true);
+  assert.match(elements["service-status"].textContent, /new export/i);
+  await context.saveServiceChange();
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
   elements["service-action"].value = "nfs-client-remove"; context.selectServiceAction();
   await context.prepareServiceEdit();
   assert.equal(elements["service-save"].disabled, false);
@@ -1612,7 +1628,6 @@ async function testDesiredChangeReviewEdits() {
     ["smb-grant-upsert", smb, { user: "newreader" }, ["SMB grant", "User reference"]],
     ["smb-grant-remove", smb, {}, ["SMB grant"]],
     ["smb-remove", smb, {}, ["SMB definition", "SMB grant", "SMB grant"]],
-    ["nfs-properties", nfs, { path: "new-folder" }, ["NFS definition"]],
     ["nfs-client-upsert", nfs, { "nfs-access": "rw", squash: "root", uid: "1000", gid: "1001", security: "krb5p" }, ["NFS client"]],
     ["nfs-client-upsert", nfs, { network: "2001:db8::/64" }, ["NFS client"]],
     ["nfs-client-remove", nfs, {}, ["NFS client"]],
@@ -1629,6 +1644,12 @@ async function testDesiredChangeReviewEdits() {
       assert.match(rows[0].after, /Read and write.*\nMap root only to 1000:1001.*\nSecurity: Kerberos privacy/s);
     }
   }
+  // A semantic comparison can describe a source change without admitting it.
+  const changedSource = structuredClone(c);
+  changedSource.nfs.exports[0].relative_path = "new-folder";
+  const sourceRows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, changedSource)));
+  assert.deepEqual(sourceRows.map((r) => r.kind), ["NFS definition"]);
+  assert.equal(JSON.stringify(c), initial, "source comparison mutated baseline");
   const reordered = structuredClone(c);
   reordered.shares.volumes.reverse(); reordered.shares.users.reverse(); reordered.shares.shares.reverse();
   reordered.shares.shares.forEach((s) => s.grants.reverse());

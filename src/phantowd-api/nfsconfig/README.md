@@ -43,7 +43,9 @@ on each volume. UUID fsids exclude the special NFSv4 root/0 identity. The
 file-service and coherent NAS stores preserve logical volume ID, configured
 filesystem UUID and relative path for export IDs retained across adjacent
 revisions. Client-policy edits remain allowed. Deleted-ID reuse needs a future
-historical ledger; filesystem identity, restore-preview admission and service
+historical ledger. File-service restore previews enforce the same rule against
+the loaded revision; later Save still requires its own checks. The editor no
+longer offers retained-ID source replacement. Filesystem identity and service
 activation remain unqualified.
 
 ## Rendering and access boundaries
