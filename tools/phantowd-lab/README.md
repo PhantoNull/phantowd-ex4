@@ -46,6 +46,7 @@ phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab inspect-runtime-closure DIRECTORY IMAGE-RELATIVE-ELF
+phantowd-lab inspect-nfs-runtime DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
 phantowd-lab plan-storage-inventory FILE
@@ -75,6 +76,16 @@ The command writes no file, payload, image or device and publishes no release.
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
 and `1` for usage, I/O, or structural errors. Results are JSON.
+
+`inspect-nfs-runtime` merges the dependency graphs of `rpcbind`, `rpc.mountd`,
+`exportfs`, `rpc.nfsd`, `rpc.statd` and `sm-notify` from one extracted inventory.
+Shared objects/aliases are counted once; the whole union is bounded by256
+objects,1024 bindings and64 MiB. Missing or unsupported entries yield no partial
+object set. Exit0 means static resolution only,2 an incomplete/refused candidate,
+and1 argument/inventory I/O failure. Runtime qualification and execution remain
+false. Kernel NFSD/NLM, helper invocation, NSM state/recovery, NSS/configuration,
+retained bytes, complete ABI and actual protocol/service behavior need separate
+qualification. This command does not execute files, mount filesystems or start NFS.
 
 `inspect-runtime-closure` reuses the extracted-tree inventory to derive a
 **research-only** ARM32 little-endian ELF dependency candidate. The entry is a
