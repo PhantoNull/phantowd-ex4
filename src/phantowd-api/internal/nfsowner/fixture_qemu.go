@@ -89,6 +89,35 @@ func ExerciseRunningQEMU(candidate fileserviceplan.NFSv3Candidate, expected file
 	}
 	return nil
 }
+
+// ExerciseCheckedQEMU observes healthy and lost memory inputs, not a kernel.
+func ExerciseCheckedQEMU(candidate fileserviceplan.NFSv3Candidate, expected fileserviceplan.Freshness) error {
+	for _, lost := range []bool{false, true} {
+		backend := &preparedBackend{bound: expected, retained: true}
+		owner, err := NewQEMU(candidate, backend)
+		if err != nil || owner.Start(context.Background()) != nil {
+			return ErrInvalid
+		}
+		if lost {
+			backend.fail = "inputs"
+		}
+		err = owner.Check(context.Background())
+		if !lost {
+			if err != nil || !backend.running || backend.stops != 0 || !backend.retained || owner.Close(context.Background()) != nil || backend.retained || backend.releases != 1 {
+				return ErrInvalid
+			}
+			continue
+		}
+		if !errors.Is(err, ErrReviewRequired) || backend.running || !backend.retained || backend.stops != 1 || backend.releases != 0 {
+			return ErrInvalid
+		}
+		backend.fail = ""
+		if owner.Check(context.Background()) != ErrReviewRequired || owner.Close(context.Background()) != ErrReviewRequired || backend.stops != 1 || backend.releases != 0 || !backend.retained {
+			return ErrInvalid
+		}
+	}
+	return nil
+}
 func (b *preparedBackend) Release(context.Context) error {
 	if b.running {
 		return ErrState

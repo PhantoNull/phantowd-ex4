@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M4 NFS lifetime fresh check — memory-only prerequisite
+
+The QEMU-only Owner checks original inputs around readiness/stopped proof under
+its existing gate and budget. Running failures attempt one independent stop;
+disabled failures never control a service. Both retain review without retry,
+restart or release. Host and mandatory guest cases cover this memory model;
+no product kernel backend, polling supervisor or HTTP activation is added.
+
 ## M4 retained NFS export bindings — desired-state prerequisite
 
 Both Linux policy stores reject source changes for NFS IDs retained across two

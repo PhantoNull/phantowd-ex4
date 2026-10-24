@@ -276,6 +276,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'QEMU running NFS lifetime proof missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true input_loss_review=true stop_before_release=true memory_only=true kernel_backend=false restart=false activation=false scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Missing checked NFS memory lifetime proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1
