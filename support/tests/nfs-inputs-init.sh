@@ -9,7 +9,7 @@ prepare() {
     grep -Eq '(^| )phantowd_nfs_inputs_fixture=1( |$)' /proc/cmdline || return 1
     mount -t tmpfs -o mode=0755,size=20m tmpfs /run || return 1
     export TMPDIR=/run
-    /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^(TestNFSExpectedQEMU|TestNFSCodeProbe)' -test.count=1 || return 1
+    /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^(TestNFSExpectedQEMU|TestNFSCodeProbe|TestNFSDocuments|TestQEMUNFSConfiguration)' -test.count=1 || return 1
     mkdir /run/phantowd-nfs-code || return 1
     mount -t tmpfs -o mode=0700,size=16m,nodev,nosuid tmpfs /run/phantowd-nfs-code || return 1
     IFS= read -r expected </usr/lib/phantowd/qemu-nfs-expected-root || return 1

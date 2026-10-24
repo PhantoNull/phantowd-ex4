@@ -12,8 +12,8 @@ cd "$module_dir"
 "$go_binary" vet ./...
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" vet -tags=qemu ./...
-"$go_binary" test -tags=qemu -run '^Test(NFSExpectedQEMU|NFSCodeProbe)' -count=1 ./internal/runtimebundle
-"$go_binary" test -tags=qemu -run '^Test(NFSExpectedQEMU|NFSCodeProbe)' -race -count=1 ./internal/runtimebundle
+"$go_binary" test -tags=qemu -run '^Test(NFSExpectedQEMU|NFSCodeProbe|NFSDocuments)' -count=1 ./internal/runtimebundle
+"$go_binary" test -tags=qemu -run '^Test(NFSExpectedQEMU|NFSCodeProbe|NFSDocuments)' -race -count=1 ./internal/runtimebundle
 printf '%s\n' 'PHANTOWD_NFS_BUILD_REPORT_CONSUMER_READY normal=true race=true scope=host-data-only'
 "$go_binary" test -tags=qemu -race -count=1 ./internal/nfsowner
 "$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBEffectiveFixture|TestQEMUSMBDenialEvidence|TestQEMUSMBProvisionParser|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUCollisionFixture|TestQEMUStatePersistence|TestQEMUServiceStateBackend|TestQEMUIdentityOwnerServiceHostGuard|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD|TestQEMUNetworkPolicy|TestQEMUNetworkInventory)$' -count=1 .

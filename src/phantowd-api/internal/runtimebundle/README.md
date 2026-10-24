@@ -3,6 +3,16 @@
 
 # Internal code-only runtime bundle inspection
 
+`NFSv3Documents` projects three inert files from one Plan-bound NFSv3 candidate.
+It distinguishes disabled policy from invalid evidence, preserves the complete
+table and applies the existing64KiB aggregate bound including fixed data.
+Linux expectations use the existing readonly/noexec protected configuration
+primitive: exports/nfs.conf0600, netconfig0644. The dedicated ARM fixture covers
+normal retention/release, caller ownership and extra fragment/fallback refusal.
+Data equality is not source freshness or service authority. Effective protocol/
+option parsing, mutable NSM state, kernel control, constructor/close faults and
+complete service-root composition remain unqualified; no service is activated.
+
 `DecodeNFSExpectedQEMU` consumes bounded six-entry NFS build metadata against
 a separately supplied expected root digest, returning only the existing inert
 Plan. Explicit flags, complete bindings, aggregate budgets and strict JSON are
