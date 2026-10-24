@@ -3,9 +3,12 @@
 
 # Implementation status
 
-Standalone Linux/QEMU export-root lifetime code now exists with native refusal,
-privacy and model-only uncertain-close guards. Actual ARM capture/fault cases
-remain unqualified; this is not an enabled service or completed root milestone.
+Standalone Linux/QEMU export-root lifetime code has native refusal/privacy guards
+and a disposable ARM fixture for original-lease directory capture: mixed client
+roles, whole-volume paths, missing/symlink refusal, parent-close exclusion and
+sticky review after directory replacement/restoration. The smoke driver requires
+one exact receipt. Real uncertain-close injection, kernel service composition
+and product activation remain unqualified; no root milestone is closed.
 
 ## M4 NFS source prerequisites — not root capture
 
