@@ -14,3 +14,8 @@ attempts one independent stop. Restoration cannot retry cleanup or release.
 The guest checks healthy and input-loss lifetimes; the smoke driver requires one
 exact receipt. These sequential observations are not continuous health.
 No kernel backend, polling supervisor, HTTP or product activation exists.
+
+Linux/QEMU ExportRootsQEMU separately captures original-lease directory metadata
+and retains uncertain construction/closure. Native refusal/privacy/model tests
+exist; positive ARM capture and the complete source-fault guest matrix remain
+unqualified. No descriptor getter, data access or service join is supplied.
