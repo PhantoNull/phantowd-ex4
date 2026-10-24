@@ -165,6 +165,40 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertLess(board.index(check),
                         make_target_position(board, "linux-configure"))
 
+    def test_nfs_fresh_check_requires_exact_unique_serial_evidence(self):
+        marker = (
+            "PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true "
+            "input_loss_review=true stop_before_release=true memory_only=true "
+            "kernel_backend=false restart=false activation=false "
+            "scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        cases = [("LF", marker + "\n", True),
+                 ("CRLF", marker + "\r\n", True), ("missing", "", False),
+                 ("duplicate", (marker + "\n") * 2, False),
+                 ("prefixed", "prefix " + marker + "\n", False)]
+        cases += [(field, marker.replace(field, replacement) + "\n", False)
+                  for field, replacement in (
+                      ("input_loss_review=true", "input_loss_review=false"),
+                      ("stop_before_release=true", "stop_before_release=false"),
+                      ("kernel_backend=false", "kernel_backend=true"),
+                      ("activation=false", "activation=true"),
+                      ("scope=disposable-qemu-only", "scope=product"))]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in cases:
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+                    self.assertEqual(result.stdout, b"", "receipt check must not relay serial data")
+
     def test_enrollment_lookup_requires_exact_unique_serial_evidence(self):
         marker = (
             "PHANTOWD_M24_NATIVE_ENROLLMENT_LOOKUP_READY accounts=2 "

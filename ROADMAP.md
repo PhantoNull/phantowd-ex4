@@ -1424,8 +1424,9 @@ storage. No production roster provider or activation path exists.
   proof are required; this request is not a retained service or export authority.
   Prepared NFS closure checks fixed inputs and stopped state before release;
   uncertainty retains review. Memory-only start/stop/close additionally models
-  partial effects and bounded settlement; monitoring and kernel/product lifecycle
-  remain separate and require their own qualification.
+  partial effects and bounded settlement. A serialized fresh memory check now
+  brackets readiness/stopped proof with input checks, retaining review on failure.
+  Polling supervision and kernel/product lifecycle remain separately unqualified.
   A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.
