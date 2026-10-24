@@ -78,12 +78,12 @@ status=0
 wait "$child_pid" || status=$?
 child_pid=
 if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_NFS_CODE_INPUTS_' "$scratch/guest.log" | tr -d '\r')" != "$(cat "$scratch/marker"; echo PHANTOWD_NFS_CODE_INPUTS_DONE)" ] ||
-    [ "$(grep -Ec '^--- PASS: Test(NFSExpectedQEMU|NFSCodeProbe)' "$scratch/guest.log")" -ne 7 ] || grep -Eq '^--- FAIL:|^FAIL|--- SKIP:' "$scratch/guest.log"; then
+    [ "$(grep -Ec '^--- PASS: Test(NFSExpectedQEMU|NFSCodeProbe|NFSDocuments|QEMUNFSConfiguration)' "$scratch/guest.log")" -ne 11 ] || grep -Eq '^--- FAIL:|^FAIL|--- SKIP:' "$scratch/guest.log"; then
     if [ -n "$failure_log" ]; then mkdir -p "$(dirname "$failure_log")"; cp "$scratch/guest.log" "$failure_log"; fi
     tail -n 100 "$scratch/guest.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
-grep -E '^--- PASS: Test(NFSExpectedQEMU|NFSCodeProbe)' "$scratch/guest.log"
+grep -E '^--- PASS: Test(NFSExpectedQEMU|NFSCodeProbe|NFSDocuments|QEMUNFSConfiguration)' "$scratch/guest.log"
 grep '^PHANTOWD_NFS_CODE_INPUTS_' "$scratch/guest.log"
 echo PHANTOWD_NFS_CODE_INPUTS_BASE_UNCHANGED

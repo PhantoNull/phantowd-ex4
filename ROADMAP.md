@@ -1661,6 +1661,12 @@ storage. No production roster provider or activation path exists.
   caller-duplicate closure and verifies normal release plus descriptor census.
   Local focused checks pass; own-head integration and construction/close faults
   remain open. It executes no NFS program and owns no kernel or data service.
+  The same Plan's NFS candidate now supplies three inert configuration documents,
+  bounded together to64KiB before any staging; disabled/invalid and exact-fit/
+  overflow controls pass. Linux expectations reuse protected configuration;
+  local ARM tests cover retention/release and undeclared fragments/fallbacks.
+  Actual option parsing, complete service-root/state/kernel composition,
+  constructor/close faults and own-head hosted qualification remain open.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

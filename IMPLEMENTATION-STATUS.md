@@ -3,6 +3,18 @@
 
 # Implementation status
 
+## M4 NFS protected configuration — data and ARM fixture
+
+One Plan-bound candidate now produces the complete exports table, fixed protocol
+declarations and RPC transport data. Invalid and disabled inputs remain distinct.
+The existing 64 KiB aggregate bound includes fixed files: exact-fit passes and
+one extra byte refuses without partial output. Linux expectations reuse protected
+configuration admission. A local ARM fixture verifies readonly/noexec retention,
+caller-duplicate closure, release and descriptor census, and refuses extra
+fragment/fallback paths. Own-head hosted integration is still required.
+No options/parser, effective listener, NSM persistence, constructor/close fault,
+whole service-root composition, kernel backend or product activation is qualified.
+
 ## M4 NFS generated-input fixture — ARMv5 code retention only
 
 A disposable networkless guest consumes the actual six-entry build report with
