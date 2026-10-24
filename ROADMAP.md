@@ -1652,6 +1652,10 @@ storage. No production roster provider or activation path exists.
   This is static build evidence, not a service profile: kernel control, helpers,
   mutable NSM state/locking recovery, retained inputs and service activation
   remain required before the managed NFS join.
+  Its QEMU-only inert consumer now checks complete metadata against a separately
+  supplied expected root, fixes six entries and reuses the existing code Plan.
+  Focused normal/race tests precede the ARM build; unsigned report acceptance
+  does not supply trusted provenance, retained code or an enabled service.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
