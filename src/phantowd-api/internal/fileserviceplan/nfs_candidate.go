@@ -65,6 +65,14 @@ func (c NFSv3Candidate) FreshAgainst(current Freshness) bool {
 	return c.valid && c.freshness == current
 }
 
+// FreshAgainstStorage compares data only. A trusted consumer must obtain this
+// snapshot from its original roster lease; this grants no retained authority.
+func (c NFSv3Candidate) FreshAgainstStorage(s StorageSnapshot) bool {
+	return c.valid && s.Complete && s.Generation > 0 && s.Volumes != nil &&
+		len(s.Volumes) <= MaxObservedVolumes && c.freshness.StorageGeneration == s.Generation &&
+		c.freshness.StorageFingerprint == fingerprintStorageSnapshot(s)
+}
+
 func (NFSv3Candidate) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("internal NFS candidate is not serializable")
 }

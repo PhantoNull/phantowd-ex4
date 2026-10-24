@@ -238,6 +238,9 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 			return err
 		}
 		fmt.Println("PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true input_loss_review=true stop_before_release=true memory_only=true kernel_backend=false restart=false activation=false scope=disposable-qemu-only")
+		if err := exerciseQEMUNFSSourcePrerequisites(ctx, candidate, mountedSet); err != nil {
+			return err
+		}
 		return exerciseQEMUOwnerSambaNSSPlan(ctx, owner, mountedSet, account)
 	})
 }

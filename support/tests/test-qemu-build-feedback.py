@@ -165,6 +165,41 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertLess(board.index(check),
                         make_target_position(board, "linux-configure"))
 
+    def test_nfs_source_prerequisites_require_exact_quiet_receipt(self):
+        marker = (
+            "PHANTOWD_NFS_SOURCE_PREREQUISITES_READY original_roster=true "
+            "fresh_storage=true changed_owner_refused=true constructor_review=model "
+            "cleanup_not_called=true lease_retained=true root_capture=false "
+            "kernel_backend=false activation=false scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        cases = [("LF", marker + "\n", True),
+                 ("CRLF", marker + "\r\n", True), ("missing", "", False),
+                 ("duplicate", (marker + "\n") * 2, False),
+                 ("prefixed", "prefix " + marker + "\n", False)]
+        cases += [(field, marker.replace(field, replacement) + "\n", False)
+                  for field, replacement in (
+                      ("fresh_storage=true", "fresh_storage=false"),
+                      ("constructor_review=model", "constructor_review=actual"),
+                      ("lease_retained=true", "lease_retained=false"),
+                      ("root_capture=false", "root_capture=true"),
+                      ("activation=false", "activation=true"),
+                      ("scope=disposable-qemu-only", "scope=product"))]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in cases:
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+                    self.assertEqual(result.stdout, b"")
+
     def test_nfs_fresh_check_requires_exact_unique_serial_evidence(self):
         marker = (
             "PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true "
