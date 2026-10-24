@@ -248,7 +248,7 @@ members = arrays[0].get("members", []) if len(arrays) == 1 else []
 inputs = component_set.get("inputs", [])
 identity_scan = component_set.get("identity_scan", {})
 if (component_set.get("format") != "phantowd-read-only-storage-image-set-observation"
-        or component_set.get("schema_version") != 3
+        or component_set.get("schema_version") != 5
         or component_set.get("status") != "ambiguous"
         or component_set.get("wd_compatibility") != "unqualified"
         or len(inputs) != 2
@@ -263,6 +263,10 @@ if (component_set.get("format") != "phantowd-read-only-storage-image-set-observa
                or item["partition_observations"][0].get("ext_clean_unmount_flag") is not True
                or item["partition_observations"][0].get("ext_needs_journal_recovery") is not False
                or item["partition_observations"][0].get("ext_needs_orphan_recovery") is not False
+               or item["partition_observations"][0].get("ext_space_counters", "missing") is not None
+               or item["partition_observations"][0].get("ext_feature_review", {}).get("profile") != "linux-v6.18-declarations"
+               or item["partition_observations"][0].get("ext_feature_review", {}).get("required") is not False
+               or item["partition_observations"][0].get("ext_feature_review", {}).get("reasons") != []
                or item["partition_observations"][0].get("md_v1_0_status") != "md-v1.0-superblock-candidate"
                for item in inputs)
         or identity_scan.get("complete") is not True

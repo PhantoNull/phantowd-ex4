@@ -9,6 +9,11 @@ trusted codecs, file sync, one rename and directory sync. It never imports old
 formats, promotes pending state or treats corruption as empty configuration.
 `Store` remains the original snapshot/transaction API.
 
+A fixed trusted codec may check decoded current/candidate transitions under the
+store lock, after revision matching and before pending-file inspection/cleanup.
+Refusal returns `ErrInvalid` without changing current or pending evidence;
+initialization and stale revisions do not invoke this pure, non-reentrant hook.
+
 ## Read-only policy-directory bootstrap observation
 
 `OpenBootstrapAuthorityWithCodec` optionally retains one directory/flock/

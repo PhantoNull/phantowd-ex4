@@ -1009,6 +1009,9 @@ type storageImageSetPartitionSummary struct {
 	MDV12Status            diskimage.MDStatus     `json:"md_v1_2_status"`
 	MDV10Status            diskimage.MDV10Status  `json:"md_v1_0_status"`
 	MDV090Status           diskimage.MDV090Status `json:"md_v0_90_status"`
+
+	ExtSpaceCounters *diskimage.ExtSpaceCounters `json:"ext_space_counters"`
+	ExtFeatureReview *diskimage.ExtFeatureReview `json:"ext_feature_review"`
 }
 
 type storageImageSetInputSummary struct {
@@ -1053,7 +1056,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	result := storageImageSetAssessment{
 		Format:          "phantowd-read-only-storage-image-set-observation",
-		SchemaVersion:   3,
+		SchemaVersion:   5,
 		Status:          "incomplete",
 		WDCompatibility: "unqualified",
 		Inputs:          []storageImageSetInputSummary{},
@@ -1063,6 +1066,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			"the supplied image set is not proof of the complete four-bay inventory; missing or unprovided devices cannot be inferred absent",
 			"duplicate identity counts apply only to the supplied GPT-valid images; generic metadata agreement is not a WD layout, health, synchronization, filesystem-integrity or migration qualification",
 			"partition type GUIDs are on-disk declarations, not proof of contents, role or compatibility; ext results inspect only one bounded superblock, not file data or full filesystem integrity",
+			"ext space counters are per-partition stored observations, not live or migration capacity; absent, invalid or conflicting-layer observations are null, and no cross-image or array free-space total is inferred",
 			"the tool does not lock or snapshot source files; callers must supply stable offline copies and avoid concurrent modification during inspection",
 			"all inputs are regular files; no block device is opened, no array is assembled, no filesystem is mounted, and no input is modified",
 		},
@@ -1080,6 +1084,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	gptUnsupported := false
 	needsReview := false
 	extFilesystemNeedsReview := false
+	extFeatureNeedsReview := false
 	layerConflict := false
 
 	for inputIndex, path := range args {
@@ -1112,6 +1117,8 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			candidateStorageLayers := 0
 			partitionSummary := storageImageSetPartitionSummary{
 				Number: partition.Number, ExtStatus: partition.Ext.Status,
+				ExtSpaceCounters:       partition.Ext.SpaceCounters,
+				ExtFeatureReview:       partition.Ext.FeatureReview,
 				ExtFilesystemState:     partition.Ext.FilesystemState,
 				ExtCleanUnmount:        partition.Ext.CleanUnmount,
 				ExtNeedsJournalRepair:  partition.Ext.NeedsJournalRecovery,
@@ -1126,10 +1133,11 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 					break
 				}
 			}
-			input.PartitionObservations = append(input.PartitionObservations, partitionSummary)
-
 			if partition.Ext.Status == diskimage.ExtStatusCandidate {
 				candidateStorageLayers++
+				if partition.Ext.FeatureReview == nil || partition.Ext.FeatureReview.Required {
+					needsReview, extFeatureNeedsReview = true, true
+				}
 				if partition.Ext.FilesystemIdentityFingerprint == "" {
 					needsReview = true
 				} else {
@@ -1172,7 +1180,9 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			}
 			if candidateStorageLayers > 1 {
 				layerConflict = true
+				partitionSummary.ExtSpaceCounters = nil
 			}
+			input.PartitionObservations = append(input.PartitionObservations, partitionSummary)
 		}
 		result.Inputs = append(result.Inputs, input)
 	}
@@ -1262,6 +1272,9 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	if extFilesystemNeedsReview {
 		result.Findings = append(result.Findings, "an ext-family superblock is not marked clean, records errors or unknown state flags, or indicates journal/orphan recovery; no repair or recovery was attempted")
+	}
+	if extFeatureNeedsReview {
+		result.Findings = append(result.Findings, "an ext candidate declares features requiring review or unclassified feature bits; file contents and feature compatibility were not assessed")
 	}
 	if err := writeJSON(output, result); err != nil {
 		return 1, err

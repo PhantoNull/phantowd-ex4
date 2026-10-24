@@ -1,5 +1,11 @@
 # Internal file-service candidate plan
 
+`NFSv3Candidate.FreshAgainstStorage` compares bounded storage data, including the
+complete roster fingerprint. Its trusted consumer must obtain that snapshot from
+the original mounted-roster lease. This does not check policy/identity freshness
+or grant retained authority. The fixed guest proves original-lease matching and
+model-only constructor-error classification; root capture remains separate.
+
 This package is an incomplete M4.1 prototype. It accepts a validated combined
 SMB/NFS policy plus explicit identity and storage snapshots, checks that the
 required accounts and mounted logical volumes are internally consistent, and
