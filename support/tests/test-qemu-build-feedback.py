@@ -271,6 +271,39 @@ class BuildFeedbackTests(unittest.TestCase):
                     self.assertEqual(result.returncode == 0, accepted)
                     self.assertEqual(result.stdout, b"")
 
+    def test_nfs_kernel_activation_requires_actual_io_and_clean_teardown(self):
+        marker = (
+            "PHANTOWD_NFS_KERNEL_READY kernel_backend=true activation=true "
+            "protocol=nfs3 transport=tcp read=true write=true teardown=clean "
+            "scope=qemu-loopback-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        cases = [("LF", marker + "\n", True),
+                 ("CRLF", marker + "\r\n", True), ("missing", "", False),
+                 ("duplicate", (marker + "\n") * 2, False),
+                 ("prefixed", "prefix " + marker + "\n", False)]
+        cases += [(field, marker.replace(field, replacement) + "\n", False)
+                  for field, replacement in (
+                      ("kernel_backend=true", "kernel_backend=false"),
+                      ("activation=true", "activation=false"),
+                      ("write=true", "write=false"),
+                      ("teardown=clean", "teardown=uncertain"),
+                      ("scope=qemu-loopback-only", "scope=product"))]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in cases:
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+                    self.assertEqual(result.stdout, b"", "receipt check must not relay serial data")
+
     def test_nfs_fresh_check_requires_exact_unique_serial_evidence(self):
         marker = (
             "PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true "

@@ -3,6 +3,47 @@
 
 # Implementation status
 
+## M4 retained NFSD controller ? actual disposable-guest activation
+
+The existing QEMU-only controller now drives a real loopback NFSv3/TCP mount:
+its retained TCP/2049 socket and two NFSD threads serve synthetic data; client
+read and fsynced write bytes match both views. Unmount, export withdrawal,
+verified kernel stop, foreground daemon reaping and controller close pass in the
+local complete baseline smoke. Inherited stock shutdown required explicit zero
+threads and stopping the observed rpcbind PID; its scripts reported false OK.
+Pinned normal/race/vet and 37 feedback tests pass. Own-head hosted integration
+is still required. This is not production ownership, locking/recovery, an
+external-client test, EX4 qualification or installable firmware.
+
+## M4 NFS generated-input fixture — ARMv5 code retention only
+
+A disposable networkless guest consumes the actual six-entry build report with
+a separate root inventory, stages its code into read-only tmpfs and revalidates
+retained references after closing the duplicated caller input. Normal release,
+released-input refusal and unchanged descriptor count pass locally: 12 files,
+3 aliases, 2,680,696 bytes; all seven focused ARM test groups pass without skips.
+Own-head hosted integration remains required. No NFS program, RPC, kernel NFSD,
+data export, configuration/state owner or product service starts. Construction/
+close uncertainty and complete fault coverage remain unqualified.
+
+## M4 NFS build-report consumer — inert QEMU prerequisite
+
+The internal consumer requires the complete six-entry report and a separately
+supplied expected root digest. It rejects partial/ambiguous metadata and applies
+whole-set file, binding and byte bounds before returning the existing code Plan.
+Focused normal/race tests run before the ARM build. Unsigned report acceptance
+alone is not provenance, retained code or service activation;
+configuration/state/kernel lifecycle and the managed NFS join remain absent.
+
+## M4 NFS userspace inventory — static prerequisite
+
+The host tool derives one bounded six-entry NFS userspace dependency union,
+including NFSD control, statd and sm-notify, from a single extracted inventory.
+Shared objects/aliases are deduplicated; refusal exposes no partial object set.
+Model and synthetic-file CLI tests keep runtime/execution authority false.
+This does not qualify kernel control, helpers, locking/recovery, retained runtime
+inputs or a managed/product NFS service.
+
 ## M4 retained NAS planning — data prerequisite
 
 The internal planner reads the original policy lease, derives under retained
