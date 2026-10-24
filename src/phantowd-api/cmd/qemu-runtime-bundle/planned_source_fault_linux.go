@@ -147,7 +147,7 @@ func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.Nat
 	if err != nil || initial.State != "ready" || !initial.DataVerified || !initial.IdentityRetained || !initial.SharesRetained || initial.RuntimeClosed {
 		return errors.New("planned source fault lacks original live access authority")
 	}
-	phase = "startup" // Fixed authorized holder, not a second daemon.
+	phase = "held-startup" // Fixed authorized holder, not a second daemon.
 	startHeld, observeHeld := service.StartHeldSessionQEMU, observePlannedHeldFaultStopQEMU
 	if file {
 		startHeld, observeHeld = service.StartHeldOpenFileQEMU, observePlannedOpenFileStopQEMU

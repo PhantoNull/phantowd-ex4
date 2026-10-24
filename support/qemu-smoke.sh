@@ -288,6 +288,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing actual standalone NFS root-capture proof' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_LEASED_PLAN_READY policy=original_lease identity=original_lease storage=mounted_owner complete_candidate=true mutation_blocked=true released_refused=true planner_writes=false root_capture=false activation=false scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Missing original-lease NAS planning proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1
