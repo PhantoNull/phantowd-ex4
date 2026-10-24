@@ -56,6 +56,51 @@ programs or extract a complete new tree for this check.
 | `drivers/mtd/nand/nand_ecc.c` | `8f04e40be8512ca6b3db8ef61f6e27354a17dd7eeddc4993008f2aff9907e252` |
 | `arch/arm/plat-orion/mv_hal/gpp/mvGppRegs.h` | `ce5cf0bb2c4391a950ebbfae90b8b199499c7490039115f51ce5014e3c0ba3ec` |
 
+## Board defaults are not a qualified partition map
+
+The same hash-identified GPL kernel archive distinguishes board fallback data
+from parser-selected partitions. All paths below are under `linux-3.2.40/`:
+
+| Source | Static observation | SHA-256 |
+| --- | --- | --- |
+| `arch/arm/mach-kirkwood/rd88f6282-a-setup.c`, lines23-37,79 | Three fallback entries: `u-boot` 1 MiB, `uImage` 2 MiB, `root` remainder; passed to NAND initialization | `a9ab2c682e78eacce2690c83cb6f7c7d58896fd97a6785608996b2379dd7c450` |
+| `drivers/mtd/nand/orion_nand.c`, lines670-672 | Names the master `orion_nand`; passes a null parser list and the board fallback to registration | `78a69c66617b1e1aab38fcb47dd6d913e2b000338d0c22be1415e092e49a4173` |
+| `drivers/mtd/mtdpart.c`, lines734-737,767-781 | Default order is `cmdlinepart`, then `ofpart`; the first positive parser result wins | `5e5357c15f648ae548d0d9244a683a315799ffcf4dad8516182a8554dfae7c28` |
+| `drivers/mtd/mtdcore.c`, lines459-477 | Uses fallback entries when parsing returns a nonpositive result, including an error | `619bc7d36a315a8d6f486c33878b1c27e126084765ee66f1a6be6f0129ed977d` |
+| `drivers/mtd/cmdlinepart.c`, lines323-331,370-381 | Matches the master name and registers the `mtdparts=` boot-parameter parser | `f22f675fef3be9dce4fa9478c20f60331c053a8cb68c26b3cc55139a82888458` |
+
+The supplied `.config`, line825, enables `CONFIG_MTD_CMDLINE_PARTS`; its hash is
+listed above. Thus the C table alone is not proof of the stock EX4 partition
+map. Source precedence is established, not the actual boot parameters or
+selection of the final kernel. Build/source parity remains unproven. No binary
+was executed and no device, register or MTD operation was performed.
+
+A future installer must reconcile the profile and boot consumers explicitly,
+not treat a parser fallback as a validated physical layout. See the
+[installation layout review](INSTALLATION-DESIGN.md); no layout is selected.
+
+## GPL dump lengths do not identify a rescue body
+
+The verified outer GPL archive contains 22,007 entries, including 166 nested
+archives. The previously extracted local `firmware/` and `kernel/` directories
+are only a partial view. An outer-name inventory is not a content search of all
+nested packages and cannot prove that every possible producer is absent.
+
+Its `Open_Source_packages/mtd-utils-20080508.tar.gz` is 378,738 bytes, SHA-256
+`4b227e9beb69c45bb1c8105687dffffef08095ebe91a0b253906f02f845b725e`.
+Member `mtd-utils-20080508/nanddump.c` has SHA-256
+`65a1fea3b4eec1966a942ab8a2e9d2befa4ef55ea22b6478644846f9900fed46`.
+Lines257-272 set a physical end address from the requested length and iterate
+within it. Lines283-285 omit bad pages without extending that end address;
+lines334-335 skip OOB output when requested. Thus this source's length option
+does not guarantee that many retained output bytes. A requested 10 MiB window
+cannot establish a 10 MiB file or the size of an inner rescue component.
+
+This is static GPL-source evidence, not an independently reproduced final
+`nanddump` binary. No utility was run and no flash data was read. The fixed
+reader offset below, this source behavior and a normal update archive still do
+not assign the rescue body's components or qualify recovery.
+
 ## Rescue readers are not one format
 
 The final `chk_image` is 9,923 bytes, SHA-256

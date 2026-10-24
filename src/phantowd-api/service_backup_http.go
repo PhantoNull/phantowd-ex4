@@ -90,6 +90,10 @@ func serviceBackupOperation(w http.ResponseWriter, r *http.Request, auth *authCo
 		serviceStateError(w, errServiceStateConflict)
 		return
 	}
+	if c != nil && fileservice.ValidateRetainedNFSBindings(*c, candidate) != nil {
+		writeJSON(w, 422, map[string]string{"error": "invalid_file_service_backup"})
+		return
+	}
 	preview, err := fileservice.Build(candidate.Shares, candidate.NFS)
 	if err != nil {
 		writeJSON(w, 422, map[string]string{"error": "invalid_file_service_backup"})

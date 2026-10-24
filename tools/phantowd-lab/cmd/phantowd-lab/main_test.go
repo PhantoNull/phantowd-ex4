@@ -486,6 +486,54 @@ func TestInspectExtPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectExtPartitionSpaceCountersAndRefusalLeaveImageUnchanged(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		free, reserved uint32
+		code           int
+	}{
+		{name: "full"},
+		{name: "reservation exceeds free", free: 1, reserved: 2},
+		{name: "reservation exceeds total", reserved: 3, code: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := syntheticGPTImageForCommand()
+			const sb = 3*512 + 1024
+			binary.LittleEndian.PutUint32(fixture[sb+8:sb+12], test.reserved)
+			binary.LittleEndian.PutUint32(fixture[sb+12:sb+16], test.free)
+			path := filepath.Join(t.TempDir(), "space.img")
+			if err := os.WriteFile(path, fixture, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			code, err := run([]string{"inspect-ext-partition", path, "1"}, &output)
+			if err != nil || code != test.code {
+				t.Fatalf("code=%d err=%v output=%s", code, err, output.String())
+			}
+			var report extImageReport
+			if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			if report.Filesystem == nil || report.Filesystem.SchemaVersion != 4 || report.WDCompatibility != "unqualified" {
+				t.Fatalf("unexpected report: %s", output.String())
+			}
+			space := report.Filesystem.SpaceCounters
+			if test.code == 2 {
+				if report.Status != "damaged" || space != nil {
+					t.Fatalf("invalid reservation accepted: %s", output.String())
+				}
+			} else if space == nil || space.FreeBytes != uint64(test.free)*1024 ||
+				space.ReservedBytes != uint64(test.reserved)*1024 || space.UnreservedFreeBytes != 0 || space.MigrationCapacityQualified {
+				t.Fatalf("incorrect recorded space: %s", output.String())
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(after, fixture) {
+				t.Fatal("input image changed", err)
+			}
+		})
+	}
+}
+
 func TestInspectMDV12PartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "synthetic-md.img")
 	fixture := syntheticGPTImageForCommand()
@@ -738,7 +786,7 @@ func TestInspectStorageImageSetComparesMDV10ComponentsWithoutWriting(t *testing.
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatalf("invalid JSON report: %v: %s", err, output.String())
 	}
-	if report.SchemaVersion != 3 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
+	if report.SchemaVersion != 5 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
 		report.MutationsPerformed || report.AssemblyPerformed || report.MountPerformed ||
 		len(report.MDV10Comparison.Arrays) != 1 || report.MDV10Comparison.Arrays[0].Status != "metadata-consistent" ||
 		report.MDV10Comparison.Arrays[0].ObservedActiveRoles != 2 {
@@ -1130,7 +1178,7 @@ func TestInspectStorageImageSetRequiresReviewForExtOrphansAndUnknownState(t *tes
 			if test.wantCode == 2 && report.Status != "incomplete" {
 				t.Fatal("recovery or unknown state not held for review", report.Status)
 			}
-			if report.SchemaVersion != 3 || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
+			if report.SchemaVersion != 5 || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
 				t.Fatal("missing versioned complete partition summary")
 			}
 			partition := report.Inputs[0].PartitionObservations[0]

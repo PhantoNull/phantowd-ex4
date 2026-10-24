@@ -3,6 +3,63 @@
 
 # Implementation status
 
+Standalone Linux/QEMU export-root lifetime code has native refusal/privacy guards
+and a disposable ARM fixture for original-lease directory capture: mixed client
+roles, whole-volume paths, missing/symlink refusal, parent-close exclusion and
+sticky review after directory replacement/restoration. The smoke driver requires
+one exact receipt. Real uncertain-close injection, kernel service composition
+and product activation remain unqualified; no root milestone is closed.
+
+## M4 NFS source prerequisites — not root capture
+
+Candidate storage comparison includes the complete original roster fingerprint.
+A fixed guest observes its original mounted lease and refuses a changed owner;
+constructor-error classification is exercised as a model with that lease retained.
+The small rollback helper changes no existing process Owner. Root capture,
+policy/identity retention, kernel backend and product activation remain separate.
+
+## M4 NFS lifetime fresh check — memory-only prerequisite
+
+The QEMU-only Owner checks original inputs around readiness/stopped proof under
+its existing gate and budget. Running failures attempt one independent stop;
+disabled failures never control a service. Both retain review without retry,
+restart or release. Host and mandatory guest cases cover this memory model;
+no product kernel backend, polling supervisor or HTTP activation is added.
+
+## M4 retained NFS export bindings — desired-state prerequisite
+
+Both Linux policy stores reject source changes for NFS IDs retained across two
+revisions, preserving current/pending state on refusal. Client edits remain
+allowed. File-service restore previews check the same bindings against freshly
+loaded state after revision matching; initial previews remain available. The
+editor offers client-rule changes and requires a new export for a new source.
+Preview is not a reservation or service activation. Historical ID tracking and
+actual filesystem identity remain unqualified.
+
+## M10.1 installation layout review — design input only
+
+The EX4 review records candidate layouts without selecting a default, physical
+capacity/wear and state/identity constraints, updater versus boot trust and
+recovery evidence still needed. GPL source distinguishes partition-parser
+precedence from the board fallback table. This is offline documentation, not
+an approved layout, writer or M10.1 qualification; G8 option B remains in force.
+
+## M8.2 offline ext space counters — partial assessment
+
+The host inspector's nested ext schema4 records free/reserved blocks and bytes,
+including 64-bit counters. Zero remains explicit; unavailable observations are
+null. Reservations exceeding filesystem bounds or high counters without their
+feature are refused; subtraction clamps at zero. Migration capacity is always
+unqualified, including clean/checksummed inputs. Host tests exercise synthetic
+regular images and the existing e2fsprogs superblock fixture; no mount, physical
+disk access, allocator admission or complete migration assessment is qualified.
+Image-set schema5 carries the counters by input/partition, with null for
+conflicting ext/MD candidates and no inferred capacity total. Duplicate images
+retain separate recorded observations and still require review.
+Named ext declarations, unclassified feature masks and selected fixed reasons
+now hold a candidate for review. No file contents, encryption keys or external
+journal are read; recognized flags do not establish supported migration.
+
 ## M10 verify-only installation preview — host prerequisite
 
 The host CLI verifies signed metadata, exact model/revision/channel, payloads

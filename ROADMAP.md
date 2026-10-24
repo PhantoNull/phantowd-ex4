@@ -1424,8 +1424,17 @@ storage. No production roster provider or activation path exists.
   proof are required; this request is not a retained service or export authority.
   Prepared NFS closure checks fixed inputs and stopped state before release;
   uncertainty retains review. Memory-only start/stop/close additionally models
-  partial effects and bounded settlement; monitoring and kernel/product lifecycle
-  remain separate and require their own qualification.
+  partial effects and bounded settlement. A serialized fresh memory check now
+  brackets readiness/stopped proof with input checks, retaining review on failure.
+  Polling supervision and kernel/product lifecycle remain separately unqualified.
+  Storage-only candidate comparison and a fixed original-roster lease fixture
+  prepare source capture; constructor-review classification is model-only and
+  grants no authority. Actual root capture and existing process-constructor
+  integration remain separate, not implied by adding the rollback utility.
+  A guarded standalone ARM fixture exercises original-lease root capture, mixed
+  clients, whole-volume paths, missing/symlink refusal, parent-close exclusion
+  and replacement/restoration review. Actual uncertain-close injection and the
+  remaining source-fault qualification are mandatory before any service join.
   A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.
@@ -2561,6 +2570,17 @@ not host/QEMU progress.
   uncertainties, required owner actions, free-space needs and exact unsupported
   features. Explicitly assess ownership/ACLs, shares and iSCSI backing objects.
   A recognizable filesystem does not establish safe assembly or migration.
+  The host ext inspector now records free/reserved counters, including 64-bit
+  values, with explicit zero versus unobserved/null and bounded subtraction.
+  Inconsistent reservations refuse observation. This is superblock evidence,
+  not allocator availability or migration admission; required migration space,
+  ownership/ACLs, configuration retention and exact-model qualification remain
+  open. No filesystem is mounted to produce these counters. The image-set
+  report carries them by input/partition, withholds conflicting ext/MD layers
+  and never infers a cross-image or array capacity total.
+  Feature declarations and unclassified bits also remain explicit; selected
+  constraints require review without inspecting file contents or claiming
+  kernel/product feature support. A quiet review is not migration admission.
 - **M8.3 — Import identity and settings.** Preserve qualified volume/array identity,
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.
@@ -3259,7 +3279,11 @@ fields as verified. This written decision closes neither M7.6b nor M10.
   it must preserve user data and per-unit identity, tolerate data disks being
   absent/replaced, and have bootloader-readable rollback proven on sacrificial
   exact-model hardware before a writer is implemented. See the
-  [EX4 board research status](board/wd/ex4/README.md).
+  [EX4 board research status](board/wd/ex4/README.md) and the
+  [installation layout review](board/wd/ex4/INSTALLATION-DESIGN.md). The latter
+  records candidate tradeoffs, capacity/wear, state/identity and trust contracts;
+  it is not design approval or M10.1 closure. GPL parser precedence also means
+  the board's fallback partition table cannot be taken as the installation map.
 - **M10.2 — Trust and release discovery.** Retrieve immutable GitHub Release
   metadata/assets; verify signatures against pinned trust roots, exact model/
   revision/channel, hashes and version policy before writes. HTTPS alone is

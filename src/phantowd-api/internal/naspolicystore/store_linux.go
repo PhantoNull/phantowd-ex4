@@ -9,6 +9,7 @@ package naspolicystore
 
 import (
 	"context"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 )
@@ -59,5 +60,8 @@ func policyCodec() revisionstore.Codec[naspolicy.Config] {
 		CurrentName: "nas-services.json", PendingName: ".nas-services.pending",
 		MaxBytes: naspolicy.MaxInputBytes, Decode: naspolicy.Decode, Validate: naspolicy.Config.Validate,
 		Revision: func(c naspolicy.Config) uint64 { return c.Revision },
+		ValidateTransition: func(current, next naspolicy.Config) error {
+			return fileservice.ValidateRetainedNFSBindings(current.FileServices, next.FileServices)
+		},
 	}
 }

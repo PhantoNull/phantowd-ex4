@@ -67,6 +67,21 @@ type ExtReport struct {
 	MountPerformed                bool      `json:"mount_performed"`
 	Findings                      []string  `json:"findings"`
 	Limitations                   []string  `json:"limitations"`
+
+	SpaceCounters *ExtSpaceCounters `json:"space_counters"`
+	FeatureReview *ExtFeatureReview `json:"feature_review"`
+}
+
+// ExtSpaceCounters records superblock values, not live allocator availability.
+// UnreservedFreeBytes subtracts the recorded reservation, clamped at zero.
+// Quotas, metadata, recovery, image freshness and migration needs are unqualified.
+type ExtSpaceCounters struct {
+	FreeBlockCount             uint64 `json:"free_block_count"`
+	ReservedBlockCount         uint64 `json:"reserved_block_count"`
+	FreeBytes                  uint64 `json:"free_bytes"`
+	ReservedBytes              uint64 `json:"reserved_bytes"`
+	UnreservedFreeBytes        uint64 `json:"unreserved_free_bytes"`
+	MigrationCapacityQualified bool   `json:"migration_capacity_qualified"`
 }
 
 // InspectExtSuperblock reads the ext-family superblock at the standard
@@ -155,16 +170,20 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 		report.SuperblockChecksumStatus = "not-advertised-or-unknown"
 	}
 	blockCount := uint64(binary.LittleEndian.Uint32(superblock[0x04:0x08]))
+	reservedBlocks := uint64(binary.LittleEndian.Uint32(superblock[0x08:0x0c]))
 	freeBlockCount := uint64(binary.LittleEndian.Uint32(superblock[0x0c:0x10]))
 	if revision == 1 {
 		if report.FeatureIncompat&extIncompat64Bit != 0 {
 			blockCount |= uint64(binary.LittleEndian.Uint32(superblock[0x150:0x154])) << 32
+			reservedBlocks |= uint64(binary.LittleEndian.Uint32(superblock[0x154:0x158])) << 32
 			freeBlockCount |= uint64(binary.LittleEndian.Uint32(superblock[0x158:0x15c])) << 32
-		} else if binary.LittleEndian.Uint32(superblock[0x150:0x154]) != 0 || binary.LittleEndian.Uint32(superblock[0x158:0x15c]) != 0 {
+		} else if binary.LittleEndian.Uint32(superblock[0x150:0x154]) != 0 ||
+			binary.LittleEndian.Uint32(superblock[0x154:0x158]) != 0 ||
+			binary.LittleEndian.Uint32(superblock[0x158:0x15c]) != 0 {
 			return damagedExt(report, "ext high block counters are set without the 64-bit feature"), nil
 		}
 	}
-	if blockCount == 0 || freeBlockCount > blockCount || uint64(firstDataBlock) >= blockCount ||
+	if blockCount == 0 || freeBlockCount > blockCount || reservedBlocks > blockCount || uint64(firstDataBlock) >= blockCount ||
 		blockCount > report.PartitionBytes/blockSize {
 		return damagedExt(report, "ext block counts are inconsistent with the partition bounds"), nil
 	}
@@ -173,7 +192,7 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 	report.FilesystemBytes = blockCount * blockSize
 
 	state := binary.LittleEndian.Uint16(superblock[0x3a:0x3c])
-	// Schema v2 reports the clean bit independently: errors/recovery/unknown
+	// Since schema v2, the clean bit is independent: errors/recovery/unknown
 	// flags must not be hidden by it and the bit is never a health verdict.
 	report.CleanUnmount = state&extStateClean != 0
 	// These are independent recovery indicators, not proof that an orphan
@@ -198,6 +217,22 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 		report.FilesystemIdentityFingerprint = fingerprint("phantowd-ext-uuid-v1\n", superblock[0x68:0x78])
 	}
 	report.Status = ExtStatusCandidate
+	report.FeatureReview = reviewExtFeatures(report.FeatureCompat, report.FeatureIncompat, report.FeatureROCompat)
+	report.FeatureReview.ExternalJournalReference = revision == 1 &&
+		(!allZero(superblock[0xd0:0xe0]) || binary.LittleEndian.Uint32(superblock[0xe4:0xe8]) != 0)
+	if report.FeatureReview.ExternalJournalReference {
+		report.FeatureReview.Reasons = append(report.FeatureReview.Reasons, "external-journal-reference")
+		report.FeatureReview.Required = true
+	}
+	unreservedBlocks := uint64(0)
+	if freeBlockCount > reservedBlocks {
+		unreservedBlocks = freeBlockCount - reservedBlocks
+	}
+	report.SpaceCounters = &ExtSpaceCounters{
+		FreeBlockCount: freeBlockCount, ReservedBlockCount: reservedBlocks,
+		FreeBytes: freeBlockCount * blockSize, ReservedBytes: reservedBlocks * blockSize,
+		UnreservedFreeBytes: unreservedBlocks * blockSize,
+	}
 	report.Findings = []string{"ext-family superblock fields are structurally plausible; filesystem integrity, WD compatibility and mount safety are unqualified"}
 	return report, nil
 }
@@ -209,7 +244,7 @@ func extSuperblockChecksum(superblock []byte) uint32 {
 func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 	return ExtReport{
 		Format:                   "phantowd-ext-superblock-inspection",
-		SchemaVersion:            2,
+		SchemaVersion:            4,
 		Status:                   ExtStatusUnsupported,
 		FilesystemFamily:         "unknown",
 		PartitionFirstLBA:        firstLBA,
@@ -226,6 +261,7 @@ func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 			"the ext superblock checksum is checked only when metadata_csum with CRC32C is advertised; no other filesystem checksums, metadata, or file data are read",
 			"a structurally plausible superblock is not proof of filesystem health, a supported WD layout, or safe mounting",
 			"journal and orphan recovery indicators are separate; orphan chains/files and unknown filesystem state flags are not interpreted or repaired",
+			"space counters are recorded superblock values, not current allocatable or migration capacity; quotas, allocator metadata, recovery and image freshness are unqualified",
 			"nonzero dynamic-revision filesystem UUIDs are replaced with deterministic SHA-256 fingerprints that are not authenticity checks",
 			"input must be a regular local image file; no block device is opened, mounted, or modified",
 		},

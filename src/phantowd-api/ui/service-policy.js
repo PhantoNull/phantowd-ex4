@@ -308,8 +308,7 @@ function buildServiceEdit(baseline, action, target, values) {
     const e = c.nfs.exports.find((e) => e.id === target.slice(4));
     if (!e) throw new Error("Selected NFS export is no longer in the loaded revision.");
     if (action === "nfs-properties") {
-      summary = `Change NFS export ${e.id} to ${values.path} on filesystem ${values.uuid}. Retain export UUID and all ${e.clients.length} client rules. SMB paths are unchanged; no files are moved.`;
-      e.volume_id = volume(); e.relative_path = values.path;
+      throw new Error("To change an NFS export's source, create a new export. Client rules can still be edited.");
     } else if (action === "nfs-remove") {
       c.nfs.exports = c.nfs.exports.filter((other) => other.id !== e.id);
       summary = `Remove only NFS export ${e.id}. SMB definitions, volumes and files are retained.`;
@@ -357,7 +356,7 @@ function selectServiceTarget() {
   if (!item) return;
   byId("policy-uuid").value = c.shares.volumes.find((v) => v.id === item.volume_id).filesystem_uuid;
   byId("policy-path").value = item.relative_path;
-  byId("service-action").value = smb ? "smb-properties" : "nfs-properties";
+  byId("service-action").value = smb ? "smb-properties" : "nfs-client-upsert";
   byId("policy-nfs-enabled").value = smb ? "off" : "on";
   if (smb) {
     byId("policy-name").value = item.name;

@@ -126,6 +126,11 @@ func TestInspectExtSuperblockVerifiesIndependentE2fsprogsChecksumFixture(t *test
 	if err != nil || report.Status != ExtStatusCandidate || report.SuperblockChecksumStatus != "valid" {
 		t.Fatalf("independent e2fsprogs metadata checksum failed: report=%+v err=%v", report, err)
 	}
+	if report.SpaceCounters == nil || report.SpaceCounters.FreeBytes != 6574*1024 ||
+		report.SpaceCounters.ReservedBytes != 0 || report.SpaceCounters.UnreservedFreeBytes != 6574*1024 ||
+		report.SpaceCounters.MigrationCapacityQualified {
+		t.Fatalf("independent e2fsprogs space fields differ: %+v", report.SpaceCounters)
+	}
 
 	corrupted := append([]byte(nil), image...)
 	corrupted[extSuperblockOffset+0x200] ^= 1
@@ -246,7 +251,7 @@ func TestInspectExtSuperblockOrphanIndicatorsAreBoundedAndIndependent(t *testing
 			original := append([]byte(nil), sb...)
 			reader := fixedMetadataReader{offset: 40*logicalSectorBytes + extSuperblockOffset, data: sb}
 			report, err := InspectExtSuperblock(reader, 128*logicalSectorBytes, 40, 49)
-			if err != nil || report.Status != ExtStatusCandidate || report.SchemaVersion != 2 ||
+			if err != nil || report.Status != ExtStatusCandidate || report.SchemaVersion != 4 ||
 				report.SuperblockChecksumStatus != "valid" || report.NeedsOrphanRecovery != test.wantOrphan ||
 				report.NeedsJournalRecovery != test.wantJournal || report.BlockDeviceOpened || report.MutationsPerformed || report.MountPerformed {
 				t.Fatalf("wrong bounded recovery observation: %+v err=%v", report, err)

@@ -276,6 +276,18 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'QEMU running NFS lifetime proof missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true input_loss_review=true stop_before_release=true memory_only=true kernel_backend=false restart=false activation=false scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Missing checked NFS memory lifetime proof' >&2
+            exit 1
+        fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_SOURCE_PREREQUISITES_READY original_roster=true fresh_storage=true changed_owner_refused=true constructor_review=model cleanup_not_called=true lease_retained=true root_capture=false kernel_backend=false activation=false scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Missing NFS source prerequisite proof' >&2
+            exit 1
+        fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_SOURCE_ROOTS_READY roots=2 roster=original_lease mixed_roles=true whole_volume=true absent_refused=true symlink_refused=true replacement_review=true restored_refused=true parent_close_blocked=true capture_writes=false kernel_backend=false service=false scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Missing actual standalone NFS root-capture proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
             exit 1
