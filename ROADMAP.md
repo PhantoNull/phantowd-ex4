@@ -1647,6 +1647,11 @@ storage. No production roster provider or activation path exists.
   children do not simulate an unexpected crash or forced stop of `smbd` itself.
   This is still not an SMB/NFS service manager, persistent service state,
   configuration reload, last-known-good transaction, or product startup.
+  A separate host-only NFS userspace inventory now joins six fixed programs
+  from one root with bounded/deduplicated dependencies and no partial refusal.
+  This is static build evidence, not a service profile: kernel control, helpers,
+  mutable NSM state/locking recovery, retained inputs and service activation
+  remain required before the managed NFS join.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

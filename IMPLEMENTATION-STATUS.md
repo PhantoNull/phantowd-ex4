@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## M4 NFS userspace inventory — static prerequisite
+
+The host tool derives one bounded six-entry NFS userspace dependency union,
+including NFSD control, statd and sm-notify, from a single extracted inventory.
+Shared objects/aliases are deduplicated; refusal exposes no partial object set.
+Model and synthetic-file CLI tests keep runtime/execution authority false.
+This does not qualify kernel control, helpers, locking/recovery, retained runtime
+inputs or a managed/product NFS service.
+
 ## M4 retained NAS planning — data prerequisite
 
 The internal planner reads the original policy lease, derives under retained
