@@ -259,6 +259,13 @@ fixed export file, and confirms the prior table is restored. That integration
 is still bound only to synthetic fixture inputs; it does not mint a product
 roster, persist daemon configuration or activate a product service.
 
+`BuildFromLeasedNASOwners` reads the complete desired NAS document from the
+original policy lease, derives with retained identity/storage and rechecks the
+same lease. It accepts no replacement configuration and acquires/releases no
+authority. Policy samples bracket the storage-to-identity lock order; they are
+not atomic three-owner admission or proof of an applied revision. Native refusal
+and fixed guest cases cover this data boundary; activation remains separate.
+
 See the [implementation](plan.go), its
 [synthetic ARMv5 fixture](../../file_service_plan_qemu.go), and
 [M4 in the roadmap](../../../../ROADMAP.md#m4-supervised-smb-and-nfs).

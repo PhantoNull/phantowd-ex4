@@ -244,6 +244,9 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 		if err := exerciseQEMUNFSSourceRoots(ctx, config, owner, mountedSet); err != nil {
 			return err
 		}
+		if err := exerciseQEMUNFSLeasedPlan(ctx, config, owner, mountedSet, plan); err != nil {
+			return err
+		}
 		return exerciseQEMUOwnerSambaNSSPlan(ctx, owner, mountedSet, account)
 	})
 }

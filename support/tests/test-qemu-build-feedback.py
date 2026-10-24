@@ -165,6 +165,41 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertLess(board.index(check),
                         make_target_position(board, "linux-configure"))
 
+    def test_leased_nas_plan_requires_exact_quiet_receipt(self):
+        marker = (
+            "PHANTOWD_NFS_LEASED_PLAN_READY policy=original_lease identity=original_lease "
+            "storage=mounted_owner complete_candidate=true mutation_blocked=true "
+            "released_refused=true planner_writes=false root_capture=false activation=false "
+            "scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        cases = [("LF", marker + "\n", True), ("CRLF", marker + "\r\n", True),
+                 ("missing", "", False), ("duplicate", (marker + "\n") * 2, False),
+                 ("prefixed", "prefix " + marker + "\n", False)]
+        cases += [(field, marker.replace(field, replacement) + "\n", False)
+                  for field, replacement in (
+                      ("policy=original_lease", "policy=caller_snapshot"),
+                      ("identity=original_lease", "identity=caller_snapshot"),
+                      ("complete_candidate=true", "complete_candidate=false"),
+                      ("mutation_blocked=true", "mutation_blocked=false"),
+                      ("released_refused=true", "released_refused=false"),
+                      ("planner_writes=false", "planner_writes=true"),
+                      ("root_capture=false", "root_capture=true"),
+                      ("activation=false", "activation=true"),
+                      ("scope=disposable-qemu-only", "scope=product"))]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in cases:
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3)
+                    self.assertEqual(result.returncode == 0, accepted)
+                    self.assertEqual(result.stdout, b"")
+
     def test_nfs_source_roots_require_exact_quiet_receipt(self):
         marker = (
             "PHANTOWD_NFS_SOURCE_ROOTS_READY roots=2 roster=original_lease "

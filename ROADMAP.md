@@ -1429,7 +1429,9 @@ storage. No production roster provider or activation path exists.
   Polling supervision and kernel/product lifecycle remain separately unqualified.
   Storage-only candidate comparison and a fixed original-roster lease fixture
   prepare source capture; constructor-review classification is model-only and
-  grants no authority. Actual root capture and existing process-constructor
+  grants no authority. A leased-NAS planner now reads original policy and retained
+  identity/storage, then rechecks policy; this is data, not atomic service admission.
+  Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed
   clients, whole-volume paths, missing/symlink refusal, parent-close exclusion
