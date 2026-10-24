@@ -36,6 +36,13 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 3 && os.Args[1] == "nfs-code" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nfsCodeFixture(os.Args[2])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "NFS code inputs:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime" || os.Args[1] == "server-capture-runtime" || os.Args[1] == "server-capture-open") && os.Getuid() == 0 && os.Geteuid() == 0 {
 		files, aliases, err := inputs()
 		if err != nil {

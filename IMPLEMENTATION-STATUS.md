@@ -3,13 +3,24 @@
 
 # Implementation status
 
+## M4 NFS generated-input fixture — ARMv5 code retention only
+
+A disposable networkless guest consumes the actual six-entry build report with
+a separate root inventory, stages its code into read-only tmpfs and revalidates
+retained references after closing the duplicated caller input. Normal release,
+released-input refusal and unchanged descriptor count pass locally: 12 files,
+3 aliases, 2,680,696 bytes; all seven focused ARM test groups pass without skips.
+Own-head hosted integration remains required. No NFS program, RPC, kernel NFSD,
+data export, configuration/state owner or product service starts. Construction/
+close uncertainty and complete fault coverage remain unqualified.
+
 ## M4 NFS build-report consumer — inert QEMU prerequisite
 
 The internal consumer requires the complete six-entry report and a separately
 supplied expected root digest. It rejects partial/ambiguous metadata and applies
 whole-set file, binding and byte bounds before returning the existing code Plan.
 Focused normal/race tests run before the ARM build. Unsigned report acceptance
-is not provenance, retained code, a generated-image hook or service activation;
+alone is not provenance, retained code or service activation;
 configuration/state/kernel lifecycle and the managed NFS join remain absent.
 
 ## M4 NFS userspace inventory — static prerequisite

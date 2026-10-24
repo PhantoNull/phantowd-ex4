@@ -1656,6 +1656,11 @@ storage. No production roster provider or activation path exists.
   supplied expected root, fixes six entries and reuses the existing code Plan.
   Focused normal/race tests precede the ARM build; unsigned report acceptance
   does not supply trusted provenance, retained code or an enabled service.
+  A dedicated networkless ARM fixture now consumes the generated report,
+  stages a separate read-only code tree, rechecks retained references after
+  caller-duplicate closure and verifies normal release plus descriptor census.
+  Local focused checks pass; own-head integration and construction/close faults
+  remain open. It executes no NFS program and owns no kernel or data service.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
