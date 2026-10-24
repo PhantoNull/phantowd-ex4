@@ -271,6 +271,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := service.Start(ctx); err != nil {
 			return fmt.Errorf("planned same-authority daemon start: %w", err)
 		}
+		phase = "startup-observe"
 		live, err := runtime.ObservePlannedStopQEMU(ctx)
 		if err != nil || live.DaemonStopped || !live.InputsRetained {
 			return errors.Join(errors.New("planned live daemon supplied stopped or released-input evidence"), err)
@@ -278,10 +279,12 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if legacy, err := runtime.ObserveNativeStopQEMU(ctx); err != nil || legacy.DaemonStopped || !legacy.ClientsStopped || !legacy.InputsRetained {
 			return errors.Join(errors.New("planned live role lost legacy two-client observation"), err)
 		}
+		phase = "startup-retention"
 		if !errors.Is(service.Start(ctx), runtimebundle.ErrReviewRequired) ||
 			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 			return errors.New("planned live service retried or released authority")
 		}
+		phase = "startup-recheck"
 		if err := service.Observe(ctx); err != nil {
 			return err
 		}

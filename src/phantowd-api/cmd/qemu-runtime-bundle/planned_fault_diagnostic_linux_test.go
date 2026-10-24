@@ -138,6 +138,21 @@ func TestPlannedFaultFailureDiagnosticsAreFixedRedactedAndNotProof(t *testing.T)
 	}
 }
 
+func TestPlannedStartupStagesRemainDistinctThroughSubprocessDiagnostics(t *testing.T) {
+	const proof = "exact-fixed-child-proof\n"
+	for _, phase := range []string{"startup-observe", "startup-retention", "startup-recheck", "held-startup"} {
+		want := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=false review=true scope=diagnostic-only\n", phase)
+		row := plannedFaultFailureDiagnosticQEMU(phase, runtimebundle.ErrReviewRequired)
+		got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-child-error"), row, proof)
+		if row != want || !strings.HasSuffix(got, want) || strings.Contains(got, "private-child-error") {
+			t.Errorf("fixed startup stage did not survive redacted relay: %s", phase)
+		}
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "proof_match=false") {
+			t.Errorf("diagnostic stage became successful child proof: %s", phase)
+		}
+	}
+}
+
 func TestPlannedFaultSubprocessDiagnosticsNeverRelayRawChildOutput(t *testing.T) {
 	const proof = "exact-fixed-child-proof\n"
 	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, proof, proof); got != "" {

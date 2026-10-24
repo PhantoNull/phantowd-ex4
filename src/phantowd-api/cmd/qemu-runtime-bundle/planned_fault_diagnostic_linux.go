@@ -170,6 +170,8 @@ func validPlannedDataDiagnosticQEMU(fields []string) bool {
 
 func validPlannedFaultPhaseQEMU(phase string) bool {
 	switch phase {
+	case "startup-observe", "startup-retention", "startup-recheck", "held-startup":
+		return true
 	case "construction", "storage", "identity-policy", "handoff", "configuration", "admission", "startup", "data", "supervision", "initial", "cover", "quarantine", "retention", "restoration", "review-close":
 		return true
 	default:

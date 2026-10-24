@@ -11,6 +11,10 @@ the complete candidate, blocked publication and released-reference refusal.
 These samples are not atomic three-owner admission, an applied revision,
 export-root capture or service activation.
 
+Existing QEMU startup diagnostics distinguish initial start, observation,
+retention, recheck and held-client preparation. Fixed-label host controls are
+separate from full integration qualification; no timing or acceptance changes.
+
 Standalone Linux/QEMU export-root lifetime code has native refusal/privacy guards
 and a disposable ARM fixture for original-lease directory capture: mixed client
 roles, whole-volume paths, missing/symlink refusal, parent-close exclusion and
