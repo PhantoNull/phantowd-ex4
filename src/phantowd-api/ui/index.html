@@ -280,12 +280,11 @@
                 <option value="smb-grant-remove">SMB: remove the entered user's grant</option>
                 <option value="smb-remove">SMB: remove the selected share definition</option>
                 <option value="nfs-add">NFS: add an independent export from the form</option>
-                <option value="nfs-properties">NFS: change volume or folder, retain export UUID</option>
                 <option value="nfs-client-upsert">NFS: add/update the entered CIDR's rule</option>
                 <option value="nfs-client-remove">NFS: remove the entered CIDR's rule</option>
                 <option value="nfs-remove">NFS: remove the selected export definition</option>
               </select></label>
-              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
+              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. To change an NFS volume or folder, create a new export. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
               <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
             </fieldset>
           </div>
