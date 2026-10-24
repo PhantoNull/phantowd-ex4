@@ -113,6 +113,32 @@ case "$1" in
             exit 1
         fi
 
+        # All old policy clients are unmounted. Hand the disposable guest's
+        # NFSD domain to the retained Go controller, never a parallel shell start.
+        stock_rpcbind=$(pidof rpcbind)
+        case "$stock_rpcbind" in
+            ''|*[!0-9]*) echo 'PHANTOWD_QEMU_ERROR nfs-stock-rpcbind-identity'; exit 1 ;;
+        esac
+        /etc/init.d/S60nfs stop
+        # The inherited init script's SIGTERM does not stop kernel NFSD threads.
+        # This stops only the stock backend; every subsequent start/stop belongs
+        # to ControllerQEMU. The rpcbind pidfile script also reports false OK.
+        /usr/sbin/rpc.nfsd 0 || exit 1
+        kill "$stock_rpcbind" || exit 1
+        nfs_stop_attempt=0
+        while pidof rpcbind rpc.mountd rpc.statd nfsd >/dev/null 2>&1; do
+            nfs_stop_attempt=$((nfs_stop_attempt + 1))
+            if [ "$nfs_stop_attempt" -ge 10 ]; then
+                echo 'PHANTOWD_QEMU_ERROR nfs-stock-stop-not-settled'
+                exit 1
+            fi
+            sleep 1
+        done
+        if ! /usr/bin/phantowd-api --qemu-nfs-test=kernel-activation; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-retained-kernel-activation-failed'
+            exit 1
+        fi
+
         if pidof nmbd >/dev/null 2>&1; then
             echo 'PHANTOWD_QEMU_ERROR smb-netbios-daemon-running'
             exit 1
