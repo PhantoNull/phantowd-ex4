@@ -3,6 +3,10 @@
 
 # Implementation status
 
+Standalone Linux/QEMU export-root lifetime code now exists with native refusal,
+privacy and model-only uncertain-close guards. Actual ARM capture/fault cases
+remain unqualified; this is not an enabled service or completed root milestone.
+
 ## M4 NFS source prerequisites — not root capture
 
 Candidate storage comparison includes the complete original roster fingerprint.

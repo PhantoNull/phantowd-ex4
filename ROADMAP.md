@@ -1431,6 +1431,8 @@ storage. No production roster provider or activation path exists.
   prepare source capture; constructor-review classification is model-only and
   grants no authority. Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
+  Standalone root lifetime code/native refusals exist; actual ARM capture and
+  source-fault guest qualification remain mandatory before any service join.
   A local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.
