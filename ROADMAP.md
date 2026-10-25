@@ -1381,6 +1381,14 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
+Local controlled-restart coverage now exercises two complete retained NFSD
+lifetimes with real NFSv3/TCP mounts, fsynced writes and previous-cycle byte
+checks. Verified closure releases the original process reservation; old closed
+handles refuse without poisoning a later lifetime. Review/uncertain disposal
+retains the reservation. The full local baseline passes; own-head hosted CI is
+still required. This is a disposable-guest kernel/component result, not product
+activation, crash recovery, external-client or M4.6 persistence qualification.
+
 Runtime prerequisite evidence now includes a disposable actual libatomic
 ARM926 dispatch fixture: versioned exported calls, four widths, sequential
 semantics/upper-64-bit CAS/overflow and bounded two-thread increments, with
