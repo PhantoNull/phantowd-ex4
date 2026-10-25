@@ -23,8 +23,24 @@ import (
 // The retained controller, not rpc.nfsd or this harness, owns NFSD's listener
 // and thread transactions. Helpers and the actual client are tested around it.
 func runQEMUNFSKernelActivation() error {
+	// Two explicit lifetimes, never a retry after failure. The second client
+	// must read bytes written before the first verified stop and close.
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	var previous *nfskernel.ControllerQEMU
+	for cycle := 1; cycle <= 2; cycle++ {
+		if err := runQEMUNFSKernelCycle(ctx, cycle, &previous); err != nil {
+			return fmt.Errorf("NFS cycle=%d: %w", cycle, err)
+		}
+		fmt.Printf("PHANTOWD_NFS_KERNEL_CYCLE_DONE cycle=%d\n", cycle)
+	}
+	fmt.Println("PHANTOWD_NFS_KERNEL_RESTART_READY cycles=2 kernel_backend=true activation=true persisted_bytes=true closed_handles=inert teardown=clean scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_KERNEL_READY kernel_backend=true activation=true protocol=nfs3 transport=tcp read=true write=true teardown=clean scope=qemu-loopback-only")
+	return nil
+}
+
+func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU) error {
+	const payload = "retained-controller-nfs3-tcp-write\n"
 	k, err := nfskernel.OpenSmokeQEMU(ctx)
 	if err != nil {
 		return fmt.Errorf("kernel-open: %w", err)
@@ -44,6 +60,14 @@ func runQEMUNFSKernelActivation() error {
 		}
 		fmt.Println("PHANTOWD_NFS_KERNEL_PHASE phase=" + label)
 		return nil
+	}
+	if *previous != nil {
+		old := *previous
+		for _, call := range []func(context.Context) error{old.Start, old.Stop, old.Close, old.CheckRunning, old.CheckStopped, old.CheckPreparedQEMU} {
+			if !errors.Is(call(ctx), nfskernel.ErrRefused) {
+				return phase("closed-handle", errors.New("closed controller admitted an operation"))
+			}
+		}
 	}
 	if err := phase("prepared", k.CheckPreparedQEMU(ctx)); err != nil {
 		return err
@@ -150,8 +174,14 @@ func runQEMUNFSKernelActivation() error {
 	if err != nil || !bytes.Equal(data, []byte("phantowd-qemu-nfs-smoke-v1\n")) {
 		return phase("client-read", errors.New("server marker read differs"))
 	}
-	const payload = "retained-controller-nfs3-tcp-write\n"
-	f, err := os.OpenFile(client+"/controller-write", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if cycle == 2 {
+		data, err := os.ReadFile(client + "/controller-write-1")
+		if err != nil || !bytes.Equal(data, []byte(payload)) {
+			return phase("previous-cycle-bytes", errors.New("previous client write did not survive service restart"))
+		}
+	}
+	writeName := fmt.Sprintf("/controller-write-%d", cycle)
+	f, err := os.OpenFile(client+writeName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return phase("client-write-open", err)
 	}
@@ -160,7 +190,7 @@ func runQEMUNFSKernelActivation() error {
 	if n != len(payload) || writeErr != nil || syncErr != nil || closeErr != nil {
 		return phase("client-write-sync-close", errors.Join(writeErr, syncErr, closeErr, errors.New("write completion uncertain")))
 	}
-	for _, path := range []string{client + "/controller-write", server + "/controller-write"} {
+	for _, path := range []string{client + writeName, server + writeName} {
 		data, err := os.ReadFile(path)
 		if err != nil || !bytes.Equal(data, []byte(payload)) {
 			return phase("client-server-bytes", errors.New("written bytes differ"))
@@ -194,6 +224,6 @@ func runQEMUNFSKernelActivation() error {
 	if err := phase("controller-close", k.Close(ctx)); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_NFS_KERNEL_READY kernel_backend=true activation=true protocol=nfs3 transport=tcp read=true write=true teardown=clean scope=qemu-loopback-only")
+	*previous = k
 	return nil
 }
