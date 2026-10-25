@@ -159,7 +159,13 @@ func (k *ControllerQEMU) enter(ctx context.Context, cleanup bool) error {
 		return ErrRefused
 	}
 	runtime.LockOSThread()
-	if k.closed || k.review && !cleanup || k.check(ctx) != nil {
+	// A fully closed lifetime has no authority left to retain or poison a
+	// later lifetime. Refuse stale calls without adding global review.
+	if k.closed {
+		k.leave()
+		return ErrRefused
+	}
+	if k.review && !cleanup || k.check(ctx) != nil {
 		k.retain()
 		k.leave()
 		return ErrRefused
@@ -329,7 +335,16 @@ func (k *ControllerQEMU) Close(ctx context.Context) error {
 			return k.retain()
 		}
 	}
+	// Release only after verified stop and every original reference closed.
+	// Failed/uncertain disposal keeps the reservation and sticky review.
+	kernelRetention.Lock()
+	if kernelRetention.active != k || len(kernelRetention.objects) != 0 {
+		kernelRetention.Unlock()
+		return k.retain()
+	}
 	k.closed = true
+	kernelRetention.active = nil
+	kernelRetention.Unlock()
 	return nil
 }
 

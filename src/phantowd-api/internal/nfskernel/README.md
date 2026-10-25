@@ -36,9 +36,16 @@ children before emitting `kernel_backend=true activation=true teardown=clean`.
 The shell does not implement a parallel NFSD startup. Its `rpc.nfsd 0` call
 settles only the inherited stock service before controller admission.
 
+The smoke performs two fixed complete lifetimes, not a retry: a fresh controller
+and client mount read the previous client's fsynced bytes, then write and verify
+new bytes. Only verified stop and closure of every original reference release
+the process reservation. Uncertain disposal retains it. Calls through the old
+closed handle refuse without poisoning the new lifetime. Both cycles must
+finish before the restart assertion is emitted; failure never starts a retry.
+
 The fixture's soft/nolock mount is bounded disposable testing, not product
 mount policy or NLM/NSM qualification. It does not qualify production code,
-configuration/state owners, real clients, restart/recovery, pending-I/O faults,
+configuration/state owners, external clients, crash recovery, pending-I/O faults,
 complete kernel export/client census, physical EX4 hardware or installation.
 Historical optional callers from the source branch are not ported or claimed
 qualified here. Existing socket/profile/refusal tests accompany the port.
