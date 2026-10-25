@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,11 +16,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
@@ -30,18 +33,22 @@ import (
 
 const ownerNFSRoot = "/srv/phantowd/volumes/qemu-plan/nfs-owner"
 const ownerNFSClient = "/run/phantowd-nfs-owner-client"
+const ownerNFSPolicy = "/run/phantowd-nfs-owner-policy"
 
-// Fixed disposable-guest composition only. These are original retained inputs,
+// Fixed disposable-guest composition only, with original retained inputs.
 type ownerNFSQEMU struct {
 	identity      *identityowner.Owner
 	identityLease *identityowner.FileServiceLease
 	storage       *mountowner.MountedVolumeSet
 	storageLease  *mountowner.MountedVolumeSetLease
 	roots         *nfsowner.ExportRootsQEMU
-	config        fileservice.Config
+	policySeed    *naspolicystore.Store
+	policyOwner   *naspolicystore.Owner
+	policyLease   *naspolicystore.Lease
 	kernel        *nfskernel.ControllerQEMU
 	helpers       [2]*ownerNFSChild
 	options       string
+	phase         string
 	uid, gid      uint32
 	exported      bool
 }
@@ -57,7 +64,9 @@ type ownerNFSReview struct {
 	cause   error
 }
 
-func (*ownerNFSReview) Error() string   { return "NFS activation retains original sources for review" }
+func (r *ownerNFSReview) Error() string {
+	return "NFS activation retains original sources for review: phase=" + r.backend.phase
+}
 func (r *ownerNFSReview) Unwrap() error { return r.cause }
 
 func runQEMUNFSOwnerActivation() error {
@@ -67,7 +76,7 @@ func runQEMUNFSOwnerActivation() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
-		b := &ownerNFSQEMU{storage: set}
+		b := &ownerNFSQEMU{storage: set, phase: "prepare"}
 		var owner *nfsowner.Owner
 		defer func() {
 			// No release or retry after uncertainty. The returned review object
@@ -102,19 +111,33 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil {
 			return err
 		}
-		b.config = emptyQEMUFileServiceConfig()
-		b.config.Shares.Volumes = []shareconfig.Volume{{ID: qemuPlannerVolumeID, FilesystemUUID: qemuNFSVolumeUUID}}
-		b.config.NFS.Exports = []nfsconfig.Export{{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: qemuPlannerVolumeID, RelativePath: "nfs-owner",
+		config := emptyQEMUFileServiceConfig()
+		config.Shares.Volumes = []shareconfig.Volume{{ID: qemuPlannerVolumeID, FilesystemUUID: qemuNFSVolumeUUID}}
+		config.NFS.Exports = []nfsconfig.Export{{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: qemuPlannerVolumeID, RelativePath: "nfs-owner",
 			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: b.uid, AnonymousGID: b.gid, Security: "sys"}}}}
-		plan, err := fileserviceplan.BuildFromOwners(ctx, b.config, 0, b.identity, set)
+		document := naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: 1, FileServices: config,
+			ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
+				Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
+		if err := b.retainPolicy(ctx, document); err != nil {
+			return err
+		}
+		before, err := os.ReadFile(ownerNFSPolicy + "/nas-services.json")
+		if err != nil {
+			return err
+		}
+		identity, err := b.identity.FileServiceSnapshot(ctx)
+		if err != nil {
+			return err
+		}
+		b.identityLease, err = b.identity.RetainFileServiceSnapshot(ctx, identity.Fingerprint)
+		if err != nil {
+			return err
+		}
+		plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, set)
 		if err != nil {
 			return err
 		}
 		candidate, err := plan.NFSv3TCPCandidate()
-		if err != nil {
-			return err
-		}
-		b.identityLease, err = b.identity.RetainFileServiceSnapshot(ctx, plan.Freshness().IdentityFingerprint)
 		if err != nil {
 			return err
 		}
@@ -146,9 +169,11 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil {
 			return err
 		}
+		b.phase = "start"
 		if err := owner.Start(ctx); err != nil {
 			return fmt.Errorf("owner-start: %w", err)
 		}
+		b.phase = "client"
 		if err := os.Mkdir(ownerNFSClient, 0700); err != nil {
 			return err
 		}
@@ -175,26 +200,97 @@ func runQEMUNFSOwnerActivation() error {
 		if _, err := os.Lstat(ownerNFSRoot + "/denied"); !errors.Is(err, os.ErrNotExist) {
 			return errors.New("denied NFS write changed storage")
 		}
+		b.phase = "policy-update-held"
+		next, err := b.policyLease.Snapshot(ctx)
+		if err != nil || len(next.FileServices.NFS.Exports) != 1 || len(next.FileServices.NFS.Exports[0].Clients) != 1 {
+			return errors.New("NFS desired-policy claim lost its original export")
+		}
+		next.Revision++
+		next.FileServices.Revision++
+		next.FileServices.Shares.Revision++
+		next.FileServices.NFS.Revision++
+		next.FileServices.NFS.VolumeRevision++
+		next.ISCSI.Revision++
+		next.ISCSI.VolumeRevision++
+		next.FileServices.NFS.Exports[0].Clients[0].Access = "rw"
+		if next.Validate() != nil || !errors.Is(b.policyOwner.Commit(ctx, document.Revision, next), naspolicystore.ErrBusy) {
+			return errors.New("running NFS did not exclude a valid desired-policy update")
+		}
 		if err := owner.Check(ctx); err != nil {
 			return fmt.Errorf("owner-check: %w", err)
 		}
+		b.phase = "stop"
 		if err := b.command(ctx, "/bin/umount", ownerNFSClient); err != nil {
 			return err
 		}
 		if err := owner.Stop(ctx); err != nil {
 			return fmt.Errorf("owner-stop: %w", err)
 		}
-		return owner.Close(ctx)
+		if b.policyLease.Verify(ctx) != nil || !errors.Is(b.policyOwner.Commit(ctx, document.Revision, next), naspolicystore.ErrBusy) {
+			return errors.New("NFS stop released desired-policy authority before close")
+		}
+		b.phase = "close"
+		if err := owner.Close(ctx); err != nil {
+			return err
+		}
+		if !errors.Is(b.policyLease.Verify(ctx), naspolicystore.ErrClosed) {
+			return errors.New("closed NFS retained a live desired-policy claim")
+		}
+		after, err := os.ReadFile(ownerNFSPolicy + "/nas-services.json")
+		if err != nil || !bytes.Equal(before, after) {
+			return errors.New("NFS activation or refused updates changed desired policy")
+		}
+		b.phase = "policy-update-after-close"
+		if err := b.policyOwner.Commit(ctx, document.Revision, next); err != nil {
+			return fmt.Errorf("closed NFS did not release desired-policy mutation: %w", err)
+		}
+		updated, err := b.policyOwner.Snapshot(ctx)
+		if err != nil || updated.Revision != next.Revision || len(updated.FileServices.NFS.Exports) != 1 ||
+			len(updated.FileServices.NFS.Exports[0].Clients) != 1 || updated.FileServices.NFS.Exports[0].Clients[0].Access != "rw" {
+			return errors.New("desired-policy update after NFS close was not observed")
+		}
+		return b.policyOwner.Close()
 	})
 	if err != nil {
 		return err
 	}
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	return nil
 }
 
+// Bootstrap only this synthetic guest document through the existing store.
+// Uncertain setup retains the original writer. Consumer operations receive
+// neither this document nor a replacement configuration/backend per call.
+func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Config) error {
+	if err := document.Validate(); err != nil {
+		return err
+	}
+	if err := os.Mkdir(ownerNFSPolicy, 0700); err != nil {
+		return err
+	}
+	var err error
+	b.policySeed, err = naspolicystore.Open(ownerNFSPolicy)
+	if err != nil {
+		return err
+	}
+	if err := b.policySeed.Commit(0, document); err != nil {
+		return err
+	}
+	if err := b.policySeed.Close(); err != nil {
+		return err
+	}
+	b.policySeed = nil
+	b.policyOwner, err = naspolicystore.OpenOwner(ownerNFSPolicy)
+	if err != nil {
+		return err
+	}
+	b.policyLease, err = b.policyOwner.Acquire(ctx, document.Revision)
+	return err
+}
+
 func (b *ownerNFSQEMU) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
-	plan, err := fileserviceplan.BuildFromRetainedOwners(ctx, b.config, 0, b.identityLease, b.storage)
+	plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, b.storage)
 	if err != nil {
 		return err
 	}
@@ -316,7 +412,7 @@ func (b *ownerNFSQEMU) Release(ctx context.Context) error {
 			return err
 		}
 	}
-	for _, close := range []func() error{b.storageLease.Close, b.identityLease.Release, b.identity.Close} {
+	for _, close := range []func() error{b.storageLease.Close, b.identityLease.Release, b.identity.Close, b.policyLease.Release} {
 		if err := close(); err != nil {
 			return err
 		}

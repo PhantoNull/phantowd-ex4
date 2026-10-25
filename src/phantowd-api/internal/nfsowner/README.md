@@ -1,6 +1,6 @@
 # Experimental NFS lifetime (QEMU only)
 
-Captures one typed candidate and fixed trusted memory backend without I/O.
+Construction captures one typed candidate and fixed trusted backend without I/O.
 Close serializes input/stopped checks before release; uncertainty retains review
 without retry. Copied/absent handles refuse. Observe is historical, not health.
 The five-second deadline is cooperative: a backend must honor its context.
@@ -13,7 +13,17 @@ disabled memory lifetimes. Failure retains review; only a running lifetime
 attempts one independent stop. Restoration cannot retry cleanup or release.
 The guest checks healthy and input-loss lifetimes; the smoke driver requires one
 exact receipt. These sequential observations are not continuous health.
-The fixed guest adapter joins retained identity/storage to real NFSD.
+The fixed guest adapter joins original NAS-policy, identity and storage leases
+to real NFSD. Both initial planning and running checks read the same policy
+claim; operations cannot substitute a configuration. A valid desired update is
+refused while the server runs and after stop until verified close releases it.
+The client reads over NFSv3/TCP and gets server-side EROFS on creation. Activation
+and refused updates leave the stored document unchanged; the parent can publish
+a new desired revision after NFS closes. The consumer releases its policy claim,
+while the parent owns the shared policy authority and closes it after that test.
+The policy is synthetic guest state: this does not qualify product boot
+provisioning or this composition across reboots.
+Bracketed owner observations do not establish atomic three-owner admission.
 No polling supervisor, HTTP or product activation exists.
 
 Linux/QEMU ExportRootsQEMU separately captures original-lease directory metadata
@@ -21,5 +31,6 @@ and retains uncertain construction/closure. Native refusal/privacy/model tests
 and a guarded ARM fixture cover mixed roots, whole-volume capture, missing and
 symlink refusal, parent-close exclusion and replacement/restoration review.
 Known disposal after path drift is not uncertain-close recovery; real close
-failure injection and the complete fault matrix remain unqualified. No descriptor
-getter, data access or service join is supplied.
+failure injection and the complete fault matrix remain unqualified. Source
+capture exposes no descriptor getter; the fixed guest adapter owns protocol
+activation separately.
