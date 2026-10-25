@@ -45,6 +45,7 @@ type ownerNFSQEMU struct {
 	policySeed    *naspolicystore.Store
 	policyOwner   *naspolicystore.Owner
 	policyLease   *naspolicystore.Lease
+	management    *qemuNASPolicyHTTP
 	kernel        *nfskernel.ControllerQEMU
 	helpers       [2]*ownerNFSChild
 	options       string
@@ -120,6 +121,10 @@ func runQEMUNFSOwnerActivation() error {
 			ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
 				Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
 		if err := b.retainPolicy(ctx, document); err != nil {
+			return err
+		}
+		b.management, err = newQEMUNASPolicyHTTP(b.policyOwner)
+		if err != nil {
 			return err
 		}
 		before, err := os.ReadFile(ownerNFSPolicy + "/nas-services.json")
@@ -214,7 +219,7 @@ func runQEMUNFSOwnerActivation() error {
 		next.ISCSI.Revision++
 		next.ISCSI.VolumeRevision++
 		next.FileServices.NFS.Exports[0].Clients[0].Access = "rw"
-		if next.Validate() != nil || !errors.Is(b.policyOwner.Commit(ctx, document.Revision, next), naspolicystore.ErrBusy) {
+		if next.Validate() != nil || b.management.exchange(ctx, &next, 503) != nil {
 			return errors.New("running NFS did not exclude a valid desired-policy update")
 		}
 		if err := owner.Check(ctx); err != nil {
@@ -227,7 +232,7 @@ func runQEMUNFSOwnerActivation() error {
 		if err := owner.Stop(ctx); err != nil {
 			return fmt.Errorf("owner-stop: %w", err)
 		}
-		if b.policyLease.Verify(ctx) != nil || !errors.Is(b.policyOwner.Commit(ctx, document.Revision, next), naspolicystore.ErrBusy) {
+		if b.policyLease.Verify(ctx) != nil || b.management.exchange(ctx, &next, 503) != nil {
 			return errors.New("NFS stop released desired-policy authority before close")
 		}
 		b.phase = "close"
@@ -242,7 +247,7 @@ func runQEMUNFSOwnerActivation() error {
 			return errors.New("NFS activation or refused updates changed desired policy")
 		}
 		b.phase = "policy-update-after-close"
-		if err := b.policyOwner.Commit(ctx, document.Revision, next); err != nil {
+		if err := b.management.exchange(ctx, &next, 200); err != nil {
 			return fmt.Errorf("closed NFS did not release desired-policy mutation: %w", err)
 		}
 		updated, err := b.policyOwner.Snapshot(ctx)
@@ -253,6 +258,10 @@ func runQEMUNFSOwnerActivation() error {
 		if err := b.reapplySavedPolicy(ctx, owner); err != nil {
 			return err
 		}
+		if err := b.management.exchange(ctx, nil, 200); err != nil {
+			return err
+		}
+		b.management.server.Close()
 		for _, p := range []string{ownerNFSRoot + "/updated", ownerNFSRoot + "/marker", ownerNFSRoot} {
 			if err := os.Remove(p); err != nil {
 				return err
@@ -269,6 +278,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_READY original_owner=true protocols=smb,nfs,iscsi busy_while_running=true commit_after_close=true revision=2 nfs_reapplied=true scope=qemu-loopback-only")
 	return nil
 }
 
