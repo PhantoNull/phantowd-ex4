@@ -538,6 +538,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'NFS retained controller activation/read/write/teardown marker missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_KERNEL_RESTART_READY cycles=2 kernel_backend=true activation=true persisted_bytes=true closed_handles=inert teardown=clean scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'NFS controlled restart/persisted bytes/closed-handle assertion missing' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1

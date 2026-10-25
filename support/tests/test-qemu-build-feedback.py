@@ -304,6 +304,34 @@ class BuildFeedbackTests(unittest.TestCase):
                     self.assertEqual(result.returncode == 0, accepted)
                     self.assertEqual(result.stdout, b"", "receipt check must not relay serial data")
 
+    def test_nfs_restart_requires_persisted_bytes_and_inert_handles(self):
+        marker = (
+            "PHANTOWD_NFS_KERNEL_RESTART_READY cycles=2 kernel_backend=true "
+            "activation=true persisted_bytes=true closed_handles=inert "
+            "teardown=clean scope=qemu-loopback-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        cases = [(marker + "\n", True), (marker + "\r\n", True),
+                 ("", False), ((marker + "\n") * 2, False)]
+        cases += [(marker.replace(field, replacement) + "\n", False)
+                  for field, replacement in (
+                      ("cycles=2", "cycles=1"),
+                      ("persisted_bytes=true", "persisted_bytes=false"),
+                      ("closed_handles=inert", "closed_handles=unknown"),
+                      ("teardown=clean", "teardown=uncertain"))]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for payload, accepted in cases:
+                log.write_text(payload, encoding="ascii", newline="")
+                result = subprocess.run(
+                    ["sh", "-c", command], capture_output=True,
+                    env={**os.environ, "log_file": str(log)}, timeout=3)
+                self.assertEqual(result.returncode == 0, accepted)
+                self.assertEqual(result.stdout, b"")
+
     def test_nfs_fresh_check_requires_exact_unique_serial_evidence(self):
         marker = (
             "PHANTOWD_NFS_CHECKED_LIFETIME_READY fresh_check=true "

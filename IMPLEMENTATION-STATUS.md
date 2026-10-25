@@ -15,6 +15,14 @@ Pinned normal/race/vet and 37 feedback tests pass. Own-head hosted integration
 is still required. This is not production ownership, locking/recovery, an
 external-client test, EX4 qualification or installable firmware.
 
+A subsequent local baseline verifies two explicit clean NFS lifetimes: a fresh
+controller/client reads the prior client's fsynced bytes and writes new data.
+Verified stop and reference closure release the reservation; calls on the old
+closed handle refuse without contaminating the new controller. Uncertain
+closure still retains review. Normal/race/vet and the focused ARM guest pass;
+this increment still requires its own hosted gate and does not qualify crash
+recovery, external clients, product ownership or M4 completion.
+
 ## M4 NFS generated-input fixture — ARMv5 code retention only
 
 A disposable networkless guest consumes the actual six-entry build report with
