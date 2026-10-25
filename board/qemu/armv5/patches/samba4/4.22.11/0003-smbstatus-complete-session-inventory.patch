@@ -82,7 +82,7 @@ Complete reads retain errors; existing early-stop traversal APIs are unchanged.
  uint64_t dbwrap_watched_watch_add_instance(struct db_record *rec);
 --- a/source3/lib/sessionid_tdb.c
 +++ b/source3/lib/sessionid_tdb.c
-@@ -104 +104,45 @@
+@@ -104 +104,46 @@
  }
 +
 +struct sessionid_complete_read_state {
@@ -102,7 +102,8 @@ Complete reads retain errors; existing early-stop traversal APIs are unchanged.
 +		return -1;
 +	}
 +	if (global->auth_session_info != NULL &&
-+	    (global->auth_session_info->unix_token == NULL ||
++	    (global->auth_session_info->security_token == NULL ||
++	     global->auth_session_info->unix_token == NULL ||
 +	     global->auth_session_info->unix_info == NULL ||
 +	     global->auth_session_info->unix_info->unix_name == NULL)) {
 +		state->partial_record = true;
