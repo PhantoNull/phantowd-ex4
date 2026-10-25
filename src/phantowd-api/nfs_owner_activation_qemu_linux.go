@@ -48,6 +48,7 @@ type ownerNFSQEMU struct {
 	kernel        *nfskernel.ControllerQEMU
 	helpers       [2]*ownerNFSChild
 	options       string
+	access        string
 	phase         string
 	uid, gid      uint32
 	exported      bool
@@ -76,7 +77,7 @@ func runQEMUNFSOwnerActivation() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
-		b := &ownerNFSQEMU{storage: set, phase: "prepare"}
+		b := &ownerNFSQEMU{storage: set, phase: "prepare", access: "ro"}
 		var owner *nfsowner.Owner
 		defer func() {
 			// No release or retry after uncertainty. The returned review object
@@ -249,6 +250,17 @@ func runQEMUNFSOwnerActivation() error {
 			len(updated.FileServices.NFS.Exports[0].Clients) != 1 || updated.FileServices.NFS.Exports[0].Clients[0].Access != "rw" {
 			return errors.New("desired-policy update after NFS close was not observed")
 		}
+		if err := b.reapplySavedPolicy(ctx, owner); err != nil {
+			return err
+		}
+		for _, p := range []string{ownerNFSRoot + "/updated", ownerNFSRoot + "/marker", ownerNFSRoot} {
+			if err := os.Remove(p); err != nil {
+				return err
+			}
+		}
+		if err := b.identity.Close(); err != nil {
+			return err
+		}
 		return b.policyOwner.Close()
 	})
 	if err != nil {
@@ -256,6 +268,7 @@ func runQEMUNFSOwnerActivation() error {
 	}
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	return nil
 }
 
@@ -364,7 +377,7 @@ func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
 	}
 	current, err := runQEMUExportfsContext(ctx, "-s")
 	lines := normalizedQEMUExportLines(current)
-	if err != nil || len(lines) != 1 || !matchesQEMUOwnerMountedExport(lines[0], ownerNFSRoot, b.uid, b.gid) {
+	if err != nil || len(lines) != 1 || !matchesQEMUOwnerMountedExportAccess(lines[0], ownerNFSRoot, b.uid, b.gid, b.access) {
 		return errors.New("NFS live export differs from generated policy")
 	}
 	return nil
@@ -407,12 +420,11 @@ func (b *ownerNFSQEMU) Release(ctx context.Context) error {
 	if err := b.roots.Close(); err != nil {
 		return err
 	}
-	for _, p := range []string{ownerNFSRoot + "/marker", ownerNFSRoot, ownerNFSClient} {
-		if err := os.Remove(p); err != nil {
-			return err
-		}
+	// Dataset and shared identity/policy Owners belong to the parent fixture.
+	if err := os.Remove(ownerNFSClient); err != nil {
+		return err
 	}
-	for _, close := range []func() error{b.storageLease.Close, b.identityLease.Release, b.identity.Close, b.policyLease.Release} {
+	for _, close := range []func() error{b.storageLease.Close, b.identityLease.Release, b.policyLease.Release} {
 		if err := close(); err != nil {
 			return err
 		}
