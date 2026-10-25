@@ -90,7 +90,7 @@ truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
-    -append "rootwait root=/dev/sda console=ttyAMA0,115200" \
+    -append "rootwait root=/dev/sda console=ttyAMA0,115200 phantowd_nfs_kernel_smoke=1" \
     -display none \
     -serial stdio \
     -monitor none \
@@ -532,6 +532,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
         fi
         if ! grep -F 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
+            exit 1
+        fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_KERNEL_READY kernel_backend=true activation=true protocol=nfs3 transport=tcp read=true write=true teardown=clean scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'NFS retained controller activation/read/write/teardown marker missing' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then

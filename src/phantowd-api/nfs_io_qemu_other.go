@@ -14,3 +14,5 @@ func exerciseQEMUNFSMount(string) error { return errors.New("NFS mount fixture r
 func probeQEMUUnmountedStorage() error {
 	return errors.New("storage probe fixture requires Linux QEMU")
 }
+
+func runQEMUNFSKernelActivation() error { return errors.New("NFS kernel fixture requires Linux QEMU") }

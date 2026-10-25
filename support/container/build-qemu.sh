@@ -662,6 +662,15 @@ TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-serv
     "$output_dir/host/sbin/debugfs" "$external_dir" \
     "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
 
+# Generated NFS metadata and retained code references only; no NFS execution.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-nfs-inputs.sh" \
+    "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
+    "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$artifact_dir/qemu-nfs-inputs-failure.log"; then
+    echo "Preserved failed NFS input diagnostics in $artifact_dir" >&2
+    exit 1
+fi
+
 # Verify retained code ownership separately from Samba to avoid its entropy/
 # network readiness waits hiding or inflating static lifecycle test feedback.
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-owner.sh" \

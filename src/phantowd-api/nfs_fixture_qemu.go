@@ -44,7 +44,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 
 func runQEMUNFSTest(mode string) error {
 	switch mode {
-	case "exports", "file-service-plan-exports", "file-service-plan-mounted", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
+	case "kernel-activation", "exports", "file-service-plan-exports", "file-service-plan-mounted", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
 	default:
 		return errors.New("unknown QEMU NFS fixture mode")
 	}
@@ -57,6 +57,9 @@ func runQEMUNFSTest(mode string) error {
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if err != nil || string(model) != "ARM Versatile PB\x00" {
 		return errors.New("NFS fixture requires the Versatile PB development machine")
+	}
+	if mode == "kernel-activation" {
+		return runQEMUNFSKernelActivation()
 	}
 	if mode == "io" {
 		return exerciseQEMUNFSIO()
