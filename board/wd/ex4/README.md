@@ -213,3 +213,7 @@ procedure on hardware. PhantoWD has no selected install layout, NAND writer,
 A/B boot transaction, or proven rollback path. Do not write NAND/MTD or treat a
 vendor rescue image as a generic unbrick artifact. The remaining decision and
 qualification gates are tracked under [M10 in the roadmap](../../../ROADMAP.md#m10-signed-installer-upgrades-and-recovery).
+
+The [preserved October22 offline rescue findings](RESCUE-BODY-FINDINGS-20261022.md)
+record final/GPL reader hash parity and exact saved-report comparisons. Rescue
+body assignment and physical recovery remain unresolved; G8 option B is unchanged.
