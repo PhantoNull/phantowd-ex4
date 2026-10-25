@@ -19,8 +19,14 @@ claim; operations cannot substitute a configuration. A valid desired update is
 refused while the server runs and after stop until verified close releases it.
 The client reads over NFSv3/TCP and gets server-side EROFS on creation. Activation
 and refused updates leave the stored document unchanged; the parent can publish
-a new desired revision after NFS closes. The consumer releases its policy claim,
-while the parent owns the shared policy authority and closes it after that test.
+a new desired revision after NFS closes. A second explicit lifetime acquires
+fresh claims from the same policy/identity/storage Owners, applies saved revision2
+and verifies real client read, fsynced write bytes and UID/GID at both views.
+Calls on the old closed Owner refuse without disturbing the new server.
+The consumer releases its claims; the parent retains the shared Owners and
+dataset until both lifetimes have verified stop/close. Only then does the parent
+remove synthetic data and close its authorities. This is never an automatic
+restart after a failed or uncertain lifetime.
 The policy is synthetic guest state: this does not qualify product boot
 provisioning or this composition across reboots.
 Bracketed owner observations do not establish atomic three-owner admission.

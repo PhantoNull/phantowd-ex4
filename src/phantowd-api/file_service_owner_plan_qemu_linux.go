@@ -378,6 +378,13 @@ func validateQEMUOwnerMountedExportfs(ctx context.Context, rendered, mountPath s
 }
 
 func matchesQEMUOwnerMountedExport(line, expectedPath string, uid, gid uint32) bool {
+	return matchesQEMUOwnerMountedExportAccess(line, expectedPath, uid, gid, "ro")
+}
+
+func matchesQEMUOwnerMountedExportAccess(line, expectedPath string, uid, gid uint32, access string) bool {
+	if access != "ro" && access != "rw" {
+		return false
+	}
 	fields := strings.Fields(line)
 	if len(fields) != 2 || fields[0] != expectedPath {
 		return false
@@ -394,7 +401,7 @@ func matchesQEMUOwnerMountedExport(line, expectedPath string, uid, gid uint32) b
 		}
 		seen[option] = true
 	}
-	return seen["ro"] && !seen["rw"] && seen["all_squash"] &&
+	return seen[access] && !(seen["ro"] && seen["rw"]) && seen["all_squash"] &&
 		seen[fmt.Sprintf("anonuid=%d", uid)] && seen[fmt.Sprintf("anongid=%d", gid)] &&
 		seen["fsid=bbbbbbbb-cccc-dddd-eeee-ffffffffffff"]
 }

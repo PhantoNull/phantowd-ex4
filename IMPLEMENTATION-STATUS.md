@@ -3,6 +3,20 @@
 
 # Implementation status
 
+## M4 saved-policy NFS reactivation — disposable guest only
+
+A full local baseline now applies two stored-policy revisions through the real
+NFS Owner and retained NFSD controller. Revision1 refuses client creation with
+EROFS; a valid read-write revision cannot be committed while the first claim is
+held. After verified stop/close, the parent commits revision2 and a fresh Owner
+acquires new claims from the same policy, identity and mounted-storage Owners.
+Its NFSv3/TCP client reads prior data and verifies fsynced new bytes and UID/GID
+at both views. Old closed-Owner operations leave the new server intact; second
+stop/close and final parent disposal pass without changing stored policy.
+Normal/race, root NFS tests, vet, ShellCheck and38feedback checks pass locally.
+Own-head hosted integration remains required. No automatic restart, product
+bootstrap, external client, cross-reboot qualification or M4 completion is claimed.
+
 ## M4 retained NFSD controller ? actual disposable-guest activation
 
 The existing QEMU-only controller now drives a real loopback NFSv3/TCP mount:
