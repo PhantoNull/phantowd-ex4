@@ -13,7 +13,8 @@ disabled memory lifetimes. Failure retains review; only a running lifetime
 attempts one independent stop. Restoration cannot retry cleanup or release.
 The guest checks healthy and input-loss lifetimes; the smoke driver requires one
 exact receipt. These sequential observations are not continuous health.
-No kernel backend, polling supervisor, HTTP or product activation exists.
+The fixed guest adapter joins retained identity/storage to real NFSD.
+No polling supervisor, HTTP or product activation exists.
 
 Linux/QEMU ExportRootsQEMU separately captures original-lease directory metadata
 and retains uncertain construction/closure. Native refusal/privacy/model tests
