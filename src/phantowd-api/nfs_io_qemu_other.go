@@ -16,3 +16,5 @@ func probeQEMUUnmountedStorage() error {
 }
 
 func runQEMUNFSKernelActivation() error { return errors.New("NFS kernel fixture requires Linux QEMU") }
+
+func runQEMUNFSOwnerActivation() error { return errors.New("NFS owner fixture requires Linux QEMU") }
