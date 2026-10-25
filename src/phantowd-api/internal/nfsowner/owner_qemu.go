@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package nfsowner implements an experimental memory-only service lifetime.
-// It has no kernel backend or product constructor.
+// Package nfsowner implements a QEMU-only service lifetime with a fixed backend.
+// It has no product constructor; the real-controller adapter is guest-only.
 package nfsowner
 
 import (
