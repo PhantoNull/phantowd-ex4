@@ -44,7 +44,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 
 func runQEMUNFSTest(mode string) error {
 	switch mode {
-	case "kernel-activation", "exports", "file-service-plan-exports", "file-service-plan-mounted", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
+	case "owner-activation", "kernel-activation", "exports", "file-service-plan-exports", "file-service-plan-mounted", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
 	default:
 		return errors.New("unknown QEMU NFS fixture mode")
 	}
@@ -60,6 +60,9 @@ func runQEMUNFSTest(mode string) error {
 	}
 	if mode == "kernel-activation" {
 		return runQEMUNFSKernelActivation()
+	}
+	if mode == "owner-activation" {
+		return runQEMUNFSOwnerActivation()
 	}
 	if mode == "io" {
 		return exerciseQEMUNFSIO()

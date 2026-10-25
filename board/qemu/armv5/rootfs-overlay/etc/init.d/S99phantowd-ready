@@ -138,6 +138,13 @@ case "$1" in
             echo 'PHANTOWD_QEMU_ERROR nfs-retained-kernel-activation-failed'
             exit 1
         fi
+        /usr/bin/phantowd-api --qemu-nfs-test=probe-unmounted || exit 1
+        mount -t ext2 -o rw /dev/sdb /srv/phantowd/volumes/qemu-only || exit 1
+        if ! /usr/bin/phantowd-api --qemu-nfs-test=owner-activation; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-owned-plan-activation-failed'
+            exit 1
+        fi
+        umount /srv/phantowd/volumes/qemu-only || exit 1
 
         if pidof nmbd >/dev/null 2>&1; then
             echo 'PHANTOWD_QEMU_ERROR smb-netbios-daemon-running'
