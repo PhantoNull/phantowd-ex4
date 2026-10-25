@@ -27,6 +27,7 @@ func main() {
 	mdV10BrokerClient := flag.Bool("qemu-md-v10-broker-client", false, "fixed internal MD v1.0 broker client fixture; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
+	nasPolicyClient := flag.String("qemu-nas-policy-client", "", "fixed unprivileged NAS-policy fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
 	writableConsumer := flag.Bool("qemu-writable-backing-consumer", false, "fixed inherited-descriptor consumer; disposable QEMU only")
 	targetConsumer := flag.Bool("qemu-target-backing-consumer", false, "fixed two-descriptor consumer; disposable QEMU only")
@@ -36,7 +37,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
 			modes++
@@ -83,6 +84,13 @@ func main() {
 	if *identityClient != "" {
 		if err := runQEMUIdentityClient(*identityClient); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_API_ERROR identity channel fixture failed")
+			os.Exit(1)
+		}
+		return
+	}
+	if *nasPolicyClient != "" {
+		if runQEMUNASPolicyClient(*nasPolicyClient) != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NAS_POLICY_CHANNEL_ERROR fixed client refused")
 			os.Exit(1)
 		}
 		return
