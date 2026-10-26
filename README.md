@@ -44,6 +44,10 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
 | Release tooling | Host-only unsigned manifest producer, bounded GitHub reader, signature/payload verification and verify-only logical installation preview with mandatory write refusal | Trusted provenance/staging, key provisioning/signing, physical layout, target transaction, recovery and release qualification |
 
+Disposable QEMU also verifies two standard API process lifetimes with HTTPS,
+retained panel credentials and the original root NAS-policy Owner. Init/provider
+boot, hardware and dashboard service activation remain unqualified.
+
 The API/dashboard are development-only and guest-loopback-only by default.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and

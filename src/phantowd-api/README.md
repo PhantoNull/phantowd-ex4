@@ -1506,3 +1506,10 @@ the lookup descriptor once; it does not close the root Owner or stop its service
 Filesystem operations remain cooperatively bounded. This is desired state only:
 root-provider boot/admission, full startup/shutdown faults, unified dashboard and
 service activation/recovery still need qualification. It is not an EX4 setup step.
+
+The guarded ARMv5 smoke starts the actual no-flag API twice as UID/GID65534.
+Runtime-generated TLS/passwords remain in guest RAM. Setup, login after clearing
+cookies, persisted credentials, busy/save/stale/readback and SIGTERM/exit are
+checked against the same original root Owner and kernel peer PID. Its new
+30-second campaign leaves existing budgets unchanged; this is not init/provider
+boot, interrupted-state recovery or automatic service restart qualification.
