@@ -281,7 +281,10 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_READY original_owner=true protocols=smb,nfs,iscsi busy_while_running=true commit_after_close=true revision=2 nfs_reapplied=true scope=qemu-loopback-only")
-	return exerciseQEMUNASPolicyRPC()
+	if err := exerciseQEMUNASPolicyRPC(); err != nil {
+		return err
+	}
+	return exerciseQEMUNASPolicyMainProcess()
 }
 
 // Bootstrap only this synthetic guest document through the existing store.
