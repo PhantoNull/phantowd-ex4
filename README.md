@@ -45,6 +45,8 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Release tooling | Host-only unsigned manifest producer, bounded GitHub reader, signature/payload verification and verify-only logical installation preview with mandatory write refusal | Trusted provenance/staging, key provisioning/signing, physical layout, target transaction, recovery and release qualification |
 
 The API/dashboard are development-only and guest-loopback-only by default.
+The dashboard can manually read compact counts from the coherent NAS policy;
+these are saved definitions, not running-service status or activation.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.

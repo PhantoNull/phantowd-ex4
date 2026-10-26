@@ -42,12 +42,17 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-		if r.URL.Path != nasStatePath {
+		summary := r.URL.Path == nasSummaryPath
+		if r.URL.Path != nasStatePath && !summary {
 			writeJSON(w, 404, map[string]string{"error": "not_found"})
 			return
 		}
-		if r.Method != http.MethodGet && r.Method != http.MethodPut {
-			w.Header().Set("Allow", "GET, PUT")
+		if r.Method != http.MethodGet && (summary || r.Method != http.MethodPut) {
+			allow := "GET, PUT"
+			if summary {
+				allow = "GET"
+			}
+			w.Header().Set("Allow", allow)
 			writeJSON(w, 405, map[string]string{"error": "method_not_allowed"})
 			return
 		}
@@ -96,6 +101,22 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 			}
 			if !auth.authorize(r) {
 				writeJSON(w, 401, map[string]string{"error": "authentication_required"})
+				return
+			}
+			if summary {
+				if c.Validate() != nil {
+					nasStateError(w, naspolicystore.ErrInvalid)
+					return
+				}
+				luns := 0
+				for _, target := range c.ISCSI.Targets {
+					luns += len(target.LUNs)
+				}
+				writeJSON(w, 200, map[string]any{"schema_version": 1, "scope": "stored-desired-nas-policy-summary-only", "revision": c.Revision,
+					"volumes": len(c.FileServices.Shares.Volumes), "users": len(c.FileServices.Shares.Users),
+					"smb_shares": len(c.FileServices.Shares.Shares), "nfs_exports": len(c.FileServices.NFS.Exports),
+					"iscsi_targets": len(c.ISCSI.Targets), "iscsi_backings": len(c.ISCSI.Backings), "iscsi_luns": luns,
+					"applied": false, "activation_available": false})
 				return
 			}
 			reply.Revision, reply.Configuration = c.Revision, &c

@@ -440,6 +440,7 @@ function clearMountObservation() {
 }
 
 const diagnosticBodyLimits = Object.freeze({
+  "/api/v1/nas-services/summary": 4096,
   "/api/v1/auth/status": 16 * 1024,
   "/api/v1/system": 16 * 1024,
   "/api/v1/storage": 64 * 1024,
@@ -1250,6 +1251,7 @@ byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview();
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
+byId("nas-load").addEventListener("click", loadNASPolicySummary);
 byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);
