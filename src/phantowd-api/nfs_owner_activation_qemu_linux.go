@@ -261,7 +261,9 @@ func runQEMUNFSOwnerActivation() error {
 		if err := b.management.exchange(ctx, nil, 200); err != nil {
 			return err
 		}
-		b.management.server.Close()
+		if err := b.management.Close(); err != nil {
+			return err
+		}
 		for _, p := range []string{ownerNFSRoot + "/updated", ownerNFSRoot + "/marker", ownerNFSRoot} {
 			if err := os.Remove(p); err != nil {
 				return err

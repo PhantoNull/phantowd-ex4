@@ -21,12 +21,22 @@ import (
 )
 
 type qemuNASPolicyHTTP struct {
-	server   *httptest.Server
-	exchange func(context.Context, *naspolicy.Config, int) error
+	server         *httptest.Server
+	closeTransport func() error
+	exchange       func(context.Context, *naspolicy.Config, int) error
 }
 
 // Synthetic session/certificate, actual HTTPS and one retained state authority.
 func newQEMUNASPolicyHTTP(state nasStateAuthority) (*qemuNASPolicyHTTP, error) {
+	return newQEMUNASPolicyHTTPAt(state, "")
+}
+
+func (h *qemuNASPolicyHTTP) Close() error {
+	h.server.Close()
+	return h.closeTransport()
+}
+
+func newQEMUNASPolicyHTTPAt(state nasStateAuthority, path string) (*qemuNASPolicyHTTP, error) {
 	s := httptest.NewUnstartedServer(nil)
 	origin := "https://" + s.Listener.Addr().String()
 	auth := newAuthController(&accountStore{backend: qemuStaticAccount{}}, origin)
@@ -35,12 +45,29 @@ func newQEMUNASPolicyHTTP(state nasStateAuthority) (*qemuNASPolicyHTTP, error) {
 		s.Close()
 		return nil, err
 	}
+	handler := http.Handler(newNASStateHandler(auth, state))
+	closeTransport := func() error { return nil }
+	if path != "" {
+		for _, options := range [][2]bool{{true, true}, {false, false}} {
+			if _, close, err := openNASPolicyHTTP(auth, path, options[0], options[1]); err == nil {
+				close()
+				s.Close()
+				return nil, errors.New("NAS mixed/plaintext startup accepted")
+			}
+		}
+		handler, closeTransport, err = openNASPolicyHTTP(auth, path, false, true)
+		if err != nil {
+			s.Close()
+			return nil, err
+		}
+	}
 	s.TLS = &tls.Config{MinVersion: tls.VersionTLS12}
-	s.Config = newConfiguredServer(newNASStateHandler(auth, state), apiTransportConfig{Address: s.Listener.Addr().String(), AllowedOrigin: origin, TLSConfig: s.TLS})
+	s.Config = newConfiguredServer(newHandlerWithNASPolicy(nil, nil, nil, nil, auth, nil, nil, nil, handler), apiTransportConfig{Address: s.Listener.Addr().String(), AllowedOrigin: origin, TLSConfig: s.TLS})
 	s.StartTLS()
 	client := s.Client()
 	client.Timeout = 5 * time.Second
-	return &qemuNASPolicyHTTP{server: s, exchange: func(ctx context.Context, next *naspolicy.Config, want int) error {
+	expected := qemuPersistentNASPolicy(1)
+	return &qemuNASPolicyHTTP{server: s, closeTransport: closeTransport, exchange: func(ctx context.Context, next *naspolicy.Config, want int) error {
 		var payload bytes.Buffer
 		method := http.MethodGet
 		if next != nil {
@@ -73,6 +100,9 @@ func newQEMUNASPolicyHTTP(state nasStateAuthority) (*qemuNASPolicyHTTP, error) {
 			if want == 503 {
 				code, retry = "nas_configuration_busy", "1"
 			}
+			if want == 503 && next == nil {
+				code, retry = "nas_configuration_unavailable", ""
+			}
 			var refusal map[string]string
 			if resp.Header.Get("Retry-After") != retry || json.Unmarshal(data, &refusal) != nil || len(refusal) != 1 || refusal["error"] != code {
 				return errors.New("NAS policy HTTPS did not report the expected refusal")
@@ -84,12 +114,19 @@ func newQEMUNASPolicyHTTP(state nasStateAuthority) (*qemuNASPolicyHTTP, error) {
 			return errors.New("NAS policy HTTPS envelope differs")
 		}
 		if next == nil {
-			current, err := state.Snapshot(ctx)
+			current := expected
+			var err error
+			if state != nil {
+				current, err = state.Snapshot(ctx)
+			}
 			if err != nil || reply.Saved || reply.Configuration == nil || !reflect.DeepEqual(*reply.Configuration, current) || reply.Revision != current.Revision {
 				return errors.New("NAS policy HTTPS did not read original authority")
 			}
 		} else if !reply.Saved || reply.Revision != next.Revision || reply.Configuration != nil {
 			return errors.New("NAS policy HTTPS commit was not confirmed")
+		}
+		if next != nil {
+			expected = *next
 		}
 		return nil
 	}}, nil

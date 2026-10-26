@@ -566,6 +566,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "QEMU non-root HTTPS NAS policy transaction proof missing" >&2
             return 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_POLICY_API_ROUTER_READY api_uid=65534 startup_factory=true protected_lookup=true router=true legacy_refused=true plaintext_refused=true closed_refusal=true scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "QEMU configured NAS policy router proof missing" >&2
+            return 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1

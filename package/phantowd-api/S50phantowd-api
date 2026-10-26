@@ -15,6 +15,7 @@ case "$1" in
             exit 1
         fi
         export PHANTOWD_STATE_DIR
+        export PHANTOWD_NAS_POLICY_SOCKET
         printf 'Starting PhantoWD loopback diagnostics: '
         if start-stop-daemon --start --background --make-pidfile \
             --pidfile "$PIDFILE" --chuid phantowd:phantowd --exec "$DAEMON"; then
