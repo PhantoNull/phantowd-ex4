@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 )
 
@@ -138,5 +139,24 @@ func TestNASStateUsesTheOriginalOwnerAndItsClaims(t *testing.T) {
 	h(w, r)
 	if w.Code != 503 || strings.Contains(w.Body.String(), "configuration\"") {
 		t.Fatal("closed Owner returned a configuration")
+	}
+}
+
+func TestNASStateMissingAuthorityRefusesWithoutConfiguration(t *testing.T) {
+	for name, state := range map[string]nasStateAuthority{
+		"absent": nil, "nil-owner": (*naspolicystore.Owner)(nil), "nil-client": (*naspolicyrpc.Client)(nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			auth, cookie := newTestAuth(t)
+			h := newNASStateHandler(auth, state)
+			r := shareReadRequest(cookie)
+			r.URL.Path = nasStatePath
+			w := httptest.NewRecorder()
+			h(w, r)
+			var reply map[string]string
+			if w.Code != 503 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || len(reply) != 1 || reply["error"] == "" {
+				t.Fatal("missing authority did not refuse without configuration", w.Code, w.Body.String())
+			}
+		})
 	}
 }

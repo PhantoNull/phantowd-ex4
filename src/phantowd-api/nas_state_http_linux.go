@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -27,10 +28,15 @@ type nasStateResponse struct {
 	ActivationAvailable bool              `json:"activation_available"`
 }
 
-// Captures the original initialized Owner once. Never opens/provisions state,
-// releases consumer claims, closes the parent or applies services. Product
-// bootstrap/default router do not configure this handler yet.
-func newNASStateHandler(auth *authController, owner *naspolicystore.Owner) http.HandlerFunc {
+// Only snapshot/commit authority is captured at construction. The handler never
+// opens/provisions state, reconnects, releases claims, closes its authority or
+// applies services. Product bootstrap/default router do not configure it yet.
+type nasStateAuthority interface {
+	Snapshot(context.Context) (naspolicy.Config, error)
+	Commit(context.Context, uint64, naspolicy.Config) error
+}
+
+func newNASStateHandler(auth *authController, state nasStateAuthority) http.HandlerFunc {
 	active := make(chan struct{}, 1)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -71,7 +77,7 @@ func newNASStateHandler(auth *authController, owner *naspolicystore.Owner) http.
 		} else if !validServiceStateWriteLimit(w, r, naspolicy.MaxInputBytes) {
 			return
 		}
-		if owner == nil {
+		if state == nil {
 			writeJSON(w, 503, map[string]string{"error": "nas_configuration_not_configured"})
 			return
 		}
@@ -85,7 +91,7 @@ func newNASStateHandler(auth *authController, owner *naspolicystore.Owner) http.
 		}
 		reply := nasStateResponse{SchemaVersion: 1, Scope: "stored-desired-nas-policy-only"}
 		if r.Method == http.MethodGet {
-			c, err := owner.Snapshot(r.Context())
+			c, err := state.Snapshot(r.Context())
 			if err != nil {
 				nasStateError(w, err)
 				return
@@ -119,7 +125,7 @@ func newNASStateHandler(auth *authController, owner *naspolicystore.Owner) http.
 				writeJSON(w, 401, map[string]string{"error": "authentication_required"})
 				return
 			}
-			if err := owner.Commit(r.Context(), c.Revision-1, c); err != nil {
+			if err := state.Commit(r.Context(), c.Revision-1, c); err != nil {
 				nasStateError(w, err)
 				return
 			}
