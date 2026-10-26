@@ -574,6 +574,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "QEMU standard API main process proof missing" >&2
             return 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_OPERATION_EVIDENCE_READY cases=9 exact_current=true strict_records=true effects=none scope=synthetic-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "QEMU NAS operation evidence observation proof missing" >&2
+            return 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1
