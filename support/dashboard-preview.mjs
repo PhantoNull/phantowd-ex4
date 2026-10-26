@@ -144,6 +144,13 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(savedFixture));
     return;
   }
+  if (url.pathname === "/api/v1/nas-services/summary") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ schema_version: 1, scope: "stored-desired-nas-policy-summary-only", revision: 4,
+      volumes: 1, users: 1, smb_shares: 1, nfs_exports: 1, iscsi_targets: 1, iscsi_backings: 1, iscsi_luns: 1,
+      applied: false, activation_available: false }));
+    return;
+  }
   if (url.pathname === "/api/v1/file-services/configuration") {
     response.writeHead(503, { "Content-Type": "application/json" });
     response.end('{"error":"service_configuration_not_configured"}\n');

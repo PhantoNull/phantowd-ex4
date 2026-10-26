@@ -1501,6 +1501,10 @@ It never provisions state/provider, reconnects or selects an HTTP-supplied path.
 
 The standard router exposes authenticated GET/PUT at
 `/api/v1/nas-services/configuration` inside its existing admission bound.
+Authenticated GET `/api/v1/nas-services/summary` uses that SAME authority and
+returns only revision and bounded definition counts for the manual dashboard
+view. It validates full policy coherence, omits identifiers/content/credentials,
+refuses writes and never reports runtime activation or provisions state.
 Closing the transport waits for its active RPC, prevents later RPCs and disposes
 the lookup descriptor once; it does not close the root Owner or stop its service.
 Filesystem operations remain cooperatively bounded. This is desired state only:

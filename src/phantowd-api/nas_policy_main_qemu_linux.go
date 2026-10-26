@@ -93,6 +93,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_NAS_POLICY_MAIN_READY standard_main=true api_uid=65534 https=verified setup=true login=true lifetimes=2 credentials_retained=true original_owner=true busy=true commit=true conflict=true shutdown=clean peer_pid=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NAS_POLICY_SUMMARY_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true counts=verified scope=disposable-qemu-only")
 	return nil
 }
 
@@ -239,6 +240,9 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	if err := h.request(ctx, nasStatePath, nil, 401, nil); err != nil {
 		return err
 	}
+	if err := h.request(ctx, nasSummaryPath, nil, 401, nil); err != nil {
+		return err
+	}
 	var status authStatus
 	if err := h.request(ctx, authStatusPath, nil, 200, &status); err != nil {
 		return err
@@ -276,6 +280,22 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		got, err := owner.Snapshot(ctx)
 		if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(wantRevision)) || reply.Configuration == nil || !reflect.DeepEqual(*reply.Configuration, got) || reply.Revision != wantRevision || reply.Saved || reply.Applied || reply.ActivationAvailable || reply.SchemaVersion != 1 || reply.Scope != "stored-desired-nas-policy-only" {
 			return errors.New("main fixture original Owner readback differs")
+		}
+		var summary map[string]any
+		if err := h.request(ctx, nasSummaryPath, nil, 200, &summary); err != nil {
+			return err
+		}
+		luns := 0
+		for _, target := range got.ISCSI.Targets {
+			luns += len(target.LUNs)
+		}
+		want := map[string]any{"schema_version": float64(1), "scope": "stored-desired-nas-policy-summary-only", "revision": float64(wantRevision),
+			"volumes": float64(len(got.FileServices.Shares.Volumes)), "users": float64(len(got.FileServices.Shares.Users)),
+			"smb_shares": float64(len(got.FileServices.Shares.Shares)), "nfs_exports": float64(len(got.FileServices.NFS.Exports)),
+			"iscsi_targets": float64(len(got.ISCSI.Targets)), "iscsi_backings": float64(len(got.ISCSI.Backings)), "iscsi_luns": float64(luns),
+			"applied": false, "activation_available": false}
+		if !reflect.DeepEqual(summary, want) {
+			return errors.New("main fixture compact NAS summary differs")
 		}
 		return nil
 	}
