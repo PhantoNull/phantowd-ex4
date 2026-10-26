@@ -7,5 +7,7 @@ idle follows cancellation; Owner filesystem/lock cancellation is cooperative.
 Host tests use real Unix streams/store; only root construction has a host seam.
 Channel loss never retries or closes the parent. No service activation follows.
 The retained client checks its root peer and refuses further I/O after uncertainty.
-Fixed ARM children test busy/CAS/readback through the original root Owner; product
-HTTP process separation, listener, boot wiring and service activation remain open.
+Fixed ARM children test authenticated loopback HTTPS busy/CAS/readback through
+the retained client and original root Owner, with independent parent verification.
+The handler captures snapshot/commit authority once and never opens or closes it.
+Product listener, boot/router wiring and service activation remain open.
