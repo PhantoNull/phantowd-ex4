@@ -743,7 +743,8 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:
-  **M1.3b.1/b.2** strict private intent/receipt codecs and pure diagnostic matcher;
+  **M1.3b.1/b.2** private NAS-only strict record comparison now exists with host
+  and required ARM fixtures; it grants no I/O, recovery or boot authority.
   **M1.3b.3** retained read-only evidence collection;
   **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
