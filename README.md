@@ -47,6 +47,8 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 The API/dashboard are development-only and guest-loopback-only by default.
 The dashboard can manually read compact counts from the coherent NAS policy;
 these are saved definitions, not running-service status or activation.
+It can also download all SMB/NFS/iSCSI definitions in one versioned JSON file,
+preserving 64-bit values. Data and credential backups remain separate.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.

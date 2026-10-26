@@ -440,6 +440,7 @@ function clearMountObservation() {
 }
 
 const diagnosticBodyLimits = Object.freeze({
+  "/api/v1/nas-services/backup": 1024 * 1024,
   "/api/v1/nas-services/summary": 4096,
   "/api/v1/auth/status": 16 * 1024,
   "/api/v1/system": 16 * 1024,
@@ -448,7 +449,7 @@ const diagnosticBodyLimits = Object.freeze({
   "/api/v1/mounts": 4 * 1024 * 1024,
 });
 
-function boundedDiagnosticStructure(text) {
+function boundedDiagnosticStructure(text, maximumContainers = 1024) {
   let quoted = false, escaped = false, depth = 0, containers = 0;
   for (const char of text) {
     if (quoted) {
@@ -457,7 +458,7 @@ function boundedDiagnosticStructure(text) {
       else if (char === '"') quoted = false;
     } else if (char === '"') quoted = true;
     else if (char === "{" || char === "[") {
-      if (++depth > 16 || ++containers > 1024) return false;
+      if (++depth > 16 || ++containers > maximumContainers) return false;
     } else if (char === "}" || char === "]") {
       if (--depth < 0) return false;
     }
@@ -465,7 +466,7 @@ function boundedDiagnosticStructure(text) {
   return !quoted && depth === 0;
 }
 
-async function readDiagnosticJSON(response, limit, signal) {
+async function readBoundedJSON(response, limit, signal, maximumContainers = 1024) {
   const invalid = () => new Error("diagnostic body unavailable");
   const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
   let reader;
@@ -497,11 +498,11 @@ async function readDiagnosticJSON(response, limit, signal) {
       total = needed;
     }
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
-    if (!boundedDiagnosticStructure(text)) throw invalid();
+    if (!boundedDiagnosticStructure(text, maximumContainers)) throw invalid();
     const value = JSON.parse(text);
     if (signal?.aborted) throw canceled();
     complete = true;
-    return value;
+    return { value, bytes: bytes.subarray(0, total) };
   } catch {
     throw signal?.aborted ? canceled() : invalid();
   } finally {
@@ -515,13 +516,17 @@ async function readDiagnosticJSON(response, limit, signal) {
   }
 }
 
-async function fetchJSON(path, { signal } = {}) {
+async function readDiagnosticJSON(response, limit, signal) {
+  return (await readBoundedJSON(response, limit, signal)).value;
+}
+
+async function fetchDocument(path, { signal } = {}) {
   const limit = diagnosticBodyLimits[path];
   if (!Number.isSafeInteger(limit)) throw new Error("diagnostic path unavailable");
   if (!signal) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    try { return await fetchJSON(path, { signal: controller.signal }); }
+    try { return await fetchDocument(path, { signal: controller.signal }); }
     finally { clearTimeout(timeout); }
   }
   const read = async () => {
@@ -532,7 +537,7 @@ async function fetchJSON(path, { signal } = {}) {
       failure.status = response.status;
       throw failure;
     }
-    return readDiagnosticJSON(response, limit, signal);
+    return readBoundedJSON(response, limit, signal, path === "/api/v1/nas-services/backup" ? 65536 : 1024);
   };
   // Race the entire read, including body decoding. Late completion stays
   // handled even if a transport/body promise does not honor cancellation.
@@ -554,6 +559,10 @@ async function fetchJSON(path, { signal } = {}) {
       reject(failure);
     });
   });
+}
+
+async function fetchJSON(path, options) {
+  return (await fetchDocument(path, options)).value;
 }
 
 let snapshotGeneration = 0;
@@ -1252,6 +1261,7 @@ byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview()
 byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
 byId("nas-load").addEventListener("click", loadNASPolicySummary);
+byId("nas-backup").addEventListener("click", exportNASPolicyBackup);
 byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);
