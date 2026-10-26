@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## M8 offline DOS primary metadata ? host-only prerequisite
+
+The explicit regular-file command observes four primary entries using 512-byte
+logical sectors and rejects overlap, bad extents/flags, extended/protective/hybrid
+and known translated-overlay tables without partial partitions. Synthetic host
+tests cover unchanged inputs, redaction, bounded reads, wide arithmetic and
+refusals. No EBR traversal, firmware probe, WD layout/import or health is qualified.
+
 ## M4 saved-policy NFS reactivation — disposable guest only
 
 A full local baseline now applies two stored-policy revisions through the real

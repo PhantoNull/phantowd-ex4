@@ -190,6 +190,9 @@ func run(args []string, output io.Writer) (int, error) {
 		}
 		return 0, nil
 
+	case "inspect-dos-primary-image":
+		return inspectDOSPrimaryImage(args[1:], output)
+
 	case "inspect-gpt-image":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-gpt-image FILE")
