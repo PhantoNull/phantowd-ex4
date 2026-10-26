@@ -10,4 +10,5 @@ The retained client checks its root peer and refuses further I/O after uncertain
 Fixed ARM children test authenticated loopback HTTPS busy/CAS/readback through
 the retained client and original root Owner, with independent parent verification.
 The handler captures snapshot/commit authority once and never opens or closes it.
-Product listener, boot/router wiring and service activation remain open.
+The API has an explicit Linux lookup/router opt-in; provider boot/admission,
+dashboard and service activation remain open. See the [API contract](../../README.md).

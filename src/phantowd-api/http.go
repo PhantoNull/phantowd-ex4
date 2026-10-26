@@ -11,6 +11,7 @@ import (
 )
 
 const listenAddress = defaultListenAddress
+const nasStatePath = "/api/v1/nas-services/configuration"
 
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
@@ -38,6 +39,10 @@ func newHandlerWithServiceState(collect collector, collectStorage storageSnapsho
 }
 
 func newHandlerWithStorageGPTObservation(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend, collectGPT storageGPTObservationCollector) http.Handler {
+	return newHandlerWithNASPolicy(collect, collectStorage, collectArrays, collectMounts, auth, loadPolicy, state, collectGPT, nil)
+}
+
+func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend, collectGPT storageGPTObservationCollector, nas http.Handler) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
@@ -75,6 +80,10 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 		}
 		if auth != nil && auth.isAuthPath(r.URL.Path) {
 			auth.serve(w, r)
+			return
+		}
+		if nas != nil && r.URL.Path == nasStatePath {
+			nas.ServeHTTP(w, r)
 			return
 		}
 		if r.URL.Path == fileServicePreviewPath {

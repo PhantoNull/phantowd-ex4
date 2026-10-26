@@ -16,8 +16,6 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 )
 
-const nasStatePath = "/api/v1/nas-services/configuration"
-
 type nasStateResponse struct {
 	SchemaVersion       int               `json:"schema_version"`
 	Scope               string            `json:"scope"`
