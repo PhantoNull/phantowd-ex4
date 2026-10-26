@@ -558,6 +558,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Original NAS-policy HTTP/NFS application assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_POLICY_CHANNEL_READY kernel_peers=true root_owner=true api_uid=65534 retained_client=true original_owner=true busy=true commit=true conflict=true revision=2 scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "QEMU NAS policy channel transaction proof missing" >&2
+            return 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1
