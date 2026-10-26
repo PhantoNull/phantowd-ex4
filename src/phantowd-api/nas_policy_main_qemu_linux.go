@@ -13,7 +13,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -80,14 +79,11 @@ func exerciseQEMUNASPolicyMainProcess() error {
 		return err
 	}
 	defer transport.CloseIdleConnections()
-	var password [24]byte
-	if _, err := rand.Read(password[:]); err != nil {
-		return err
-	}
+	password := rand.Text()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	for revision := uint64(1); revision <= 2; revision++ {
-		if err := qemuNASMainLifetime(ctx, owner, l, transport, hex.EncodeToString(password[:]), revision); err != nil {
+		if err := qemuNASMainLifetime(ctx, owner, l, transport, password, revision); err != nil {
 			return fmt.Errorf("NAS standard main lifetime %d: %w", revision, err)
 		}
 	}

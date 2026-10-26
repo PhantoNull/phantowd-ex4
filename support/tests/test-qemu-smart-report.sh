@@ -44,6 +44,10 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
     "$go_binary" test -c -trimpath -o "$scratch/collector.test" ./internal/smartcollect)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+# Test executables can exhaust the base image; grow only this bounded tmpfs copy.
+[ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || { echo 'PHANTOWD_SMART_REPORT_CAPACITY_REFUSED' >&2; exit 1; }
+truncate -s 128M "$scratch/rootfs.ext2"
+"$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 for pair in "$scratch/report.test phantowd-smart-report-test" \
     "$scratch/collector.test phantowd-smart-collector-test" \
     "$source_dir/support/tests/smart-report-init.sh phantowd-smart-report-init"; do
@@ -53,6 +57,11 @@ for pair in "$scratch/report.test phantowd-smart-report-test" \
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output mode 0100755" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    # debugfs may return zero after ENOSPC: require the complete staged bytes.
+    "$debugfs" -R "cat /usr/sbin/$output" "$scratch/rootfs.ext2" 2>/dev/null | cmp "$input" - || {
+        echo 'PHANTOWD_SMART_REPORT_STAGE_FAILED' >&2
+        exit 1
+    }
 done
 timeout --signal=TERM --kill-after=5 90 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
