@@ -1487,3 +1487,22 @@ parallel builds. Public CI uses the same build/test entrypoint. Hardware
 validation, product TLS/account-state provisioning, a full management UI, storage services,
 independent clean-build reproduction, manual SBOM/legal redistribution review,
 and installer/update/rollback testing remain separate unfinished milestones.
+
+## Linux NAS-policy API opt-in
+
+`PHANTOWD_NAS_POLICY_SOCKET` configures one existing root-provider socket ending
+in `/channel`; HTTPS is required. It cannot coexist with `PHANTOWD_SHARE_STATE_DIR`
+or `PHANTOWD_SERVICE_STATE_DIR`. Without it, existing API startup is unchanged.
+Trusted root-managed parents must contain a root:API-primary-group `0710`
+directory and same-filesystem, single-link `0660` socket. Startup opens without
+symlink traversal, brackets the socket metadata around a descriptor-relative
+connection, checks the root kernel peer and retains that connection/directory.
+It never provisions state/provider, reconnects or selects an HTTP-supplied path.
+
+The standard router exposes authenticated GET/PUT at
+`/api/v1/nas-services/configuration` inside its existing admission bound.
+Closing the transport waits for its active RPC, prevents later RPCs and disposes
+the lookup descriptor once; it does not close the root Owner or stop its service.
+Filesystem operations remain cooperatively bounded. This is desired state only:
+root-provider boot/admission, full startup/shutdown faults, unified dashboard and
+service activation/recovery still need qualification. It is not an EX4 setup step.

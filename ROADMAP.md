@@ -37,7 +37,7 @@ cooling and recovery take priority over feature count or visual polish.
   separate in storage, APIs and UI. Saving a policy must not claim activation.
 - HTTP stays unprivileged. Privileged work uses bounded typed operations,
   independently validated authorization and fixed executable/configuration paths.
-  NAS policy has actual non-root HTTPS/channel tests; product listener, boot and router wiring remain open.
+  NAS policy has opt-in API lookup/routing; root-provider boot/admission, dashboard and service wiring remain open.
 - No passwords, hashes, tokens or private keys in argv, journals, API errors,
   diagnostics, repository artifacts or public logs.
 - No experimental NAND/flash writes before reviewed format, ECC/OOB, bad-block,
