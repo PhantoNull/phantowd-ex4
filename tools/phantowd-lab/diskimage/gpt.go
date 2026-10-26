@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package diskimage validates generic GPT structure in caller-supplied raw
+// Package diskimage observes bounded generic disk metadata in caller-supplied raw
 // image files. It does not identify or authorize any WD storage layout.
 package diskimage
 

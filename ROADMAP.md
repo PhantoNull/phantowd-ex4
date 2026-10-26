@@ -2607,6 +2607,10 @@ not host/QEMU progress.
   Feature declarations and unclassified bits also remain explicit; selected
   constraints require review without inspecting file contents or claiming
   kernel/product feature support. A quiet review is not migration admission.
+  A host-only DOS primary-entry observer reads one 512-byte header, withholds
+  the whole partition list on ambiguity/unsupported containers and preserves
+  slot numbering without returning disk signatures. It does not follow EBRs,
+  inspect filesystems or qualify any WD layout, capacity, identity or migration.
 - **M8.3 — Import identity and settings.** Preserve qualified volume/array identity,
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.

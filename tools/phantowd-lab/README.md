@@ -33,6 +33,7 @@ phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
+phantowd-lab inspect-dos-primary-image FILE
 phantowd-lab inspect-storage-image DISK-IMAGE-FILE
 phantowd-lab inspect-storage-image-set DISK-IMAGE-1 [DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]]
 phantowd-lab inspect-md-v1.2-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
@@ -54,6 +55,17 @@ phantowd-lab catalog-mcu
 phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
 ```
+
+`inspect-dos-primary-image` reads one 512-byte sector from a regular whole-disk
+image and reports only the four primary entries, preserving slot numbers. The
+logical sector size must be independently known to be 512 bytes. Extended,
+protective/hybrid and known translated-overlay types refuse the entire table;
+invalid flags/extents and overlap return no partial partitions. Boot code,
+disk signatures, CHS, nested labels, filesystems and data are not interpreted.
+An empty signed table does not prove an unused disk. Exit 0 means geometry was
+observed, 2 damaged/unsupported input, 1 usage/I/O failure; WD compatibility,
+health, identity, import and migration remain unqualified. Firmware stays GPT-only.
+Layout reference: [Linux primary-entry declarations](https://github.com/torvalds/linux/blob/v6.6/include/linux/msdos_partition.h).
 
 `build-release-manifest` emits **unsigned** schema1 JSON on stdout. It accepts
 only a raw 32-byte public key, not a private key. Repeat `--artifact NAME:ROLE`
@@ -81,7 +93,7 @@ and `1` for usage, I/O, or structural errors. Results are JSON.
 `exportfs`, `rpc.nfsd`, `rpc.statd` and `sm-notify` from one extracted inventory.
 Shared objects/aliases are counted once; the whole union is bounded by256
 objects,1024 bindings and64 MiB. Missing or unsupported entries yield no partial
-object set. Exit0 means static resolution only,2 an incomplete/refused candidate,
+object set. Exit 0 means static resolution only,2 an incomplete/refused candidate,
 and1 argument/inventory I/O failure. Runtime qualification and execution remain
 false. Kernel NFSD/NLM, helper invocation, NSM state/recovery, NSS/configuration,
 retained bytes, complete ABI and actual protocol/service behavior need separate
