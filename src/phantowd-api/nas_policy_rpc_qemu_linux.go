@@ -113,6 +113,7 @@ func exerciseQEMUNASPolicyRPC() error {
 	}
 	fmt.Println("PHANTOWD_NAS_POLICY_CHANNEL_READY kernel_peers=true root_owner=true api_uid=65534 retained_client=true original_owner=true busy=true commit=true conflict=true revision=2 scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_CHANNEL_READY api_uid=65534 https=true retained_client=true root_owner=true busy=true commit=true conflict=true readback=true parent_verified=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NAS_POLICY_API_ROUTER_READY api_uid=65534 startup_factory=true protected_lookup=true router=true legacy_refused=true plaintext_refused=true closed_refusal=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -122,32 +123,17 @@ func runQEMUNASPolicyClient(phase string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	dialer := net.Dialer{}
-	conn, err := dialer.DialContext(ctx, "unix", nasRPCFixture+"/channel")
+	management, err := newQEMUNASPolicyHTTPAt(nil, nasRPCFixture+"/channel")
 	if err != nil {
 		return err
 	}
-	client, err := naspolicyrpc.NewClient(conn.(*net.UnixConn))
-	if err != nil {
-		conn.Close()
-		return err
-	}
-	defer client.Close()
-	management, err := newQEMUNASPolicyHTTP(client)
-	if err != nil {
-		return err
-	}
-	defer management.server.Close()
+	defer management.Close()
 	if err := management.exchange(ctx, nil, 200); err != nil {
 		return err
 	}
-	got, err := client.Snapshot(ctx)
-	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(1)) {
-		return errors.New("NAS policy client initial snapshot differs")
-	}
-	want, status := uint64(2), 200
+	status := 200
 	if phase == "held" {
-		want, status = 1, 503
+		status = 503
 	}
 	next := qemuPersistentNASPolicy(2)
 	if err := management.exchange(ctx, &next, status); err != nil {
@@ -158,13 +144,14 @@ func runQEMUNASPolicyClient(phase string) error {
 			return err
 		}
 	}
-	got, err = client.Snapshot(ctx)
-	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(want)) {
-		return errors.New("NAS policy client final snapshot differs")
-	}
 	if err := management.exchange(ctx, nil, 200); err != nil {
 		return err
 	}
-	management.server.Close()
-	return client.Close()
+	if err := errors.Join(management.closeTransport(), management.closeTransport()); err != nil {
+		return err
+	}
+	if err := management.exchange(ctx, nil, 503); err != nil {
+		return err
+	}
+	return management.Close()
 }

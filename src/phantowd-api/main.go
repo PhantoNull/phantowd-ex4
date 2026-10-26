@@ -182,6 +182,12 @@ func main() {
 	if validateServiceStateOptions(serviceDirectory, shareDirectory, transport) != nil {
 		log.Fatal("service configuration options are invalid")
 	}
+	auth := newAuthController(accounts, transport.AllowedOrigin)
+	nas, closeNAS, err := openNASPolicyHTTP(auth, os.Getenv("PHANTOWD_NAS_POLICY_SOCKET"), shareDirectory != "" || serviceDirectory != "", transport.TLSConfig != nil)
+	if err != nil {
+		log.Fatal("NAS policy channel configuration is unavailable")
+	}
+	defer closeNAS()
 	readPolicy, closePolicy, err := openSharePolicyReader(shareDirectory)
 	if err != nil {
 		log.Fatal("share configuration storage is unavailable or insecure")
@@ -192,7 +198,7 @@ func main() {
 		log.Fatal("development service configuration storage is unavailable")
 	}
 	defer closeServiceState()
-	server := newConfiguredServer(newHandlerWithStorageGPTObservation(func() (systemSnapshot, error) {
+	server := newConfiguredServer(newHandlerWithNASPolicy(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorageFromBroker()
@@ -200,9 +206,9 @@ func main() {
 		return collectMDArrayInventory(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, func() (mountSnapshot, error) {
 		return collectMountInventory(os.DirFS("/proc"), time.Now())
-	}, newAuthController(accounts, transport.AllowedOrigin), readPolicy, serviceState, func(ctx context.Context) (storageGPTObservationSummary, error) {
+	}, auth, readPolicy, serviceState, func(ctx context.Context) (storageGPTObservationSummary, error) {
 		return observeGPTPartitionIdentityFromBroker(ctx)
-	}), transport)
+	}, nas), transport)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	shutdownDone := make(chan struct{})
@@ -222,4 +228,7 @@ func main() {
 		log.Fatal("diagnostics server failed")
 	}
 	<-shutdownDone
+	if closeNAS() != nil {
+		log.Fatal("NAS policy channel disposal requires review")
+	}
 }
