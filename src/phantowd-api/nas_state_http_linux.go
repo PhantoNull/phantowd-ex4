@@ -43,13 +43,15 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		summary := r.URL.Path == nasSummaryPath
-		if r.URL.Path != nasStatePath && !summary {
+		backup := r.URL.Path == nasBackupPath
+		readOnly := summary || backup
+		if r.URL.Path != nasStatePath && !readOnly {
 			writeJSON(w, 404, map[string]string{"error": "not_found"})
 			return
 		}
-		if r.Method != http.MethodGet && (summary || r.Method != http.MethodPut) {
+		if r.Method != http.MethodGet && (readOnly || r.Method != http.MethodPut) {
 			allow := "GET, PUT"
-			if summary {
+			if readOnly {
 				allow = "GET"
 			}
 			w.Header().Set("Allow", allow)
@@ -103,11 +105,16 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 				writeJSON(w, 401, map[string]string{"error": "authentication_required"})
 				return
 			}
+			if readOnly && c.Validate() != nil {
+				nasStateError(w, naspolicystore.ErrInvalid)
+				return
+			}
+			if backup {
+				w.Header().Set("Content-Disposition", `attachment; filename="phantowd-nas-services.json"`)
+				writeJSON(w, 200, map[string]any{"format": nasBackupFormat, "schema_version": 1, "configuration": c})
+				return
+			}
 			if summary {
-				if c.Validate() != nil {
-					nasStateError(w, naspolicystore.ErrInvalid)
-					return
-				}
 				luns := 0
 				for _, target := range c.ISCSI.Targets {
 					luns += len(target.LUNs)

@@ -94,6 +94,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	}
 	fmt.Println("PHANTOWD_NAS_POLICY_MAIN_READY standard_main=true api_uid=65534 https=verified setup=true login=true lifetimes=2 credentials_retained=true original_owner=true busy=true commit=true conflict=true shutdown=clean peer_pid=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_SUMMARY_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true counts=verified scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NAS_POLICY_BACKUP_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true full_policy=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -243,6 +244,9 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	if err := h.request(ctx, nasSummaryPath, nil, 401, nil); err != nil {
 		return err
 	}
+	if err := h.request(ctx, nasBackupPath, nil, 401, nil); err != nil {
+		return err
+	}
 	var status authStatus
 	if err := h.request(ctx, authStatusPath, nil, 200, &status); err != nil {
 		return err
@@ -296,6 +300,17 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 			"applied": false, "activation_available": false}
 		if !reflect.DeepEqual(summary, want) {
 			return errors.New("main fixture compact NAS summary differs")
+		}
+		var backup struct {
+			Format        string           `json:"format"`
+			SchemaVersion int              `json:"schema_version"`
+			Configuration naspolicy.Config `json:"configuration"`
+		}
+		if err := h.request(ctx, nasBackupPath, nil, 200, &backup); err != nil {
+			return err
+		}
+		if backup.Format != nasBackupFormat || backup.SchemaVersion != 1 || !reflect.DeepEqual(backup.Configuration, got) {
+			return errors.New("main fixture complete NAS policy backup differs")
 		}
 		return nil
 	}

@@ -208,6 +208,8 @@
         <h2 id="nas-title">Saved NAS configuration</h2>
         <p class="policy-help">One saved revision for SMB, NFS and iSCSI. Counts describe definitions, not running services, available disks or effective access.</p>
         <button id="nas-load" class="refresh-button" type="button">Load NAS configuration</button>
+        <button id="nas-backup" class="refresh-button" type="button">Download service definitions</button>
+        <p class="policy-help">The download contains SMB/NFS/iSCSI definitions, including private names and identifiers. Data, account passwords and CHAP secrets need separate backups.</p>
         <p id="nas-status" class="snapshot-status" role="status" aria-live="polite">Not loaded.</p>
         <div id="nas-result" hidden>
           <p id="nas-revision" class="policy-help"></p>
