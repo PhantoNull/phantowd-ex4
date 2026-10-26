@@ -18,25 +18,50 @@ function clearNASPolicySummary() {
   nasSummaryState.generation++;
   nasSummaryState.controller?.abort();
   nasSummaryState.controller = null; nasSummaryState.busy = false;
-  byId("nas-load").disabled = false;
+  for (const id of ["nas-load", "nas-backup"]) byId(id).disabled = false;
   byId("nas-result").hidden = true;
   byId("nas-counts").replaceChildren();
   setText("nas-revision", ""); setText("nas-status", "Not loaded.");
 }
 
-async function loadNASPolicySummary() {
+function loadNASPolicySummary() { return readNASPolicy(false); }
+function exportNASPolicyBackup() { return readNASPolicy(true); }
+
+async function readNASPolicy(backup) {
   if (nasSummaryState.busy) return;
   clearNASPolicySummary();
   const generation = nasSummaryState.generation;
   const controller = new AbortController();
   nasSummaryState.controller = controller; nasSummaryState.busy = true;
-  byId("nas-load").disabled = true;
+  for (const id of ["nas-load", "nas-backup"]) byId(id).disabled = true;
   setText("nas-status", "Reading saved NAS configuration. Previous values were cleared.");
   const timeout = setTimeout(() => controller.abort(), 10000);
   const current = () => generation === nasSummaryState.generation;
   try {
-    const reply = await fetchJSON("/api/v1/nas-services/summary", { signal: controller.signal });
+    const packet = await fetchDocument(backup ? "/api/v1/nas-services/backup" : "/api/v1/nas-services/summary", { signal: controller.signal });
     if (!current()) return;
+    const reply = packet.value;
+    if (backup) {
+      const c = reply?.configuration, f = c?.file_services, i = c?.iscsi;
+      if (reply?.format !== "phantowd-nas-policy-backup" || reply.schema_version !== 1 || Object.keys(reply).sort().join(",") !== "configuration,format,schema_version" ||
+          c?.format !== "phantowd-nas-service-config" || c.schema_version !== 1 || f?.format !== "phantowd-file-service-config" || f.schema_version !== 1 ||
+          f.shares?.format !== "phantowd-share-config" || f.shares.schema_version !== 1 || f.nfs?.format !== "phantowd-nfs-policy" || f.nfs.schema_version !== 1 ||
+          i?.format !== "phantowd-iscsi-policy" || i.schema_version !== 1 ||
+          [[f.shares.volumes, 16], [f.shares.users, 128], [f.shares.shares, 128], [f.nfs.exports, 128], [i.backings, 64], [i.targets, 16]]
+            .some(([entries, limit]) => !Array.isArray(entries) || entries.length > limit) ||
+          ![c.revision, f.revision, f.shares.revision, f.nfs.revision, f.nfs.volume_revision, i.revision, i.volume_revision].every((r) => Number.isSafeInteger(r) && r > 0 && r === c.revision)) {
+        throw new Error("invalid NAS backup");
+      }
+      // Use original wire bytes: JSON re-encoding rounds valid uint64 LUN sizes.
+      const url = URL.createObjectURL(new Blob([packet.bytes], { type: "application/json" }));
+      try {
+        const link = document.createElement("a"); link.href = url; link.download = "phantowd-nas-services.json";
+        document.body.append(link);
+        try { link.click(); } finally { link.remove(); }
+        setText("nas-status", `Download requested for revision ${c.revision}. Keep this private file safe; it is not a data or credential backup.`);
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
+      return;
+    }
     if (reply?.schema_version !== 1 || reply.scope !== "stored-desired-nas-policy-summary-only" ||
         !Number.isSafeInteger(reply.revision) || reply.revision < 1 || reply.applied !== false ||
         reply.activation_available !== false || Object.keys(reply).length !== 12 ||
@@ -62,7 +87,8 @@ async function loadNASPolicySummary() {
   } finally {
     clearTimeout(timeout);
     if (current()) {
-      nasSummaryState.busy = false; nasSummaryState.controller = null; byId("nas-load").disabled = false;
+      nasSummaryState.busy = false; nasSummaryState.controller = null;
+      for (const id of ["nas-load", "nas-backup"]) byId(id).disabled = false;
     }
   }
 }

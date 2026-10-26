@@ -1505,6 +1505,11 @@ Authenticated GET `/api/v1/nas-services/summary` uses that SAME authority and
 returns only revision and bounded definition counts for the manual dashboard
 view. It validates full policy coherence, omits identifiers/content/credentials,
 refuses writes and never reports runtime activation or provisions state.
+GET `/api/v1/nas-services/backup` exports that same validated complete policy
+as `phantowd-nas-policy-backup` schema1. It is desired definitions only: no
+data, account passwords, CHAP values or recovery/admission authority. The panel
+downloads bounded original wire bytes, preserving uint64 values instead of
+re-encoding them through JavaScript numbers. Restore is not provided here.
 Closing the transport waits for its active RPC, prevents later RPCs and disposes
 the lookup descriptor once; it does not close the root Owner or stop its service.
 Filesystem operations remain cooperatively bounded. This is desired state only:
