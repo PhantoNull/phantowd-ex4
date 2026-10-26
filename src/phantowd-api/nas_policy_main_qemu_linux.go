@@ -40,6 +40,9 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
+	if err := exerciseQEMUNASPolicyEvidence(); err != nil {
+		return err
+	}
 	for _, entry := range []struct {
 		path     string
 		mode     os.FileMode

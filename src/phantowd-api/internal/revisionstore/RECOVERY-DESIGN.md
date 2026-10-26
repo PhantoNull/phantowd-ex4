@@ -3,7 +3,8 @@
 
 # Policy operation evidence and boot recovery
 
-**Status: proposed M1.3b contract, not implemented or approved for product use.**
+**Status: private NAS-only codec/comparison implemented; collector, writer and
+product admission remain proposed and unqualified.**
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
 This design is a contributor handoff, not a migration or installation procedure.
 
@@ -44,9 +45,9 @@ trusted provisioning and parents, cooperating writers and a qualified medium.
 Without a separately designed rollback-resistant anchor, restoring an old
 complete state bundle cannot be distinguished reliably from legitimate history.
 
-## Proposed first implementation: pure evidence matching
+## First implementation: private NAS-only evidence matching
 
-Start with an internal, platform-independent strict codec and pure matcher.
+The [internal NAS comparator](../naspolicyevidence/README.md) implements the first pure slice.
 Inputs are trusted in-process observations, never HTTP-supplied permissions.
 This slice has no file opener, writer, synchronization, recovery, consumer or
 Owner constructor. Its result is diagnostic data, never a capability.
@@ -170,7 +171,7 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 
 ## Decisions still required
 
-- Approve the record/matcher semantics before committing a new schema API.
+- Approve a durable record/collector namespace before adding product state I/O.
 - Choose the state-root/bundle namespace and atomic publication strategy; a
   generation/manifest design is an option, not a silently selected format.
 - Specify what can authorize reconciliation after receipt-publication uncertainty,
