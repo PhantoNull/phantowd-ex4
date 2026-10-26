@@ -19,6 +19,8 @@ func TestNASPolicyRoutePreservesFallback(t *testing.T) {
 	}{
 		{"/api/v1/nas-services/configuration", false, 404},
 		{"/api/v1/nas-services/configuration", true, 202},
+		{"/api/v1/nas-services/summary", false, 404},
+		{"/api/v1/nas-services/summary", true, 202},
 		{"/api/v1/nas-services/configuration/extra", true, 404},
 		{"/healthz", true, 200},
 	} {

@@ -204,6 +204,17 @@
         </div>
       </section>
 
+      <section class="policy-panel card" aria-labelledby="nas-title">
+        <h2 id="nas-title">Saved NAS configuration</h2>
+        <p class="policy-help">One saved revision for SMB, NFS and iSCSI. Counts describe definitions, not running services, available disks or effective access.</p>
+        <button id="nas-load" class="refresh-button" type="button">Load NAS configuration</button>
+        <p id="nas-status" class="snapshot-status" role="status" aria-live="polite">Not loaded.</p>
+        <div id="nas-result" hidden>
+          <p id="nas-revision" class="policy-help"></p>
+          <ul id="nas-counts" class="saved-shares"></ul>
+        </div>
+      </section>
+
       <section class="policy-panel card" aria-labelledby="policy-title">
         <p class="eyebrow">DESIRED POLICY / NOTHING IS APPLIED</p>
         <h2 id="policy-title">File shares</h2>

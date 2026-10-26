@@ -12,6 +12,7 @@ import (
 
 const listenAddress = defaultListenAddress
 const nasStatePath = "/api/v1/nas-services/configuration"
+const nasSummaryPath = "/api/v1/nas-services/summary"
 
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
@@ -82,7 +83,7 @@ func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCo
 			auth.serve(w, r)
 			return
 		}
-		if nas != nil && r.URL.Path == nasStatePath {
+		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath) {
 			nas.ServeHTTP(w, r)
 			return
 		}

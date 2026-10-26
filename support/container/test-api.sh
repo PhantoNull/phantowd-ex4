@@ -16,6 +16,7 @@ cd "$module_dir"
 "$go_binary" test -tags=qemu -run '^Test(NFSExpectedQEMU|NFSCodeProbe)' -race -count=1 ./internal/runtimebundle
 printf '%s\n' 'PHANTOWD_NFS_BUILD_REPORT_CONSUMER_READY normal=true race=true scope=host-data-only'
 "$go_binary" test -tags=qemu -race -count=1 ./internal/nfsowner
+"$go_binary" test -tags=qemu -run '^TestNASStateSummary' -count=1 -v .
 "$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBEffectiveFixture|TestQEMUSMBDenialEvidence|TestQEMUSMBProvisionParser|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUCollisionFixture|TestQEMUStatePersistence|TestQEMUServiceStateBackend|TestQEMUIdentityOwnerServiceHostGuard|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD|TestQEMUNetworkPolicy|TestQEMUNetworkInventory)$' -count=1 .
 "$go_binary" test -race -count=1 ./...
 # Fixed execution counts avoid false deadline failures in the pinned Go 1.26
