@@ -30,6 +30,13 @@ cross-protocol/global backing-use or session admission. A desired enabled target
 does not authorize startup. Input slices remain caller-owned and must not be
 mutated concurrently.
 
+## Coherent edits
+
+`ReplaceFileServices`/`ReplaceISCSI` replace one view at base+1, retaining the
+other protocol definitions and detaching every mutable collection. Retained NFS
+sources and iSCSI-referenced volumes cannot be rebound. This is an internal
+model operation, not store publication, HTTP/UI integration or activation.
+
 ## Store and migration boundary
 
 The Linux [store adapter](../naspolicystore/store_linux.go) reuses the existing

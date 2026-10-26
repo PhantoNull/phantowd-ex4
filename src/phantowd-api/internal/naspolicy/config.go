@@ -68,9 +68,18 @@ func Decode(input io.Reader) (Config, error) {
 // Registry/device generations remain separate; equality does not mint trust.
 // Inputs remain caller-owned and must not be changed concurrently.
 func (c Config) Validate() error {
+	if c.FileServices.Validate() != nil {
+		return ErrInvalid
+	}
+	return c.validateFileServicesChecked()
+}
+
+// Call only after the same FileServices value passed validation. Edits reuse
+// the retained-binding validator's checks without revalidating the full model.
+func (c Config) validateFileServicesChecked() error {
 	if c.Format != Format || c.SchemaVersion != SchemaVersion || c.Revision == 0 ||
 		c.FileServices.Revision != c.Revision || c.ISCSI.Revision != c.Revision ||
-		c.FileServices.Validate() != nil || c.ISCSI.Validate(c.FileServices.Shares) != nil {
+		c.ISCSI.Validate(c.FileServices.Shares) != nil {
 		return ErrInvalid
 	}
 	// A direct Go value must also fit each nested decoder, not only the larger
