@@ -25,7 +25,7 @@ import (
 const nasRPCFixture = "/run/phantowd-nas-policy-rpc"
 
 // Two explicit channel lifetimes share one original synthetic root Owner.
-// No product listener, HTTP, physical disk or service activation is involved.
+// HTTPS is guest-loopback-only; no product listener, disk or service activation.
 func exerciseQEMUNASPolicyRPC() error {
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
@@ -108,8 +108,12 @@ func exerciseQEMUNASPolicyRPC() error {
 	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(2)) {
 		return errors.New("NAS policy channel did not preserve original Owner")
 	}
+	if err := owner.Close(); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_NAS_POLICY_CHANNEL_READY kernel_peers=true root_owner=true api_uid=65534 retained_client=true original_owner=true busy=true commit=true conflict=true revision=2 scope=disposable-qemu-only")
-	return owner.Close()
+	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_CHANNEL_READY api_uid=65534 https=true retained_client=true root_owner=true busy=true commit=true conflict=true readback=true parent_verified=true scope=disposable-qemu-only")
+	return nil
 }
 
 func runQEMUNASPolicyClient(phase string) error {
@@ -129,28 +133,38 @@ func runQEMUNASPolicyClient(phase string) error {
 		return err
 	}
 	defer client.Close()
+	management, err := newQEMUNASPolicyHTTP(client)
+	if err != nil {
+		return err
+	}
+	defer management.server.Close()
+	if err := management.exchange(ctx, nil, 200); err != nil {
+		return err
+	}
 	got, err := client.Snapshot(ctx)
 	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(1)) {
 		return errors.New("NAS policy client initial snapshot differs")
 	}
-	err = client.Commit(ctx, 1, qemuPersistentNASPolicy(2))
-	want := uint64(2)
+	want, status := uint64(2), 200
 	if phase == "held" {
-		if !errors.Is(err, naspolicystore.ErrBusy) {
-			return errors.New("NAS policy live claim was bypassed")
-		}
-		want = 1
-	} else {
-		if err != nil {
+		want, status = 1, 503
+	}
+	next := qemuPersistentNASPolicy(2)
+	if err := management.exchange(ctx, &next, status); err != nil {
+		return err
+	}
+	if phase == "commit" {
+		if err := management.exchange(ctx, &next, 409); err != nil {
 			return err
-		}
-		if !errors.Is(client.Commit(ctx, 1, qemuPersistentNASPolicy(2)), naspolicystore.ErrConflict) {
-			return errors.New("NAS policy stale client was accepted")
 		}
 	}
 	got, err = client.Snapshot(ctx)
 	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(want)) {
 		return errors.New("NAS policy client final snapshot differs")
 	}
+	if err := management.exchange(ctx, nil, 200); err != nil {
+		return err
+	}
+	management.server.Close()
 	return client.Close()
 }
