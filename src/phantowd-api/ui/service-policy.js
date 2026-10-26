@@ -6,6 +6,66 @@
 // Desired-state transactions only. No activation, automatic PUT retry, browser
 // persistence or implicit import from the older share-only store.
 const servicePath = "/api/v1/file-services/configuration";
+const nasSummaryState = { generation: 0, controller: null, busy: false };
+const nasSummaryFields = [
+  ["volumes", "Volume references", 16], ["users", "User references", 128],
+  ["smb_shares", "SMB shares", 128], ["nfs_exports", "NFS exports", 128],
+  ["iscsi_targets", "iSCSI targets", 16], ["iscsi_backings", "iSCSI backing definitions", 64],
+  ["iscsi_luns", "iSCSI LUN mappings", 64],
+];
+
+function clearNASPolicySummary() {
+  nasSummaryState.generation++;
+  nasSummaryState.controller?.abort();
+  nasSummaryState.controller = null; nasSummaryState.busy = false;
+  byId("nas-load").disabled = false;
+  byId("nas-result").hidden = true;
+  byId("nas-counts").replaceChildren();
+  setText("nas-revision", ""); setText("nas-status", "Not loaded.");
+}
+
+async function loadNASPolicySummary() {
+  if (nasSummaryState.busy) return;
+  clearNASPolicySummary();
+  const generation = nasSummaryState.generation;
+  const controller = new AbortController();
+  nasSummaryState.controller = controller; nasSummaryState.busy = true;
+  byId("nas-load").disabled = true;
+  setText("nas-status", "Reading saved NAS configuration. Previous values were cleared.");
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  const current = () => generation === nasSummaryState.generation;
+  try {
+    const reply = await fetchJSON("/api/v1/nas-services/summary", { signal: controller.signal });
+    if (!current()) return;
+    if (reply?.schema_version !== 1 || reply.scope !== "stored-desired-nas-policy-summary-only" ||
+        !Number.isSafeInteger(reply.revision) || reply.revision < 1 || reply.applied !== false ||
+        reply.activation_available !== false || Object.keys(reply).length !== 12 ||
+        nasSummaryFields.some(([field, , limit]) => !Number.isSafeInteger(reply[field]) || reply[field] < 0 || reply[field] > limit)) {
+      throw new Error("invalid summary");
+    }
+    const rows = nasSummaryFields.map(([field, label]) => {
+      const row = document.createElement("li"); row.textContent = `${label}: ${reply[field]}`; return row;
+    });
+    byId("nas-counts").replaceChildren(...rows);
+    setText("nas-revision", `Revision ${reply.revision}`);
+    byId("nas-result").hidden = false;
+    setText("nas-status", "Saved definitions loaded. This does not report running services or effective access.");
+  } catch (failure) {
+    if (!current()) return;
+    if (failure?.status === 401) {
+      clearNASPolicySummary(); byId("dashboard-content").hidden = true;
+      try { await updateAuthView({ refresh: false, notice: "Session expired. Sign in again to load NAS configuration." }); }
+      catch { showAuthUnavailable(); }
+    } else setText("nas-status", failure?.name === "AbortError" ? "NAS configuration read timed out. No previous values are shown." :
+      failure?.status === 404 ? "Unified NAS configuration is not configured. No previous values are shown." :
+      "NAS configuration unavailable or invalid. No previous values are shown.");
+  } finally {
+    clearTimeout(timeout);
+    if (current()) {
+      nasSummaryState.busy = false; nasSummaryState.controller = null; byId("nas-load").disabled = false;
+    }
+  }
+}
 const serviceState = { baseline: undefined, candidate: null, attempted: null, busy: false, generation: 0, controller: null };
 const policyCopy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -33,6 +93,7 @@ function invalidateServiceDraft() {
 }
 
 function clearServicePolicy() {
+  clearNASPolicySummary();
   serviceState.generation++;
   serviceState.controller?.abort();
   Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null, busy: false, controller: null });

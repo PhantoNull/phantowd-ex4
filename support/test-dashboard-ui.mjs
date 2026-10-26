@@ -243,6 +243,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
+    ...["load", "status", "result", "revision", "counts"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
@@ -2342,4 +2343,109 @@ async function testDiagnosticByteReaderBoundariesAndCleanup() {
   process.stdout.write("Diagnostic byte-reader controls passed: paths=5 inclusive-limits=true UTF8-split=true cancellation-locks=true no-fallback=true fragmentation=true.\n");
 }
 await testDiagnosticByteReaderBoundariesAndCleanup();
+
+function nasSummaryFixture() {
+  return { schema_version: 1, scope: "stored-desired-nas-policy-summary-only", revision: 3,
+    volumes: 2, users: 1, smb_shares: 4, nfs_exports: 2, iscsi_targets: 1, iscsi_backings: 2, iscsi_luns: 2,
+    applied: false, activation_available: false };
+}
+
+async function testNASSummaryExplicitReadOnlyLoad() {
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true, setup_required: false });
+    if (path === "/api/v1/nas-services/summary") return jsonResponse(nasSummaryFixture());
+    return snapshotResponse(path);
+  });
+  assert.equal(h.requests.filter((r) => r.path.includes("nas-services")).length, 0);
+  await h.context.loadNASPolicySummary();
+  const calls = h.requests.filter((r) => r.path.includes("nas-services"));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.method, "GET");
+  assert.equal(calls[0].options.body, undefined);
+  assert.equal(calls[0].options.cache, "no-store");
+  assert.equal(calls[0].options.credentials, "same-origin");
+  assert.equal(h.elements["nas-result"].hidden, false);
+  assert.equal(h.elements["nas-revision"].textContent, "Revision 3");
+  assert.equal(h.elements["nas-counts"].children.length, 7);
+  assert.equal(h.elements["nas-counts"].children[0].textContent, "Volume references: 2");
+  assert.match(h.elements["nas-status"].textContent, /Saved definitions.*running/);
+}
+await testNASSummaryExplicitReadOnlyLoad();
+
+async function testNASSummaryRefusalsClearPriorValues() {
+  let reply = nasSummaryFixture();
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/nas-services/summary") return reply instanceof Error ? reply : jsonResponse(reply);
+    return snapshotResponse(path);
+  });
+  for (const bad of [null, {}, { ...nasSummaryFixture(), revision: 2 ** 53 },
+    { ...nasSummaryFixture(), applied: true }, { ...nasSummaryFixture(), activation_available: true },
+    { ...nasSummaryFixture(), users: "1" }, { ...nasSummaryFixture(), iscsi_luns: 65 },
+    { ...nasSummaryFixture(), extra: "private" }, new Error("private transport details"),
+    { ...nasSummaryFixture(), extra: "x".repeat(4096) }]) {
+    reply = nasSummaryFixture(); await h.context.loadNASPolicySummary();
+    assert.equal(h.elements["nas-result"].hidden, false);
+    reply = bad; await h.context.loadNASPolicySummary();
+    assert.equal(h.elements["nas-result"].hidden, true);
+    assert.equal(h.elements["nas-counts"].children.length, 0);
+    assert.equal(h.elements["nas-revision"].textContent, "");
+    assert.doesNotMatch(h.elements["nas-status"].textContent, /private/);
+    assert.equal(h.elements["nas-load"].disabled, false);
+  }
+  reply = { ...nasSummaryFixture(), volumes: 0, users: 0, smb_shares: 0, nfs_exports: 0, iscsi_targets: 0, iscsi_backings: 0, iscsi_luns: 0 };
+  await h.context.loadNASPolicySummary();
+  assert.equal(h.elements["nas-result"].hidden, false, "valid zero counts are not unavailable");
+  assert.ok(h.requests.filter((r) => r.path.includes("nas-services")).every((r) => r.options.method === "GET"));
+}
+await testNASSummaryRefusalsClearPriorValues();
+
+async function testNASSummaryLateReplyCannotSurviveLogout() {
+  let release, ended = false;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/logout") { ended = true; return jsonResponse({ signed_out: true }); }
+    if (path === "/api/v1/nas-services/summary") return pending.then(() => jsonResponse(nasSummaryFixture()));
+    return snapshotResponse(path);
+  });
+  const loading = h.context.loadNASPolicySummary(); await settleUI();
+  await h.context.loadNASPolicySummary();
+  assert.equal(h.requests.filter((r) => r.path.includes("nas-services")).length, 1, "duplicate clicks are serialized");
+  await h.elements.logout.listeners.get("click")();
+  release(); await loading; await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.elements["nas-result"].hidden, true);
+  assert.equal(h.elements["nas-counts"].children.length, 0);
+}
+await testNASSummaryLateReplyCannotSurviveLogout();
+
+async function testNASSummaryHTTPRefusalsAndDeadline() {
+  for (const status of [401, 404, 503]) {
+    let failed = false;
+    const h = await createHarness((path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !failed || status !== 401 });
+      if (path === "/api/v1/nas-services/summary") return jsonResponse(failed ? { error: "private" } : nasSummaryFixture(), failed ? status : 200);
+      return snapshotResponse(path);
+    });
+    await h.context.loadNASPolicySummary(); failed = true; await h.context.loadNASPolicySummary();
+    assert.equal(h.elements["nas-result"].hidden, true);
+    assert.equal(h.elements["nas-counts"].children.length, 0);
+    if (status === 401) assert.equal(h.elements["dashboard-content"].hidden, true);
+    if (status === 404) assert.match(h.elements["nas-status"].textContent, /not configured/);
+    assert.equal(h.requests.filter((r) => r.path.includes("nas-services")).length, 2, "no retry or legacy fallback");
+  }
+  const timers = [];
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/nas-services/summary") return new Promise(() => {});
+    return snapshotResponse(path);
+  }, { setTimeout: (f) => (timers.push(f), timers.length), clearTimeout: () => {} });
+  const loading = h.context.loadNASPolicySummary(); await settleUI(); timers.at(-1)(); await loading;
+  assert.match(h.elements["nas-status"].textContent, /timed out/);
+  assert.equal(h.elements["nas-load"].disabled, false);
+  assert.equal(h.elements["nas-result"].hidden, true);
+}
+await testNASSummaryHTTPRefusalsAndDeadline();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
