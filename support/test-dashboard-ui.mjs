@@ -243,7 +243,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
-    ...["load", "status", "result", "revision", "counts"].map((id) => `nas-${id}`),
+    ...["load", "backup", "status", "result", "revision", "counts"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
@@ -2400,52 +2400,114 @@ async function testNASSummaryRefusalsClearPriorValues() {
 }
 await testNASSummaryRefusalsClearPriorValues();
 
-async function testNASSummaryLateReplyCannotSurviveLogout() {
+async function testNASSummaryLateReplyCannotSurviveLogout(backup = false) {
   let release, ended = false;
   const pending = new Promise((resolve) => { release = resolve; });
   const h = await createHarness((path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/logout") { ended = true; return jsonResponse({ signed_out: true }); }
-    if (path === "/api/v1/nas-services/summary") return pending.then(() => jsonResponse(nasSummaryFixture()));
+    if (path === "/api/v1/nas-services/summary" || path === "/api/v1/nas-services/backup") return pending.then(() => jsonResponse(backup ? nasBackupFixture() : nasSummaryFixture()));
     return snapshotResponse(path);
   });
-  const loading = h.context.loadNASPolicySummary(); await settleUI();
-  await h.context.loadNASPolicySummary();
+  const load = () => backup ? h.context.exportNASPolicyBackup() : h.context.loadNASPolicySummary();
+  const loading = load(); await settleUI();
+  await load();
   assert.equal(h.requests.filter((r) => r.path.includes("nas-services")).length, 1, "duplicate clicks are serialized");
   await h.elements.logout.listeners.get("click")();
   release(); await loading; await settleUI();
   assert.equal(h.elements["dashboard-content"].hidden, true);
   assert.equal(h.elements["nas-result"].hidden, true);
   assert.equal(h.elements["nas-counts"].children.length, 0);
+  assert.equal(h.document.downloads.length, 0);
 }
 await testNASSummaryLateReplyCannotSurviveLogout();
+await testNASSummaryLateReplyCannotSurviveLogout(true);
 
-async function testNASSummaryHTTPRefusalsAndDeadline() {
+async function testNASSummaryHTTPRefusalsAndDeadline(backup = false) {
   for (const status of [401, 404, 503]) {
     let failed = false;
     const h = await createHarness((path) => {
       if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !failed || status !== 401 });
-      if (path === "/api/v1/nas-services/summary") return jsonResponse(failed ? { error: "private" } : nasSummaryFixture(), failed ? status : 200);
+      if (path === "/api/v1/nas-services/summary" || path === "/api/v1/nas-services/backup") return jsonResponse(failed ? { error: "private" } : backup ? nasBackupFixture() : nasSummaryFixture(), failed ? status : 200);
       return snapshotResponse(path);
     });
-    await h.context.loadNASPolicySummary(); failed = true; await h.context.loadNASPolicySummary();
+    const load = () => backup ? h.context.exportNASPolicyBackup() : h.context.loadNASPolicySummary();
+    await load(); failed = true; await load();
     assert.equal(h.elements["nas-result"].hidden, true);
     assert.equal(h.elements["nas-counts"].children.length, 0);
     if (status === 401) assert.equal(h.elements["dashboard-content"].hidden, true);
     if (status === 404) assert.match(h.elements["nas-status"].textContent, /not configured/);
+    assert.equal(h.document.downloads.length, backup ? 1 : 0, "HTTP errors must not create another backup");
     assert.equal(h.requests.filter((r) => r.path.includes("nas-services")).length, 2, "no retry or legacy fallback");
   }
   const timers = [];
   const h = await createHarness((path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
-    if (path === "/api/v1/nas-services/summary") return new Promise(() => {});
+    if (path === "/api/v1/nas-services/summary" || path === "/api/v1/nas-services/backup") return new Promise(() => {});
     return snapshotResponse(path);
   }, { setTimeout: (f) => (timers.push(f), timers.length), clearTimeout: () => {} });
-  const loading = h.context.loadNASPolicySummary(); await settleUI(); timers.at(-1)(); await loading;
+  const loading = backup ? h.context.exportNASPolicyBackup() : h.context.loadNASPolicySummary(); await settleUI(); timers.at(-1)(); await loading;
   assert.match(h.elements["nas-status"].textContent, /timed out/);
   assert.equal(h.elements["nas-load"].disabled, false);
   assert.equal(h.elements["nas-result"].hidden, true);
 }
 await testNASSummaryHTTPRefusalsAndDeadline();
+await testNASSummaryHTTPRefusalsAndDeadline(true);
+function nasBackupFixture() {
+  return { format: "phantowd-nas-policy-backup", schema_version: 1, configuration: {
+    format: "phantowd-nas-service-config", schema_version: 1, revision: 4,
+    file_services: { format: "phantowd-file-service-config", schema_version: 1, revision: 4,
+      shares: savedFixture().configuration,
+      nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 4, volume_revision: 4, exports: [] } },
+    iscsi: { format: "phantowd-iscsi-policy", schema_version: 1, revision: 4, volume_revision: 4,
+      backings: [{ id: "lun", volume_id: "media", relative_path: "luns/disk.img", capacity_bytes: 512, block_size: 512, allocation: "preallocated" }], targets: [] },
+  } };
+}
+
+async function testNASBackupKeepsOriginalWireNumbers() {
+  const raw = JSON.stringify(nasBackupFixture()).replace('"capacity_bytes":512', '"capacity_bytes":9223372036854775296') + "\n";
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/nas-services/backup") return { ok: true, status: 200,
+      body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(raw)); c.close(); } }) };
+    return snapshotResponse(path);
+  });
+  assert.equal(h.requests.filter((r) => r.path.endsWith("/backup")).length, 0);
+  await h.context.exportNASPolicyBackup(); await settleUI();
+  assert.equal(h.document.downloads.length, 1);
+  assert.equal(h.document.downloads[0].filename, "phantowd-nas-services.json");
+  assert.equal(await h.document.blobs[0].text(), raw, "large 64-bit LUN sizes must not pass through JSON re-encoding");
+  assert.equal(h.requests.find((r) => r.path.endsWith("/backup")).options.method, "GET");
+  assert.match(h.elements["nas-status"].textContent, /revision 4.*not a data or credential backup/);
+}
+await testNASBackupKeepsOriginalWireNumbers();
+
+async function testNASBackupRejectsInvalidAndSupportsBoundedDensity() {
+  let raw = "";
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/nas-services/backup") return { ok: true, status: 200,
+      body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(raw)); c.close(); } }) };
+    return snapshotResponse(path);
+  });
+  for (const change of [(b) => { b.format = "foreign"; }, (b) => { b.schema_version = 2; },
+    (b) => { b.extra = true; }, (b) => { b.configuration.iscsi.revision = 5; },
+    (b) => { b.configuration.file_services.shares.users = null; }, (b) => { b.configuration = null; }]) {
+    const backup = nasBackupFixture(); change(backup); raw = JSON.stringify(backup);
+    await h.context.exportNASPolicyBackup();
+    assert.equal(h.document.downloads.length, 0);
+    assert.equal(h.elements["nas-backup"].disabled, false);
+  }
+  raw = JSON.stringify(nasBackupFixture()) + " ".repeat(1024 * 1024);
+  await h.context.exportNASPolicyBackup(); assert.equal(h.document.downloads.length, 0);
+  const backup = nasBackupFixture(), shares = backup.configuration.file_services.shares;
+  shares.users = Array.from({ length: 40 }, (_, n) => ({ id: `user${n}`, name: `user${n}` }));
+  shares.shares = Array.from({ length: 50 }, (_, n) => ({ id: `share${n}`, name: `Share${n}`, volume_id: "media", relative_path: `books/${n}`,
+    grants: shares.users.map((u) => ({ user_id: u.id, access: "ro" })) }));
+  raw = JSON.stringify(backup); await h.context.exportNASPolicyBackup();
+  assert.equal(h.document.downloads.length, 1, "valid producer density above1024 containers fits the dedicated backup budget");
+  assert.equal(await h.document.blobs[0].text(), raw);
+}
+await testNASBackupRejectsInvalidAndSupportsBoundedDensity();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

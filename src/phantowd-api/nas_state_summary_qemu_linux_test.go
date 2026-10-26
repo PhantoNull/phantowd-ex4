@@ -46,7 +46,13 @@ func TestNASStateSummaryReadsOriginalOwnerThroughRouter(t *testing.T) {
 	}
 }
 
-func TestNASStateSummaryRefusesInputAndUnavailableAuthority(t *testing.T) {
+func TestNASReadOnlyRoutesRefuseInputAndUnavailableAuthority(t *testing.T) {
+	for _, path := range []string{nasSummaryPath, nasBackupPath} {
+		testNASReadOnlyRoute(t, path)
+	}
+}
+
+func testNASReadOnlyRoute(t *testing.T, path string) {
 	owner := nasStateTestOwner(t)
 	auth, cookie := newTestAuth(t)
 	h := newHandlerWithNASPolicy(nil, nil, nil, nil, auth, nil, nil, nil, newNASStateHandler(auth, owner))
@@ -58,7 +64,7 @@ func TestNASStateSummaryRefusesInputAndUnavailableAuthority(t *testing.T) {
 		{"GET", "/extra", 404},
 	} {
 		r := shareReadRequest(cookie)
-		r.Method, r.URL.Path = tc.method, nasSummaryPath+tc.suffix
+		r.Method, r.URL.Path = tc.method, path+tc.suffix
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		if w.Code != tc.status || tc.status == 405 && w.Header().Get("Allow") != "GET" {
@@ -75,11 +81,11 @@ func TestNASStateSummaryRefusesInputAndUnavailableAuthority(t *testing.T) {
 		{func(r *http.Request) { r.Body = io.NopCloser(strings.NewReader("x")); r.ContentLength = 1 }, 400},
 	} {
 		r := shareReadRequest(cookie)
-		r.URL.Path = nasSummaryPath
+		r.URL.Path = path
 		tc.change(r)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
-		if w.Code != tc.status || strings.Contains(w.Body.String(), "revision") {
+		if w.Code != tc.status || strings.Contains(w.Body.String(), "revision") || w.Header().Get("Content-Disposition") != "" {
 			t.Fatal("refused summary returned data", w.Code)
 		}
 	}
@@ -90,10 +96,10 @@ func TestNASStateSummaryRefusesInputAndUnavailableAuthority(t *testing.T) {
 			}
 		}
 		r := shareReadRequest(cookie)
-		r.URL.Path = nasSummaryPath
+		r.URL.Path = path
 		w := httptest.NewRecorder()
 		newNASStateHandler(auth, state)(w, r)
-		if w.Code != 503 || strings.Contains(w.Body.String(), "revision") {
+		if w.Code != 503 || strings.Contains(w.Body.String(), "revision") || w.Header().Get("Content-Disposition") != "" {
 			t.Fatal("unavailable summary returned data", w.Code)
 		}
 	}
