@@ -109,6 +109,13 @@ nonempty fixture pass. This distinct opt-in format performs no implicit import,
 does not replace the old development HTTP store, and supplies no credential,
 storage/global-use/session or activation authority.
 
+A separate authenticated HTTPS handler now captures only snapshot/commit
+authority: an original local Owner or a retained root-peer client. Fixed ARM
+children running as UID/GID65534 exercise HTTPS read, held-claim refusal, save
+and stale-revision conflict through the original root Owner; the parent verifies
+the complete final policy independently. This is desired-state management in
+disposable QEMU, without product listener/bootstrap/router or service activation.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 )
 
 type qemuNASPolicyHTTP struct {
@@ -26,8 +25,8 @@ type qemuNASPolicyHTTP struct {
 	exchange func(context.Context, *naspolicy.Config, int) error
 }
 
-// Synthetic session/certificate, actual HTTPS and the parent's SAME Owner.
-func newQEMUNASPolicyHTTP(owner *naspolicystore.Owner) (*qemuNASPolicyHTTP, error) {
+// Synthetic session/certificate, actual HTTPS and one retained state authority.
+func newQEMUNASPolicyHTTP(state nasStateAuthority) (*qemuNASPolicyHTTP, error) {
 	s := httptest.NewUnstartedServer(nil)
 	origin := "https://" + s.Listener.Addr().String()
 	auth := newAuthController(&accountStore{backend: qemuStaticAccount{}}, origin)
@@ -37,7 +36,7 @@ func newQEMUNASPolicyHTTP(owner *naspolicystore.Owner) (*qemuNASPolicyHTTP, erro
 		return nil, err
 	}
 	s.TLS = &tls.Config{MinVersion: tls.VersionTLS12}
-	s.Config = newConfiguredServer(newNASStateHandler(auth, owner), apiTransportConfig{Address: s.Listener.Addr().String(), AllowedOrigin: origin, TLSConfig: s.TLS})
+	s.Config = newConfiguredServer(newNASStateHandler(auth, state), apiTransportConfig{Address: s.Listener.Addr().String(), AllowedOrigin: origin, TLSConfig: s.TLS})
 	s.StartTLS()
 	client := s.Client()
 	client.Timeout = 5 * time.Second
@@ -69,9 +68,14 @@ func newQEMUNASPolicyHTTP(owner *naspolicystore.Owner) (*qemuNASPolicyHTTP, erro
 		if resp.StatusCode != want || len(data) > naspolicy.MaxInputBytes+1024 || resp.Header.Get("Cache-Control") != "no-store" {
 			return errors.New("NAS policy HTTPS response refused")
 		}
-		if want == 503 {
-			if resp.Header.Get("Retry-After") != "1" || !bytes.Contains(data, []byte(`"error":"nas_configuration_busy"`)) {
-				return errors.New("NAS policy HTTPS did not report live-claim exclusion")
+		if want == 503 || want == 409 {
+			code, retry := "nas_configuration_conflict", ""
+			if want == 503 {
+				code, retry = "nas_configuration_busy", "1"
+			}
+			var refusal map[string]string
+			if resp.Header.Get("Retry-After") != retry || json.Unmarshal(data, &refusal) != nil || len(refusal) != 1 || refusal["error"] != code {
+				return errors.New("NAS policy HTTPS did not report the expected refusal")
 			}
 			return nil
 		}
@@ -80,7 +84,7 @@ func newQEMUNASPolicyHTTP(owner *naspolicystore.Owner) (*qemuNASPolicyHTTP, erro
 			return errors.New("NAS policy HTTPS envelope differs")
 		}
 		if next == nil {
-			current, err := owner.Snapshot(ctx)
+			current, err := state.Snapshot(ctx)
 			if err != nil || reply.Saved || reply.Configuration == nil || !reflect.DeepEqual(*reply.Configuration, current) || reply.Revision != current.Revision {
 				return errors.New("NAS policy HTTPS did not read original authority")
 			}
