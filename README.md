@@ -222,8 +222,8 @@ unrelated Docker resources remain; Docker's VHDX may need separate compaction.
   identity coordination and development fixtures.
 - [Storage probe](src/phantowd-volume-probe/README.md): restricted descriptor-based
   metadata helper.
-- [Research toolkit](tools/phantowd-lab/README.md): host-only image, metadata and
-  signed-release inspection.
+- [Research toolkit](tools/phantowd-lab/README.md): host tools for image metadata,
+  generic DOS primary entries and signed releases.
 - [QEMU target](board/qemu/armv5/README.md) and
   [EX4 board research](board/wd/ex4/README.md): separate software/hardware lanes.
 - `support/`, `package/`, `configs/`, `.github/workflows/`: tooling,
