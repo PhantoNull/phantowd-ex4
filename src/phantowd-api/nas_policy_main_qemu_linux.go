@@ -20,7 +20,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"os"
 	"os/exec"
 	"reflect"
@@ -187,7 +186,7 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	waited := false
+	waited, joined := false, false
 	defer func() {
 		if !waited {
 			cmd.Process.Kill()
@@ -212,7 +211,6 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(ctx, conn) }()
-	joined := false
 	defer func() {
 		conn.Close()
 		if !joined {
@@ -245,22 +243,15 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	if status.SetupRequired != (revision == 1) || status.Authenticated {
 		return errors.New("main fixture account lifecycle differs")
 	}
-	credentials := setupRequest{Username: "qemu-main", Password: password}
-	want := 201
+	credentials, want := setupRequest{Username: "qemu-main", Password: password}, 201
 	if revision == 2 {
 		want = 409
 	}
-	h.client.Jar, err = cookiejar.New(nil)
-	if err != nil {
-		return err
-	}
+	h.client.Jar = newQEMUCookieJar()
 	if err := h.request(ctx, authSetupPath, credentials, want, nil); err != nil {
 		return err
 	}
-	h.client.Jar, err = cookiejar.New(nil)
-	if err != nil {
-		return err
-	}
+	h.client.Jar = newQEMUCookieJar()
 	if err := h.request(ctx, authLoginPath, credentials, 200, nil); err != nil {
 		return err
 	}

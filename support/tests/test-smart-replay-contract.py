@@ -77,7 +77,16 @@ class CollectionRunnerContractTests(unittest.TestCase):
                 "go": "#!/bin/sh\nwhile [ $# -gt 0 ]; do\n"
                       "if [ \"$1\" = -o ]; then shift; : > \"$1\"; fi\n"
                       "shift\ndone\n",
-                "debugfs": "#!/bin/sh\nexit 0\n",
+                "resize2fs": "#!/bin/sh\nexit 0\n",
+                "debugfs": "#!/usr/bin/env python3\n"
+                      "from pathlib import Path\nimport shlex, sys\n"
+                      "c = shlex.split(sys.argv[sys.argv.index('-R') + 1])\n"
+                      "d = Path(sys.argv[-1]).parent / 'go-cache'\n"
+                      "d.mkdir(exist_ok=True)\nf = d / Path(c[-1]).name\n"
+                      "if c[0] == 'write':\n"
+                      "    f.write_bytes(Path(c[1]).read_bytes())\n"
+                      "if c[0] == 'cat':\n"
+                      "    sys.stdout.buffer.write(f.read_bytes())\n",
                 "qemu-system-arm": "#!/bin/sh\n"
                       "echo boot >> \"$BOOT_COUNT\"\n"
                       "printf '%s\\n' \"$GUEST_OUTPUT\"\n",
