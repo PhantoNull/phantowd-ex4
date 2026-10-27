@@ -2604,6 +2604,9 @@ not host/QEMU progress.
   open. No filesystem is mounted to produce these counters. The image-set
   report carries them by input/partition, withholds conflicting ext/MD layers
   and never infers a cross-image or array capacity total.
+  Its optional per-filesystem byte request now compares those recorded counters
+  without deriving migration needs. Shortfall/unknown requires review; prior
+  ambiguity or filesystem review remains. This is not allocator qualification.
   Feature declarations and unclassified bits also remain explicit; selected
   constraints require review without inspecting file contents or claiming
   kernel/product feature support. A quiet review is not migration admission.
