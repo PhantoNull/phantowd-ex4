@@ -45,10 +45,11 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		summary := r.URL.Path == nasSummaryPath
 		backup := r.URL.Path == nasBackupPath
+		nasRestore := r.URL.Path == nasRestorePreviewPath
 		restore := r.URL.Path == serviceRestorePreviewPath
 		fileServices := r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || restore
 		readOnly := summary || backup || r.URL.Path == serviceBackupPath
-		if r.URL.Path != nasStatePath && !readOnly && !fileServices {
+		if r.URL.Path != nasStatePath && !readOnly && !fileServices && !nasRestore {
 			writeJSON(w, 404, map[string]string{"error": "not_found"})
 			return
 		}
@@ -56,7 +57,7 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		if readOnly {
 			allow, methodOK = "GET", r.Method == http.MethodGet
 		}
-		if restore {
+		if restore || nasRestore {
 			allow, methodOK = "POST", r.Method == http.MethodPost
 		}
 		if !methodOK {
@@ -93,6 +94,9 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 			if restore {
 				limit = fileservice.MaxBackupBytes
 			}
+			if nasRestore {
+				limit = naspolicy.MaxBackupBytes
+			}
 			if !validServiceStateWriteLimit(w, r, limit) {
 				return
 			}
@@ -107,6 +111,10 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		default:
 			w.Header().Set("Retry-After", "1")
 			writeJSON(w, 503, map[string]string{"error": "nas_configuration_busy"})
+			return
+		}
+		if nasRestore {
+			serveNASRestorePreview(w, r, auth, state)
 			return
 		}
 		if fileServices {

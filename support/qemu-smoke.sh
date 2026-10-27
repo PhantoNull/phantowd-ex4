@@ -586,6 +586,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "QEMU NAS policy backup through standard HTTPS API proof missing" >&2
             return 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_RESTORE_PREVIEW_READY standard_main=true https=verified lifetimes=2 original_owner=true full_policy=true uint64_exact=true read_only=true scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "QEMU lossless NAS restore preview proof missing" >&2
+            return 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_FILE_EDITOR_READY standard_main=true https=verified lifetimes=2 original_owner=true saved=true iscsi_preserved=true busy=true conflict=true scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo "QEMU NAS-backed file editor proof missing" >&2
             return 1

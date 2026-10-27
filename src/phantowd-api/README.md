@@ -1509,7 +1509,14 @@ GET `/api/v1/nas-services/backup` exports that same validated complete policy
 as `phantowd-nas-policy-backup` schema1. It is desired definitions only: no
 data, account passwords, CHAP values or recovery/admission authority. The panel
 downloads bounded original wire bytes, preserving uint64 values instead of
-re-encoding them through JavaScript numbers. Restore is not provided here.
+re-encoding them through JavaScript numbers.
+POST `/api/v1/nas-services/restore-preview` accepts that original backup with
+`X-PhantoWD-Expected-Revision`. It returns an unsaved `candidate_json` string
+for explicit submission, unchanged, to the existing complete-policy PUT.
+`matches_current` compares every definition exactly, ignoring only coherent
+revision values; it does not acknowledge an earlier save or authorize retry.
+Preview validates retained NFS bindings and never commits, provisions or applies.
+Full NAS restore controls are not yet connected to the dashboard.
 Closing the transport waits for its active RPC, prevents later RPCs and disposes
 the lookup descriptor once; it does not close the root Owner or stop its service.
 Filesystem operations remain cooperatively bounded. This is desired state only:
