@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## NAS-backed SMB/NFS editor - development integration
+
+Existing editor/backup/restore-preview routes now use the retained NAS authority
+and shared request gate. Explicit saves preserve iSCSI, use one revision/CAS and
+retain request cancellation; restore preview validates retained volume references.
+Host tests cover busy/stale, source rebinding, invalid input and cancellation.
+The standard-main guest fixture additionally checks HTTPS edits across two API
+lifetimes; local/own-head integration is required. No service activation follows.
+
 ## Coherent NAS policy edits - internal model
 
 The internal edit functions preserve the other SMB/NFS/iSCSI view, keep one
