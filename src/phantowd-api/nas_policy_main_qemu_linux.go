@@ -84,7 +84,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	password := rand.Text()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	for revision := uint64(1); revision <= 2; revision++ {
+	for revision := uint64(1); revision <= 3; revision += 2 {
 		if err := qemuNASMainLifetime(ctx, owner, l, transport, password, revision); err != nil {
 			return fmt.Errorf("NAS standard main lifetime %d: %w", revision, err)
 		}
@@ -95,6 +95,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	fmt.Println("PHANTOWD_NAS_POLICY_MAIN_READY standard_main=true api_uid=65534 https=verified setup=true login=true lifetimes=2 credentials_retained=true original_owner=true busy=true commit=true conflict=true shutdown=clean peer_pid=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_SUMMARY_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true counts=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_BACKUP_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true full_policy=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NAS_FILE_EDITOR_READY standard_main=true https=verified lifetimes=2 original_owner=true saved=true iscsi_preserved=true busy=true conflict=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -136,7 +137,7 @@ func (h *qemuNASMainHTTP) request(ctx context.Context, path string, body any, wa
 	method := http.MethodGet
 	if body != nil {
 		method = http.MethodPost
-		if path == nasStatePath {
+		if path == nasStatePath || path == serviceStatePath {
 			method = http.MethodPut
 		}
 		if err := json.NewEncoder(&payload).Encode(body); err != nil {
@@ -255,7 +256,7 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		return errors.New("main fixture account lifecycle differs")
 	}
 	credentials, want := setupRequest{Username: "qemu-main", Password: password}, 201
-	if revision == 2 {
+	if revision != 1 {
 		want = 409
 	}
 	h.client.Jar = newQEMUCookieJar()
@@ -312,6 +313,13 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		if backup.Format != nasBackupFormat || backup.SchemaVersion != 1 || !reflect.DeepEqual(backup.Configuration, got) {
 			return errors.New("main fixture complete NAS policy backup differs")
 		}
+		var editor serviceStateResponse
+		if err := h.request(ctx, serviceStatePath, nil, 200, &editor); err != nil {
+			return err
+		}
+		if !editor.Initialized || editor.Configuration == nil || !reflect.DeepEqual(*editor.Configuration, got.FileServices) || editor.Applied || editor.RuntimeValidated || editor.ActivationAvailable {
+			return errors.New("main fixture NAS-backed editor read differs")
+		}
 		return nil
 	}
 	if err := check(revision); err != nil {
@@ -324,6 +332,9 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	}
 	if len(refusal) != 1 || refusal["error"] != "nas_configuration_busy" {
 		return errors.New("main fixture busy refusal differs")
+	}
+	if err := h.request(ctx, serviceStatePath, next.FileServices, 503, &refusal); err != nil {
+		return err
 	}
 	if err := errors.Join(lease.Verify(ctx), check(revision)); err != nil {
 		return err
@@ -345,6 +356,19 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		return errors.New("main fixture stale refusal differs")
 	}
 	if err := check(revision + 1); err != nil {
+		return err
+	}
+	next = qemuPersistentNASPolicy(revision + 2)
+	if err := h.request(ctx, serviceStatePath, next.FileServices, 200, &saved); err != nil {
+		return err
+	}
+	if !saved.Saved || saved.Revision != next.Revision || saved.Applied || saved.ActivationAvailable || saved.Scope != "development-stored-file-service-policy-only" {
+		return errors.New("main fixture NAS-backed editor save differs")
+	}
+	if err := h.request(ctx, serviceStatePath, next.FileServices, 409, &refusal); err != nil {
+		return err
+	}
+	if err := check(revision + 2); err != nil {
 		return err
 	}
 	transport.CloseIdleConnections()
