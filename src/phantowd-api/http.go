@@ -8,13 +8,16 @@ import (
 	"io/fs"
 	"net/http"
 	"time"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 )
 
 const listenAddress = defaultListenAddress
 const nasStatePath = "/api/v1/nas-services/configuration"
 const nasSummaryPath = "/api/v1/nas-services/summary"
 const nasBackupPath = "/api/v1/nas-services/backup"
-const nasBackupFormat = "phantowd-nas-policy-backup"
+const nasRestorePreviewPath = "/api/v1/nas-services/restore-preview"
+const nasBackupFormat = naspolicy.BackupFormat
 
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
@@ -85,7 +88,7 @@ func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCo
 			auth.serve(w, r)
 			return
 		}
-		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath || r.URL.Path == nasBackupPath || r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || r.URL.Path == serviceRestorePreviewPath) {
+		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath || r.URL.Path == nasBackupPath || r.URL.Path == nasRestorePreviewPath || r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || r.URL.Path == serviceRestorePreviewPath) {
 			nas.ServeHTTP(w, r)
 			return
 		}
