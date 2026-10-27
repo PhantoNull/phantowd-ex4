@@ -3,6 +3,13 @@
 
 # Implementation status
 
+## Coherent NAS policy edits - internal model
+
+The internal edit functions preserve the other SMB/NFS/iSCSI view, keep one
+next revision, detach nested values and refuse retained source rebinding.
+Synthetic tests cover invalid/stale edits, exact uint64 revisions and bounded
+allocations. No new HTTP/UI, publication, identity or activation is provided.
+
 ## M8 offline DOS primary metadata ? host-only prerequisite
 
 The explicit regular-file command observes four primary entries using 512-byte
