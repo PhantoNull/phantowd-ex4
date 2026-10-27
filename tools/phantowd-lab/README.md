@@ -375,7 +375,7 @@ disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
 GUIDs may appear as declarations only. It never opens a block device or
 modifies an image. An ext-family candidate not marked clean, recording errors
 or unknown state flags, or indicating journal/orphan recovery is held as
-`incomplete`; the tool never runs repair or recovery. Set schema **5** retains
+`incomplete`; the tool never runs repair or recovery. Set schema **6** retains
 `ext_filesystem_state` and independent `ext_needs_orphan_recovery` summaries;
 these review findings return exit `2`, even when the raw clean bit is set.
 Each partition now includes `ext_space_counters`: recorded ext free/reserved
@@ -384,6 +384,17 @@ candidate. Values remain scoped to the input ordinal and partition number,
 never summed across cloned images, components or arrays. A duplicate identity
 still requires review. These are not live allocator or migration capacity;
 the nested `migration_capacity_qualified` flag always remains false.
+Optional `--required-per-filesystem-bytes UINT64` before image paths compares a
+caller-chosen hypothetical request with each partition's recorded unreserved ext
+counter. `requested_per_filesystem_bytes` is null when omitted; otherwise each
+`ext_space_budget_review` distinguishes `recorded-at-least-requested`,
+`recorded-shortfall` and `unobserved`. Known zero and zero shortfall are explicit;
+unknown counters remain null. Non-ext partitions also require review when this
+option is used: the tool does not infer their role or an unseen filesystem.
+Shortfall/unobserved results return exit `2` and `space-review-required`, preserving
+any existing damaged/unsupported/incomplete/ambiguous status. No counters are added
+across inputs or partitions. This does not calculate actual migration needs or
+qualify allocator availability, quotas, ownership/ACLs, iSCSI objects or staging.
 Inputs are not locked or snapshotted, so callers must use
 stable offline copies and prevent concurrent modification during inspection.
 
@@ -493,7 +504,7 @@ orphan-present feature; it does not follow or validate an orphan chain/file.
 Journal recovery remains a separate flag. A single-partition exit `0` is still
 only structural recognition, not a safe-mount verdict. The whole-image envelope
 remains schema **2**, with nested ext report **4**; the image-set assessment is
-schema **5**. Flag definitions follow the
+schema **6**. Flag definitions follow the
 [upstream ext superblock documentation](https://www.kernel.org/doc/html/latest/filesystems/ext4/super.html)
 and recovery indicators are cross-checked against
 [Linux v6.18 ext4](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/super.c).
