@@ -85,7 +85,7 @@ func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCo
 			auth.serve(w, r)
 			return
 		}
-		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath || r.URL.Path == nasBackupPath) {
+		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath || r.URL.Path == nasBackupPath || r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || r.URL.Path == serviceRestorePreviewPath) {
 			nas.ServeHTTP(w, r)
 			return
 		}

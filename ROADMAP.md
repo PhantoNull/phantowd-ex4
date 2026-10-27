@@ -3173,6 +3173,9 @@ support per tested combination; refuse untested combinations without mutation.
   credentials. Coherent durable all-protocol policy ownership, network listeners,
   product startup, UI and legacy import remain separate work. No physical test
   or persistent registration/activation is authorized by this prototype.
+  The existing SMB/NFS editor now projects this same NAS authority, preserves
+  iSCSI on explicit CAS save and checks all retained volume references in restore
+  previews. This does not provide service activation or product boot admission.
   **M9.2c — coherent all-protocol desired state (internal prototype):** one new
   `phantowd-nas-service-config` schema1 envelope contains the existing strict
   file-service and iSCSI formats. All seven revision/binding values agree;

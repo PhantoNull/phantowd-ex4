@@ -120,7 +120,7 @@ func serviceBackupSessionCurrent(w http.ResponseWriter, r *http.Request, auth *a
 		writeJSON(w, 400, map[string]string{"error": "request_cancelled"})
 		return false
 	}
-	if !auth.authorize(r) || (r.Method == http.MethodPost && !auth.validateCSRF(r)) {
+	if !auth.authorize(r) || (r.Method != http.MethodGet && !auth.validateCSRF(r)) {
 		writeJSON(w, 401, map[string]string{"error": "authentication_required"})
 		return false
 	}
