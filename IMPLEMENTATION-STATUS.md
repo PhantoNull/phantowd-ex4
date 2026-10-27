@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Full NAS restore preview - development API
+
+The original NAS Owner previews complete backups as lossless candidate JSON for
+the existing explicit PUT. All seven revisions advance together; exact Go-side
+comparison preserves uint64 distinctions and does not acknowledge prior saves.
+Host/race checks cover complete save, busy/stale, invalid input and cancellation.
+Ordinary ARM proves lossless HTTPS preview; own-head hosted gate remains required.
+Dashboard controls and service activation are not added by this slice.
+
 ## M8 offline space-counter comparison - host only
 
 Image-set schema6 accepts an optional caller-supplied per-filesystem byte request.
