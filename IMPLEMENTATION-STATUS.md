@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## M8 offline space-counter comparison - host only
+
+Image-set schema6 accepts an optional caller-supplied per-filesystem byte request.
+Per-partition reviews preserve unknown versus zero, exact uint64 subtraction and
+prior refusals without combining image/component counters. Shortfall or unknown
+requires review; recorded agreement does not qualify capacity or migration.
+Synthetic tests cover these outcomes and unchanged input files; own-head hosted
+integration remains required. No device, assembly, mount or allocation occurs.
+
 ## NAS-backed SMB/NFS editor - development integration
 
 Existing editor/backup/restore-preview routes now use the retained NAS authority

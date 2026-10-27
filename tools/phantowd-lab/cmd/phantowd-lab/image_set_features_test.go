@@ -54,7 +54,7 @@ func TestImageSetRequiresReviewForDeclaredExtConstraints(t *testing.T) {
 			if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 				t.Fatal(err)
 			}
-			if report.SchemaVersion != 5 || report.Status != "incomplete" || report.MigrationAuthorized || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
+			if report.SchemaVersion != 6 || report.Status != "incomplete" || report.MigrationAuthorized || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
 				t.Fatalf("unsafe report: %s", output.String())
 			}
 			partition := report.Inputs[0].PartitionObservations[0]
