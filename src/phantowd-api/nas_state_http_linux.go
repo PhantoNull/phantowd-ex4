@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 )
@@ -44,16 +45,21 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		summary := r.URL.Path == nasSummaryPath
 		backup := r.URL.Path == nasBackupPath
-		readOnly := summary || backup
-		if r.URL.Path != nasStatePath && !readOnly {
+		restore := r.URL.Path == serviceRestorePreviewPath
+		fileServices := r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || restore
+		readOnly := summary || backup || r.URL.Path == serviceBackupPath
+		if r.URL.Path != nasStatePath && !readOnly && !fileServices {
 			writeJSON(w, 404, map[string]string{"error": "not_found"})
 			return
 		}
-		if r.Method != http.MethodGet && (readOnly || r.Method != http.MethodPut) {
-			allow := "GET, PUT"
-			if readOnly {
-				allow = "GET"
-			}
+		allow, methodOK := "GET, PUT", r.Method == http.MethodGet || r.Method == http.MethodPut
+		if readOnly {
+			allow, methodOK = "GET", r.Method == http.MethodGet
+		}
+		if restore {
+			allow, methodOK = "POST", r.Method == http.MethodPost
+		}
+		if !methodOK {
 			w.Header().Set("Allow", allow)
 			writeJSON(w, 405, map[string]string{"error": "method_not_allowed"})
 			return
@@ -71,7 +77,7 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 			writeJSON(w, 403, map[string]string{"error": "origin_not_allowed"})
 			return
 		}
-		if r.Method == http.MethodPut && (len(r.Header.Values("X-PhantoWD-CSRF")) != 1 || !auth.validateCSRF(r)) {
+		if r.Method != http.MethodGet && (len(r.Header.Values("X-PhantoWD-CSRF")) != 1 || !auth.validateCSRF(r)) {
 			writeJSON(w, 403, map[string]string{"error": "csrf_validation_failed"})
 			return
 		}
@@ -79,8 +85,17 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 			if !readRequestHasNoInput(w, r) {
 				return
 			}
-		} else if !validServiceStateWriteLimit(w, r, naspolicy.MaxInputBytes) {
-			return
+		} else {
+			limit := int64(naspolicy.MaxInputBytes)
+			if fileServices {
+				limit = fileservice.MaxConfigBytes
+			}
+			if restore {
+				limit = fileservice.MaxBackupBytes
+			}
+			if !validServiceStateWriteLimit(w, r, limit) {
+				return
+			}
 		}
 		if state == nil {
 			writeJSON(w, 503, map[string]string{"error": "nas_configuration_not_configured"})
@@ -92,6 +107,10 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 		default:
 			w.Header().Set("Retry-After", "1")
 			writeJSON(w, 503, map[string]string{"error": "nas_configuration_busy"})
+			return
+		}
+		if fileServices {
+			serveNASFileServices(w, r, auth, state)
 			return
 		}
 		reply := nasStateResponse{SchemaVersion: 1, Scope: "stored-desired-nas-policy-only"}
