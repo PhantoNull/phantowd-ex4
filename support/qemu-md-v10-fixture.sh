@@ -248,7 +248,7 @@ members = arrays[0].get("members", []) if len(arrays) == 1 else []
 inputs = component_set.get("inputs", [])
 identity_scan = component_set.get("identity_scan", {})
 if (component_set.get("format") != "phantowd-read-only-storage-image-set-observation"
-        or component_set.get("schema_version") != 5
+        or component_set.get("schema_version") != 6
         or component_set.get("status") != "ambiguous"
         or component_set.get("wd_compatibility") != "unqualified"
         or len(inputs) != 2
