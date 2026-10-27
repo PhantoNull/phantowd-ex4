@@ -3186,6 +3186,11 @@ support per tested combination; refuse untested combinations without mutation.
   SIGKILL old/new nonempty whole-policy campaigns count3; actual ARMv5 standard
   smoke and clean generated-disk two-boot nonempty SMB/NFS/iSCSI persistence,
   pending/corrupt preservation, stale/mixed refusal and later coherent reopen.
+  **Coherent edit model:** internal file-service/iSCSI replacements preserve the
+  other view at one next revision with independent nested values. Retained NFS
+  sources and iSCSI-referenced volumes cannot silently change. Synthetic tests
+  cover refusals, empty collections, exact counters and bounded allocations;
+  publication, complete web editing and service activation remain separate.
   **Next:** protected single state owner, explicit legacy format migration,
   filesystem-qualified power-loss recovery and runtime freshness/claim ownership.
   Never configure old/new stores as independent authoritative writers. No new
