@@ -1030,8 +1030,9 @@ type storageImageSetPartitionSummary struct {
 	MDV10Status            diskimage.MDV10Status  `json:"md_v1_0_status"`
 	MDV090Status           diskimage.MDV090Status `json:"md_v0_90_status"`
 
-	ExtSpaceCounters *diskimage.ExtSpaceCounters `json:"ext_space_counters"`
-	ExtFeatureReview *diskimage.ExtFeatureReview `json:"ext_feature_review"`
+	ExtSpaceCounters     *diskimage.ExtSpaceCounters `json:"ext_space_counters"`
+	ExtFeatureReview     *diskimage.ExtFeatureReview `json:"ext_feature_review"`
+	ExtSpaceBudgetReview *extSpaceBudgetReview       `json:"ext_space_budget_review"`
 }
 
 type storageImageSetInputSummary struct {
@@ -1052,31 +1053,33 @@ type storageImageSetIdentityScan struct {
 }
 
 type storageImageSetAssessment struct {
-	Format              string                          `json:"format"`
-	SchemaVersion       int                             `json:"schema_version"`
-	Status              string                          `json:"status"`
-	WDCompatibility     string                          `json:"wd_compatibility"`
-	MigrationAuthorized bool                            `json:"migration_authorized"`
-	Inputs              []storageImageSetInputSummary   `json:"inputs"`
-	IdentityScan        *storageImageSetIdentityScan    `json:"identity_scan,omitempty"`
-	MDV12Comparison     *diskimage.MDV12ImageSetReport  `json:"md_v1_2_comparison,omitempty"`
-	MDV10Comparison     *diskimage.MDV10ImageSetReport  `json:"md_v1_0_comparison,omitempty"`
-	MDV090Comparison    *diskimage.MDV090ImageSetReport `json:"md_v0_90_comparison,omitempty"`
-	BlockDeviceOpened   bool                            `json:"block_device_opened"`
-	MutationsPerformed  bool                            `json:"mutations_performed"`
-	AssemblyPerformed   bool                            `json:"assembly_performed"`
-	MountPerformed      bool                            `json:"mount_performed"`
-	Findings            []string                        `json:"findings"`
-	Limitations         []string                        `json:"limitations"`
+	RequestedPerFilesystemBytes *uint64                         `json:"requested_per_filesystem_bytes"`
+	Format                      string                          `json:"format"`
+	SchemaVersion               int                             `json:"schema_version"`
+	Status                      string                          `json:"status"`
+	WDCompatibility             string                          `json:"wd_compatibility"`
+	MigrationAuthorized         bool                            `json:"migration_authorized"`
+	Inputs                      []storageImageSetInputSummary   `json:"inputs"`
+	IdentityScan                *storageImageSetIdentityScan    `json:"identity_scan,omitempty"`
+	MDV12Comparison             *diskimage.MDV12ImageSetReport  `json:"md_v1_2_comparison,omitempty"`
+	MDV10Comparison             *diskimage.MDV10ImageSetReport  `json:"md_v1_0_comparison,omitempty"`
+	MDV090Comparison            *diskimage.MDV090ImageSetReport `json:"md_v0_90_comparison,omitempty"`
+	BlockDeviceOpened           bool                            `json:"block_device_opened"`
+	MutationsPerformed          bool                            `json:"mutations_performed"`
+	AssemblyPerformed           bool                            `json:"assembly_performed"`
+	MountPerformed              bool                            `json:"mount_performed"`
+	Findings                    []string                        `json:"findings"`
+	Limitations                 []string                        `json:"limitations"`
 }
 
 func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
-	if len(args) < 1 || len(args) > maxStorageImageSetInputs {
-		return 1, errors.New("usage: phantowd-lab inspect-storage-image-set DISK-IMAGE-1 [DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]]")
+	args, requested, err := parseStorageSpaceArgs(args)
+	if err != nil {
+		return 1, err
 	}
 	result := storageImageSetAssessment{
 		Format:          "phantowd-read-only-storage-image-set-observation",
-		SchemaVersion:   5,
+		SchemaVersion:   6,
 		Status:          "incomplete",
 		WDCompatibility: "unqualified",
 		Inputs:          []storageImageSetInputSummary{},
@@ -1087,6 +1090,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			"duplicate identity counts apply only to the supplied GPT-valid images; generic metadata agreement is not a WD layout, health, synchronization, filesystem-integrity or migration qualification",
 			"partition type GUIDs are on-disk declarations, not proof of contents, role or compatibility; ext results inspect only one bounded superblock, not file data or full filesystem integrity",
 			"ext space counters are per-partition stored observations, not live or migration capacity; absent, invalid or conflicting-layer observations are null, and no cross-image or array free-space total is inferred",
+			"the optional byte request is caller-supplied, not a calculated migration requirement; comparisons exclude quotas, allocator state, file ownership/ACLs, iSCSI objects and copy/staging overhead",
 			"the tool does not lock or snapshot source files; callers must supply stable offline copies and avoid concurrent modification during inspection",
 			"all inputs are regular files; no block device is opened, no array is assembled, no filesystem is mounted, and no input is modified",
 		},
@@ -1218,6 +1222,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 		default:
 			result.Status = "incomplete"
 		}
+		applyStorageSpaceRequest(&result, requested)
 		if err := writeJSON(output, result); err != nil {
 			return 1, err
 		}
@@ -1296,6 +1301,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	if extFeatureNeedsReview {
 		result.Findings = append(result.Findings, "an ext candidate declares features requiring review or unclassified feature bits; file contents and feature compatibility were not assessed")
 	}
+	applyStorageSpaceRequest(&result, requested)
 	if err := writeJSON(output, result); err != nil {
 		return 1, err
 	}
