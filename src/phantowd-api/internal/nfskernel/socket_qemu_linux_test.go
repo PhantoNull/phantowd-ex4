@@ -36,6 +36,9 @@ func TestNFSSocketCheckRejectsSameEndpointReplacement(t *testing.T) {
 		if err := checkNFSSocketQEMU(fd, identity); err != nil {
 			t.Fatal("original socket refused after binding", err)
 		}
+		if checkNFSSocketEndpointQEMU(fd, identity, [4]byte{}) == nil {
+			t.Fatal("wrong expected listener address admitted")
+		}
 		return fd, identity
 	}
 	originalFD, original := newListener()

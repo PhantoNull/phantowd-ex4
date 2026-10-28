@@ -43,13 +43,17 @@ func matchesNFSSocketIdentityQEMU(fd int, original nfsSocketIdentityQEMU) bool {
 }
 
 func checkNFSSocketQEMU(fd int, original nfsSocketIdentityQEMU) error {
+	return checkNFSSocketEndpointQEMU(fd, original, [4]byte{127, 0, 0, 1})
+}
+
+func checkNFSSocketEndpointQEMU(fd int, original nfsSocketIdentityQEMU, expected [4]byte) error {
 	if !matchesNFSSocketIdentityQEMU(fd, original) {
 		return ErrRefused
 	}
 	address, err := unix.Getsockname(fd)
 	ipv4, ok := address.(*unix.SockaddrInet4)
 	accepting, acceptErr := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_ACCEPTCONN)
-	if err != nil || !ok || ipv4.Port != 2049 || ipv4.Addr != [4]byte{127, 0, 0, 1} || acceptErr != nil || accepting != 1 ||
+	if err != nil || !ok || ipv4.Port != 2049 || ipv4.Addr != expected || acceptErr != nil || accepting != 1 ||
 		!matchesNFSSocketIdentityQEMU(fd, original) {
 		return ErrRefused
 	}
