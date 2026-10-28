@@ -27,6 +27,11 @@ The consumer releases its claims; the parent retains the shared Owners and
 dataset until both lifetimes have verified stop/close. Only then does the parent
 remove synthetic data and close its authorities. This is never an automatic
 restart after a failed or uncertain lifetime.
+Guest failure reports preserve the nested lifetime's phase and distinguish
+deadline, cancellation and parent-context completion without printing private
+cause text. Start phases distinguish RPC helpers, the kernel controller and
+export setup. These labels do not identify the root cause by themselves or
+change the existing deadlines, settlement, retention or refusal rules.
 The policy is synthetic guest state: this does not qualify product boot
 provisioning or this composition across reboots.
 Bracketed owner observations do not establish atomic three-owner admission.

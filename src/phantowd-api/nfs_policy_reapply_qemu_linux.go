@@ -26,7 +26,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	var owner *nfsowner.Owner
 	defer func() {
 		if result != nil {
-			result = &ownerNFSReview{backend: b, owner: owner, cause: result}
+			result = &ownerNFSReview{backend: b, owner: owner, cause: result, contextDone: ctx.Err() != nil}
 		}
 	}()
 	var err error
