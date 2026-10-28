@@ -1,5 +1,13 @@
 # Development diagnostics API
 
+The iSCSI form can stage one disabled target, LUN0, backing and initiator in
+supplied whole-policy JSON. Original bytes must pass strict server validation
+before the candidate; only a verified candidate replaces the text. CHAP and
+mutual-CHAP use symbolic SecretRefs, never passwords. Both requests share one
+10-second deadline. Edit, clear or session loss retires pending work and clears
+private input when appropriate. Guided editing refuses unsafe browser integers;
+manual review remains lossless. No configuration save, backing open or activation.
+
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
 contains an embedded browser dashboard with read-only diagnostics and a

@@ -3138,7 +3138,10 @@ support per tested combination; refuse untested combinations without mutation.
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
   **Desired preview:** authenticated caller-only projection, exact decimals and advisory path overlaps; no state access or target activation.
-  Manual dashboard review preserves original input bytes and retires stale results; guided management remains open.
+  Manual dashboard review preserves original input bytes and retires stale results.
+  A guided disabled-target/LUN0 draft preserves existing definitions and validates
+  original and candidate under one deadline; unsafe browser integers refuse.
+  Saved target management, credential provisioning and activation remain open.
   **M9.2a — internal desired file-LUN model (locally tested prototype):**
   `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,
   independent typed target/LUN/backing IDs, explicit capacity/block size,
