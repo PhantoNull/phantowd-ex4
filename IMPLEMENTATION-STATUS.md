@@ -16,6 +16,8 @@ Manual comparison of current definitions never retries or acknowledges that repl
 Decimal backing displays retain precision; incomplete reviews refuse saving.
 Browser/physical qualification, product boot and service activation remain open.
 The separate authenticated iSCSI preview projects caller policy without state access; decimal/privacy/refusal/revocation tests and both HTTPS guest lifetimes require own-head qualification.
+The manual panel preserves input bytes, validates decimal/relationship displays,
+and retires stale replies on edit, cancellation or session loss. Own-head CI remains required.
 
 ## M8 offline space-counter comparison - host only
 

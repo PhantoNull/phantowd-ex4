@@ -757,6 +757,7 @@ function showAuthUnavailable() {
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
+  clearISCSIPreview();
   byId("auth-panel").hidden = false;
   byId("dashboard-content").hidden = true;
   byId("logout").hidden = true;
@@ -805,6 +806,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
+  clearISCSIPreview();
   logout.hidden = true;
   authPanel.hidden = false;
   form.dataset.mode = status.setup_required ? "setup" : "login";
@@ -884,6 +886,7 @@ async function signOut(all = false) {
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
+  clearISCSIPreview();
   clearPasswordFields();
   const logout = byId("logout");
   logout.disabled = true;
@@ -939,6 +942,7 @@ byId("password-form").addEventListener("submit", async (event) => {
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
+  clearISCSIPreview();
   for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = true;
   setText("password-status", "Verifying and saving the new password…");
   const controller = new AbortController();
@@ -1268,3 +1272,7 @@ byId("nas-backup").addEventListener("click", exportNASPolicyBackup);
 byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);
+
+byId("iscsi-form").addEventListener("submit", submitISCSIPreview);
+byId("iscsi-document").addEventListener("input", () => retireISCSIPreview());
+byId("iscsi-clear").addEventListener("click", clearISCSIPreview);

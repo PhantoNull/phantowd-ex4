@@ -3137,7 +3137,8 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
-  **Desired preview:** authenticated caller-only projection, exact decimals and advisory path overlaps; no state access, UI or target activation.
+  **Desired preview:** authenticated caller-only projection, exact decimals and advisory path overlaps; no state access or target activation.
+  Manual dashboard review preserves original input bytes and retires stale results; guided management remains open.
   **M9.2a — internal desired file-LUN model (locally tested prototype):**
   `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,
   independent typed target/LUN/backing IDs, explicit capacity/block size,

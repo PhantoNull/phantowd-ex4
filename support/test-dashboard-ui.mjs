@@ -13,12 +13,13 @@ import { supportFixture } from "./tests/test-support-bundle.mjs";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
+const iscsiSource = await readFile(join(repoRoot, "src/phantowd-api/ui/iscsi-preview.js"), "utf8");
 const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + serviceSource + iscsiSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
@@ -243,6 +244,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
+    ...["form", "document", "submit", "clear", "result", "status"].map((id) => `iscsi-${id}`),
     ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
@@ -274,6 +276,7 @@ async function createHarness(respond, timing = {}) {
   for (const id of ["auth-username", "auth-password", "auth-submit"]) {
     elements[id].parentElement = elements["auth-form"];
   }
+  elements["iscsi-result"].hidden = true;
   elements["refresh-label"].textContent = "Refresh snapshot";
   elements["memory-meter"].parentElement = new FixtureElement();
   Object.assign(document, {
@@ -312,6 +315,7 @@ async function createHarness(respond, timing = {}) {
   });
   new Script(serviceSource).runInContext(context);
   new Script(supportSource).runInContext(context);
+  new Script(iscsiSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests, document };
@@ -2633,5 +2637,133 @@ assert.equal(denseRestore.elements["nas-restore-review"].hidden, true);
 assert.equal(denseRestore.elements["nas-restore-save"].disabled, true, "large changes must refuse instead of silently truncating review");
 assert.match(denseRestore.elements["nas-restore-status"].textContent, /512.*Complete review is unavailable/);
 
+
+function iscsiPanelFixture() {
+  const p = { format: "phantowd-desired-iscsi-preview", schema_version: 2, scope: "desired-policy-only", revision: "18446744073709551615",
+    storage_validated: false, credentials_validated: false, runtime_validated: false, activation_available: false,
+    smb_definitions: 1, nfs_definitions: 0, limitations: ["Desired definitions only."],
+    backings: [{ id: "lun", volume_id: "media", relative_path: "luns/disk.img", capacity_bytes: "9223372036854775296", block_size: 512, allocation: "preallocated", smb_path_overlap_count: 0, nfs_path_overlap_count: 0 }],
+    targets: [{ id: "target", name: "iqn.2001-04.com.example:books", desired_state: "disabled", luns: [{ id: "mapping", number: 0, backing_id: "lun", access: "rw" }],
+      initiators: [{ name: "iqn.2001-04.com.example:reader", desired_authentication: "chap", grants: [{ lun_id: "mapping", access: "ro" }] }] }] };
+  const c = nasBackupFixture().configuration;
+  c.iscsi.targets = [{ id: "target", name: p.targets[0].name, state: "disabled", luns: p.targets[0].luns,
+    initiators: [{ name: p.targets[0].initiators[0].name, authentication: { mode: "chap", initiator_user: "private-user", initiator_secret_ref: "private-ref" }, grants: p.targets[0].initiators[0].grants }] }];
+  const wire = JSON.stringify(c).replace('"capacity_bytes":512', '"capacity_bytes":9223372036854775296')
+    .replace(/"(revision|volume_revision)":4/g, '"$1":18446744073709551615');
+  return { value: p, wire };
+}
+const iscsiPanelText = (element) => [element.textContent, ...element.children.map(iscsiPanelText)].join("\n");
+async function testISCSIPanelExactManualReview() {
+  assert.ok(markupIDs.includes("iscsi-form"), "iSCSI review controls unavailable");
+  const fixture = iscsiPanelFixture();
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
+    if (path === "/api/v1/iscsi/preview") return jsonResponse(fixture.value);
+    return snapshotResponse(path);
+  });
+  assert.equal(h.requests.some((r) => r.path === "/api/v1/iscsi/preview"), false, "preview must be manual");
+  h.elements["iscsi-document"].value = fixture.wire;
+  await h.elements["iscsi-form"].listeners.get("submit")({ preventDefault() {} });
+  const sent = h.requests.filter((r) => r.path === "/api/v1/iscsi/preview");
+  assert.equal(sent.length, 1); assert.equal(sent[0].options.body, fixture.wire, "original uint64 bytes must not be re-encoded");
+  assert.equal(sent[0].options.method, "POST"); assert.equal(sent[0].options.headers["X-PhantoWD-CSRF"], "A".repeat(43));
+  assert.equal(sent[0].options.credentials, "same-origin"); assert.equal(sent[0].options.cache, "no-store");
+  assert.equal(h.elements["iscsi-result"].hidden, false);
+  const text = iscsiPanelText(h.elements["iscsi-result"]);
+  for (const value of [fixture.value.revision, fixture.value.backings[0].capacity_bytes, "mapping", "desired disabled", "desired ro"]) assert.ok(text.includes(value));
+  assert.equal(text.includes("private-ref"), false); assert.equal(text.includes("private-user"), false);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+}
+await testISCSIPanelExactManualReview();
+
+async function testISCSIPanelInvalidRepliesClearPreviousReview() {
+  const fixture = iscsiPanelFixture(); let value = fixture.value;
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
+    if (path === "/api/v1/iscsi/preview") return jsonResponse(value);
+    return snapshotResponse(path);
+  });
+  h.elements["iscsi-document"].value = fixture.wire;
+  const submit = () => h.elements["iscsi-form"].listeners.get("submit")({ preventDefault() {} });
+  for (const [name, mutate] of Object.entries({
+    schema: (p) => { p.schema_version = 3; }, authority: (p) => { p.activation_available = true; },
+    grant: (p) => { p.targets[0].initiators[0].grants[0].lun_id = "missing"; },
+    duplicate: (p) => { p.backings.push({ ...p.backings[0] }); },
+    number: (p) => { p.backings[0].capacity_bytes = 9223372036854775296; },
+    oversize: (p) => { p.padding = "private".repeat(40000); },
+    alignment: (p) => { p.backings[0].capacity_bytes = "513"; },
+  })) {
+    value = fixture.value; await submit(); assert.equal(h.elements["iscsi-result"].hidden, false);
+    value = JSON.parse(JSON.stringify(fixture.value)); mutate(value); await submit();
+    assert.equal(h.elements["iscsi-result"].hidden, true, `${name}: inconsistent preview must retire earlier data`);
+    assert.equal(h.elements["iscsi-result"].children.length, 0);
+    assert.equal(h.elements["iscsi-submit"].disabled, false);
+    assert.doesNotMatch(h.elements["iscsi-status"].textContent, /private/);
+  }
+  value = { ...fixture.value, backings: [], targets: [] }; await submit();
+  assert.equal(h.elements["iscsi-result"].hidden, false);
+  assert.match(iscsiPanelText(h.elements["iscsi-result"]), /Explicit empty desired iSCSI policy/);
+}
+await testISCSIPanelInvalidRepliesClearPreviousReview();
+
+async function testISCSIPanelCancellationAndLateReplies() {
+  for (const phase of ["fetch", "body"]) for (const boundary of ["input", "clear", "logout", "deadline"]) {
+    const fixture = iscsiPanelFixture(), timers = []; let resolve, ended = false;
+    const pending = new Promise((r) => { resolve = r; });
+    const h = await createHarness((path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended });
+      if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
+      if (path === "/api/v1/auth/logout") { ended = true; return jsonResponse({ signed_out: true }); }
+      if (path === "/api/v1/iscsi/preview") return phase === "fetch" ? pending : deferredJSONResponse(pending);
+      return snapshotResponse(path);
+    }, { setTimeout: (f) => (timers.push(f), timers.length), clearTimeout: () => {} });
+    h.elements["iscsi-document"].value = fixture.wire;
+    const submit = () => h.elements["iscsi-form"].listeners.get("submit")({ preventDefault() {} });
+    const loading = submit(); await settleUI(); await submit();
+    assert.equal(h.requests.filter((r) => r.path === "/api/v1/iscsi/preview").length, 1, "busy preview must not queue another request");
+    if (boundary === "input") { h.elements["iscsi-document"].value = "changed"; h.elements["iscsi-document"].listeners.get("input")(); }
+    if (boundary === "clear") h.elements["iscsi-clear"].listeners.get("click")();
+    if (boundary === "logout") await h.elements.logout.listeners.get("click")();
+    if (boundary === "deadline") timers.at(-1)();
+    await loading;
+    resolve(phase === "fetch" ? jsonResponse(fixture.value) : fixture.value); await settleUI();
+    assert.equal(h.elements["iscsi-result"].hidden, true, `${phase}/${boundary}: late data reappeared`);
+    assert.equal(h.elements["iscsi-result"].children.length, 0);
+    assert.equal(h.elements["iscsi-submit"].disabled, false);
+    if (["clear", "logout"].includes(boundary)) assert.equal(h.elements["iscsi-document"].value, "");
+    if (boundary === "input") assert.equal(h.elements["iscsi-document"].value, "changed");
+    if (boundary === "deadline") assert.match(h.elements["iscsi-status"].textContent, /timed out/);
+  }
+}
+await testISCSIPanelCancellationAndLateReplies();
+
+async function testISCSIPanelRequestRefusals() {
+  const fixture = iscsiPanelFixture(); let status = 200;
+  const h = await createHarness((path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
+    if (path === "/api/v1/iscsi/preview") return jsonResponse(status === 200 ? fixture.value : { error: "private-server-detail" }, status);
+    return snapshotResponse(path);
+  });
+  const submit = () => h.elements["iscsi-form"].listeners.get("submit")({ preventDefault() {} });
+  for (const text of [" ", "é".repeat(328065)]) {
+    const count = h.requests.length; h.elements["iscsi-document"].value = text; await submit();
+    assert.equal(h.requests.length, count, "empty/oversized UTF-8 input must not start a request");
+  }
+  h.elements["iscsi-document"].value = fixture.wire;
+  for (const failure of [403, 413, 422, 503, 401]) {
+    status = 200; await submit(); assert.equal(h.elements["iscsi-result"].hidden, false);
+    status = failure; const count = h.requests.filter((r) => r.path === "/api/v1/iscsi/preview").length; await submit();
+    assert.equal(h.requests.filter((r) => r.path === "/api/v1/iscsi/preview").length, count + 1, "HTTP refusal must not retry");
+    assert.equal(h.elements["iscsi-result"].hidden, true);
+    assert.equal(h.elements["iscsi-result"].children.length, 0);
+    assert.doesNotMatch(h.elements["iscsi-status"].textContent, /private-server-detail/);
+  }
+  assert.equal(h.elements["iscsi-document"].value, "", "session loss must erase private input");
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+}
+await testISCSIPanelRequestRefusals();
 
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
