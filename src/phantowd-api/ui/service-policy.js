@@ -96,17 +96,20 @@ const serviceState = { baseline: undefined, candidate: null, attempted: null, bu
 const policyCopy = (value) => JSON.parse(JSON.stringify(value));
 
 function syncServiceControls() {
-  byId("service-load").disabled = serviceState.busy;
-  byId("service-prepare").disabled = serviceState.busy || serviceState.baseline === undefined || serviceState.attempted !== null;
-  byId("service-save").disabled = serviceState.busy || serviceState.candidate === null || serviceState.attempted !== null;
-  byId("service-editor").disabled = serviceState.busy || serviceState.baseline === undefined || serviceState.attempted !== null;
+  const locked = serviceState.busy || nasRestoreState.attempted !== null;
+  byId("service-load").disabled = locked;
+  byId("service-prepare").disabled = locked || serviceState.baseline === undefined || serviceState.attempted !== null;
+  byId("service-save").disabled = locked || serviceState.candidate === null || serviceState.attempted !== null;
+  byId("service-editor").disabled = locked || serviceState.baseline === undefined || serviceState.attempted !== null;
   byId("service-edit-preview").disabled = byId("service-editor").disabled;
   byId("service-backup-controls").disabled = byId("service-editor").disabled;
   byId("service-backup-download").disabled = byId("service-editor").disabled || serviceState.baseline === null;
   byId("service-restore-preview").disabled = byId("service-editor").disabled || byId("service-restore-file").files?.length !== 1;
+  syncNASRestoreControls();
 }
 
 function invalidateServiceDraft() {
+  invalidateNASRestore();
   if (serviceState.candidate !== null) setText("service-status", "Draft changed. Preview the change again before saving.");
   serviceState.candidate = null;
   byId("service-review").hidden = true;
@@ -119,6 +122,8 @@ function invalidateServiceDraft() {
 }
 
 function clearServicePolicy() {
+  nasRestoreState.attempted = null; byId("nas-restore-file").value = "";
+  setText("nas-restore-status", "Not loaded. An interrupted save may have committed; review saved state before another save.");
   clearNASPolicySummary();
   serviceState.generation++;
   serviceState.controller?.abort();
@@ -252,7 +257,7 @@ function describeServiceChanges(before, after) {
   return rows;
 }
 
-function renderServiceChanges(rows) {
+function renderServiceChanges(rows, target = "service-diff", summary = "service-diff-summary") {
   const nodes = rows.map((change) => {
     const row = document.createElement("tr");
     const label = document.createElement("th");
@@ -263,8 +268,8 @@ function renderServiceChanges(rows) {
     row.append(label, before, after);
     return row;
   });
-  byId("service-diff").replaceChildren(...nodes);
-  setText("service-diff-summary", `${rows.length} changed desired ${rows.length === 1 ? "entry" : "entries"}. This is not effective access or running-service state. Unchanged entries are omitted; no files or credentials are changed.`);
+  byId(target).replaceChildren(...nodes);
+  setText(summary, `${rows.length} changed desired ${rows.length === 1 ? "entry" : "entries"}. This is not effective access or running-service state. Unchanged entries are omitted; no files or credentials are changed.`);
 }
 
 // Advisory projection of server-validated canonical paths only. Deliberately
@@ -496,8 +501,8 @@ function showServiceBaseline(c) {
   renderServiceTargets(c);
 }
 
-async function serviceOperation(action) {
-  if (serviceState.busy) return;
+async function serviceOperation(action, nasRestore = false) {
+  if (serviceState.busy || (!nasRestore && nasRestoreState.attempted !== null)) return;
   serviceState.busy = true;
   const generation = ++serviceState.generation;
   const controller = new AbortController(); serviceState.controller = controller;
@@ -520,7 +525,8 @@ async function serviceOperation(action) {
       failure.status = response.status; throw failure;
     }
     let body;
-    try { body = await response.json(); }
+    try { body = path.startsWith("/api/v1/nas-services/") ?
+      (await readBoundedJSON(response, 2 * 1024 * 1024, controller.signal, 65536)).value : await response.json(); }
     catch { throw new Error("Configuration service returned an unreadable response."); }
     if (!current()) throw new Error("superseded");
     return body;
@@ -543,6 +549,9 @@ async function serviceOperation(action) {
       clearServicePolicy(); byId("dashboard-content").hidden = true;
       try { await updateAuthView({ refresh: false, notice: "Session expired. Reload saved state after signing in; a pending save may have committed." }); }
       catch { showAuthUnavailable(); }
+    } else if (nasRestore) {
+      setText("nas-restore-status", nasRestoreState.attempted !== null ? "Save is not confirmed and may have committed. Reconcile saved configuration before another save; no automatic retry." :
+        failure?.name === "AbortError" ? "Restore request timed out. No save was sent." : failure instanceof Error ? failure.message : "Restore request failed.");
     } else {
       setText("service-status", serviceState.attempted !== null ? failure?.status === 409 ?
         "Revision conflict: this save was refused. Use Load / reconcile, review current state and prepare again; no automatic retry will occur." :
@@ -713,4 +722,145 @@ async function saveServiceChange() {
     showServiceBaseline(c);
     setText("service-status", `Revision ${c.revision} confirmed saved. No services were activated; runtime access remains unverified.`);
   });
+}
+
+// Complete-policy restoration shares the existing operation gate, never the old
+// SMB/NFS attempted document. Candidate bytes are never parsed and re-encoded for PUT.
+const nasRestoreState = { candidate: null, attempted: null };
+const nasConfigurationPath = "/api/v1/nas-services/configuration";
+function invalidateNASRestore() {
+  nasRestoreState.candidate = null;
+  byId("nas-restore-review").hidden = true; byId("nas-restore-diff").replaceChildren();
+}
+function syncNASRestoreControls() {
+  const locked = serviceState.busy || serviceState.attempted !== null;
+  byId("nas-restore-file").disabled = locked || nasRestoreState.attempted !== null;
+  byId("nas-restore-preview").disabled = locked || (nasRestoreState.attempted === null && byId("nas-restore-file").files?.length !== 1);
+  byId("nas-restore-preview").textContent = nasRestoreState.attempted !== null ? "Reconcile saved configuration" : "Review complete backup";
+  byId("nas-restore-save").disabled = locked || nasRestoreState.attempted !== null || nasRestoreState.candidate === null;
+}
+function nasRestoreEntries(c, capacities) {
+  const invalid = () => { throw new Error("Complete NAS review is unavailable. Nothing was saved."); };
+  const fields = (o, required, optional = []) => {
+    if (!o || typeof o !== "object" || Array.isArray(o) || required.some((k) => !Object.hasOwn(o, k)) || Object.keys(o).some((k) => ![...required, ...optional].includes(k))) invalid();
+  };
+  const text = (v) => { if (typeof v !== "string" || !v.length || v.length > 1024) invalid(); return v; };
+  fields(c, ["format", "schema_version", "revision", "file_services", "iscsi"]);
+  checkedServiceReviewDocument(c.file_services);
+  const i = c.iscsi, r = c.revision;
+  fields(i, ["format", "schema_version", "revision", "volume_revision", "backings", "targets"]);
+  if (c.format !== "phantowd-nas-service-config" || c.schema_version !== 1 || !Number.isSafeInteger(r) || r < 1 ||
+      [c.file_services.revision, i.revision, i.volume_revision].some((v) => v !== r) ||
+      i.format !== "phantowd-iscsi-policy" || i.schema_version !== 1 || !Array.isArray(i.backings) || i.backings.length > 64 || !Array.isArray(i.targets) || i.targets.length > 16) invalid();
+  capacities ??= {};
+  if (!capacities || typeof capacities !== "object" || Array.isArray(capacities) || Object.keys(capacities).length !== i.backings.length) invalid();
+  const rows = new Map(), put = (kind, parts, value) => {
+    const key = JSON.stringify([kind, ...parts.map(text)]);
+    if (rows.has(key)) invalid(); rows.set(key, { kind, object: parts.join(" / "), value });
+  };
+  for (const b of i.backings) {
+    fields(b, ["id", "volume_id", "relative_path", "capacity_bytes", "block_size", "allocation"]);
+    const bytes = capacities[b.id];
+    if (typeof bytes !== "string" || !/^[1-9][0-9]{0,18}$/.test(bytes) || BigInt(bytes) > 9223372036854775807n ||
+        ![512, 4096].includes(b.block_size) || BigInt(bytes) % BigInt(b.block_size) !== 0n || Number(bytes) !== b.capacity_bytes || !["preallocated", "sparse"].includes(b.allocation)) invalid();
+    put("iSCSI backing", [b.id], `Volume: ${text(b.volume_id)}\nFile: ${text(b.relative_path)}\nCapacity: ${bytes} bytes\nBlock size: ${b.block_size} bytes\nAllocation: ${b.allocation}`);
+  }
+  for (const t of i.targets) {
+    fields(t, ["id", "name", "state", "luns", "initiators"]);
+    if (!["enabled", "disabled"].includes(t.state) || !Array.isArray(t.luns) || t.luns.length < 1 || t.luns.length > 16 || !Array.isArray(t.initiators) || t.initiators.length < 1 || t.initiators.length > 32) invalid();
+    put("iSCSI target", [t.id], `Name: ${text(t.name)}\nDesired state: ${t.state}`);
+    for (const l of t.luns) {
+      fields(l, ["id", "number", "backing_id", "access"]);
+      if (!Number.isSafeInteger(l.number) || l.number < 0 || l.number > 65535 || !["ro", "rw"].includes(l.access)) invalid();
+      put("iSCSI LUN", [t.id, l.id], `Number: ${l.number}\nBacking: ${text(l.backing_id)}\nAccess: ${l.access}`);
+    }
+    for (const peer of t.initiators) {
+      fields(peer, ["name", "authentication", "grants"]);
+      const auth = peer.authentication;
+      fields(auth, ["mode", "initiator_user", "initiator_secret_ref"], ["target_user", "target_secret_ref"]);
+      const labels = { mode: "Mode", initiator_user: "Initiator user", initiator_secret_ref: "Initiator secret reference", target_user: "Target user", target_secret_ref: "Target secret reference" };
+      put("iSCSI initiator", [t.id, peer.name], Object.keys(labels).filter((k) => Object.hasOwn(auth, k)).map((k) => `${labels[k]}: ${text(auth[k])}`).join("\n"));
+      if (!Array.isArray(peer.grants) || peer.grants.length < 1 || peer.grants.length > 16) invalid();
+      for (const g of peer.grants) {
+        fields(g, ["lun_id", "access"]); if (!["ro", "rw"].includes(g.access)) invalid();
+        put("iSCSI grant", [t.id, peer.name, g.lun_id], `Access: ${g.access}`);
+      }
+    }
+  }
+  return rows;
+}
+function comparableNASRestore(c, capacities) {
+  c = policyCopy(c); const f = c.file_services;
+  c.revision = f.revision = f.shares.revision = f.nfs.revision = f.nfs.volume_revision = c.iscsi.revision = c.iscsi.volume_revision = 0;
+  for (const b of c.iscsi.backings) b.capacity_bytes = capacities[b.id];
+  return c;
+}
+function nasRestoreOrder(c) {
+  const rows = [], walk = (v, path) => {
+    if (Array.isArray(v)) {
+      const id = (item) => item.id ?? item.user_id ?? item.network ?? item.name ?? item.lun_id;
+      if (v.length) rows.push(`${path}: ${v.map(id).join(", ")}`);
+      v.forEach((item) => walk(item, path + "/" + id(item)));
+    } else if (v && typeof v === "object") for (const key of Object.keys(v).sort()) walk(v[key], path + "/" + key);
+  };
+  walk(c, "NAS"); return rows.join("\n");
+}
+async function previewNASRestore() {
+  if (serviceState.attempted !== null) return;
+  return serviceOperation(async (request, session, current, signal) => {
+    invalidateServiceDraft();
+    const pending = nasRestoreState.attempted, file = byId("nas-restore-file").files?.[0], generation = policyGeneration;
+    let backup = pending?.backup;
+    if (!pending) {
+      if (byId("nas-restore-file").files?.length !== 1 || !file || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 656384) throw new Error("Choose one complete NAS JSON backup of at most 656384 bytes.");
+      const bytes = await readServiceBackupFile(file, signal);
+      if (bytes.byteLength !== file.size) throw new Error("Backup changed while reading.");
+      backup = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    }
+    const unchanged = () => current() && generation === policyGeneration && (pending ? nasRestoreState.attempted === pending : byId("nas-restore-file").files?.[0] === file);
+    if (!unchanged()) return;
+    const before = await request(nasConfigurationPath, { method: "GET", headers: { Accept: "application/json" } });
+    if (!unchanged()) return;
+    if (before?.schema_version !== 1 || before.scope !== "stored-desired-nas-policy-only" || before.saved !== false || before.applied !== false || before.activation_available !== false || before.revision !== before.configuration?.revision || !Number.isSafeInteger(before.revision + 1)) throw new Error("Saved NAS configuration is unavailable for restore.");
+    const oldEntries = nasRestoreEntries(before.configuration, before.backing_capacities), expected = before.revision;
+    const headers = await session(); headers["X-PhantoWD-Expected-Revision"] = String(expected);
+    if (!unchanged()) return;
+    const reply = await request("/api/v1/nas-services/restore-preview", { method: "POST", headers, body: backup });
+    if (!unchanged()) return;
+    if (reply?.schema_version !== 1 || reply.scope !== "nas-policy-restore-preview-only" || reply.expected_revision !== expected || typeof reply.candidate_json !== "string" ||
+        new TextEncoder().encode(reply.candidate_json).length > 656128 || typeof reply.matches_current !== "boolean" || reply.saved !== false || reply.applied !== false || reply.runtime_validated !== false || reply.activation_available !== false) throw new Error("Unverified complete restore preview.");
+    let candidate;
+    try { candidate = JSON.parse(reply.candidate_json); } catch { throw new Error("Unverified complete restore candidate. Nothing was saved."); }
+    const entries = nasRestoreEntries(candidate, reply.backing_capacities);
+    if (candidate.revision !== expected + 1) throw new Error("Restore revision changed. Review again.");
+    if (reply.matches_current !== sameServiceDocument(comparableNASRestore(before.configuration, before.backing_capacities), comparableNASRestore(candidate, reply.backing_capacities))) throw new Error("Inconsistent complete-definition comparison. Nothing was saved.");
+    serviceState.baseline = undefined; byId("service-current").hidden = true; setText("service-document", ""); setText("service-summary", ""); renderServiceTargets(null);
+    if (pending) {
+      nasRestoreState.attempted = null; byId("nas-restore-file").value = "";
+      setText("nas-restore-status", reply.matches_current ? "Current saved definitions match the attempted backup. This does not confirm receipt of the prior reply. Nothing was retried." : "Current saved definitions differ from the attempted backup. Nothing was retried. Select and review a backup again if still wanted."); return;
+    }
+    const rows = describeServiceChanges(before.configuration.file_services, candidate.file_services);
+    for (const key of new Set([...oldEntries.keys(), ...entries.keys()])) {
+      const old = oldEntries.get(key), next = entries.get(key);
+      if (old?.value !== next?.value) rows.push({ ...(next ?? old), before: old?.value ?? "Not defined", after: next?.value ?? "Not defined" });
+    }
+    const oldOrder = nasRestoreOrder(before.configuration), nextOrder = nasRestoreOrder(candidate);
+    if (oldOrder !== nextOrder) rows.push({ kind: "Declaration order", object: "Complete NAS configuration", before: oldOrder, after: nextOrder });
+    if (rows.length > 512 || (!rows.length && !reply.matches_current)) throw new Error("Complete change review is unavailable. Nothing was saved.");
+    renderServiceChanges(rows, "nas-restore-diff", "nas-restore-status"); byId("nas-restore-review").hidden = false;
+    if (!reply.matches_current) nasRestoreState.candidate = { wire: reply.candidate_json, backup, revision: candidate.revision };
+    setText("nas-restore-status", reply.matches_current ? "Saved definitions already match. No save is needed." : `${rows.length} changed entries. Review the complete replacement before saving revision ${candidate.revision}. Missing definitions will be removed from configuration only; data and credentials are not restored and services are not activated.`);
+  }, true);
+}
+async function saveNASRestore() {
+  if (!nasRestoreState.candidate || nasRestoreState.attempted !== null || serviceState.attempted !== null) return;
+  return serviceOperation(async (request, session) => {
+    const candidate = nasRestoreState.candidate, headers = await session();
+    if (nasRestoreState.candidate !== candidate) return;
+    nasRestoreState.attempted = candidate; invalidateServiceDraft();
+    const reply = await request(nasConfigurationPath, { method: "PUT", headers, body: candidate.wire });
+    if (reply?.schema_version !== 1 || reply.scope !== "stored-desired-nas-policy-only" || reply.revision !== candidate.revision || reply.saved !== true || reply.applied !== false || reply.activation_available !== false) throw new Error("Unverified save reply.");
+    nasRestoreState.attempted = null; clearNASPolicySummary(); byId("nas-restore-file").value = "";
+    setText("nas-restore-status", `Revision ${candidate.revision} confirmed saved. Data and credentials were not restored; services were not activated. Reload configuration before another edit.`);
+  }, true);
 }

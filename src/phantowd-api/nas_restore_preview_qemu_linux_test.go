@@ -56,6 +56,12 @@ func TestNASPolicyRestorePreviewReturnsLosslessWholeCandidate(t *testing.T) {
 		t.Fatal("complete NAS restore preview unavailable", w.Code, w.Body.String())
 	}
 	candidate, err := naspolicy.Decode(bytes.NewReader([]byte(reply.Candidate)))
+	var presentation struct {
+		Values map[string]string `json:"backing_capacities"`
+	}
+	if json.Unmarshal(w.Body.Bytes(), &presentation) != nil || presentation.Values[string(desired.ISCSI.Backings[0].ID)] != "9223372036854775296" {
+		t.Fatal("restore review lost exact decimal backing capacity", presentation.Values)
+	}
 	want := nasRestoreRevision(desired, 2)
 	if err != nil || !reflect.DeepEqual(candidate, want) {
 		t.Fatal("preview lost desired definitions, uint64 precision or revision coherence", err)
@@ -63,6 +69,18 @@ func TestNASPolicyRestorePreviewReturnsLosslessWholeCandidate(t *testing.T) {
 	current, err := owner.Snapshot(context.Background())
 	if err != nil || !reflect.DeepEqual(current, qemuPersistentNASPolicy(1)) {
 		t.Fatal("preview changed the original Owner", err)
+	}
+	r := loopbackRequest(http.MethodGet, nasStatePath, nil)
+	r.Header.Set("Origin", auth.allowedOrigin)
+	r.AddCookie(cookie)
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	var displayed struct {
+		Values map[string]string `json:"backing_capacities"`
+	}
+	expectedBytes, _ := json.Marshal(current.ISCSI.Backings[0].CapacityBytes)
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &displayed) != nil || displayed.Values[string(current.ISCSI.Backings[0].ID)] != string(expectedBytes) {
+		t.Fatal("saved-policy review lost exact capacity", w.Code, displayed.Values)
 	}
 	lease, err := owner.Acquire(context.Background(), 1)
 	if err != nil {

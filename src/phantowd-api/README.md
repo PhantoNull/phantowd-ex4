@@ -1516,7 +1516,12 @@ for explicit submission, unchanged, to the existing complete-policy PUT.
 `matches_current` compares every definition exactly, ignoring only coherent
 revision values; it does not acknowledge an earlier save or authorize retry.
 Preview validates retained NFS bindings and never commits, provisions or applies.
-Full NAS restore controls are not yet connected to the dashboard.
+The dashboard reviews complete replacements, including iSCSI access and declaration
+order, then explicitly submits the original candidate string. Saved reads and
+previews include `backing_capacities`: decimal strings keyed by backing ID, only
+for exact presentation/comparison. Canonical policy and backup formats are unchanged.
+Uncertain saves block further UI writes until explicit comparison of the complete
+current definitions; this never retries a PUT or acknowledges its earlier reply.
 Closing the transport waits for its active RPC, prevents later RPCs and disposes
 the lookup descriptor once; it does not close the root Owner or stop its service.
 Filesystem operations remain cooperatively bounded. This is desired state only:
