@@ -37,6 +37,7 @@ type ControllerQEMU struct {
 	root                             unix.Statx_t
 	ns                               [2]unix.Stat_t
 	socket                           int
+	address                          [4]byte
 	socketIdentity                   nfsSocketIdentityQEMU
 	unattached                       *unattachedSocketQEMU
 	started, stopped, closed, review bool
@@ -67,6 +68,10 @@ func openQEMU(ctx context.Context, role string) (*ControllerQEMU, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	k := &ControllerQEMU{gate: make(chan struct{}, 1), socket: -1, phase: "open"}
+	k.address = [4]byte{127, 0, 0, 1}
+	if role == "peer" {
+		k.address = [4]byte{} // Fixed isolated two-guest fixture; never a caller-selected address.
+	}
 	k.original = k
 	fail := func() (*ControllerQEMU, error) { return nil, k.retain() }
 	// After a failed construction/transaction no new controller can erase review.
@@ -250,7 +255,7 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 		return k.retain()
 	}
 	k.phase = "bind-socket"
-	if err := unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+	if err := unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: k.address}); err != nil {
 		if errors.Is(err, unix.EADDRINUSE) {
 			k.unattached = &unattachedSocketQEMU{bindCause: err}
 		}
@@ -260,7 +265,7 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 	if err := unix.Listen(fd, 64); err != nil {
 		return errors.Join(k.retain(), err)
 	}
-	if checkNFSSocketQEMU(fd, k.socketIdentity) != nil {
+	if checkNFSSocketEndpointQEMU(fd, k.socketIdentity, k.address) != nil {
 		return k.retain()
 	}
 	request, err := SocketRequestQEMU(fd)
@@ -277,7 +282,7 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 		return err
 	}
 	k.phase = "running-profile"
-	if k.profile(ctx, true) != nil || checkNFSSocketQEMU(fd, k.socketIdentity) != nil {
+	if k.profile(ctx, true) != nil || checkNFSSocketEndpointQEMU(fd, k.socketIdentity, k.address) != nil {
 		return k.retain()
 	}
 	return nil
@@ -358,6 +363,9 @@ func OpenRebootQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQ
 // OpenSmokeQEMU admits only the explicit disposable baseline smoke.
 func OpenSmokeQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEMU(ctx, "smoke") }
 
+func OpenPeerQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEMU(ctx, "peer") }
+func PeerClientQEMU() bool                                      { return fixtureGuardQEMU("peer-client") }
+
 func fixtureGuardQEMU(role string) bool {
 	if runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 {
 		return false
@@ -388,7 +396,15 @@ func fixtureCommandQEMU(command []byte, role string) bool {
 		return false
 	}
 	codes, states, smokes := 0, 0, 0
+	peers, peer := 0, ""
 	for _, word := range strings.Fields(string(command)) {
+		if strings.HasPrefix(word, "phantowd_nfs_peer=") {
+			peer = strings.TrimPrefix(word, "phantowd_nfs_peer=")
+			if peer != "server" && peer != "client" {
+				return false
+			}
+			peers++
+		}
 		if strings.HasPrefix(word, "phantowd_nfs_kernel_smoke=") {
 			if word != "phantowd_nfs_kernel_smoke=1" {
 				return false
@@ -408,13 +424,17 @@ func fixtureCommandQEMU(command []byte, role string) bool {
 			states++
 		}
 	}
+	if peers != 0 {
+		return peers == 1 && codes == 0 && states == 0 && smokes == 0 &&
+			(role == "peer" && peer == "server" || role == "peer-client" && peer == "client")
+	}
 	return (role == "code" && codes == 1 && states == 0 && smokes == 0) ||
 		(role == "reboot" && states == 1 && codes == 0 && smokes == 0) ||
 		(role == "smoke" && smokes == 1 && codes == 0 && states == 0)
 }
 
 // CheckRunning rechecks the original control/namespace authority, exact legacy
-// profile and the actual retained IPv4 loopback listening socket. It is not a
+// profile and the actual retained fixed-fixture listening socket. It is not a
 // complete kernel export/cache/client census or atomic product-domain lease.
 func (k *ControllerQEMU) CheckRunning(ctx context.Context) error {
 	if err := k.enter(ctx, false); err != nil {
@@ -425,7 +445,7 @@ func (k *ControllerQEMU) CheckRunning(ctx context.Context) error {
 	if !k.started || k.stopped || k.socket < 0 || k.profile(ctx, true) != nil {
 		return k.retain()
 	}
-	if checkNFSSocketQEMU(k.socket, k.socketIdentity) != nil || k.check(ctx) != nil {
+	if checkNFSSocketEndpointQEMU(k.socket, k.socketIdentity, k.address) != nil || k.check(ctx) != nil {
 		return k.retain()
 	}
 	return nil

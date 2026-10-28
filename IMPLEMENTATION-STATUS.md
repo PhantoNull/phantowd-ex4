@@ -3,6 +3,12 @@
 
 # Implementation status
 
+## Separate NFS client - disposable ARMv5 guests
+
+The smoke uses the existing retained controller with a fixed peer-only profile.
+Two guests verify NFSv3/TCP read/write/fsync and client/server teardown without
+host networking. Own-head qualification is required; product startup remains open.
+
 ## Current iSCSI policy loading - development dashboard
 
 The guided form reads the existing NAS snapshot on explicit request, validates

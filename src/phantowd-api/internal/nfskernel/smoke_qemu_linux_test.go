@@ -32,3 +32,15 @@ func TestSmokeSelectorIsExplicitAndExclusive(t *testing.T) {
 		t.Fatal("original fixture selectors changed")
 	}
 }
+
+func TestPeerSelectorCannotAuthorizeOtherFixtureRoles(t *testing.T) {
+	for _, role := range []string{"code", "reboot", "smoke", "peer", "peer-client", "unknown"} {
+		for _, selector := range []string{"server", "client", "invalid", "server phantowd_nfs_peer=server", "server phantowd_nfs_kernel_smoke=1", "client phantowd.state=seed"} {
+			command := "phantowd_nfs_peer=" + selector
+			want := selector == "server" && role == "peer" || selector == "client" && role == "peer-client"
+			if fixtureCommandQEMU([]byte(command), role) != want {
+				t.Fatalf("peer admission differs: role=%s selector=%s", role, selector)
+			}
+		}
+	}
+}
