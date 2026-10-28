@@ -243,7 +243,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
-    ...["load", "backup", "status", "result", "revision", "counts"].map((id) => `nas-${id}`),
+    ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
@@ -2510,4 +2510,128 @@ async function testNASBackupRejectsInvalidAndSupportsBoundedDensity() {
   assert.equal(await h.document.blobs[0].text(), raw);
 }
 await testNASBackupRejectsInvalidAndSupportsBoundedDensity();
+
+async function nasRestoreHarness(oldCapacity = "512", capacity = "9223372036854775296") {
+  const original = nasBackupFixture().configuration;
+  original.iscsi.backings[0].capacity_bytes = Number(oldCapacity);
+  const raw = (revision) => {
+    const c = structuredClone(original), f = c.file_services;
+    c.revision = f.revision = f.shares.revision = f.nfs.revision = f.nfs.volume_revision = c.iscsi.revision = c.iscsi.volume_revision = revision;
+    c.iscsi.backings[0].capacity_bytes = 512;
+    return JSON.stringify(c).replace('"capacity_bytes":512', '"capacity_bytes":' + capacity);
+  };
+  const state = { committed: false, saveReply: "ok", mutate: () => {} };
+  const h = await createHarness((path, options) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/nas-services/configuration" && options.method === "GET") return jsonResponse({ schema_version: 1,
+      scope: "stored-desired-nas-policy-only", revision: state.committed ? 5 : 4,
+      configuration: state.committed ? JSON.parse(raw(5)) : original,
+      backing_capacities: { lun: state.committed ? capacity : oldCapacity }, saved: false, applied: false, activation_available: false });
+    if (path === "/api/v1/nas-services/restore-preview") {
+      const expected = Number(options.headers["X-PhantoWD-Expected-Revision"]);
+      const reply = { schema_version: 1, scope: "nas-policy-restore-preview-only", expected_revision: expected,
+        candidate_json: raw(expected + 1), backing_capacities: { lun: capacity }, matches_current: state.committed,
+        saved: false, applied: false, runtime_validated: false, activation_available: false };
+      state.mutate(reply); return jsonResponse(reply);
+    }
+    if (path === "/api/v1/nas-services/configuration" && options.method === "PUT") {
+      if (state.saveReply === "conflict") return jsonResponse({}, 409);
+      state.committed = true;
+      return state.saveReply === "lost" ? new Error("lost reply") : state.saveReply === "invalid" ? jsonResponse({}) : jsonResponse({ schema_version: 1,
+        scope: "stored-desired-nas-policy-only", revision: 5, saved: true, applied: false, activation_available: false });
+    }
+    return snapshotResponse(path);
+  });
+  const upload = '{"format":"phantowd-nas-policy-backup","schema_version":1,"configuration":' + raw(4) + '}';
+  h.elements["nas-restore-file"].files = [backupFile(upload)];
+  return { ...h, state, raw, upload };
+}
+async function testNASRestoreReviewsAndSavesExactCandidate() {
+  assert.ok(markupIDs.includes("nas-restore-preview"), "Complete NAS restore controls are unavailable");
+  const h = await nasRestoreHarness();
+  await h.elements["nas-restore-preview"].listeners.get("click")();
+  assert.equal(h.elements["nas-restore-review"].hidden, false);
+  assert.ok(h.elements["nas-restore-diff"].children.some((row) => row.children[2].textContent.includes("9223372036854775296")), "Review must show exact decimal bytes");
+  assert.equal(h.requests.filter((r) => r.options.method === "PUT").length, 0);
+  assert.equal(h.requests.find((r) => r.path.endsWith("restore-preview")).options.body, h.upload);
+  await h.elements["nas-restore-save"].listeners.get("click")();
+  assert.equal(h.requests.find((r) => r.options.method === "PUT").options.body, h.raw(5), "Save must send original candidate bytes");
+  assert.match(h.elements["nas-restore-status"].textContent, /confirmed saved.*not activated/i);
+}
+await testNASRestoreReviewsAndSavesExactCandidate();
+
+
+async function testNASRestoreUncertainSaveRequiresExplicitReconciliation() {
+  for (const mode of ["lost", "invalid", "conflict"]) {
+    const h = await nasRestoreHarness(); h.state.saveReply = mode;
+    await h.context.previewNASRestore(); await h.context.saveNASRestore();
+    assert.match(h.elements["nas-restore-status"].textContent, /not confirmed.*no automatic retry/i);
+    assert.equal(h.elements["nas-restore-file"].disabled, true);
+    const before = h.requests.length;
+    await h.context.saveNASRestore(); await h.context.loadServicePolicy();
+    assert.equal(h.requests.length, before, "uncertain full save blocks legacy writes and duplicate saves");
+    await h.context.previewNASRestore();
+    assert.match(h.elements["nas-restore-status"].textContent, mode === "conflict" ? /definitions differ.*Nothing was retried/ : /definitions match.*does not confirm receipt.*Nothing was retried/);
+    assert.equal(h.requests.filter((r) => r.options.method === "PUT").length, 1);
+    assert.equal(h.elements["nas-restore-save"].disabled, true);
+    assert.equal(h.elements["service-prepare"].disabled, true, "old editor drafts require reload");
+  }
+}
+await testNASRestoreUncertainSaveRequiresExplicitReconciliation();
+async function testNASRestoreRejectsInconsistentExactComparison() {
+  const h = await nasRestoreHarness("9223372036854773760", "9223372036854774272");
+  assert.equal(Number("9223372036854773760"), Number("9223372036854774272"), "fixture must collide as IEEE doubles");
+  h.state.mutate = (reply) => { reply.matches_current = true; };
+  await h.context.previewNASRestore();
+  assert.match(h.elements["nas-restore-status"].textContent, /inconsistent.*comparison/i);
+  assert.equal(h.elements["nas-restore-review"].hidden, true);
+}
+await testNASRestoreRejectsInconsistentExactComparison();
+
+
+async function testNASRestorePresentationAndRefusals() {
+  const h = await nasRestoreHarness("9223372036854773760", "9223372036854774272");
+  await h.context.previewNASRestore();
+  const backing = h.elements["nas-restore-diff"].children.find((row) => row.children[0].textContent.includes("iSCSI backing"));
+  assert.match(backing.children[1].textContent, /9223372036854773760/); assert.match(backing.children[2].textContent, /9223372036854774272/);
+  for (const mutate of [(r) => { delete r.backing_capacities; }, (r) => { r.backing_capacities.lun = "01"; },
+    (r) => { r.candidate_json = "null"; }, (r) => { r.candidate_json = "secret-sentinel"; }, (r) => { r.candidate_json += " ".repeat(2 * 1024 * 1024); },
+    (r) => { r.saved = true; }, (r) => { r.expected_revision++; }, (r) => { r.candidate_json = r.candidate_json.replace('"block_size":512', '"block_size":123'); }]) {
+    const x = await nasRestoreHarness(); x.context.JSON = JSON; x.state.mutate = mutate; await x.context.previewNASRestore();
+    assert.equal(x.elements["nas-restore-review"].hidden, true); assert.equal(x.elements["nas-restore-save"].disabled, true);
+    assert.doesNotMatch(x.elements["nas-restore-status"].textContent, /secret-sentinel/);
+    assert.equal(x.requests.filter((r) => r.options.method === "PUT").length, 0);
+  }
+  for (const file of [{ size: 656385 }, { size: 1, arrayBuffer: async () => new Uint8Array([255]).buffer }]) {
+    const x = await nasRestoreHarness(); x.elements["nas-restore-file"].files = [file]; await x.context.previewNASRestore();
+    assert.equal(x.requests.filter((r) => r.path.includes("nas-services")).length, 0);
+  }
+  const x = await nasRestoreHarness(); let release;
+  x.elements["nas-restore-file"].files = [{ size: 2, arrayBuffer: () => new Promise((r) => { release = r; }) }];
+  const pending = x.context.previewNASRestore(); await settleUI(); x.context.clearServicePolicy();
+  release(new TextEncoder().encode("{}").buffer); await pending;
+  assert.equal(x.requests.filter((r) => r.path.includes("nas-services")).length, 0); assert.equal(x.elements["nas-restore-review"].hidden, true);
+  const target = { id: "target", name: "iqn.2026-10.example:target", state: "disabled", luns: [{ id: "disk", number: 0, backing_id: "lun", access: "rw" }],
+    initiators: [{ name: "iqn.2026-10.example:client", authentication: { mode: "chap", initiator_user: "client", initiator_secret_ref: "stored-secret" }, grants: [{ lun_id: "disk", access: "ro" }] }] };
+  const y = await nasRestoreHarness(); y.state.mutate = (r) => { r.candidate_json = r.candidate_json.replace('"targets":[]', '"targets":' + JSON.stringify([target])); };
+  await y.context.previewNASRestore();
+  for (const kind of ["iSCSI target", "iSCSI LUN", "iSCSI initiator", "iSCSI grant"]) assert.ok(y.elements["nas-restore-diff"].children.some((row) => row.children[0].textContent.includes(kind)), kind);
+}
+await testNASRestorePresentationAndRefusals();
+
+const denseRestore = await nasRestoreHarness();
+denseRestore.state.mutate = (r) => {
+  const c = JSON.parse(r.candidate_json), shares = c.file_services.shares;
+  shares.users = Array.from({ length: 64 }, (_, n) => ({ id: `user${n}`, name: `user${n}` }));
+  shares.shares = Array.from({ length: 10 }, (_, n) => ({ id: `share${n}`, name: `Share${n}`, volume_id: "media", relative_path: `books/${n}`, grants: shares.users.map((u) => ({ user_id: u.id, access: "ro" })) }));
+  c.iscsi.backings[0].capacity_bytes = 512;
+  r.candidate_json = JSON.stringify(c).replace('"capacity_bytes":512', '"capacity_bytes":9223372036854775296');
+};
+await denseRestore.context.previewNASRestore();
+assert.equal(denseRestore.elements["nas-restore-review"].hidden, true);
+assert.equal(denseRestore.elements["nas-restore-save"].disabled, true, "large changes must refuse instead of silently truncating review");
+assert.match(denseRestore.elements["nas-restore-status"].textContent, /512.*Complete review is unavailable/);
+
+
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

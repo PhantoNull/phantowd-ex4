@@ -98,6 +98,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	fmt.Println("PHANTOWD_NAS_POLICY_BACKUP_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true full_policy=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_FILE_EDITOR_READY standard_main=true https=verified lifetimes=2 original_owner=true saved=true iscsi_preserved=true busy=true conflict=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_RESTORE_PREVIEW_READY standard_main=true https=verified lifetimes=2 original_owner=true full_policy=true uint64_exact=true read_only=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_NAS_RESTORE_DISPLAY_READY standard_main=true https=verified lifetimes=2 saved_and_candidate=true decimal_capacities=exact scope=disposable-qemu-only")
 	return nil
 }
 
@@ -160,9 +161,9 @@ func (h *qemuNASMainHTTP) request(ctx context.Context, path string, body any, wa
 	if err != nil {
 		return errors.New("main fixture HTTPS request failed")
 	}
-	limit := int64(naspolicy.MaxInputBytes + 1024)
+	limit := int64(naspolicy.MaxInputBytes + 8192)
 	if path == nasRestorePreviewPath {
-		limit = 2*naspolicy.MaxInputBytes + 1024
+		limit = 2*naspolicy.MaxInputBytes + 8192
 	}
 	data, err := readSelfTestResponse(response, limit)
 	if err != nil || response.StatusCode != want || response.Header.Get("Cache-Control") != "no-store" {
@@ -295,6 +296,9 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(wantRevision)) || reply.Configuration == nil || !reflect.DeepEqual(*reply.Configuration, got) || reply.Revision != wantRevision || reply.Saved || reply.Applied || reply.ActivationAvailable || reply.SchemaVersion != 1 || reply.Scope != "stored-desired-nas-policy-only" {
 			return errors.New("main fixture original Owner readback differs")
 		}
+		if !reflect.DeepEqual(reply.BackingCapacities, nasBackingCapacities(got)) {
+			return errors.New("main fixture saved capacity display differs")
+		}
 		var summary map[string]any
 		if err := h.request(ctx, nasSummaryPath, nil, 200, &summary); err != nil {
 			return err
@@ -325,9 +329,10 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		// The decoded download owns its values; neither the Owner nor got changes.
 		backup.Configuration.ISCSI.Backings[0].CapacityBytes = (1 << 63) - 512
 		var preview struct {
-			Wire    string `json:"candidate_json"`
-			Matches bool   `json:"matches_current"`
-			Saved   bool   `json:"saved"`
+			Wire       string            `json:"candidate_json"`
+			Capacities map[string]string `json:"backing_capacities"`
+			Matches    bool              `json:"matches_current"`
+			Saved      bool              `json:"saved"`
 		}
 		if err := h.request(ctx, nasRestorePreviewPath, backup, 200, &preview, [2]string{serviceExpectedRevisionHeader, strconv.FormatUint(wantRevision, 10)}); err != nil {
 			return err
@@ -341,6 +346,9 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		after, observeErr := owner.Snapshot(ctx)
 		if err != nil || observeErr != nil || preview.Matches || preview.Saved || !reflect.DeepEqual(candidate, wantRestore) || !reflect.DeepEqual(after, got) {
 			return errors.New("main fixture lossless complete restore preview changed state or values")
+		}
+		if !reflect.DeepEqual(preview.Capacities, nasBackingCapacities(backup.Configuration)) {
+			return errors.New("main fixture restore capacity display differs")
 		}
 		var editor serviceStateResponse
 		if err := h.request(ctx, serviceStatePath, nil, 200, &editor); err != nil {
