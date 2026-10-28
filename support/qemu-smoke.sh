@@ -622,6 +622,16 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing SMB userspace resource measurement" >&2
             exit 1
         fi
+        # Settle the baseline guest before starting two private peer guests.
+        kill "$qemu_pid"
+        wait "$qemu_pid" 2>/dev/null || true
+        qemu_pid=
+        python3 "$script_dir/qemu-nfs-peer.py" "$images_dir" "$log_file.peer" || {
+            cat "$log_file.peer.server" "$log_file.peer.client" >> "$log_file"
+            tail -n 80 "$log_file" >&2
+            exit 1
+        }
+        cat "$log_file.peer.server" "$log_file.peer.client" >> "$log_file"
         echo "QEMU ARMv5 smoke test passed"
         exit 0
     fi

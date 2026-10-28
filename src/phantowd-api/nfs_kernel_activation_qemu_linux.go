@@ -29,7 +29,7 @@ func runQEMUNFSKernelActivation() error {
 	defer cancel()
 	var previous *nfskernel.ControllerQEMU
 	for cycle := 1; cycle <= 2; cycle++ {
-		if err := runQEMUNFSKernelCycle(ctx, cycle, &previous); err != nil {
+		if err := runQEMUNFSKernelCycle(ctx, cycle, &previous, false); err != nil {
 			return fmt.Errorf("NFS cycle=%d: %w", cycle, err)
 		}
 		fmt.Printf("PHANTOWD_NFS_KERNEL_CYCLE_DONE cycle=%d\n", cycle)
@@ -39,9 +39,13 @@ func runQEMUNFSKernelActivation() error {
 	return nil
 }
 
-func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU) error {
+func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, peer bool) error {
 	const payload = "retained-controller-nfs3-tcp-write\n"
-	k, err := nfskernel.OpenSmokeQEMU(ctx)
+	open, rpcAddress := nfskernel.OpenSmokeQEMU, "127.0.0.1"
+	if peer {
+		open, rpcAddress = nfskernel.OpenPeerQEMU, "192.0.2.1"
+	}
+	k, err := open(ctx)
 	if err != nil {
 		return fmt.Errorf("kernel-open: %w", err)
 	}
@@ -109,7 +113,7 @@ func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.
 			}
 		}, nil
 	}
-	stopRPC, err := start("/usr/sbin/rpcbind", "-f", "-h", "127.0.0.1")
+	stopRPC, err := start("/usr/sbin/rpcbind", "-f", "-h", rpcAddress)
 	if err != nil {
 		return phase("rpcbind-start", err)
 	}
@@ -151,6 +155,11 @@ func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.
 	}
 	if err := phase("export", command("/usr/sbin/exportfs", "-i", "-o", "rw,sync,no_subtree_check,all_squash,anonuid=65534,anongid=65534", export)); err != nil {
 		return err
+	}
+	if peer {
+		if err := phase("separate-client", serveQEMUNFSPeer(ctx, command)); err != nil {
+			return err
+		}
 	}
 	if err := phase("client-mount", command("/bin/mount", "-t", "nfs", "-o", "vers=3,proto=tcp,nolock,soft,timeo=5,retrans=1", export, client)); err != nil {
 		return err
