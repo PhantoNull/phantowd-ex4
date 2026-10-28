@@ -11,6 +11,10 @@ The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
 
+NFS integration now includes a separate client in two isolated ARMv5 guests,
+using the retained controller and verified read/write/fsync/teardown. Its
+own-head gate does not qualify product startup, physical networking or migration.
+
 ## Product contract
 
 Build a maintained, efficient, local-first replacement for the **WD My Cloud

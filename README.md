@@ -69,6 +69,11 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
+The NFS smoke also connects two disposable ARMv5 guests through a private Unix
+socketpair: a separate client mounts the retained controller over NFSv3/TCP,
+reads, writes and fsyncs data, then unmounts before verified server shutdown.
+This is isolated guest qualification, not a production listener or EX4 test.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.

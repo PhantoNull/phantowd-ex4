@@ -13,6 +13,12 @@ not include it. It is not a production NFS backend or appliance activation.
 `OpenSmokeQEMU` admits only `phantowd_nfs_kernel_smoke=1`. No constructor
 accepts a caller-selected path, command, privilege or replacement backend.
 
+`OpenPeerQEMU` additionally admits only `phantowd_nfs_peer=server`, with a fixed
+wildcard listener inside two isolated guests. The mutually exclusive client role
+cannot open the controller. A private inherited Unix socketpair connects their
+NICs; no host listener, user networking or LAN forwarding is used. The real
+client verifies NFSv3/TCP bytes, fsync and unmount before clean controller stop.
+
 The controller retains original NSFS network/mount references and the NFSD
 control directory's filesystem/device/inode/unique-mount identity. Operations
 serialize on a locked OS thread. Each bounded control transaction opens a new
