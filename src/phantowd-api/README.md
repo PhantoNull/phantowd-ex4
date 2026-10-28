@@ -108,6 +108,7 @@ transaction engine. Native interruption tests and an actual ARMv5 two-boot
 nonempty fixture pass. This distinct opt-in format performs no implicit import,
 does not replace the old development HTTP store, and supplies no credential,
 storage/global-use/session or activation authority.
+Authenticated POST `/api/v1/iscsi/preview` projects caller-supplied policy: exact decimal values, no credential references and advisory path overlaps; no state access or target activation.
 
 A separate authenticated HTTPS handler now captures only snapshot/commit
 authority: an original local Owner or a retained root-peer client. Fixed ARM

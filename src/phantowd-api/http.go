@@ -51,6 +51,7 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend, collectGPT storageGPTObservationCollector, nas http.Handler) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
+	iscsiPreview := newISCSIPreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
 	serviceState := newServiceStateHandler(auth, state)
 	gptObservation := newStorageGPTObservationHandler(auth, collectGPT)
@@ -90,6 +91,10 @@ func newHandlerWithNASPolicy(collect collector, collectStorage storageSnapshotCo
 		}
 		if nas != nil && (r.URL.Path == nasStatePath || r.URL.Path == nasSummaryPath || r.URL.Path == nasBackupPath || r.URL.Path == nasRestorePreviewPath || r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || r.URL.Path == serviceRestorePreviewPath) {
 			nas.ServeHTTP(w, r)
+			return
+		}
+		if r.URL.Path == iscsiPreviewPath {
+			iscsiPreview(w, r)
 			return
 		}
 		if r.URL.Path == fileServicePreviewPath {
