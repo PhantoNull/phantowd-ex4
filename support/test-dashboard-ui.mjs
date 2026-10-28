@@ -245,6 +245,7 @@ function mountsFixture() {
 async function createHarness(respond, timing = {}) {
   const ids = [
     ...["form", "document", "submit", "clear", "result", "status"].map((id) => `iscsi-${id}`),
+    ...["add", "fields", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map((id) => `iscsi-draft-${id}`),
     ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
@@ -2765,5 +2766,137 @@ async function testISCSIPanelRequestRefusals() {
   assert.equal(h.elements["dashboard-content"].hidden, true);
 }
 await testISCSIPanelRequestRefusals();
+
+const iscsiDraftInput = { name: "iqn.2026-01.org.example:draft", volume: "media", path: "luns/draft.img", capacity: "8192", "block-size": "512", allocation: "sparse", access: "ro",
+  initiator: "iqn.2026-01.org.example:client", auth: "chap", "chap-user": "draft-user", "secret-ref": "draft-secret", "target-user": "", "target-secret-ref": "" };
+function iscsiDraftPolicy() {
+  const c = JSON.parse(iscsiPanelFixture().wire.replaceAll("18446744073709551615", "4").replaceAll("9223372036854775296", "512"));
+  c.iscsi.targets[0].state = "enabled";
+  c.file_services.nfs.exports = [{ id: "aaaaaaaa-1111-2222-3333-444444444444", volume_id: "media", relative_path: "books",
+    clients: [{ network: "198.51.100.1/32", access: "ro", squash: "all", anonymous_uid: 65534, anonymous_gid: 65534, security: "sys" }] }];
+  return c;
+}
+function iscsiDraftProjection(c) {
+  return { ...iscsiPanelFixture().value, revision: String(c.revision), smb_definitions: c.file_services.shares.shares.length, nfs_definitions: c.file_services.nfs.exports.length,
+    backings: c.iscsi.backings.map((b) => ({ ...b, capacity_bytes: String(b.capacity_bytes), smb_path_overlap_count: 0, nfs_path_overlap_count: 0 })),
+    targets: c.iscsi.targets.map((t) => ({ id: t.id, name: t.name, desired_state: t.state, luns: t.luns,
+      initiators: t.initiators.map((p) => ({ name: p.name, desired_authentication: p.authentication.mode, grants: p.grants })) })) };
+}
+async function iscsiDraftHarness(reply, timing) {
+  const h = await createHarness((path, options) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
+    if (path === "/api/v1/iscsi/preview") return reply(options);
+    return snapshotResponse(path);
+  }, timing);
+  h.elements["iscsi-document"].value = JSON.stringify(iscsiDraftPolicy());
+  for (const [key, value] of Object.entries(iscsiDraftInput)) h.elements[`iscsi-draft-${key}`].value = value;
+  return h;
+}
+async function testISCSIDisabledTargetForm() {
+  assert.ok(markupIDs.includes("iscsi-draft-add"), "guided target controls unavailable");
+  for (const mutual of [false, true]) {
+    const h = await iscsiDraftHarness((options) => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))));
+    if (mutual) for (const [key, value] of Object.entries({ auth: "mutual-chap", "target-user": "server-user", "target-secret-ref": "server-secret", access: "rw" })) h.elements[`iscsi-draft-${key}`].value = value;
+    const original = h.elements["iscsi-document"].value;
+    assert.equal(h.requests.some((r) => r.path === "/api/v1/iscsi/preview"), false);
+    await h.elements["iscsi-draft-add"].listeners.get("click")({ preventDefault() {} });
+    const posts = h.requests.filter((r) => r.path === "/api/v1/iscsi/preview");
+    assert.equal(posts.length, 2); assert.equal(posts[0].options.body, original, "original text must be validated first");
+    const c = JSON.parse(posts[1].options.body), fs = c.file_services, p = c.iscsi;
+    for (const r of [c.revision, fs.revision, fs.shares.revision, fs.nfs.revision, fs.nfs.volume_revision, p.revision, p.volume_revision]) assert.equal(r, 5);
+    const t = p.targets.pop(), b = p.backings.pop();
+    assert.equal(t.state, "disabled"); assert.equal(t.luns[0].number, 0); assert.equal(t.luns[0].backing_id, b.id);
+    assert.equal(t.initiators[0].authentication.mode, mutual ? "mutual-chap" : "chap");
+    assert.equal(t.initiators[0].grants[0].access, mutual ? "rw" : "ro"); assert.equal(b.capacity_bytes, 8192);
+    if (mutual) assert.equal(t.initiators[0].authentication.target_secret_ref, "server-secret");
+    c.revision = fs.revision = fs.shares.revision = fs.nfs.revision = fs.nfs.volume_revision = p.revision = p.volume_revision = 4;
+    assert.deepEqual(c, JSON.parse(original), "existing SMB/NFS/iSCSI definitions must survive unchanged");
+    assert.equal(h.elements["iscsi-document"].value, posts[1].options.body);
+    assert.match(h.elements["iscsi-status"].textContent, /Disabled target staged/);
+    assert.equal(h.elements["iscsi-result"].hidden, false);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+    h.elements["iscsi-draft-name"].value += "-second";
+    h.elements["iscsi-draft-path"].value = "luns/second.img";
+    await h.elements["iscsi-draft-add"].listeners.get("click")({ preventDefault() {} });
+    const next = JSON.parse(h.elements["iscsi-document"].value);
+    assert.equal(next.revision, 6); assert.equal(next.iscsi.targets.length, 3);
+    for (const items of [next.iscsi.targets, next.iscsi.backings, next.iscsi.targets.flatMap((t) => t.luns)]) assert.equal(new Set(items.map((i) => i.id)).size, items.length);
+  }
+}
+await testISCSIDisabledTargetForm();
+
+async function testISCSIDraftRefusalsPreserveOriginal() {
+  const submit = (h) => h.elements["iscsi-draft-add"].listeners.get("click")({ preventDefault() {} });
+  for (const fields of [
+    { capacity: "9007199254740992" }, { capacity: "8193" }, { capacity: "1e4" }, { capacity: "08192" }, { capacity: "0" },
+    { "block-size": "1024" }, { access: "none" }, { auth: "none" }, { volume: "missing" },
+    { path: "../escape.img" }, { path: "/absolute" }, { path: "a\\b" }, { path: "a//b" },
+    { "secret-ref": "secret value" }, { "chap-user": "a\nPRIVATE" }, { "target-user": "unused" },
+    { auth: "mutual-chap", "target-user": "server", "target-secret-ref": "draft-secret" },
+  ]) {
+    const h = await iscsiDraftHarness(() => { throw new Error("invalid draft must not request preview"); });
+    for (const [key, value] of Object.entries(fields)) h.elements[`iscsi-draft-${key}`].value = value;
+    const original = h.elements["iscsi-document"].value, count = h.requests.length;
+    await submit(h); assert.equal(h.requests.length, count); assert.equal(h.elements["iscsi-document"].value, original);
+    assert.equal(h.elements["iscsi-result"].hidden, true); assert.match(h.elements["iscsi-status"].textContent, /Guided draft refused/);
+  }
+  for (const [from, to] of [['"revision":4', '"revision":9007199254740991'], ['"capacity_bytes":512', '"capacity_bytes":9007199254740993']]) {
+    const h = await iscsiDraftHarness(() => { throw new Error("unsafe numbers must not request preview"); });
+    h.elements["iscsi-document"].value = h.elements["iscsi-document"].value.replace(from, to);
+    const original = h.elements["iscsi-document"].value, count = h.requests.length;
+    await submit(h); assert.equal(h.requests.length, count); assert.equal(h.elements["iscsi-document"].value, original);
+  }
+  for (const phase of ["original", "candidate", "projection"]) {
+    let calls = 0;
+    const h = await iscsiDraftHarness((options) => {
+      calls++;
+      if (phase === "original" || phase === "candidate" && calls === 2) return jsonResponse({ error: "PRIVATE" }, 422);
+      return jsonResponse(iscsiDraftProjection(calls === 2 && phase === "projection" ? iscsiDraftPolicy() : JSON.parse(options.body)));
+    });
+    if (phase === "original") h.elements["iscsi-document"].value = h.elements["iscsi-document"].value.replace('"revision":4', '"revision":4,"revision":4');
+    const original = h.elements["iscsi-document"].value;
+    await submit(h); assert.equal(calls, phase === "original" ? 1 : 2);
+    assert.equal(h.requests.filter((r) => r.path === "/api/v1/iscsi/preview")[0].options.body, original);
+    assert.equal(h.elements["iscsi-document"].value, original); assert.equal(h.elements["iscsi-result"].hidden, true);
+    assert.equal(h.elements["iscsi-draft-fields"].disabled, false); assert.doesNotMatch(h.elements["iscsi-status"].textContent, /PRIVATE/);
+  }
+}
+await testISCSIDraftRefusalsPreserveOriginal();
+
+async function testISCSIDraftCandidateRetirement() {
+  for (const phase of ["fetch", "body"]) for (const boundary of ["input", "clear", "logout", "deadline"]) {
+    let release, calls = 0; const timers = [];
+    const pending = new Promise((resolve) => { release = resolve; });
+    const h = await iscsiDraftHarness((options) => {
+      const value = iscsiDraftProjection(JSON.parse(options.body));
+      if (++calls === 2) return phase === "fetch" ? pending : deferredJSONResponse(pending);
+      return jsonResponse(value);
+    }, { setTimeout: (f, ms) => (timers.push({ f, ms }), timers.length), clearTimeout: () => {} });
+    const original = h.elements["iscsi-document"].value, previousTimers = timers.length;
+    const submit = () => h.elements["iscsi-draft-add"].listeners.get("click")({ preventDefault() {} });
+    const work = submit(); await settleUI(); assert.equal(calls, 2);
+    const candidate = h.requests.filter((r) => r.path === "/api/v1/iscsi/preview")[1].options.body;
+    assert.equal(h.elements["iscsi-draft-fields"].disabled, true); await submit(); assert.equal(calls, 2);
+    assert.equal(timers.length, previousTimers + 1); assert.equal(timers.at(-1).ms, 10000, "both validations share one deadline");
+    if (boundary === "input") h.elements["iscsi-draft-name"].listeners.get("input")();
+    if (boundary === "clear") h.elements["iscsi-clear"].listeners.get("click")();
+    if (boundary === "logout") h.context.showAuthUnavailable();
+    if (boundary === "deadline") timers.at(-1).f();
+    await work;
+    assert.equal(h.elements["iscsi-document"].value, ["clear", "logout"].includes(boundary) ? "" : original);
+    if (["clear", "logout"].includes(boundary)) for (const key of Object.keys(iscsiDraftInput)) {
+      if (!["block-size", "allocation", "access", "auth"].includes(key)) assert.equal(h.elements[`iscsi-draft-${key}`].value, "");
+    }
+    h.elements["iscsi-document"].value = original;
+    await h.elements["iscsi-form"].listeners.get("submit")({ preventDefault() {} });
+    assert.equal(h.elements["iscsi-result"].hidden, false);
+    release(phase === "fetch" ? jsonResponse({}, 401) : iscsiDraftProjection(JSON.parse(candidate))); await settleUI();
+    assert.equal(h.elements["iscsi-document"].value, original, `${phase}/${boundary}: retired candidate replaced current input`);
+    assert.equal(h.elements["iscsi-result"].hidden, false, "retired candidate must not replace a newer review");
+    assert.equal(h.elements["iscsi-draft-add"].disabled, false); assert.equal(h.elements["iscsi-draft-fields"].disabled, false);
+  }
+}
+await testISCSIDraftCandidateRetirement();
 
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
