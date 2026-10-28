@@ -210,6 +210,12 @@
         <button id="nas-load" class="refresh-button" type="button">Load NAS configuration</button>
         <button id="nas-backup" class="refresh-button" type="button">Download service definitions</button>
         <p class="policy-help">The download contains SMB/NFS/iSCSI definitions, including private names and identifiers. Data, account passwords and CHAP secrets need separate backups.</p>
+        <label for="nas-restore-file">Complete NAS configuration backup (JSON)</label>
+        <input id="nas-restore-file" type="file" accept="application/json,.json" aria-describedby="nas-restore-status">
+        <button id="nas-restore-preview" class="refresh-button" type="button" disabled>Review complete backup</button>
+        <button id="nas-restore-save" class="refresh-button" type="button" disabled>Save reviewed NAS configuration</button>
+        <p id="nas-restore-status" class="snapshot-status" role="status" aria-live="polite">No restore prepared. Saving replaces all SMB/NFS/iSCSI definitions; data and credentials are separate.</p>
+        <div id="nas-restore-review" class="policy-diff-scroll" role="region" aria-label="Complete NAS restore changes" tabindex="0" hidden><table class="policy-diff-table"><caption>Complete NAS replacement: changed definitions and declaration order</caption><thead><tr><th scope="col">Definition</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody id="nas-restore-diff"></tbody></table></div>
         <p id="nas-status" class="snapshot-status" role="status" aria-live="polite">Not loaded.</p>
         <div id="nas-result" hidden>
           <p id="nas-revision" class="policy-help"></p>
