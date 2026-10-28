@@ -55,6 +55,9 @@ Complete NAS backups can also be reviewed and explicitly restored as one revisio
 An uncertain save requires manual reconciliation; it is never retried automatically.
 The iSCSI panel manually reviews complete policy JSON with exact capacities and
 target/LUN/initiator grants. It does not save configuration or activate targets.
+A guided form can stage one disabled target and LUN 0 after validating both the
+original policy and the candidate. Guided edits refuse unsafe browser integers;
+manual review preserves the full supported integer range.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
