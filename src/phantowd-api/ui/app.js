@@ -1277,4 +1277,5 @@ byId("iscsi-form").addEventListener("submit", submitISCSIPreview);
 byId("iscsi-document").addEventListener("input", () => retireISCSIPreview());
 byId("iscsi-clear").addEventListener("click", clearISCSIPreview);
 byId("iscsi-draft-add").addEventListener("click", event => submitISCSIPreview(event, true));
+byId("iscsi-review-save").addEventListener("click", reviewISCSIDraftSave);
 for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).addEventListener("input", () => retireISCSIPreview());

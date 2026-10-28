@@ -3141,7 +3141,9 @@ support per tested combination; refuse untested combinations without mutation.
   Manual dashboard review preserves original input bytes and retires stale results.
   A guided disabled-target/LUN0 draft preserves existing definitions and validates
   original and candidate under one deadline; unsafe browser integers refuse.
-  Saved target management, credential provisioning and activation remain open.
+  Guided additions can enter the existing full NAS diff/explicit save with a
+  matching original baseline, retired stale views and uncertain-save reconciliation.
+  General target editing/removal, credential provisioning and activation remain open.
   **M9.2a — internal desired file-LUN model (locally tested prototype):**
   `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,
   independent typed target/LUN/backing IDs, explicit capacity/block size,

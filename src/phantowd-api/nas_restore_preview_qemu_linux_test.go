@@ -198,3 +198,66 @@ func TestNASPolicyRestorePreviewComparesExactDefinitionsAcrossRevisions(t *testi
 		t.Fatal("comparison mutated original policy", err)
 	}
 }
+
+func TestNASPolicyRestorePreviewSavesAddedDisabledTarget(t *testing.T) {
+	owner := nasStateTestOwner(t)
+	auth, cookie := newTestAuth(t)
+	h := newHandlerWithNASPolicy(nil, nil, nil, nil, auth, nil, nil, nil, newNASStateHandler(auth, owner))
+	desired := qemuPersistentNASPolicy(1)
+	backing := desired.ISCSI.Backings[0]
+	backing.ID, backing.RelativePath, backing.CapacityBytes = "draft-backing", "luns/draft.img", 8192
+	target := qemuPersistentNASPolicy(1).ISCSI.Targets[0]
+	target.ID, target.Name = "draft-target", "iqn.2026-10.org.example:draft"
+	target.LUNs[0].ID, target.LUNs[0].BackingID = "draft-lun", backing.ID
+	target.Initiators[0].Name = "iqn.2026-10.org.example:client"
+	target.Initiators[0].Authentication.InitiatorSecretRef = "draft-inbound"
+	target.Initiators[0].Grants[0].LUNID = target.LUNs[0].ID
+	desired.ISCSI.Backings = append(desired.ISCSI.Backings, backing)
+	desired.ISCSI.Targets = append(desired.ISCSI.Targets, target)
+	data, err := json.Marshal(map[string]any{"format": nasBackupFormat, "schema_version": 1, "configuration": desired})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, nasRestorePost(auth, cookie, data, "1"))
+	var reply struct {
+		Candidate string `json:"candidate_json"`
+		Saved     bool   `json:"saved"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Saved {
+		t.Fatal("target review unavailable", w.Code)
+	}
+	current, err := owner.Snapshot(context.Background())
+	if err != nil || !reflect.DeepEqual(current, qemuPersistentNASPolicy(1)) {
+		t.Fatal("review changed original policy", err)
+	}
+	candidate, err := naspolicy.Decode(strings.NewReader(reply.Candidate))
+	want := nasRestoreRevision(desired, 2)
+	if err != nil || !reflect.DeepEqual(candidate, want) || candidate.ISCSI.Targets[1].State != "disabled" {
+		t.Fatal("new target or preserved definitions differ", err)
+	}
+	lease, err := owner.Acquire(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lease.Release()
+	for index, status := range []int{503, 200, 409} {
+		if index == 1 {
+			if err := lease.Release(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		request := serviceWriteRequest(auth, cookie, candidate.FileServices)
+		request.URL.Path = nasStatePath
+		request.Body, request.ContentLength = io.NopCloser(strings.NewReader(reply.Candidate)), int64(len(reply.Candidate))
+		output := httptest.NewRecorder()
+		h.ServeHTTP(output, request)
+		if output.Code != status {
+			t.Fatal("target addition lost busy/commit/stale semantics", output.Code, status)
+		}
+	}
+	current, err = owner.Snapshot(context.Background())
+	if err != nil || !reflect.DeepEqual(current, want) {
+		t.Fatal("saved target changed unrelated definitions", err)
+	}
+}

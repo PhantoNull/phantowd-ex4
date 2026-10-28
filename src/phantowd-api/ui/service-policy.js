@@ -738,6 +738,7 @@ function syncNASRestoreControls() {
   byId("nas-restore-preview").disabled = locked || (nasRestoreState.attempted === null && byId("nas-restore-file").files?.length !== 1);
   byId("nas-restore-preview").textContent = nasRestoreState.attempted !== null ? "Reconcile saved configuration" : "Review complete backup";
   byId("nas-restore-save").disabled = locked || nasRestoreState.attempted !== null || nasRestoreState.candidate === null;
+  byId("iscsi-review-save").disabled = locked || nasRestoreState.attempted !== null || iscsiPreviewState.staged === null || iscsiPreviewState.operation !== null;
 }
 function nasRestoreEntries(c, capacities) {
   const invalid = () => { throw new Error("Complete NAS review is unavailable. Nothing was saved."); };
@@ -806,23 +807,28 @@ function nasRestoreOrder(c) {
   walk(c, "NAS"); return rows.join("\n");
 }
 async function previewNASRestore() {
+  return previewNASRestoreSource(null);
+}
+async function previewNASRestoreSource(source) {
   if (serviceState.attempted !== null) return;
+  if (source && (nasRestoreState.attempted !== null || !source.current())) return;
   return serviceOperation(async (request, session, current, signal) => {
     invalidateServiceDraft();
     const pending = nasRestoreState.attempted, file = byId("nas-restore-file").files?.[0], generation = policyGeneration;
-    let backup = pending?.backup;
-    if (!pending) {
+    let backup = source?.backup ?? pending?.backup;
+    if (!pending && !source) {
       if (byId("nas-restore-file").files?.length !== 1 || !file || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 656384) throw new Error("Choose one complete NAS JSON backup of at most 656384 bytes.");
       const bytes = await readServiceBackupFile(file, signal);
       if (bytes.byteLength !== file.size) throw new Error("Backup changed while reading.");
       backup = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
     }
-    const unchanged = () => current() && generation === policyGeneration && (pending ? nasRestoreState.attempted === pending : byId("nas-restore-file").files?.[0] === file);
+    const unchanged = () => current() && generation === policyGeneration && (pending ? nasRestoreState.attempted === pending : source ? source.current() : byId("nas-restore-file").files?.[0] === file);
     if (!unchanged()) return;
     const before = await request(nasConfigurationPath, { method: "GET", headers: { Accept: "application/json" } });
     if (!unchanged()) return;
     if (before?.schema_version !== 1 || before.scope !== "stored-desired-nas-policy-only" || before.saved !== false || before.applied !== false || before.activation_available !== false || before.revision !== before.configuration?.revision || !Number.isSafeInteger(before.revision + 1)) throw new Error("Saved NAS configuration is unavailable for restore.");
     const oldEntries = nasRestoreEntries(before.configuration, before.backing_capacities), expected = before.revision;
+    if (source && !sameServiceDocument(before.configuration, source.baseline)) throw new Error("Saved configuration changed since this draft began. Reload it and prepare the addition again. Nothing was saved.");
     const headers = await session(); headers["X-PhantoWD-Expected-Revision"] = String(expected);
     if (!unchanged()) return;
     const reply = await request("/api/v1/nas-services/restore-preview", { method: "POST", headers, body: backup });
@@ -832,6 +838,10 @@ async function previewNASRestore() {
     let candidate;
     try { candidate = JSON.parse(reply.candidate_json); } catch { throw new Error("Unverified complete restore candidate. Nothing was saved."); }
     const entries = nasRestoreEntries(candidate, reply.backing_capacities);
+    if (source) {
+      const capacities = Object.fromEntries(source.candidate.iscsi.backings.map((b) => [b.id, String(b.capacity_bytes)]));
+      if (!sameServiceDocument(comparableNASRestore(candidate, reply.backing_capacities), comparableNASRestore(source.candidate, capacities))) throw new Error("Unverified iSCSI draft replacement. Nothing was saved.");
+    }
     if (candidate.revision !== expected + 1) throw new Error("Restore revision changed. Review again.");
     if (reply.matches_current !== sameServiceDocument(comparableNASRestore(before.configuration, before.backing_capacities), comparableNASRestore(candidate, reply.backing_capacities))) throw new Error("Inconsistent complete-definition comparison. Nothing was saved.");
     serviceState.baseline = undefined; byId("service-current").hidden = true; setText("service-document", ""); setText("service-summary", ""); renderServiceTargets(null);
@@ -848,7 +858,7 @@ async function previewNASRestore() {
     if (oldOrder !== nextOrder) rows.push({ kind: "Declaration order", object: "Complete NAS configuration", before: oldOrder, after: nextOrder });
     if (rows.length > 512 || (!rows.length && !reply.matches_current)) throw new Error("Complete change review is unavailable. Nothing was saved.");
     renderServiceChanges(rows, "nas-restore-diff", "nas-restore-status"); byId("nas-restore-review").hidden = false;
-    if (!reply.matches_current) nasRestoreState.candidate = { wire: reply.candidate_json, backup, revision: candidate.revision };
+    if (!reply.matches_current) nasRestoreState.candidate = { wire: reply.candidate_json, backup, revision: candidate.revision, current: source?.current };
     setText("nas-restore-status", reply.matches_current ? "Saved definitions already match. No save is needed." : `${rows.length} changed entries. Review the complete replacement before saving revision ${candidate.revision}. Missing definitions will be removed from configuration only; data and credentials are not restored and services are not activated.`);
   }, true);
 }
@@ -857,6 +867,7 @@ async function saveNASRestore() {
   return serviceOperation(async (request, session) => {
     const candidate = nasRestoreState.candidate, headers = await session();
     if (nasRestoreState.candidate !== candidate) return;
+    if (candidate.current && !candidate.current()) { invalidateServiceDraft(); throw new Error("iSCSI draft changed. Review it again before saving."); }
     nasRestoreState.attempted = candidate; invalidateServiceDraft();
     const reply = await request(nasConfigurationPath, { method: "PUT", headers, body: candidate.wire });
     if (reply?.schema_version !== 1 || reply.scope !== "stored-desired-nas-policy-only" || reply.revision !== candidate.revision || reply.saved !== true || reply.applied !== false || reply.activation_available !== false) throw new Error("Unverified save reply.");
