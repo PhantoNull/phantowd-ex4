@@ -3141,6 +3141,9 @@ support per tested combination; refuse untested combinations without mutation.
   Manual dashboard review preserves original input bytes and retires stale results.
   A guided disabled-target/LUN0 draft preserves existing definitions and validates
   original and candidate under one deadline; unsafe browser integers refuse.
+  The form can explicitly load the existing NAS snapshot, validating full
+  definitions and browser-safe integers before replacing its draft; failed or
+  retired reads preserve input, while session loss clears private text.
   Guided additions can enter the existing full NAS diff/explicit save with a
   matching original baseline, retired stale views and uncertain-save reconciliation.
   General target editing/removal, credential provisioning and activation remain open.
