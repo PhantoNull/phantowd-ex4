@@ -244,7 +244,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
-    ...["form", "document", "submit", "clear", "result", "status", "review-save"].map((id) => `iscsi-${id}`),
+    ...["form", "document", "submit", "clear", "result", "status", "review-save", "load"].map((id) => `iscsi-${id}`),
     ...["add", "fields", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map((id) => `iscsi-draft-${id}`),
     ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
@@ -2908,10 +2908,10 @@ function iscsiPolicyRevision(c, revision) {
   c.revision = f.revision = f.shares.revision = f.nfs.revision = f.nfs.volume_revision = c.iscsi.revision = c.iscsi.volume_revision = revision;
   return c;
 }
-async function iscsiSaveHarness() {
+async function iscsiSaveHarness(timing) {
   const state = { current: iscsiDraftPolicy(), saveReply: "ok", candidate: null, mutatePreview: () => {} };
   const capacities = (c) => Object.fromEntries(c.iscsi.backings.map((b) => [b.id, String(b.capacity_bytes)]));
-  const h = await iscsiDraftHarness((options) => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))), undefined, (path, options) => {
+  const h = await iscsiDraftHarness((options) => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))), timing, (path, options) => {
     if (path === "/api/v1/nas-services/configuration" && options.method === "GET") return jsonResponse({ schema_version: 1, scope: "stored-desired-nas-policy-only",
       revision: state.current.revision, configuration: state.current, backing_capacities: capacities(state.current), saved: false, applied: false, activation_available: false });
     if (path === "/api/v1/nas-services/restore-preview") {
@@ -3028,5 +3028,107 @@ async function testISCSIDraftSaveRetirementAndUncertainReplies() {
   }
 }
 await testISCSIDraftSaveRetirementAndUncertainReplies();
+
+async function testISCSILoadSavedPolicyThenAdd() {
+  assert.ok(markupIDs.includes("iscsi-load"), "saved iSCSI policy load control unavailable");
+  const h = await iscsiSaveHarness(), original = structuredClone(h.saved.current);
+  h.elements["iscsi-document"].value = "";
+  await iscsiClick(h, "iscsi-load");
+  assert.deepEqual(JSON.parse(h.elements["iscsi-document"].value), original);
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/nas-services/configuration").length, 1);
+  assert.equal(h.requests.some((r) => r.options?.method === "POST" || r.options?.method === "PUT"), false);
+  assert.equal(h.elements["iscsi-review-save"].disabled, true);
+  await iscsiClick(h, "iscsi-draft-add"); await iscsiClick(h, "iscsi-review-save"); await iscsiClick(h, "nas-restore-save");
+  assert.equal(h.saved.current.revision, 5); assert.equal(h.saved.current.iscsi.targets.length, 2);
+  assert.deepEqual(h.saved.current.file_services, iscsiPolicyRevision(original, 5).file_services);
+}
+await testISCSILoadSavedPolicyThenAdd();
+
+async function testISCSILoadRefusesUnsafeNumbers() {
+  const h = await iscsiSaveHarness();
+  h.elements["iscsi-document"].value = "manual input stays exact";
+  h.saved.current.iscsi.backings[0].capacity_bytes = 9007199254740992;
+  await iscsiClick(h, "iscsi-load");
+  assert.equal(h.elements["iscsi-document"].value, "manual input stays exact", "unsafe saved capacity must not be rounded into a draft");
+  assert.match(h.elements["iscsi-status"].textContent, /exact.*integers|safe.*integers/);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+}
+await testISCSILoadRefusesUnsafeNumbers();
+
+async function testISCSILoadControlTracksPreviewLifetime() {
+  const h = await iscsiSaveHarness(), originalFetch = h.context.fetch; let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  h.context.fetch = (path, options) => path === "/api/v1/iscsi/preview" ? pending : originalFetch(path, options);
+  const work = iscsiClick(h, "iscsi-draft-add"); await settleUI();
+  assert.equal(h.elements["iscsi-load"].disabled, true, "loading must be unavailable during a preview");
+  await iscsiClick(h, "iscsi-clear"); await work;
+  assert.equal(h.elements["iscsi-load"].disabled, false, "clear must restore loading after canceled preview");
+  release(jsonResponse(iscsiDraftProjection(h.saved.current))); await settleUI();
+  assert.equal(h.elements["iscsi-document"].value, "");
+}
+await testISCSILoadControlTracksPreviewLifetime();
+
+function iscsiLoadedReply(c) {
+  return { schema_version: 1, scope: "stored-desired-nas-policy-only", revision: c.revision, configuration: c,
+    backing_capacities: Object.fromEntries(c.iscsi.backings.map((b) => [b.id, String(b.capacity_bytes)])), saved: false, applied: false, activation_available: false };
+}
+async function testISCSILoadRefusalsAndUnknownSave() {
+  for (const kind of ["scope", "activation", "revision", "capacity", "unknown", "oversize", "unavailable", "session"]) {
+    const h = await iscsiSaveHarness(), reply = iscsiLoadedReply(structuredClone(h.saved.current));
+    const original = h.elements["iscsi-document"].value, fetch = h.context.fetch;
+    if (kind === "scope") reply.scope = "other";
+    if (kind === "activation") reply.activation_available = true;
+    if (kind === "revision") reply.revision++;
+    if (kind === "capacity") reply.backing_capacities.lun = "1024";
+    if (kind === "unknown") reply.configuration.extra = "not silently discarded";
+    if (kind === "oversize") reply.padding = "x".repeat(2 * 1024 * 1024);
+    h.context.fetch = (path, options) => path === "/api/v1/nas-services/configuration" ?
+      jsonResponse(reply, kind === "unavailable" ? 503 : kind === "session" ? 401 : 200) : fetch(path, options);
+    await iscsiClick(h, "iscsi-load");
+    assert.equal(h.elements["iscsi-document"].value, kind === "session" ? "" : original, kind);
+    assert.equal(h.elements["iscsi-review-save"].disabled, true);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+    if (kind === "session") assert.equal(h.elements["dashboard-content"].hidden, true);
+  }
+  const h = await iscsiSaveHarness(); await iscsiClick(h, "iscsi-draft-add"); await iscsiClick(h, "iscsi-review-save");
+  h.saved.saveReply = "lost"; await iscsiClick(h, "nas-restore-save");
+  const before = h.requests.length, original = h.elements["iscsi-document"].value;
+  assert.equal(h.elements["iscsi-load"].disabled, true);
+  await iscsiClick(h, "iscsi-load");
+  assert.equal(h.requests.length, before); assert.equal(h.elements["iscsi-document"].value, original);
+}
+await testISCSILoadRefusalsAndUnknownSave();
+
+async function testISCSILoadLateRepliesNeverReplaceInput() {
+  for (const phase of ["fetch", "body"]) for (const boundary of ["input", "clear", "session", "deadline", "programmatic"]) {
+    const timers = []; let release, loads = 0;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const h = await iscsiSaveHarness({ setTimeout: (f) => (timers.push(f), timers.length), clearTimeout: () => {} });
+    const reply = iscsiLoadedReply(h.saved.current), fetch = h.context.fetch;
+    h.elements["iscsi-document"].value = "original manual input";
+    h.context.fetch = (path, options) => {
+      if (path !== "/api/v1/nas-services/configuration") return fetch(path, options);
+      loads++; return phase === "fetch" ? pending : deferredJSONResponse(pending);
+    };
+    const work = iscsiClick(h, "iscsi-load"); await settleUI();
+    assert.equal(h.elements["iscsi-load"].disabled, true);
+    await iscsiClick(h, "iscsi-load"); assert.equal(loads, 1, "busy load must not queue another request");
+    if (["input", "programmatic"].includes(boundary)) h.elements["iscsi-document"].value = "new manual input";
+    if (boundary === "input") h.elements["iscsi-document"].listeners.get("input")();
+    if (boundary === "clear") await iscsiClick(h, "iscsi-clear");
+    if (boundary === "session") h.context.showAuthUnavailable();
+    if (boundary === "deadline") timers.at(-1)();
+    const late = phase === "fetch" ? jsonResponse(reply) : reply;
+    if (boundary === "programmatic") release(late);
+    await work;
+    if (boundary !== "programmatic") release(late);
+    await settleUI();
+    const expected = ["clear", "session"].includes(boundary) ? "" : boundary === "deadline" ? "original manual input" : "new manual input";
+    assert.equal(h.elements["iscsi-document"].value, expected, `${phase}/${boundary}`);
+    assert.equal(h.elements["iscsi-result"].hidden, true); assert.equal(h.elements["iscsi-review-save"].disabled, true);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  }
+}
+await testISCSILoadLateRepliesNeverReplaceInput();
 
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
