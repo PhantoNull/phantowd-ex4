@@ -109,6 +109,8 @@ nonempty fixture pass. This distinct opt-in format performs no implicit import,
 does not replace the old development HTTP store, and supplies no credential,
 storage/global-use/session or activation authority.
 Authenticated POST `/api/v1/iscsi/preview` projects caller-supplied policy: exact decimal values, no credential references and advisory path overlaps; no state access or target activation.
+The dashboard submits original policy bytes on explicit review and clears private
+input on session loss. It rejects invalid/late replies without saving or activation.
 
 A separate authenticated HTTPS handler now captures only snapshot/commit
 authority: an original local Owner or a retained root-peer client. Fixed ARM
