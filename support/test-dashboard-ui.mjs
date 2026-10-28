@@ -244,7 +244,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
-    ...["form", "document", "submit", "clear", "result", "status"].map((id) => `iscsi-${id}`),
+    ...["form", "document", "submit", "clear", "result", "status", "review-save"].map((id) => `iscsi-${id}`),
     ...["add", "fields", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map((id) => `iscsi-draft-${id}`),
     ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
@@ -278,6 +278,7 @@ async function createHarness(respond, timing = {}) {
     elements[id].parentElement = elements["auth-form"];
   }
   elements["iscsi-result"].hidden = true;
+  elements["iscsi-review-save"].disabled = true;
   elements["refresh-label"].textContent = "Refresh snapshot";
   elements["memory-meter"].parentElement = new FixtureElement();
   Object.assign(document, {
@@ -2782,12 +2783,12 @@ function iscsiDraftProjection(c) {
     targets: c.iscsi.targets.map((t) => ({ id: t.id, name: t.name, desired_state: t.state, luns: t.luns,
       initiators: t.initiators.map((p) => ({ name: p.name, desired_authentication: p.authentication.mode, grants: p.grants })) })) };
 }
-async function iscsiDraftHarness(reply, timing) {
+async function iscsiDraftHarness(reply, timing, other = snapshotResponse) {
   const h = await createHarness((path, options) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "A".repeat(43) });
     if (path === "/api/v1/iscsi/preview") return reply(options);
-    return snapshotResponse(path);
+    return other(path, options);
   }, timing);
   h.elements["iscsi-document"].value = JSON.stringify(iscsiDraftPolicy());
   for (const [key, value] of Object.entries(iscsiDraftInput)) h.elements[`iscsi-draft-${key}`].value = value;
@@ -2818,6 +2819,8 @@ async function testISCSIDisabledTargetForm() {
     assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
     h.elements["iscsi-draft-name"].value += "-second";
     h.elements["iscsi-draft-path"].value = "luns/second.img";
+    h.elements["iscsi-draft-secret-ref"].value = "second-secret";
+    if (mutual) h.elements["iscsi-draft-target-secret-ref"].value = "second-server-secret";
     await h.elements["iscsi-draft-add"].listeners.get("click")({ preventDefault() {} });
     const next = JSON.parse(h.elements["iscsi-document"].value);
     assert.equal(next.revision, 6); assert.equal(next.iscsi.targets.length, 3);
@@ -2898,5 +2901,132 @@ async function testISCSIDraftCandidateRetirement() {
   }
 }
 await testISCSIDraftCandidateRetirement();
+
+const iscsiClick = (h, id) => h.elements[id].listeners.get("click")({ preventDefault() {} });
+function iscsiPolicyRevision(c, revision) {
+  const f = c.file_services;
+  c.revision = f.revision = f.shares.revision = f.nfs.revision = f.nfs.volume_revision = c.iscsi.revision = c.iscsi.volume_revision = revision;
+  return c;
+}
+async function iscsiSaveHarness() {
+  const state = { current: iscsiDraftPolicy(), saveReply: "ok", candidate: null, mutatePreview: () => {} };
+  const capacities = (c) => Object.fromEntries(c.iscsi.backings.map((b) => [b.id, String(b.capacity_bytes)]));
+  const h = await iscsiDraftHarness((options) => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))), undefined, (path, options) => {
+    if (path === "/api/v1/nas-services/configuration" && options.method === "GET") return jsonResponse({ schema_version: 1, scope: "stored-desired-nas-policy-only",
+      revision: state.current.revision, configuration: state.current, backing_capacities: capacities(state.current), saved: false, applied: false, activation_available: false });
+    if (path === "/api/v1/nas-services/restore-preview") {
+      const expected = Number(options.headers["X-PhantoWD-Expected-Revision"]);
+      const c = iscsiPolicyRevision(JSON.parse(options.body).configuration, expected + 1);
+      state.mutatePreview(c);
+      state.candidate = JSON.stringify(c);
+      return jsonResponse({ schema_version: 1, scope: "nas-policy-restore-preview-only", expected_revision: expected,
+        candidate_json: state.candidate, backing_capacities: capacities(c), matches_current: JSON.stringify(iscsiPolicyRevision(structuredClone(c), 0)) === JSON.stringify(iscsiPolicyRevision(structuredClone(state.current), 0)),
+        saved: false, applied: false, runtime_validated: false, activation_available: false });
+    }
+    if (path === "/api/v1/nas-services/configuration" && options.method === "PUT") {
+      if (state.saveReply !== "conflict") state.current = JSON.parse(options.body);
+      if (state.saveReply === "lost") throw new Error("synthetic lost reply");
+      if (state.saveReply === "conflict") return jsonResponse({}, 409);
+      return jsonResponse({ schema_version: 1, scope: "stored-desired-nas-policy-only", revision: state.current.revision, saved: true, applied: false, activation_available: false });
+    }
+    return snapshotResponse(path);
+  });
+  h.saved = state;
+  return h;
+}
+async function testISCSIDraftReviewsThenExplicitlySaves() {
+  assert.ok(markupIDs.includes("iscsi-review-save"), "staged iSCSI save review control unavailable");
+  const h = await iscsiSaveHarness(), original = structuredClone(h.saved.current);
+  assert.equal(h.elements["iscsi-review-save"].disabled, true);
+  await iscsiClick(h, "iscsi-draft-add"); assert.equal(h.elements["iscsi-review-save"].disabled, false);
+  const staged = h.elements["iscsi-document"].value;
+  await iscsiClick(h, "iscsi-review-save");
+  assert.deepEqual(h.saved.current, original, "review must not save");
+  assert.equal(h.elements["nas-restore-review"].hidden, false); assert.equal(h.elements["nas-restore-save"].disabled, false);
+  for (const kind of ["iSCSI target", "iSCSI LUN", "iSCSI initiator", "iSCSI grant"]) assert.ok(h.elements["nas-restore-diff"].children.some((row) => row.children[0].textContent.includes(kind)), kind);
+  const review = h.requests.find((r) => r.path === "/api/v1/nas-services/restore-preview");
+  assert.ok(review.options.body.includes(staged), "staged JSON must reach the strict decoder intact");
+  assert.equal(review.options.headers["X-PhantoWD-Expected-Revision"], "4");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  await iscsiClick(h, "nas-restore-save");
+  const puts = h.requests.filter((r) => r.options?.method === "PUT");
+  assert.equal(puts.length, 1); assert.equal(puts[0].options.body, h.saved.candidate);
+  assert.equal(puts[0].path, "/api/v1/nas-services/configuration");
+  assert.equal(h.saved.current.revision, 5); assert.equal(h.saved.current.iscsi.targets.length, 2);
+  assert.deepEqual(h.saved.current.file_services, iscsiPolicyRevision(original, 5).file_services);
+  assert.match(h.elements["nas-restore-status"].textContent, /confirmed saved.*not activated/);
+}
+await testISCSIDraftReviewsThenExplicitlySaves();
+
+async function testISCSIDraftSavePreservesItsOriginalBaseline() {
+  const previous = await iscsiSaveHarness(), backup = structuredClone(previous.saved.current);
+  backup.file_services.shares.shares[0].name += " prior review";
+  previous.elements["nas-restore-file"].files = [backupFile(JSON.stringify({ format: "phantowd-nas-policy-backup", schema_version: 1, configuration: backup }))];
+  await iscsiClick(previous, "nas-restore-preview"); assert.equal(previous.elements["nas-restore-save"].disabled, false);
+  await iscsiClick(previous, "iscsi-draft-add");
+  assert.equal(previous.elements["nas-restore-save"].disabled, true, "staging a new draft must retire an unrelated whole-policy review");
+  assert.equal(previous.elements["nas-restore-review"].hidden, true);
+  const h = await iscsiSaveHarness(); await iscsiClick(h, "iscsi-draft-add");
+  h.elements["iscsi-draft-name"].value += "-second"; h.elements["iscsi-draft-name"].listeners.get("input")();
+  h.elements["iscsi-draft-path"].value = "luns/second.img";
+  h.elements["iscsi-draft-secret-ref"].value = "second-secret";
+  await iscsiClick(h, "iscsi-draft-add");
+  assert.equal(JSON.parse(h.elements["iscsi-document"].value).revision, 6);
+  await iscsiClick(h, "iscsi-review-save"); await iscsiClick(h, "nas-restore-save");
+  assert.equal(h.saved.current.revision, 5, "one saved revision for the whole batch"); assert.equal(h.saved.current.iscsi.targets.length, 3);
+  for (const change of [
+    (c) => iscsiPolicyRevision(c, 5), (c) => { c.file_services.shares.shares[0].name += " changed"; },
+    (c) => { c.file_services.nfs.exports[0].clients[0].network = "203.0.113.1/32"; }, (c) => { c.iscsi.backings[0].capacity_bytes = 1024; },
+  ]) {
+    const x = await iscsiSaveHarness(); await iscsiClick(x, "iscsi-draft-add"); change(x.saved.current);
+    const before = structuredClone(x.saved.current); await iscsiClick(x, "iscsi-review-save");
+    assert.equal(x.requests.some((r) => r.path === "/api/v1/nas-services/restore-preview" || r.options?.method === "PUT"), false);
+    assert.equal(x.elements["nas-restore-save"].disabled, true); assert.match(x.elements["nas-restore-status"].textContent, /changed since this draft/);
+    assert.deepEqual(x.saved.current, before);
+  }
+  const wrong = await iscsiSaveHarness(); await iscsiClick(wrong, "iscsi-draft-add");
+  wrong.saved.mutatePreview = (c) => { c.iscsi.targets.at(-1).state = "enabled"; };
+  await iscsiClick(wrong, "iscsi-review-save");
+  assert.equal(wrong.elements["nas-restore-save"].disabled, true); assert.match(wrong.elements["nas-restore-status"].textContent, /Unverified iSCSI/);
+}
+await testISCSIDraftSavePreservesItsOriginalBaseline();
+
+async function testISCSIDraftSaveRetirementAndUncertainReplies() {
+  for (const mode of ["field", "document", "clear", "session"]) {
+    const h = await iscsiSaveHarness(); await iscsiClick(h, "iscsi-draft-add"); await iscsiClick(h, "iscsi-review-save");
+    if (mode === "field") h.elements["iscsi-draft-name"].listeners.get("input")();
+    if (mode === "document") { h.elements["iscsi-document"].value = "changed"; h.elements["iscsi-document"].listeners.get("input")(); }
+    if (mode === "clear") await iscsiClick(h, "iscsi-clear");
+    if (mode === "session") h.context.showAuthUnavailable();
+    assert.equal(h.elements["nas-restore-save"].disabled, true); assert.equal(h.elements["nas-restore-review"].hidden, true);
+    await iscsiClick(h, "nas-restore-save"); assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  }
+  for (const phase of ["review", "save"]) {
+    const h = await iscsiSaveHarness(); await iscsiClick(h, "iscsi-draft-add");
+    if (phase === "save") await iscsiClick(h, "iscsi-review-save");
+    const fetch = h.context.fetch; let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    h.context.fetch = (path, options) => path === (phase === "review" ? "/api/v1/nas-services/configuration" : "/api/v1/auth/session") ? gate : fetch(path, options);
+    const work = iscsiClick(h, phase === "review" ? "iscsi-review-save" : "nas-restore-save"); await settleUI();
+    h.elements["iscsi-document"].value = "changed";
+    if (phase === "review") h.elements["iscsi-document"].listeners.get("input")();
+    release(phase === "save" ? jsonResponse({ csrf_token: "A".repeat(43) }) : jsonResponse({ schema_version: 1, scope: "stored-desired-nas-policy-only", revision: 4, configuration: h.saved.current, backing_capacities: { lun: "512" }, saved: false, applied: false, activation_available: false }));
+    await work;
+    assert.equal(h.elements["nas-restore-save"].disabled, true); assert.equal(h.elements["nas-restore-review"].hidden, true);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false, "retired work must not dispatch a save");
+  }
+  for (const mode of ["lost", "conflict"]) {
+    const h = await iscsiSaveHarness(); await iscsiClick(h, "iscsi-draft-add"); await iscsiClick(h, "iscsi-review-save");
+    h.saved.saveReply = mode; await iscsiClick(h, "nas-restore-save");
+    assert.match(h.elements["nas-restore-status"].textContent, /not confirmed.*no automatic retry/);
+    assert.equal(h.elements["iscsi-review-save"].disabled, true); assert.equal(h.elements["service-save"].disabled, true);
+    await iscsiClick(h, "nas-restore-save"); await iscsiClick(h, "iscsi-review-save");
+    assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+    await iscsiClick(h, "nas-restore-preview");
+    assert.match(h.elements["nas-restore-status"].textContent, mode === "lost" ? /definitions match.*does not confirm receipt/ : /definitions differ.*Nothing was retried/);
+    assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  }
+}
+await testISCSIDraftSaveRetirementAndUncertainReplies();
 
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
