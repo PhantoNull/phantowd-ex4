@@ -18,6 +18,10 @@ Browser/physical qualification, product boot and service activation remain open.
 The separate authenticated iSCSI preview projects caller policy without state access; decimal/privacy/refusal/revocation tests and both HTTPS guest lifetimes require own-head qualification.
 The manual panel preserves input bytes, validates decimal/relationship displays,
 and retires stale replies on edit, cancellation or session loss. Own-head CI remains required.
+The guided form stages a disabled target/LUN0/backing/initiator with symbolic
+CHAP references only after original and candidate validation. Existing protocol
+definitions survive; unsafe browser integers refuse. DOM checks cover both
+authentication modes, refusals and late candidate retirement; no save or activation.
 
 ## M8 offline space-counter comparison - host only
 
