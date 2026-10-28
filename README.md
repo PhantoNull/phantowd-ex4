@@ -53,6 +53,8 @@ With the opt-in NAS-policy channel configured, the existing SMB/NFS editor,
 backup and restore preview share that same Owner; saves preserve iSCSI policy.
 Complete NAS backups can also be reviewed and explicitly restored as one revision.
 An uncertain save requires manual reconciliation; it is never retried automatically.
+The iSCSI panel manually reviews complete policy JSON with exact capacities and
+target/LUN/initiator grants. It does not save configuration or activate targets.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
