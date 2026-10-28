@@ -31,9 +31,50 @@ function retireISCSIPreview(clearInput = false) {
     for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).value = iscsiDraftDefaults[field] ?? "";
   }
   setText("iscsi-status", "No current preview. Nothing was saved or activated.");
+  syncNASRestoreControls();
 }
 
 function clearISCSIPreview() { retireISCSIPreview(true); }
+
+async function loadISCSIPolicy() {
+  if (iscsiPreviewState.operation || serviceState.attempted !== null || nasRestoreState.attempted !== null) return;
+  return serviceOperation(async (_request, _session, current, signal) => {
+    retireISCSIPreview(); policyGeneration++; invalidateServiceDraft();
+    const original = byId("iscsi-document").value;
+    const operation = { controller: serviceState.controller, timer: null };
+    iscsiPreviewState.operation = operation;
+    for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields"]) byId(id).disabled = true;
+    syncNASRestoreControls();
+    setText("iscsi-status", "Reading saved policy. The draft is replaced only after validation.");
+    try {
+      const packet = await fetchDocument(nasConfigurationPath, { signal }).catch((failure) => {
+        if (failure?.status === 401 || failure?.name === "AbortError") throw failure;
+        throw new Error("Saved NAS policy could not be loaded. Existing draft retained.");
+      });
+      const reply = packet.value;
+      if (!current() || iscsiPreviewState.operation !== operation || byId("iscsi-document").value !== original) return;
+      if (reply?.schema_version !== 1 || reply.scope !== "stored-desired-nas-policy-only" || reply.saved !== false ||
+          reply.applied !== false || reply.activation_available !== false || reply.revision !== reply.configuration?.revision) throw new Error("Saved NAS policy is unavailable. Existing draft retained.");
+      nasRestoreEntries(reply.configuration, reply.backing_capacities);
+      const text = JSON.stringify(reply.configuration, (_key, value) => {
+        if (typeof value === "number" && !Number.isSafeInteger(value)) throw new Error("Guided loading requires exact safe integers. Use the original backup or manual review; existing draft retained.");
+        return value;
+      });
+      if (new TextEncoder().encode(text).byteLength > 656128) throw new Error("Saved policy exceeds the draft limit. Existing draft retained.");
+      iscsiPreviewState.origin = null; byId("iscsi-document").value = text;
+      setText("iscsi-status", "Saved policy loaded into the draft. Nothing was changed or activated.");
+    } catch (failure) {
+      if (iscsiPreviewState.operation === operation && failure?.status === 401) showAuthUnavailable();
+      throw failure;
+    } finally {
+      if (iscsiPreviewState.operation === operation) {
+        iscsiPreviewState.operation = null;
+        for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields"]) byId(id).disabled = false;
+        syncNASRestoreControls();
+      }
+    }
+  }, false, "iscsi-status");
+}
 
 async function reviewISCSIDraftSave() {
   const staged = iscsiPreviewState.staged;
@@ -184,6 +225,7 @@ async function submitISCSIPreview(event, draft = false) {
   }
   const operation = { controller: new AbortController(), timer: null };
   iscsiPreviewState.operation = operation;
+  syncNASRestoreControls();
   const signal = operation.controller.signal;
   const current = () => iscsiPreviewState.operation === operation && !signal.aborted;
   const canceled = () => { const e = new Error("iSCSI preview canceled"); e.name = "AbortError"; return e; };

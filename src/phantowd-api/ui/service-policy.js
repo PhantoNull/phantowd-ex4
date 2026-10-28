@@ -501,7 +501,7 @@ function showServiceBaseline(c) {
   renderServiceTargets(c);
 }
 
-async function serviceOperation(action, nasRestore = false) {
+async function serviceOperation(action, nasRestore = false, errorTarget = "service-status") {
   if (serviceState.busy || (!nasRestore && nasRestoreState.attempted !== null)) return;
   serviceState.busy = true;
   const generation = ++serviceState.generation;
@@ -553,7 +553,7 @@ async function serviceOperation(action, nasRestore = false) {
       setText("nas-restore-status", nasRestoreState.attempted !== null ? "Save is not confirmed and may have committed. Reconcile saved configuration before another save; no automatic retry." :
         failure?.name === "AbortError" ? "Restore request timed out. No save was sent." : failure instanceof Error ? failure.message : "Restore request failed.");
     } else {
-      setText("service-status", serviceState.attempted !== null ? failure?.status === 409 ?
+      setText(errorTarget, serviceState.attempted !== null ? failure?.status === 409 ?
         "Revision conflict: this save was refused. Use Load / reconcile, review current state and prepare again; no automatic retry will occur." :
         "Save is not confirmed. It may have committed. Use Load / reconcile; no automatic retry will occur." :
         failure?.name === "AbortError" ? "Request timed out. No save was sent." : failure instanceof Error ? failure.message : "Configuration request failed.");
@@ -738,6 +738,7 @@ function syncNASRestoreControls() {
   byId("nas-restore-preview").disabled = locked || (nasRestoreState.attempted === null && byId("nas-restore-file").files?.length !== 1);
   byId("nas-restore-preview").textContent = nasRestoreState.attempted !== null ? "Reconcile saved configuration" : "Review complete backup";
   byId("nas-restore-save").disabled = locked || nasRestoreState.attempted !== null || nasRestoreState.candidate === null;
+  byId("iscsi-load").disabled = locked || nasRestoreState.attempted !== null || iscsiPreviewState.operation !== null;
   byId("iscsi-review-save").disabled = locked || nasRestoreState.attempted !== null || iscsiPreviewState.staged === null || iscsiPreviewState.operation !== null;
 }
 function nasRestoreEntries(c, capacities) {
