@@ -6,7 +6,11 @@ before the candidate; only a verified candidate replaces the text. CHAP and
 mutual-CHAP use symbolic SecretRefs, never passwords. Both requests share one
 10-second deadline. Edit, clear or session loss retires pending work and clears
 private input when appropriate. Guided editing refuses unsafe browser integers;
-manual review remains lossless. No configuration save, backing open or activation.
+manual review remains lossless. When the optional NAS-policy channel is configured,
+staged additions can enter the existing complete-configuration review/explicit PUT.
+The original baseline must still match; candidate definitions are checked against
+the staged draft, and edits retire save eligibility. Uncertain saves use the same
+manual comparison without retry. No new state writer, backing open or activation.
 
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and

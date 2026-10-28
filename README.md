@@ -54,10 +54,14 @@ backup and restore preview share that same Owner; saves preserve iSCSI policy.
 Complete NAS backups can also be reviewed and explicitly restored as one revision.
 An uncertain save requires manual reconciliation; it is never retried automatically.
 The iSCSI panel manually reviews complete policy JSON with exact capacities and
-target/LUN/initiator grants. It does not save configuration or activate targets.
+target/LUN/initiator grants. It does not activate targets.
 A guided form can stage one disabled target and LUN 0 after validating both the
 original policy and the candidate. Guided edits refuse unsafe browser integers;
 manual review preserves the full supported integer range.
+With the optional NAS-policy channel, staged additions enter the existing full
+configuration review and explicit save. The saved baseline must still match;
+unrelated changes are refused and uncertain replies require manual reconciliation.
+Saving definitions never creates backing files, provisions secrets or starts targets.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.

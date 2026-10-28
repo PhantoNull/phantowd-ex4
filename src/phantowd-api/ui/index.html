@@ -358,11 +358,13 @@
               <label>Initiator IQN<input id="iscsi-draft-initiator" maxlength="223" spellcheck="false" placeholder="iqn.2026-01.example.org:client"></label>
               <label>Authentication<select id="iscsi-draft-auth"><option value="chap">CHAP</option><option value="mutual-chap">Mutual CHAP</option></select></label>
               <label>Initiator CHAP username<input id="iscsi-draft-chap-user" maxlength="128" spellcheck="false"></label>
-              <label>Initiator SecretRef (not password)<input id="iscsi-draft-secret-ref" maxlength="64" spellcheck="false"></label>
+              <label>Unique initiator SecretRef (not password)<input id="iscsi-draft-secret-ref" maxlength="64" spellcheck="false"></label>
               <label>Target CHAP username (mutual only)<input id="iscsi-draft-target-user" maxlength="128" spellcheck="false"></label>
-              <label>Target SecretRef (mutual only, not password)<input id="iscsi-draft-target-secret-ref" maxlength="64" spellcheck="false"></label>
+              <label>Unique target SecretRef (mutual only, not password)<input id="iscsi-draft-target-secret-ref" maxlength="64" spellcheck="false"></label>
             </fieldset>
             <button id="iscsi-draft-add" class="refresh-button" type="button">Validate and stage disabled target</button>
+            <button id="iscsi-review-save" class="refresh-button" type="button" disabled>Review staged additions for saving</button>
+            <p class="policy-help">Requires the saved configuration to match the original draft. Review the complete changes above, then save explicitly. Saving definitions never opens backing files, provisions CHAP secrets or starts targets.</p>
           </details>
           <div class="policy-actions">
             <button id="iscsi-submit" class="refresh-button" type="submit">Review desired iSCSI definitions</button>

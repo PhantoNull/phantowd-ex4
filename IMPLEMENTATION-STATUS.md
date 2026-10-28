@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Reviewed iSCSI additions - development dashboard
+
+Staged disabled targets enter the existing coherent NAS review/explicit PUT.
+The original saved baseline must match; field/session changes retire the review,
+and uncertain saves block later writes until explicit comparison without retry.
+DOM controls and a real-handler test exercise target addition, preserved SMB/NFS,
+busy/commit/stale outcomes and candidate retirement. Own-head qualification remains
+required; product bootstrap, backing/credential provisioning and activation are open.
+
 ## Full NAS restore - development dashboard
 
 The original NAS Owner previews complete backups as lossless candidate JSON for
