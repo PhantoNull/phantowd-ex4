@@ -2263,7 +2263,8 @@ milestone before enabling its controls; M1/M6 for deployment.
   product activation remain open.
   **M5.4b — desired-policy backup and reviewed restore (partial; locally tested):**
   The complete NAS API also previews lossless candidates for the existing whole-
-  policy PUT; full dashboard restore and service activation remain separate.
+  policy PUT. The dashboard reviews all three protocols with exact capacity
+  display, explicit save and uncertain-reply reconciliation; activation is separate.
   explicitly load current state, download an initialized private SMB/NFS backup,
   or select one bounded versioned file. Validate original bytes server-side,
   require the observed expected revision and rebase every policy revision only

@@ -72,6 +72,16 @@ func serveNASRestorePreview(w http.ResponseWriter, r *http.Request, auth *authCo
 	if serviceBackupSessionCurrent(w, r, auth) {
 		writeJSON(w, 200, map[string]any{"schema_version": 1, "scope": "nas-policy-restore-preview-only",
 			"expected_revision": expected, "candidate_json": string(wire), "matches_current": matches, "saved": false, "applied": false,
-			"runtime_validated": false, "activation_available": false})
+			"backing_capacities": nasBackingCapacities(candidate),
+			"runtime_validated":  false, "activation_available": false})
 	}
+}
+
+// Display metadata only. The original complete JSON remains the save payload.
+func nasBackingCapacities(c naspolicy.Config) map[string]string {
+	values := make(map[string]string, len(c.ISCSI.Backings))
+	for _, backing := range c.ISCSI.Backings {
+		values[string(backing.ID)] = strconv.FormatUint(backing.CapacityBytes, 10)
+	}
+	return values
 }

@@ -22,6 +22,7 @@ type nasStateResponse struct {
 	Scope               string            `json:"scope"`
 	Revision            uint64            `json:"revision"`
 	Configuration       *naspolicy.Config `json:"configuration,omitempty"`
+	BackingCapacities   map[string]string `json:"backing_capacities,omitempty"`
 	Saved               bool              `json:"saved"`
 	Applied             bool              `json:"applied"`
 	ActivationAvailable bool              `json:"activation_available"`
@@ -154,6 +155,7 @@ func newNASStateHandler(auth *authController, state nasStateAuthority) http.Hand
 				return
 			}
 			reply.Revision, reply.Configuration = c.Revision, &c
+			reply.BackingCapacities = nasBackingCapacities(c)
 		} else {
 			data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, naspolicy.MaxInputBytes))
 			if err != nil {

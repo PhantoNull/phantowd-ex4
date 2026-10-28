@@ -3,14 +3,18 @@
 
 # Implementation status
 
-## Full NAS restore preview - development API
+## Full NAS restore - development dashboard
 
 The original NAS Owner previews complete backups as lossless candidate JSON for
 the existing explicit PUT. All seven revisions advance together; exact Go-side
 comparison preserves uint64 distinctions and does not acknowledge prior saves.
 Host/race checks cover complete save, busy/stale, invalid input and cancellation.
 Ordinary ARM proves lossless HTTPS preview; own-head hosted gate remains required.
-Dashboard controls and service activation are not added by this slice.
+The dashboard reviews all three protocols and declaration order, sends the exact
+candidate bytes on explicit save and blocks later writes after an uncertain reply.
+Manual comparison of current definitions never retries or acknowledges that reply.
+Decimal backing displays retain precision; incomplete reviews refuse saving.
+Browser/physical qualification, product boot and service activation remain open.
 
 ## M8 offline space-counter comparison - host only
 
