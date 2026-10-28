@@ -1,5 +1,11 @@
 # Development diagnostics API
 
+The iSCSI form can explicitly load the configured NAS Owner snapshot into its
+draft. Whole-document validation and exact browser integers precede replacing
+input; edits/cancellation/session loss fence late replies. Unknown saves block
+loading through the shared operation gate. This is not backing provisioning or
+target activation, and original-byte backup/manual review keeps its full range.
+
 The iSCSI form can stage one disabled target, LUN0, backing and initiator in
 supplied whole-policy JSON. Original bytes must pass strict server validation
 before the candidate; only a verified candidate replaces the text. CHAP and

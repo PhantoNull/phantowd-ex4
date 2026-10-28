@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Current iSCSI policy loading - development dashboard
+
+The guided form reads the existing NAS snapshot on explicit request, validates
+complete definitions/capacities and refuses unsafe browser integers before
+replacing the draft. Refusals preserve manual input; session loss clears it.
+Public-control DOM tests cover load/add/review/save, malformed/oversized data,
+unknown saves and late fetch/body replies after edits, cancellation or timeout.
+Own-head qualification remains required; no new route, writer or activation.
+
 ## Reviewed iSCSI additions - development dashboard
 
 Staged disabled targets enter the existing coherent NAS review/explicit PUT.

@@ -440,6 +440,7 @@ function clearMountObservation() {
 }
 
 const diagnosticBodyLimits = Object.freeze({
+  "/api/v1/nas-services/configuration": 2 * 1024 * 1024,
   "/api/v1/nas-services/backup": 1024 * 1024,
   "/api/v1/nas-services/summary": 4096,
   "/api/v1/auth/status": 16 * 1024,
@@ -537,7 +538,7 @@ async function fetchDocument(path, { signal } = {}) {
       failure.status = response.status;
       throw failure;
     }
-    return readBoundedJSON(response, limit, signal, path === "/api/v1/nas-services/backup" ? 65536 : 1024);
+    return readBoundedJSON(response, limit, signal, ["/api/v1/nas-services/backup", "/api/v1/nas-services/configuration"].includes(path) ? 65536 : 1024);
   };
   // Race the entire read, including body decoding. Late completion stays
   // handled even if a transport/body promise does not honor cancellation.
@@ -1273,6 +1274,7 @@ byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);
 
+byId("iscsi-load").addEventListener("click", loadISCSIPolicy);
 byId("iscsi-form").addEventListener("submit", submitISCSIPreview);
 byId("iscsi-document").addEventListener("input", () => retireISCSIPreview());
 byId("iscsi-clear").addEventListener("click", clearISCSIPreview);
