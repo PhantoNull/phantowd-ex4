@@ -15,6 +15,7 @@ candidate bytes on explicit save and blocks later writes after an uncertain repl
 Manual comparison of current definitions never retries or acknowledges that reply.
 Decimal backing displays retain precision; incomplete reviews refuse saving.
 Browser/physical qualification, product boot and service activation remain open.
+The separate authenticated iSCSI preview projects caller policy without state access; decimal/privacy/refusal/revocation tests and both HTTPS guest lifetimes require own-head qualification.
 
 ## M8 offline space-counter comparison - host only
 

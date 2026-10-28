@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
@@ -99,6 +100,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	fmt.Println("PHANTOWD_NAS_FILE_EDITOR_READY standard_main=true https=verified lifetimes=2 original_owner=true saved=true iscsi_preserved=true busy=true conflict=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_RESTORE_PREVIEW_READY standard_main=true https=verified lifetimes=2 original_owner=true full_policy=true uint64_exact=true read_only=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_RESTORE_DISPLAY_READY standard_main=true https=verified lifetimes=2 saved_and_candidate=true decimal_capacities=exact scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_ISCSI_DESIRED_PREVIEW_READY standard_main=true https=verified lifetimes=2 coherent_input=true decimal_capacity=exact effects=none scope=disposable-qemu-only")
 	return nil
 }
 
@@ -328,6 +330,13 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		}
 		// The decoded download owns its values; neither the Owner nor got changes.
 		backup.Configuration.ISCSI.Backings[0].CapacityBytes = (1 << 63) - 512
+		var projection iscsipreview.Preview
+		if err := h.request(ctx, iscsiPreviewPath, backup.Configuration, 200, &projection); err != nil {
+			return err
+		}
+		if projection.Format != iscsipreview.Format || projection.SchemaVersion != 2 || projection.Revision != strconv.FormatUint(wantRevision, 10) || len(projection.Backings) != 1 || projection.Backings[0].CapacityBytes != "9223372036854775296" || projection.StorageValidated || projection.CredentialsValidated || projection.RuntimeValidated || projection.ActivationAvailable {
+			return errors.New("main fixture desired iSCSI projection changed precision or authority")
+		}
 		var preview struct {
 			Wire       string            `json:"candidate_json"`
 			Capacities map[string]string `json:"backing_capacities"`

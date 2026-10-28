@@ -594,6 +594,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "QEMU exact NAS restore capacity display proof missing" >&2
             return 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_ISCSI_DESIRED_PREVIEW_READY standard_main=true https=verified lifetimes=2 coherent_input=true decimal_capacity=exact effects=none scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "QEMU desired iSCSI HTTPS preview proof missing" >&2
+            return 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_FILE_EDITOR_READY standard_main=true https=verified lifetimes=2 original_owner=true saved=true iscsi_preserved=true busy=true conflict=true scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo "QEMU NAS-backed file editor proof missing" >&2
             return 1
