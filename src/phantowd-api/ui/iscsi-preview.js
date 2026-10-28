@@ -3,14 +3,16 @@
 
 "use strict";
 
-// Manual caller-supplied coherent policy review; no store or activation route.
+// Desired-policy drafts and explicit shared NAS save review; no target activation.
 const iscsiPreviewPath = "/api/v1/iscsi/preview";
-const iscsiPreviewState = { operation: null };
+const iscsiPreviewState = { operation: null, staged: null, origin: null };
 const iscsiDraftFields = Object.freeze(["name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"]);
 const iscsiDraftDefaults = Object.freeze({ "block-size": "512", allocation: "sparse", access: "ro", auth: "chap" });
 
 function retireISCSIPreview(clearInput = false) {
   const operation = iscsiPreviewState.operation;
+  const staged = iscsiPreviewState.staged;
+  iscsiPreviewState.staged = null;
   iscsiPreviewState.operation = null;
   operation?.controller.abort();
   if (operation) clearTimeout(operation.timer);
@@ -19,6 +21,9 @@ function retireISCSIPreview(clearInput = false) {
   byId("iscsi-draft-add").disabled = false;
   byId("iscsi-draft-add").removeAttribute("aria-busy");
   byId("iscsi-draft-fields").disabled = false;
+  byId("iscsi-review-save").disabled = true;
+  if (staged) { policyGeneration++; invalidateServiceDraft(); }
+  if (clearInput || iscsiPreviewState.origin?.text !== byId("iscsi-document").value) iscsiPreviewState.origin = null;
   byId("iscsi-result").hidden = true;
   byId("iscsi-result").replaceChildren();
   if (clearInput) {
@@ -29,6 +34,18 @@ function retireISCSIPreview(clearInput = false) {
 }
 
 function clearISCSIPreview() { retireISCSIPreview(true); }
+
+async function reviewISCSIDraftSave() {
+  const staged = iscsiPreviewState.staged;
+  if (!staged || iscsiPreviewState.operation || nasRestoreState.attempted !== null || serviceState.attempted !== null) return;
+  const current = () => iscsiPreviewState.staged === staged && byId("iscsi-document").value === staged.text;
+  await previewNASRestoreSource({ current, baseline: JSON.parse(staged.baseline), candidate: JSON.parse(staged.text),
+    backup: `{"format":"phantowd-nas-policy-backup","schema_version":1,"configuration":${staged.text}}` });
+  if (current() && !byId("nas-restore-review").hidden) {
+    setText("iscsi-status", "Review all changes in Saved NAS configuration above, then save explicitly. No target will be activated.");
+    byId("nas-restore-review").scrollIntoView?.({ block: "nearest" });
+  }
+}
 
 // Local draft only. The ORIGINAL exact text must pass the server's strict
 // decoder before this normalized candidate can be submitted/published. This
@@ -204,7 +221,12 @@ async function submitISCSIPreview(event, draft = false) {
             !value.targets.some(t => t.id === candidate.targetID && t.desired_state === "disabled")) throw new Error("Draft preview mismatch");
       }
       renderISCSIPreview(value);
-      if (candidate) byId("iscsi-document").value = candidate.text;
+      if (candidate) {
+        const baseline = iscsiPreviewState.origin?.text === text ? iscsiPreviewState.origin.baseline : text;
+        policyGeneration++; invalidateServiceDraft();
+        byId("iscsi-document").value = candidate.text;
+        iscsiPreviewState.origin = iscsiPreviewState.staged = { baseline, text: candidate.text };
+      }
       setText("iscsi-status", candidate ? "Disabled target staged in this draft only. Nothing was saved, created, opened or activated." : "Desired definitions reviewed. Nothing was saved, opened or activated.");
     };
     await new Promise((resolve, reject) => {
@@ -226,6 +248,7 @@ async function submitISCSIPreview(event, draft = false) {
       byId("iscsi-submit").disabled = false; byId("iscsi-submit").removeAttribute("aria-busy");
       byId("iscsi-draft-add").disabled = false; byId("iscsi-draft-add").removeAttribute("aria-busy");
       byId("iscsi-draft-fields").disabled = false;
+      syncNASRestoreControls();
     }
   }
 }
