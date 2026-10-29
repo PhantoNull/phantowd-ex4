@@ -608,7 +608,10 @@ readback. A private ordered writer now composes capture, events and encoding;
 product composition, interruption/fault qualification and own-head gates remain open.
 The explicit confirmed-NAS Owner now keeps the writer behind existing typed leases;
 the disposable standard HTTPS-main fixture uses it and checks matching receipts.
-Product state admission, physical durability and own-head qualification remain open.
+The disposable NFS activation/reapply path also retains this writer through
+actual client access, update exclusion and read-write reactivation, then checks
+matching receipts after verified consumer shutdown. Product state admission,
+physical durability and complete fault qualification remain open.
 Pure NAS operation encoding now reuses the existing record codec and retained
 NFS binding rule, rejects invalid/nonconsecutive pairs without partial output,
 and binds exact bytes/uint64 revisions. No ID allocator, file write, historical
