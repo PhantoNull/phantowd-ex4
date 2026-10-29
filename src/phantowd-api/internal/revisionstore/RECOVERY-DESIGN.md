@@ -123,6 +123,11 @@ It neither opens an authority nor clears review. The future coordinator still
 must retain its original directory/lock and verify every expected object and
 byte; a matching event sequence cannot identify the writer or authorize admission.
 
+The shared collector can return a private complete set of bytes and file stamps;
+any collection error returns an empty set. Pending remains metadata-only. The
+existing diagnostic facade is unchanged; the caller must still guard the original
+root/watch before consuming this candidate set. It is not writer authority.
+
 ## Follow-up coordinator: requirements, not an implementation
 
 Do not bolt receipt writes onto the existing two-name policy directory: its
