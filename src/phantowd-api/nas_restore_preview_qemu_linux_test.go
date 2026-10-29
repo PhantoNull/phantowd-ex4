@@ -317,3 +317,77 @@ func TestNASPolicyRestorePreviewSavesAdditionalLUN(t *testing.T) {
 		t.Fatal("saved LUN changed unrelated definitions", err)
 	}
 }
+
+func TestNASPolicyRestorePreviewSavesScopedISCSIEdits(t *testing.T) {
+	for _, operation := range []string{"target-state", "lun-access", "grant-access"} {
+		t.Run(operation, func(t *testing.T) {
+			owner := nasStateTestOwner(t)
+			before := nasRestoreRevision(qemuPersistentNASPolicy(1), 2)
+			before.ISCSI.Targets[0].LUNs[0].Access = "rw"
+			if err := owner.Commit(context.Background(), 1, before); err != nil {
+				t.Fatal(err)
+			}
+			desired := nasRestoreRevision(qemuPersistentNASPolicy(1), 2)
+			desired.ISCSI.Targets[0].LUNs[0].Access = "rw"
+			switch operation {
+			case "target-state":
+				desired.ISCSI.Targets[0].State = "enabled"
+			case "lun-access":
+				desired.ISCSI.Targets[0].LUNs[0].Access = "ro"
+			case "grant-access":
+				desired.ISCSI.Targets[0].Initiators[0].Grants[0].Access = "rw"
+			}
+			auth, cookie := newTestAuth(t)
+			h := newHandlerWithNASPolicy(nil, nil, nil, nil, auth, nil, nil, nil, newNASStateHandler(auth, owner))
+			input, _ := json.Marshal(desired)
+			preview := httptest.NewRecorder()
+			h.ServeHTTP(preview, iscsiPreviewRequest(auth, cookie, string(input)))
+			if preview.Code != 200 {
+				t.Fatal("scoped desired preview refused", preview.Code)
+			}
+			data, _ := json.Marshal(map[string]any{"format": nasBackupFormat, "schema_version": 1, "configuration": desired})
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, nasRestorePost(auth, cookie, data, "2"))
+			var reply struct {
+				Candidate string `json:"candidate_json"`
+				Saved     bool   `json:"saved"`
+			}
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Saved {
+				t.Fatal("scoped review unavailable", w.Code)
+			}
+			current, err := owner.Snapshot(context.Background())
+			if err != nil || !reflect.DeepEqual(current, before) {
+				t.Fatal("preview mutated baseline", err)
+			}
+			candidate, err := naspolicy.Decode(strings.NewReader(reply.Candidate))
+			want := nasRestoreRevision(desired, 3)
+			if err != nil || !reflect.DeepEqual(candidate, want) {
+				t.Fatal("scoped candidate or preserved definitions differ", err)
+			}
+			lease, err := owner.Acquire(context.Background(), 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer lease.Release()
+			for index, status := range []int{503, 200, 409} {
+				if index == 1 {
+					if err := lease.Release(); err != nil {
+						t.Fatal(err)
+					}
+				}
+				request := serviceWriteRequest(auth, cookie, candidate.FileServices)
+				request.URL.Path = nasStatePath
+				request.Body, request.ContentLength = io.NopCloser(strings.NewReader(reply.Candidate)), int64(len(reply.Candidate))
+				output := httptest.NewRecorder()
+				h.ServeHTTP(output, request)
+				if output.Code != status {
+					t.Fatal("scoped save lost busy/commit/stale semantics", output.Code, status)
+				}
+			}
+			current, err = owner.Snapshot(context.Background())
+			if err != nil || !reflect.DeepEqual(current, want) {
+				t.Fatal("saved edit changed unrelated definitions", err)
+			}
+		})
+	}
+}
