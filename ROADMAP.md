@@ -755,11 +755,13 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   tests and optional generated-media ARM fixtures cover foreign UIDs and real
   same-device/different-device bind crossings with retained review/exclusion.
   Complete in-flight mutation/media and product fault coverage remains open;
-  **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
+  **M1.3c** latest-operation retention and six-role staging are adopted. A private
+  fixed-role publication primitive exists; the retained ordered coordinator,
+  transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
-  schema API, namespace/atomic-publication strategy, low-space retention and
-  durable-review recovery require explicit decisions before the respective
+  complete state-bundle namespace, admission and durable-review recovery
+  require explicit decisions before the respective
   mutating implementation. Existing Store/Owner semantics remain unchanged.
 - **M1.3 — Recover interrupted operations.** Extend current journal semantics
   to an explicit review/reconciliation workflow. An intent plus missing reply

@@ -600,8 +600,12 @@ premature-watch close is not a real I/O fault. The existing optional ARM media
 campaign also covers foreign UID for the container/six roles and eleven real bind
 crossings; all52 prior receipts remain mandatory (72 total), with unchanged
 compile/test/guest bounds and normal unmount. Full in-flight mutation/media faults,
-writer/reconciliation, complete state-bundle provisioning and physical placement
+complete writer/reconciliation, state-bundle provisioning and physical placement
 remain outstanding. No automatic recovery, HTTP or service activation is added.
+The adopted writer direction retains the latest operation set. A private
+fixed-role publication primitive preserves pending evidence and verifies exact
+readback; it has no caller in product code. The ordered retained coordinator,
+watch accounting, transition validation and full fault campaign remain open.
 
 ## Retained policy bootstrap authority — read-only lifetime only
 
