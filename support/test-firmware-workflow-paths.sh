@@ -464,6 +464,7 @@ for path in \
     'support/test-qemu-lio.ps1' \
     'support/tests/test-qemu-lio-inputs.py' \
     'support/tests/test-qemu-lio-result.py' \
+    'support/tests/test-qemu-lio-image-injection.sh' \
     'support/tests/test-qemu-lio-snapshot-temp.sh' \
     'support/tests/test-qemu-lio-wrapper.ps1'; do
     require_triggered_path "$host_workflow" "$path"
