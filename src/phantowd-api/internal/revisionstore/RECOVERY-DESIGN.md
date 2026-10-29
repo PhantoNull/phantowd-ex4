@@ -3,7 +3,7 @@
 
 # Policy operation evidence and boot recovery
 
-**Status: private NAS-only codec/comparison implemented; collector, writer and
+**Status: private NAS codecs/comparison and initial read-only collector exist; writer and
 product admission remain proposed and unqualified.**
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
 This design is a contributor handoff, not a migration or installation procedure.
