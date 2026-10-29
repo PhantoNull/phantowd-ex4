@@ -115,6 +115,14 @@ existing records, exact policy hashes/revisions and retained NFS source checks.
 Prepared receipt bytes are not confirmation: ID allocation/reuse checks and
 the publication order remain obligations of that future retained coordinator.
 
+The private writer event fence checks bounded complete inotify records after a
+known stage: pending create/modify/close and a cookie-paired rename, or retirement
+of the previous receipt. Missing, extra, malformed, foreign-watch and watch-loss
+events refuse. Rename pairs can span reads and MODIFY events may coalesce.
+It neither opens an authority nor clears review. The future coordinator still
+must retain its original directory/lock and verify every expected object and
+byte; a matching event sequence cannot identify the writer or authorize admission.
+
 ## Follow-up coordinator: requirements, not an implementation
 
 Do not bolt receipt writes onto the existing two-name policy directory: its
