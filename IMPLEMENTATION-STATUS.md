@@ -615,6 +615,8 @@ records instead of hand-built tuples; its readiness contract is unchanged.
 An internal bounded event fence now checks actual stage/receipt-retirement
 queues, split rename pairs and malformed/foreign/incomplete refusal paths.
 It provides no writer attribution, mutable epoch, transaction or admission.
+Private capture now retains complete file bytes/stamps for internal composition,
+with an empty result on collection error and unchanged read-only diagnostics.
 
 ## Retained policy bootstrap authority — read-only lifetime only
 

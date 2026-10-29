@@ -118,25 +118,42 @@ func (a *NASEvidenceAuthority) Observe(ctx context.Context) (value NASEvidenceOb
 }
 
 func collectNASEvidence(ctx context.Context, cursor *os.File, root unix.Stat_t, installation string) (NASEvidenceObservation, error) {
+	set, err := collectNASEvidenceSet(ctx, cursor, root, installation)
+	return set.observation, err
+}
+
+type nasEvidenceFile struct {
+	stat unix.Stat_t
+	data []byte
+}
+
+// nasEvidenceSet is candidate data only. The caller still retains and checks
+// its original root/watch across collection; this value cannot admit a writer.
+type nasEvidenceSet struct {
+	observation NASEvidenceObservation
+	files       map[string]nasEvidenceFile
+}
+
+func collectNASEvidenceSet(ctx context.Context, cursor *os.File, root unix.Stat_t, installation string) (nasEvidenceSet, error) {
 	var names []string
 	for {
 		if err := ctx.Err(); err != nil {
-			return NASEvidenceObservation{}, err
+			return nasEvidenceSet{}, err
 		}
 		chunk, err := cursor.Readdirnames(7 - len(names))
 		names = append(names, chunk...)
 		if len(names) >= 7 {
-			return NASEvidenceObservation{}, ErrUnsafe
+			return nasEvidenceSet{}, ErrUnsafe
 		}
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil || len(chunk) == 0 {
-			return NASEvidenceObservation{}, ErrIO
+			return nasEvidenceSet{}, ErrIO
 		}
 	}
 	fd := int(cursor.Fd())
-	known, data := map[string]unix.Stat_t{}, map[string][]byte{}
+	files := make(map[string]nasEvidenceFile, len(names))
 	pending := false
 	for _, name := range names {
 		limit := naspolicy.MaxInputBytes
@@ -145,47 +162,48 @@ func collectNASEvidence(ctx context.Context, cursor *os.File, root unix.Stat_t, 
 			limit = naspolicyevidence.MaxRecordBytes
 		case "nas-services.json", ".nas-services.pending", ".nas-services.base":
 		default:
-			return NASEvidenceObservation{}, ErrUnsafe
+			return nasEvidenceSet{}, ErrUnsafe
 		}
-		if _, duplicate := known[name]; duplicate {
-			return NASEvidenceObservation{}, ErrUnsafe
+		if _, duplicate := files[name]; duplicate {
+			return nasEvidenceSet{}, ErrUnsafe
 		}
 		var st unix.Stat_t
 		if unix.Fstatat(fd, name, &st, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT) != nil ||
 			st.Mode != unix.S_IFREG|0600 || st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 || st.Dev != root.Dev || st.Size < 0 || st.Size > int64(limit) {
-			return NASEvidenceObservation{}, ErrUnsafe
+			return nasEvidenceSet{}, ErrUnsafe
 		}
-		known[name] = st
+		var contents []byte
 		if name == ".nas-services.pending" {
 			pending = true
-			continue
+		} else {
+			var err error
+			contents, err = readNASEvidenceRole(ctx, fd, name, limit, st)
+			if err != nil {
+				return nasEvidenceSet{}, err
+			}
 		}
-		contents, err := readNASEvidenceRole(ctx, fd, name, limit, st)
-		if err != nil {
-			return NASEvidenceObservation{}, err
-		}
-		data[name] = contents
+		files[name] = nasEvidenceFile{st, contents}
 	}
 	var header struct {
 		Format        string `json:"format"`
 		SchemaVersion int    `json:"schema_version"`
 		Installation  string `json:"installation_id"`
 	}
-	_, err := configjson.DecodeEnvelope(data["nas-evidence.json"], naspolicyevidence.MaxRecordBytes, 2, "format", "schema_version", "installation_id")
-	if err != nil || json.Unmarshal(data["nas-evidence.json"], &header) != nil || header.Format != "phantowd-nas-evidence-container" || header.SchemaVersion != 1 || header.Installation != installation || data["nas-services.json"] == nil {
-		return NASEvidenceObservation{}, ErrInvalid
+	_, err := configjson.DecodeEnvelope(files["nas-evidence.json"].data, naspolicyevidence.MaxRecordBytes, 2, "format", "schema_version", "installation_id")
+	if err != nil || json.Unmarshal(files["nas-evidence.json"].data, &header) != nil || header.Format != "phantowd-nas-evidence-container" || header.SchemaVersion != 1 || header.Installation != installation || files["nas-services.json"].data == nil {
+		return nasEvidenceSet{}, ErrInvalid
 	}
-	for name, expected := range known {
+	for name, expected := range files {
 		var after unix.Stat_t
-		if unix.Fstatat(fd, name, &after, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT) != nil || policyStamp(expected) != policyStamp(after) {
-			return NASEvidenceObservation{}, ErrReview
+		if unix.Fstatat(fd, name, &after, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT) != nil || policyStamp(expected.stat) != policyStamp(after) {
+			return nasEvidenceSet{}, ErrReview
 		}
 	}
-	kind := nasEvidenceKind(installation, data)
+	kind := nasEvidenceKind(installation, files)
 	if pending {
 		kind = naspolicyevidence.Inconsistent
 	}
-	return NASEvidenceObservation{Kind: kind, Roles: len(names), BasePresent: data[".nas-services.base"] != nil, Pending: pending}, nil
+	return nasEvidenceSet{NASEvidenceObservation{Kind: kind, Roles: len(names), BasePresent: files[".nas-services.base"].data != nil, Pending: pending}, files}, nil
 }
 
 func readNASEvidenceRole(ctx context.Context, dir int, name string, limit int, expected unix.Stat_t) ([]byte, error) {
@@ -215,9 +233,9 @@ func readNASEvidenceRole(ctx context.Context, dir int, name string, limit int, e
 	return data, nil
 }
 
-func nasEvidenceKind(installation string, data map[string][]byte) naspolicyevidence.Kind {
-	kind := naspolicyevidence.Inspect(installation, data["nas-services.json"], data[".nas-services.intent"], data[".nas-services.receipt"], true)
-	base := data[".nas-services.base"]
+func nasEvidenceKind(installation string, files map[string]nasEvidenceFile) naspolicyevidence.Kind {
+	kind := naspolicyevidence.Inspect(installation, files["nas-services.json"].data, files[".nas-services.intent"].data, files[".nas-services.receipt"].data, true)
+	base := files[".nas-services.base"].data
 	if base == nil || kind == naspolicyevidence.Unavailable || kind == naspolicyevidence.InvalidPolicy || kind == naspolicyevidence.Inconsistent {
 		return kind
 	}
@@ -228,7 +246,7 @@ func nasEvidenceKind(installation string, data map[string][]byte) naspolicyevide
 	}
 	policy, err := naspolicy.Decode(bytes.NewReader(base))
 	digest := sha256.Sum256(base)
-	if kind == naspolicyevidence.NoRecordedOperation || err != nil || json.Unmarshal(data[".nas-services.intent"], &intent) != nil || policy.Revision != intent.Revision || hex.EncodeToString(digest[:]) != intent.Hash {
+	if kind == naspolicyevidence.NoRecordedOperation || err != nil || json.Unmarshal(files[".nas-services.intent"].data, &intent) != nil || policy.Revision != intent.Revision || hex.EncodeToString(digest[:]) != intent.Hash {
 		return naspolicyevidence.Inconsistent
 	}
 	return kind
