@@ -6,6 +6,12 @@ input; edits/cancellation/session loss fence late replies. Unknown saves block
 loading through the shared operation gate. This is not backing provisioning or
 target activation, and original-byte backup/manual review keeps its full range.
 
+The same form can append a numbered LUN/backing to an existing disabled target,
+matched by its exact IQN and one existing initiator IQN. Only that peer receives
+the grant; all authentication and other definitions remain unchanged. Numbers
+must be unused integers 0..65535; target/backing/LUN limits and the shared review,
+explicit save and uncertain-response handling still apply. No target is enabled.
+
 The iSCSI form can stage one disabled target, LUN0, backing and initiator in
 supplied whole-policy JSON. Original bytes must pass strict server validation
 before the candidate; only a verified candidate replaces the text. CHAP and

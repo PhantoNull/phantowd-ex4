@@ -245,7 +245,7 @@ function mountsFixture() {
 async function createHarness(respond, timing = {}) {
   const ids = [
     ...["form", "document", "submit", "clear", "result", "status", "review-save", "load"].map((id) => `iscsi-${id}`),
-    ...["add", "fields", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map((id) => `iscsi-draft-${id}`),
+    ...["add", "fields", "action", "lun-number", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map((id) => `iscsi-draft-${id}`),
     ...["load", "backup", "status", "result", "revision", "counts", "restore-file", "restore-preview", "restore-save", "restore-review", "restore-diff", "restore-status"].map((id) => `nas-${id}`),
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
@@ -3130,5 +3130,144 @@ async function testISCSILoadLateRepliesNeverReplaceInput() {
   }
 }
 await testISCSILoadLateRepliesNeverReplaceInput();
+
+async function testISCSIAdditionalLUNPreservesTargetAndAuthentication() {
+  assert.ok(markupIDs.includes("iscsi-draft-action") && markupIDs.includes("iscsi-draft-lun-number"), "additional LUN controls unavailable");
+  const h = await iscsiDraftHarness((options) => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))));
+  const before = JSON.parse(h.elements["iscsi-document"].value);
+  before.iscsi.targets[0].state = "disabled";
+  h.elements["iscsi-document"].value = JSON.stringify(before);
+  for (const [field, value] of Object.entries({ action: "lun", "lun-number": "42", name: before.iscsi.targets[0].name, initiator: before.iscsi.targets[0].initiators[0].name })) h.elements[`iscsi-draft-${field}`].value = value;
+  await iscsiClick(h, "iscsi-draft-add");
+  const posts = h.requests.filter((r) => r.path === "/api/v1/iscsi/preview");
+  assert.equal(posts.length, 2, "original and candidate require separate validation");
+  assert.equal(posts[0].options.body, JSON.stringify(before));
+  const after = JSON.parse(h.elements["iscsi-document"].value), target = after.iscsi.targets[0];
+  assert.equal(after.iscsi.targets.length, before.iscsi.targets.length);
+  const lun = target.luns.pop(), backing = after.iscsi.backings.pop(), grant = target.initiators[0].grants.pop();
+  assert.equal(lun.number, 42); assert.equal(lun.backing_id, backing.id); assert.equal(grant.lun_id, lun.id); assert.equal(grant.access, "ro");
+  assert.deepEqual(iscsiPolicyRevision(after, before.revision), before, "all original definitions and authentication must remain unchanged");
+  assert.equal(h.elements["iscsi-result"].hidden, false); assert.equal(h.elements["iscsi-review-save"].disabled, false);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+}
+await testISCSIAdditionalLUNPreservesTargetAndAuthentication();
+
+async function iscsiLUNHarness(reply = options => jsonResponse(iscsiDraftProjection(JSON.parse(options.body))), timing, saving = false) {
+  const h = saving ? await iscsiSaveHarness(timing) : await iscsiDraftHarness(reply, timing);
+  const c = JSON.parse(h.elements["iscsi-document"].value);
+  c.iscsi.targets[0].state = "disabled";
+  if (saving) h.saved.current = structuredClone(c);
+  h.elements["iscsi-document"].value = JSON.stringify(c);
+  for (const [field, value] of Object.entries({ action: "lun", "lun-number": "42", name: c.iscsi.targets[0].name, initiator: c.iscsi.targets[0].initiators[0].name })) h.elements[`iscsi-draft-${field}`].value = value;
+  return h;
+}
+async function testISCSIAdditionalLUNBatchExplicitSave() {
+  const h = await iscsiLUNHarness(undefined, undefined, true), original = structuredClone(h.saved.current);
+  const peer = structuredClone(original.iscsi.targets[0].initiators[0]);
+  peer.name += "-other"; peer.authentication.initiator_secret_ref = "other-peer-secret";
+  if (peer.authentication.mode === "mutual-chap") peer.authentication.target_secret_ref = "other-target-secret";
+  original.iscsi.targets[0].initiators.push(peer); h.saved.current = structuredClone(original);
+  h.elements["iscsi-document"].value = JSON.stringify(original);
+  h.elements["iscsi-draft-access"].value = "rw";
+  for (const n of [42, 43]) {
+    h.elements["iscsi-draft-lun-number"].value = String(n);
+    h.elements["iscsi-draft-lun-number"].listeners.get("input")();
+    h.elements["iscsi-draft-path"].value = `luns/additional-${n}.img`;
+    await iscsiClick(h, "iscsi-draft-add");
+    assert.equal(h.elements["iscsi-result"].hidden, false);
+    assert.equal(h.elements["iscsi-draft-auth"].disabled, true); assert.equal(h.elements["iscsi-draft-secret-ref"].disabled, true);
+  }
+  assert.deepEqual(h.saved.current, original, "staging must not save");
+  await iscsiClick(h, "iscsi-review-save"); assert.equal(h.elements["nas-restore-save"].disabled, false);
+  assert.equal(h.requests.some(r => r.options?.method === "PUT"), false);
+  await iscsiClick(h, "nas-restore-save");
+  assert.equal(h.requests.filter(r => r.options?.method === "PUT").length, 1);
+  const saved = structuredClone(h.saved.current), target = saved.iscsi.targets[0];
+  assert.equal(saved.revision, 5); assert.equal(saved.iscsi.targets.length, original.iscsi.targets.length);
+  for (const n of [43, 42]) {
+    const l = target.luns.pop(), b = saved.iscsi.backings.pop(), g = target.initiators[0].grants.pop();
+    assert.equal(l.number, n); assert.equal(l.access, "rw"); assert.equal(l.backing_id, b.id); assert.equal(g.lun_id, l.id); assert.equal(g.access, "rw");
+  }
+  assert.deepEqual(iscsiPolicyRevision(saved, 4), original, "unselected peers, authentication, SMB/NFS and all old definitions must survive");
+}
+await testISCSIAdditionalLUNBatchExplicitSave();
+
+async function testISCSIAdditionalLUNRefusalsAndTargetCapacity() {
+  for (const fields of [{ name: "missing" }, { initiator: "missing" }, { action: "unknown" }, { "lun-number": "" },
+    ...["65536", "-1", "01", "1e2", "1.0"].map(n => ({ "lun-number": n })), { capacity: "9007199254740992" }, { volume: "missing" }, { path: "../escape" }]) {
+    const h = await iscsiLUNHarness();
+    for (const [field, value] of Object.entries(fields)) h.elements[`iscsi-draft-${field}`].value = value;
+    const text = h.elements["iscsi-document"].value, count = h.requests.length;
+    await iscsiClick(h, "iscsi-draft-add"); assert.equal(h.requests.length, count); assert.equal(h.elements["iscsi-document"].value, text);
+    assert.equal(h.elements["iscsi-review-save"].disabled, true);
+  }
+  for (const fault of ["enabled", "removed", "duplicate", "full-luns", "full-backings", "unsafe-base"]) {
+    const h = await iscsiLUNHarness(), c = JSON.parse(h.elements["iscsi-document"].value), t = c.iscsi.targets[0];
+    if (fault === "enabled") t.state = "enabled";
+    if (fault === "removed") c.iscsi.targets = [];
+    if (fault === "duplicate") h.elements["iscsi-draft-lun-number"].value = String(t.luns[0].number);
+    if (fault === "full-luns") t.luns = Array.from({ length: 16 }, (_, i) => ({ ...t.luns[0], id: `full-${i}`, number: i }));
+    if (fault === "full-backings") c.iscsi.backings = Array.from({ length: 64 }, (_, i) => ({ ...c.iscsi.backings[0], id: `full-${i}` }));
+    if (fault === "unsafe-base") c.iscsi.backings[0].capacity_bytes = 9007199254740992;
+    h.elements["iscsi-document"].value = JSON.stringify(c);
+    const text = h.elements["iscsi-document"].value, count = h.requests.length;
+    await iscsiClick(h, "iscsi-draft-add"); assert.equal(h.requests.length, count, fault); assert.equal(h.elements["iscsi-document"].value, text);
+  }
+  const h = await iscsiLUNHarness(), c = JSON.parse(h.elements["iscsi-document"].value), seed = structuredClone(c.iscsi.targets[0]), backing = c.iscsi.backings[0];
+  c.iscsi.targets = Array.from({ length: 16 }, (_, i) => ({ ...structuredClone(seed), id: `target-${i}`, name: `${seed.name}-${i}`,
+    luns: [{ ...seed.luns[0], id: `lun-${i}`, backing_id: `backing-${i}` }], initiators: seed.initiators.map((p, j) => ({ ...structuredClone(p),
+      authentication: { ...p.authentication, initiator_secret_ref: `in-${i}-${j}`, ...(p.authentication.mode === "mutual-chap" ? { target_secret_ref: `out-${i}-${j}` } : {}) },
+      grants: [{ lun_id: `lun-${i}`, access: "ro" }] })) }));
+  c.iscsi.backings = c.iscsi.targets.map((_, i) => ({ ...backing, id: `backing-${i}`, relative_path: `luns/full-target-${i}.img` }));
+  h.elements["iscsi-document"].value = JSON.stringify(c); h.elements["iscsi-draft-name"].value = c.iscsi.targets[0].name;
+  h.elements["iscsi-draft-lun-number"].value = "65535";
+  await iscsiClick(h, "iscsi-draft-add");
+  const result = JSON.parse(h.elements["iscsi-document"].value);
+  assert.equal(result.iscsi.targets.length, 16); assert.equal(result.iscsi.backings.length, 17, "a free target slot is not needed for an extra LUN");
+  assert.equal(result.iscsi.targets[0].luns.length, 2);
+  assert.equal(result.iscsi.targets[0].luns.at(-1).number, 65535);
+}
+await testISCSIAdditionalLUNRefusalsAndTargetCapacity();
+
+async function testISCSIAdditionalLUNResponseBindingAndRetirement() {
+  for (const fault of ["number", "backing", "grant", "capacity", "enabled", "original-refused"]) {
+    let calls = 0;
+    const h = await iscsiLUNHarness(options => {
+      const c = JSON.parse(options.body), value = iscsiDraftProjection(c); calls++;
+      if (fault === "original-refused") return jsonResponse({}, 422);
+      if (calls === 2) {
+        if (fault === "number") value.targets[0].luns.at(-1).number++;
+        if (fault === "backing") value.targets[0].luns.at(-1).backing_id = c.iscsi.backings[0].id;
+        if (fault === "grant") value.targets[0].initiators[0].grants.pop();
+        if (fault === "capacity") value.backings.at(-1).capacity_bytes = "16384";
+        if (fault === "enabled") value.targets[0].desired_state = "enabled";
+      }
+      return jsonResponse(value);
+    });
+    const text = h.elements["iscsi-document"].value; await iscsiClick(h, "iscsi-draft-add");
+    assert.equal(calls, fault === "original-refused" ? 1 : 2);
+    assert.equal(h.elements["iscsi-document"].value, text); assert.equal(h.elements["iscsi-review-save"].disabled, true);
+  }
+  for (const boundary of ["action", "lun-number", "clear", "session", "deadline"]) {
+    let release, candidate, calls = 0; const timers = [], pending = new Promise(resolve => { release = resolve; });
+    const h = await iscsiLUNHarness(options => {
+      const value = iscsiDraftProjection(JSON.parse(options.body));
+      if (++calls === 2) { candidate = value; return pending; }
+      return jsonResponse(value);
+    }, { setTimeout: (f, ms) => (timers.push({ f, ms }), timers.length), clearTimeout() {} });
+    const text = h.elements["iscsi-document"].value, work = iscsiClick(h, "iscsi-draft-add"); await settleUI();
+    if (["action", "lun-number"].includes(boundary)) h.elements[`iscsi-draft-${boundary}`].listeners.get("input")();
+    if (boundary === "clear") await iscsiClick(h, "iscsi-clear");
+    if (boundary === "session") h.context.showAuthUnavailable();
+    if (boundary === "deadline") timers.at(-1).f();
+    await work; release(jsonResponse(candidate)); await settleUI();
+    assert.equal(h.elements["iscsi-document"].value, ["clear", "session"].includes(boundary) ? "" : text);
+    assert.equal(h.elements["iscsi-review-save"].disabled, true); assert.equal(h.elements["iscsi-result"].hidden, true);
+    if (["clear", "session"].includes(boundary)) {
+      assert.equal(h.elements["iscsi-draft-action"].value, "target"); assert.equal(h.elements["iscsi-draft-lun-number"].value, "0");
+    }
+  }
+}
+await testISCSIAdditionalLUNResponseBindingAndRetirement();
 
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
