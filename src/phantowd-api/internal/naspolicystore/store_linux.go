@@ -42,6 +42,13 @@ func OpenOwner(directory string) (*Owner, error) {
 	return revisionstore.OpenOwnedWithCodec(directory, policyCodec())
 }
 
+// OpenConfirmedOwner uses ordered evidence under the existing concrete leases.
+// Trusted parents must separately confirm base bytes and consumer exclusion;
+// this does not provision state or authorize product boot/reconciliation.
+func OpenConfirmedOwner(ctx context.Context, directory, installation string, confirmed []byte) (*Owner, error) {
+	return revisionstore.OpenConfirmedNASOwner(ctx, directory, installation, confirmed)
+}
+
 // ObserveBootstrap uses only this package's fixed names/schema. The redacted
 // observation is not initialization, recovery, a policy lease or permission
 // to open/activate an Owner later. No HTTP or product startup is wired here.

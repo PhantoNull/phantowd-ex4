@@ -29,8 +29,10 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"golang.org/x/sys/unix"
 )
 
@@ -65,7 +67,16 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	if err := errors.Join(seed.Commit(0, qemuPersistentNASPolicy(1)), seed.Close()); err != nil {
 		return err
 	}
-	owner, err := naspolicystore.OpenOwner(nasMainFixture + "/state")
+	const installation = "55555555555555555555555555555555"
+	confirmed, err := json.Marshal(qemuPersistentNASPolicy(1))
+	if err != nil {
+		return err
+	}
+	// Explicit disposable provisioning, not adoption of observed/legacy state.
+	if err := writeQEMUStateFixture(nasMainFixture+"/state/nas-evidence.json", []byte(`{"format":"phantowd-nas-evidence-container","schema_version":1,"installation_id":"`+installation+`"}`)); err != nil {
+		return err
+	}
+	owner, err := naspolicystore.OpenConfirmedOwner(context.Background(), nasMainFixture+"/state", installation, confirmed)
 	if err != nil {
 		return err
 	}
@@ -94,6 +105,15 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	if err := owner.Close(); err != nil {
 		return err
 	}
+	observer, err := revisionstore.OpenNASEvidenceAuthority(ctx, nasMainFixture+"/state", installation)
+	if err != nil {
+		return err
+	}
+	evidence, observeErr := observer.Observe(ctx)
+	if errors.Join(observeErr, observer.Close()) != nil || evidence.Kind != naspolicyevidence.MatchingLocalRecords || evidence.Pending || evidence.Roles != 5 {
+		return errors.New("NAS main ordered operation evidence differs")
+	}
+	fmt.Println("PHANTOWD_NAS_ORDERED_OWNER_READY standard_main=true https=verified original_owner=true leases=retained ordered_writer=true receipt=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_MAIN_READY standard_main=true api_uid=65534 https=verified setup=true login=true lifetimes=2 credentials_retained=true original_owner=true busy=true commit=true conflict=true shutdown=clean peer_pid=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_SUMMARY_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true counts=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_BACKUP_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true full_policy=true scope=disposable-qemu-only")

@@ -19,6 +19,53 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func TestConfirmedNASOwnerMediaReadOnlyKeepsReviewAndLock(t *testing.T) {
+	requireRevisionMediaQEMU(t)
+	dir, ctx := nasEvidenceFixture(t), context.Background()
+	base := nasWriterPolicy(t, 2)
+	next, err := nasKillCodec().Decode(strings.NewReader(string(nasWriterPolicy(t, 3))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := OpenConfirmedNASOwner(ctx, dir, evidenceInstallation, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	const flags = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
+	if err := unix.Mount("", revisionMediaRootQEMU, "", unix.MS_REMOUNT|unix.MS_RDONLY|flags, ""); err != nil {
+		t.Fatal(err)
+	}
+	var fs unix.Statfs_t
+	if err := unix.Statfs(revisionMediaRootQEMU, &fs); err != nil || fs.Flags&unix.ST_RDONLY == 0 {
+		t.Fatal("readonly mount not established", err)
+	}
+	defer func() {
+		if err := unix.Mount("", revisionMediaRootQEMU, "", unix.MS_REMOUNT|flags, ""); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := o.Commit(ctx, 2, next); !errors.Is(err, ErrReview) {
+		t.Fatal("readonly publication not quarantined", err)
+	}
+	if other, err := OpenNASEvidenceAuthority(ctx, dir, evidenceInstallation); !errors.Is(err, ErrBusy) {
+		if other != nil {
+			other.Close()
+		}
+		t.Fatal("readonly failure released authority", err)
+	}
+	if err := unix.Mount("", revisionMediaRootQEMU, "", unix.MS_REMOUNT|flags, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.Commit(ctx, 2, next); !errors.Is(err, ErrReview) {
+		t.Fatal("restored mount permitted retry", err)
+	}
+	current, err := os.ReadFile(filepath.Join(dir, "nas-services.json"))
+	if err != nil || string(current) != string(base) {
+		t.Fatal("readonly attempt changed current", err)
+	}
+}
+
 const revisionMediaRootQEMU = "/run/phantowd-revisionstore-media"
 
 func requireRevisionMediaQEMU(t *testing.T) {

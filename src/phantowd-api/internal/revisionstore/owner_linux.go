@@ -32,12 +32,24 @@ type OwnedStore[T any] struct {
 	mu          sync.Mutex
 	self        *OwnedStore[T]
 	store       *Store[T]
+	backend     *ownedPolicyBackend[T]
 	watch       int
 	baseline    policyObservation
 	leases      map[*PolicyLease[T]]struct{}
 	review      bool
 	closed      bool
 	closeFailed bool
+}
+
+// Constructor-bound, private authority. Operations never accept a backend.
+type ownedPolicyBackend[T any] struct {
+	capture func(context.Context) (T, policyObservation, error)
+	commit  func(context.Context, uint64, T) error
+	close   func() error
+}
+
+func (b *ownedPolicyBackend[T]) valid() bool {
+	return b != nil && b.capture != nil && b.commit != nil && b.close != nil
 }
 
 // PolicyLease is a private, constructor-issued claim on one desired revision,
@@ -90,7 +102,9 @@ func OpenOwnedWithCodec[T any](directory string, codec Codec[T]) (*OwnedStore[T]
 	return o, nil
 }
 
-func (o *OwnedStore[T]) valid() bool { return o != nil && o.self == o && o.store != nil }
+func (o *OwnedStore[T]) valid() bool {
+	return o != nil && o.self == o && ((o.store != nil && o.backend == nil) || (o.store == nil && o.backend.valid()))
+}
 
 func (o *OwnedStore[T]) checkLocked(ctx context.Context) error {
 	if o.review || o.closeFailed {
@@ -193,8 +207,15 @@ func (o *OwnedStore[T]) captureLocked() (T, policyObservation, error) {
 	return doc, policyObservation{policyStamp(dirAfter), policyStamp(after), sha256.Sum256(encoded), s.codec.Revision(doc)}, nil
 }
 
-func (o *OwnedStore[T]) observeLocked() (T, error) {
-	doc, observed, err := o.captureLocked()
+func (o *OwnedStore[T]) observeLocked(ctx context.Context) (T, error) {
+	var doc T
+	var observed policyObservation
+	var err error
+	if o.backend != nil {
+		doc, observed, err = o.backend.capture(ctx)
+	} else {
+		doc, observed, err = o.captureLocked()
+	}
 	if err != nil || observed != o.baseline {
 		var zero T
 		return zero, o.quarantineLocked()
@@ -213,7 +234,7 @@ func (o *OwnedStore[T]) Snapshot(ctx context.Context) (T, error) {
 	if err := o.checkLocked(ctx); err != nil {
 		return zero, err
 	}
-	doc, err := o.observeLocked()
+	doc, err := o.observeLocked(ctx)
 	if err != nil {
 		return zero, err
 	}
@@ -232,7 +253,7 @@ func (o *OwnedStore[T]) Acquire(ctx context.Context, expected uint64) (*PolicyLe
 	if err := o.checkLocked(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := o.observeLocked(); err != nil {
+	if _, err := o.observeLocked(ctx); err != nil {
 		return nil, err
 	}
 	if expected != o.baseline.revision {
@@ -250,9 +271,9 @@ func (o *OwnedStore[T]) Acquire(ctx context.Context, expected uint64) (*PolicyLe
 	return l, nil
 }
 
-// Commit refuses active claims and reuses the existing fsync/rename transaction.
-// Any attempted publication failure quarantines the owner without retry; an
-// explicit successful commit with no old leases establishes a new watch epoch.
+// Commit refuses active claims; attempted uncertainty quarantines without retry.
+// The legacy transaction starts a new watch epoch after a successful commit.
+// The confirmed-NAS backend instead retains its original writer/watch lifetime.
 // The next value remains caller-owned and must not be concurrently mutated.
 func (o *OwnedStore[T]) Commit(ctx context.Context, expected uint64, next T) error {
 	if !o.valid() {
@@ -263,7 +284,7 @@ func (o *OwnedStore[T]) Commit(ctx context.Context, expected uint64, next T) err
 	if err := o.checkLocked(ctx); err != nil {
 		return err
 	}
-	if _, err := o.observeLocked(); err != nil {
+	if _, err := o.observeLocked(ctx); err != nil {
 		return err
 	}
 	if len(o.leases) != 0 {
@@ -271,6 +292,9 @@ func (o *OwnedStore[T]) Commit(ctx context.Context, expected uint64, next T) err
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if o.backend != nil {
+		return o.commitBackendLocked(ctx, expected, next)
 	}
 	if err := o.store.Commit(expected, next); err != nil {
 		if errors.Is(err, ErrConflict) || errors.Is(err, ErrInvalid) {
@@ -292,6 +316,25 @@ func (o *OwnedStore[T]) Commit(ctx context.Context, expected uint64, next T) err
 	return nil
 }
 
+func (o *OwnedStore[T]) commitBackendLocked(ctx context.Context, expected uint64, next T) error {
+	if expected != o.baseline.revision {
+		return ErrConflict
+	}
+	if err := o.backend.commit(ctx, expected, next); err != nil {
+		if errors.Is(err, ErrConflict) || errors.Is(err, ErrInvalid) {
+			return err
+		}
+		return o.quarantineLocked()
+	}
+	_, observed, err := o.backend.capture(ctx)
+	encoded, encodeErr := json.Marshal(next)
+	if err != nil || encodeErr != nil || observed.revision != expected+1 || observed.digest != sha256.Sum256(encoded) || ctx.Err() != nil {
+		return o.quarantineLocked()
+	}
+	o.baseline = observed
+	return nil
+}
+
 func (l *PolicyLease[T]) valid() bool { return l != nil && l.self == l && l.owner.valid() }
 
 func (l *PolicyLease[T]) Snapshot(ctx context.Context) (T, error) {
@@ -308,7 +351,7 @@ func (l *PolicyLease[T]) Snapshot(ctx context.Context) (T, error) {
 	if err := o.checkLocked(ctx); err != nil {
 		return zero, err
 	}
-	doc, err := o.observeLocked()
+	doc, err := o.observeLocked(ctx)
 	if err != nil || l.revision != o.baseline.revision {
 		return zero, o.quarantineLocked()
 	}
@@ -366,7 +409,12 @@ func (o *OwnedStore[T]) Close() error {
 		watchErr = unix.Close(o.watch)
 		o.watch = -1
 	}
-	storeErr := o.store.Close()
+	var storeErr error
+	if o.backend != nil {
+		storeErr = o.backend.close()
+	} else {
+		storeErr = o.store.Close()
+	}
 	if watchErr != nil || storeErr != nil {
 		o.closeFailed = true
 		return o.quarantineLocked()
