@@ -606,6 +606,9 @@ The adopted writer direction retains the latest operation set. A private
 fixed-role publication primitive preserves pending evidence and verifies exact
 readback. A private ordered writer now composes capture, events and encoding;
 product composition, interruption/fault qualification and own-head gates remain open.
+The explicit confirmed-NAS Owner now keeps the writer behind existing typed leases;
+the disposable standard HTTPS-main fixture uses it and checks matching receipts.
+Product state admission, physical durability and own-head qualification remain open.
 Pure NAS operation encoding now reuses the existing record codec and retained
 NFS binding rule, rejects invalid/nonconsecutive pairs without partial output,
 and binds exact bytes/uint64 revisions. No ID allocator, file write, historical

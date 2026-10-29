@@ -5,6 +5,9 @@
 
 **Status: private NAS codecs/comparison, read-only collector and ordered writer exist;
 product admission remain proposed and unqualified.**
+An explicit confirmed-NAS constructor now retains that writer behind the existing
+concrete Owner/Lease contracts. Consumer exclusion and base confirmation are
+trusted parent prerequisites; it neither provisions nor admits product startup.
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
 This design is a contributor handoff, not a migration or installation procedure.
 
