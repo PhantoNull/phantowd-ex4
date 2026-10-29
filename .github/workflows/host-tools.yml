@@ -44,6 +44,7 @@ on:
       - 'support/tests/verify-revisionstore-media-log.awk'
       - 'src/phantowd-api/internal/naspolicy/**'
       - 'src/phantowd-api/internal/naspolicystore/**'
+      - 'src/phantowd-api/internal/naspolicyevidence/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
@@ -150,6 +151,7 @@ on:
       - 'support/tests/verify-revisionstore-media-log.awk'
       - 'src/phantowd-api/internal/naspolicy/**'
       - 'src/phantowd-api/internal/naspolicystore/**'
+      - 'src/phantowd-api/internal/naspolicyevidence/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
       - 'support/tests/test-service-launcher.py'
@@ -267,7 +269,7 @@ jobs:
           GOPROXY: off
           GOTOOLCHAIN: local
           GOFLAGS: -mod=vendor
-        run: go test -race -count=3 ./fileservice ./internal/revisionstore ./fileservicestore ./internal/naspolicystore
+        run: go test -race -count=3 ./fileservice ./internal/revisionstore ./fileservicestore ./internal/naspolicystore ./internal/naspolicyevidence
 
       - name: Verify NAS evidence media fixture contracts
         working-directory: src/phantowd-api

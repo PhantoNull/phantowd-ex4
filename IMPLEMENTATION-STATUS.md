@@ -606,6 +606,12 @@ The adopted writer direction retains the latest operation set. A private
 fixed-role publication primitive preserves pending evidence and verifies exact
 readback; it has no caller in product code. The ordered retained coordinator,
 watch accounting, transition validation and full fault campaign remain open.
+Pure NAS operation encoding now reuses the existing record codec and retained
+NFS binding rule, rejects invalid/nonconsecutive pairs without partial output,
+and binds exact bytes/uint64 revisions. No ID allocator, file write, historical
+ID-reuse check or receipt-publication authority is provided by this codec.
+The existing nine-case synthetic QEMU observer now consumes this encoder's
+records instead of hand-built tuples; its readiness contract is unchanged.
 
 ## Retained policy bootstrap authority — read-only lifetime only
 
