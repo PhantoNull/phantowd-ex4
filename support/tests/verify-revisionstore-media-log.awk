@@ -41,6 +41,18 @@ BEGIN {
     }
     expected[++required] = "TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview"
     expected[++required] = "TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview"
+    split("nas-evidence.json nas-services.json .nas-services.pending .nas-services.intent .nas-services.receipt .nas-services.base", nasRoles, " ")
+    expected[++required] = "TestNASEvidenceMediaForeignOwner"
+    expected[++required] = "TestNASEvidenceMediaForeignOwner/container"
+    for (i = 1; i <= 6; i++) { expected[++required] = "TestNASEvidenceMediaForeignOwner/" nasRoles[i] }
+    expected[++required] = "TestNASEvidenceMediaMountCrossings"
+    split("same-dev other-dev", mounts, " ")
+    for (m = 1; m <= 2; m++) {
+        for (i = 1; i <= 6; i++) {
+            if (m == 1 && i == 3) continue # Pending is metadata-only, never opened.
+            expected[++required] = "TestNASEvidenceMediaMountCrossings/" mounts[m] "-" nasRoles[i]
+        }
+    }
     expected[++required] = "TestNASBootstrapAdapterNeverImportsLegacyState"
 }
 { sub(/\r$/, "") }

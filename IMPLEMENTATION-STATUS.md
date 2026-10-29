@@ -577,7 +577,10 @@ read-only collector: fixed header/current/pending/intent/receipt/base roles,
 complete bounded census, strict reads and original root/lock/watch retention.
 Linux tests cover metadata/header/orphan refusals, absence and byte preservation,
 cancellation, writable-open review and descriptor/close lifetimes. A controlled
-premature-watch close is not a real I/O fault. Cross-mount/foreign-owner faults,
+premature-watch close is not a real I/O fault. The existing optional ARM media
+campaign also covers foreign UID for the container/six roles and eleven real bind
+crossings; all52 prior receipts remain mandatory (72 total), with unchanged
+compile/test/guest bounds and normal unmount. Full in-flight mutation/media faults,
 writer/reconciliation, complete state-bundle provisioning and physical placement
 remain outstanding. No automatic recovery, HTTP or service activation is added.
 

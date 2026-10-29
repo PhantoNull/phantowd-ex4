@@ -12,7 +12,7 @@ mkdir /run/phantowd-revisionstore-media
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdb /run/phantowd-revisionstore-media
 export TMPDIR=/run/phantowd-revisionstore-media
 echo 'PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only'
-if /usr/sbin/phantowd-revisionstore-media-tests -test.run '^(TestBootstrap.*|TestNASBootstrapAdapterNeverImportsLegacyState|TestBundleSIGKILLRecovery|TestNASBundleSIGKILLRecovery|TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview|TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview)$' -test.timeout 45s -test.count 1 -test.v; then
+if /usr/sbin/phantowd-revisionstore-media-tests -test.run '^(TestBootstrap.*|TestNASBootstrapAdapterNeverImportsLegacyState|TestBundleSIGKILLRecovery|TestNASBundleSIGKILLRecovery|TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview|TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview|TestNASEvidenceMedia.*)$' -test.timeout 45s -test.count 1 -test.v; then
     umount /run/phantowd-revisionstore-media
     echo 'PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only'
 else
