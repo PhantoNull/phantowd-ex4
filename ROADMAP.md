@@ -3158,7 +3158,10 @@ support per tested combination; refuse untested combinations without mutation.
   An additional-LUN mode targets an existing disabled target and existing peer
   by exact IQN, retaining authentication/definitions and adding only that grant.
   It reuses strict preview and explicit save; it does not provision or activate.
-  General target editing/removal, credential provisioning and activation remain open.
+  Scoped desired-state/LUN-access/existing-grant edits reuse that same review
+  and save, preserving unrelated definitions/authentication. Access edits require
+  desired-disabled state; reducing a LUN never silently rewrites rw grants.
+  General editing/removal, credential provisioning and runtime activation remain open.
   **M9.2a — internal desired file-LUN model (locally tested prototype):**
   `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,
   independent typed target/LUN/backing IDs, explicit capacity/block size,

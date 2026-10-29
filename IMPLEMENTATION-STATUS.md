@@ -9,6 +9,17 @@ The smoke uses the existing retained controller with a fixed peer-only profile.
 Two guests verify NFSv3/TCP read/write/fsync and client/server teardown without
 host networking. Own-head qualification is required; product startup remains open.
 
+## Scoped iSCSI definitions - development dashboard
+
+The archived scoped editor now shares current original/candidate validation,
+complete projection binding and full-NAS explicit save. Target desired state,
+LUN access and existing grants retain unrelated definitions/authentication.
+DOM tests cover sequences, refusals and stale fetch/body replies; changed text
+also fences replies without relying on an input event. Own-head qualification
+remains required. Original-handler tests cover all three edits and busy/save/stale
+outcomes; local tagged race-count3 and cached ARM asset/HTTPS checks pass. The
+new UI workflow is DOM-only; runtime activation, stop and revocation remain open.
+
 ## Additional iSCSI LUN draft - development dashboard
 
 The guided form appends a numbered LUN/backing and one existing peer grant to a

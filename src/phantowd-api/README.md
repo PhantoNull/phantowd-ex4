@@ -24,6 +24,14 @@ The original baseline must still match; candidate definitions are checked agains
 the staged draft, and edits retire save eligibility. Uncertain saves use the same
 manual comparison without retry. No new state writer, backing open or activation.
 
+A scoped editor matches exact target ID/IQN and existing LUN/initiator identity.
+It changes desired target state, one LUN access or one existing grant; access
+edits require desired-disabled state. Grants are never changed automatically.
+Original/candidate validation and complete redacted projection binding precede
+staging; the existing original-baseline review/explicit save remains required.
+Edits, timeout, session loss or changed input retire results. This is not runtime
+start/stop/revocation, credential provisioning, resize or data deletion.
+
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
 contains an embedded browser dashboard with read-only diagnostics and a
