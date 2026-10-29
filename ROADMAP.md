@@ -757,7 +757,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   Complete in-flight mutation/media and product fault coverage remains open;
   **M1.3c** latest-operation retention and six-role staging are adopted. A private
   fixed-role publication primitive and pure exact-pair record encoder exist;
-  private capture, event fence and an ordered confirmed-NAS Owner exist; full
+  private capture, event fence and an ordered confirmed-NAS Owner exist.
+  Disposable NFS consumer composition checks real activation/reapply and the
+  matching ordered-operation receipt after verified shutdown. Complete
   transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
