@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -22,9 +23,11 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
@@ -34,25 +37,27 @@ import (
 const ownerNFSRoot = "/srv/phantowd/volumes/qemu-plan/nfs-owner"
 const ownerNFSClient = "/run/phantowd-nfs-owner-client"
 const ownerNFSPolicy = "/run/phantowd-nfs-owner-policy"
+const ownerNFSInstallation = "66666666666666666666666666666666"
 
 // Fixed disposable-guest composition only, with original retained inputs.
 type ownerNFSQEMU struct {
-	identity      *identityowner.Owner
-	identityLease *identityowner.FileServiceLease
-	storage       *mountowner.MountedVolumeSet
-	storageLease  *mountowner.MountedVolumeSetLease
-	roots         *nfsowner.ExportRootsQEMU
-	policySeed    *naspolicystore.Store
-	policyOwner   *naspolicystore.Owner
-	policyLease   *naspolicystore.Lease
-	management    *qemuNASPolicyHTTP
-	kernel        *nfskernel.ControllerQEMU
-	helpers       [2]*ownerNFSChild
-	options       string
-	access        string
-	phase         string
-	uid, gid      uint32
-	exported      bool
+	identity       *identityowner.Owner
+	identityLease  *identityowner.FileServiceLease
+	storage        *mountowner.MountedVolumeSet
+	storageLease   *mountowner.MountedVolumeSetLease
+	roots          *nfsowner.ExportRootsQEMU
+	policySeed     *naspolicystore.Store
+	policyOwner    *naspolicystore.Owner
+	policyLease    *naspolicystore.Lease
+	policyEvidence *revisionstore.NASEvidenceAuthority
+	management     *qemuNASPolicyHTTP
+	kernel         *nfskernel.ControllerQEMU
+	helpers        [2]*ownerNFSChild
+	options        string
+	access         string
+	phase          string
+	uid, gid       uint32
+	exported       bool
 }
 
 type ownerNFSChild struct {
@@ -292,7 +297,22 @@ func runQEMUNFSOwnerActivation() error {
 			return err
 		}
 		b.phase = "policy-close-authority"
-		return b.policyOwner.Close()
+		if err := b.policyOwner.Close(); err != nil {
+			return err
+		}
+		// Diagnostic only after verified consumer teardown, never boot admission.
+		b.phase = "policy-observe-ordered-receipt"
+		b.policyEvidence, err = revisionstore.OpenNASEvidenceAuthority(ctx, ownerNFSPolicy, ownerNFSInstallation)
+		if err != nil {
+			return err
+		}
+		evidence, observeErr := b.policyEvidence.Observe(ctx)
+		closeErr := b.policyEvidence.Close()
+		if errors.Join(observeErr, closeErr) != nil || evidence.Kind != naspolicyevidence.MatchingLocalRecords || evidence.Pending || evidence.Roles != 5 {
+			return errors.New("NFS ordered-policy receipt differs after verified shutdown")
+		}
+		b.policyEvidence = nil
+		return nil
 	})
 	if err != nil {
 		return err
@@ -300,6 +320,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_ORDERED_POLICY_READY original_owner=true ordered_writer=true receipt=verified reactivation=verified kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_READY original_owner=true protocols=smb,nfs,iscsi busy_while_running=true commit_after_close=true revision=2 nfs_reapplied=true scope=qemu-loopback-only")
 	if err := exerciseQEMUNASPolicyRPC(); err != nil {
 		return err
@@ -329,7 +350,15 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 		return err
 	}
 	b.policySeed = nil
-	b.policyOwner, err = naspolicystore.OpenOwner(ownerNFSPolicy)
+	confirmed, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	// Fixed fresh disposable provisioning; observed/legacy bytes are not adopted.
+	if err := writeQEMUStateFixture(ownerNFSPolicy+"/nas-evidence.json", []byte(`{"format":"phantowd-nas-evidence-container","schema_version":1,"installation_id":"`+ownerNFSInstallation+`"}`)); err != nil {
+		return err
+	}
+	b.policyOwner, err = naspolicystore.OpenConfirmedOwner(ctx, ownerNFSPolicy, ownerNFSInstallation, confirmed)
 	if err != nil {
 		return err
 	}
