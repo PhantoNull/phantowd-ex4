@@ -756,7 +756,8 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   same-device/different-device bind crossings with retained review/exclusion.
   Complete in-flight mutation/media and product fault coverage remains open;
   **M1.3c** latest-operation retention and six-role staging are adopted. A private
-  fixed-role publication primitive exists; the retained ordered coordinator,
+  fixed-role publication primitive and pure exact-pair record encoder exist;
+  the retained ordered coordinator,
   transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
