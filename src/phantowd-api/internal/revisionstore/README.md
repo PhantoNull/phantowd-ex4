@@ -14,8 +14,13 @@ Full fault qualification, recovery and boot admission remain open; Store/bootstr
 Linux tests exercise metadata/header and orphan refusals, explicit absence,
 byte preservation, prework/in-flight cancellation, unchanged-byte writable-open
 review and repeated-read descriptor use. A controlled premature-watch close
-checks retained locks and no retry, not real media EIO. Cross-mount/foreign-owner
-faults, physical durability and the complete product state bundle remain separate.
+checks retained locks and no retry, not real media EIO. Complete in-flight
+mutation/media faults, physical durability and the product state bundle remain separate.
+The optional generated-media QEMU campaign adds foreign-UID refusal for the
+container/six roles and real bind crossings: five read roles on the same device,
+six on another device. Pending remains metadata-only. All cases require review,
+original exclusion after fixture restoration, unchanged bytes and normal unmount;
+ordinary host tests cannot qualify these root-only guest operations.
 
 A fixed trusted codec may check decoded current/candidate transitions under the
 store lock, after revision matching and before pending-file inspection/cleanup.

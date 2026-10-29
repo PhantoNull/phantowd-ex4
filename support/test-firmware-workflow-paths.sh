@@ -547,6 +547,11 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
 fi
 
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
+for path in support/tests/revisionstore-media-init.sh \
+    support/tests/test-revisionstore-media-log.sh support/tests/verify-revisionstore-media-log.awk; do
+    require_ignored_path "$stage_b3_workflow" "$path"
+    require_triggered_path "$host_workflow" "$path"
+done
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 
 printf 'Firmware workflow path-contract tests passed\n'
