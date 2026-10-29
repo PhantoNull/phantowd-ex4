@@ -61,13 +61,26 @@ type ownerNFSChild struct {
 }
 type ownerNFSReview struct {
 	constructionreview.Marker
-	backend *ownerNFSQEMU
-	owner   *nfsowner.Owner
-	cause   error
+	backend     *ownerNFSQEMU
+	owner       *nfsowner.Owner
+	cause       error
+	contextDone bool
 }
 
 func (r *ownerNFSReview) Error() string {
-	return "NFS activation retains original sources for review: phase=" + r.backend.phase
+	// The second lifetime retains its own backend. Preserve its failure phase
+	// instead of reporting the parent's preceding policy-update phase.
+	source, contextDone := r, r.contextDone
+	for {
+		var nested *ownerNFSReview
+		if !errors.As(source.cause, &nested) {
+			break
+		}
+		source = nested
+		contextDone = contextDone || source.contextDone
+	}
+	return fmt.Sprintf("NFS activation retains original sources for review: phase=%s deadline=%t canceled=%t context_done=%t",
+		source.backend.phase, errors.Is(r.cause, context.DeadlineExceeded), errors.Is(r.cause, context.Canceled), contextDone)
 }
 func (r *ownerNFSReview) Unwrap() error { return r.cause }
 
@@ -84,7 +97,7 @@ func runQEMUNFSOwnerActivation() error {
 			// No release or retry after uncertainty. The returned review object
 			// keeps the original authority alive through fixture teardown.
 			if result != nil {
-				result = &ownerNFSReview{backend: b, owner: owner, cause: result}
+				result = &ownerNFSReview{backend: b, owner: owner, cause: result, contextDone: ctx.Err() != nil}
 			}
 		}()
 		var err error
@@ -250,28 +263,35 @@ func runQEMUNFSOwnerActivation() error {
 		if err := b.management.exchange(ctx, &next, 200); err != nil {
 			return fmt.Errorf("closed NFS did not release desired-policy mutation: %w", err)
 		}
+		b.phase = "policy-readback-after-close"
 		updated, err := b.policyOwner.Snapshot(ctx)
 		if err != nil || updated.Revision != next.Revision || len(updated.FileServices.NFS.Exports) != 1 ||
 			len(updated.FileServices.NFS.Exports[0].Clients) != 1 || updated.FileServices.NFS.Exports[0].Clients[0].Access != "rw" {
 			return errors.New("desired-policy update after NFS close was not observed")
 		}
+		b.phase = "policy-reapply"
 		if err := b.reapplySavedPolicy(ctx, owner); err != nil {
 			return err
 		}
+		b.phase = "policy-verify-after-reapply"
 		if err := b.management.exchange(ctx, nil, 200); err != nil {
 			return err
 		}
+		b.phase = "policy-close-management"
 		if err := b.management.Close(); err != nil {
 			return err
 		}
+		b.phase = "policy-data-cleanup"
 		for _, p := range []string{ownerNFSRoot + "/updated", ownerNFSRoot + "/marker", ownerNFSRoot} {
 			if err := os.Remove(p); err != nil {
 				return err
 			}
 		}
+		b.phase = "policy-close-identity"
 		if err := b.identity.Close(); err != nil {
 			return err
 		}
+		b.phase = "policy-close-authority"
 		return b.policyOwner.Close()
 	})
 	if err != nil {
@@ -346,33 +366,45 @@ func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
 }
 
 func (b *ownerNFSQEMU) Start(ctx context.Context) error {
+	phase := b.phase
+	b.phase = phase + "-export-table"
 	before, err := runQEMUExportfsContext(ctx, "-s")
 	if err != nil || len(normalizedQEMUExportLines(before)) != 0 {
 		return errors.New("NFS fixture requires empty export table")
 	}
+	b.phase = phase + "-kernel-open"
 	b.kernel, err = nfskernel.OpenSmokeQEMU(ctx)
 	if err != nil {
 		return err
 	}
+	b.phase = phase + "-rpcbind-start"
 	b.helpers[0], err = startOwnerNFSChild("/usr/sbin/rpcbind", "-f", "-h", "127.0.0.1")
 	if err != nil {
 		return err
 	}
+	b.phase = phase + "-rpcbind-ready"
 	if err := b.waitRPC(ctx, "100000", "4"); err != nil {
 		return err
 	}
+	b.phase = phase + "-kernel-start"
 	if err := b.kernel.Start(ctx); err != nil {
 		return err
 	}
+	b.phase = phase + "-mountd-start"
 	b.helpers[1], err = startOwnerNFSChild("/usr/sbin/rpc.mountd", "-F", "-N", "2", "-N", "4", "-V", "3", "-p", "20048")
 	if err != nil {
 		return err
 	}
+	b.phase = phase + "-mountd-ready"
 	if err := b.waitRPC(ctx, "100005", "3"); err != nil {
 		return err
 	}
+	b.phase = phase + "-export"
 	b.exported = true // Retain ownership even if exportfs completion is uncertain.
 	_, err = runQEMUExportfsContext(ctx, "-i", "-o", b.options, "127.0.0.1/32:"+ownerNFSRoot)
+	if err == nil {
+		b.phase = phase + "-verify-ready"
+	}
 	return err
 }
 
