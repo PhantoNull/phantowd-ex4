@@ -6,8 +6,15 @@
 // Desired-policy drafts and explicit shared NAS save review; no target activation.
 const iscsiPreviewPath = "/api/v1/iscsi/preview";
 const iscsiPreviewState = { operation: null, staged: null, origin: null };
-const iscsiDraftFields = Object.freeze(["name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"]);
-const iscsiDraftDefaults = Object.freeze({ "block-size": "512", allocation: "sparse", access: "ro", auth: "chap" });
+const iscsiDraftFields = Object.freeze(["name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref", "action", "lun-number"]);
+const iscsiDraftDefaults = Object.freeze({ "block-size": "512", allocation: "sparse", access: "ro", auth: "chap", action: "target", "lun-number": "0" });
+
+function syncISCSIDraftMode() {
+  const extra = byId("iscsi-draft-action").value === "lun";
+  byId("iscsi-draft-lun-number").disabled = !extra;
+  for (const field of ["auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"]) byId(`iscsi-draft-${field}`).disabled = extra;
+  byId("iscsi-draft-add").textContent = extra ? "Validate and stage additional LUN" : "Validate and stage disabled target";
+}
 
 function retireISCSIPreview(clearInput = false) {
   const operation = iscsiPreviewState.operation;
@@ -30,6 +37,7 @@ function retireISCSIPreview(clearInput = false) {
     byId("iscsi-document").value = "";
     for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).value = iscsiDraftDefaults[field] ?? "";
   }
+  syncISCSIDraftMode();
   setText("iscsi-status", "No current preview. Nothing was saved or activated.");
   syncNASRestoreControls();
 }
@@ -93,6 +101,11 @@ async function reviewISCSIDraftSave() {
 // prevents duplicate/unknown keys from being silently repaired by JSON.parse.
 function buildISCSIDraft(text, fields) {
   const invalid = () => { throw new Error("Invalid guided iSCSI draft"); };
+  fields = { ...fields, action: fields.action || "target", "lun-number": fields["lun-number"] || (fields.action === "lun" ? "" : "0") };
+  const extra = fields.action === "lun";
+  if (!["target", "lun"].includes(fields.action) || !/^(0|[1-9][0-9]{0,4})$/.test(fields["lun-number"])) invalid();
+  const number = Number(fields["lun-number"]);
+  if (number > 65535 || (!extra && number !== 0)) invalid();
   const c = JSON.parse(text, (_key, value) => {
     if (typeof value === "number" && !Number.isSafeInteger(value)) invalid();
     return value;
@@ -100,7 +113,7 @@ function buildISCSIDraft(text, fields) {
   const p = c?.iscsi, fs = c?.file_services;
   if (c?.format !== "phantowd-nas-service-config" || c.schema_version !== 1 || !Number.isSafeInteger(c.revision) || c.revision < 1 ||
       !Number.isSafeInteger(c.revision + 1) || !Array.isArray(p?.targets) || !Array.isArray(p?.backings) ||
-      !Array.isArray(fs?.shares?.volumes) || !fs?.nfs || p.targets.length >= 16 || p.backings.length >= 64) invalid();
+      !Array.isArray(fs?.shares?.volumes) || !fs?.nfs || p.targets.length > 16 || (!extra && p.targets.length === 16) || p.backings.length >= 64) invalid();
   for (const field of iscsiDraftFields) if (typeof fields[field] !== "string" || fields[field].length > 1024 || /[\u0000-\u001f\u007f]/.test(fields[field])) invalid();
   const bounded = (value, max) => value.length > 0 && value.length <= max;
   const identifier = value => /^[a-z][a-z0-9-]{0,63}$/.test(value);
@@ -109,27 +122,37 @@ function buildISCSIDraft(text, fields) {
       !fs.shares.volumes.some(v => v.id === fields.volume) || !bounded(fields.path, 1024) || /[\\:]/.test(fields.path) ||
       fields.path.split("/").some(part => !part || part === "." || part === "..") ||
       !/^[1-9][0-9]{0,15}$/.test(fields.capacity) || !["512", "4096"].includes(fields["block-size"]) ||
-      !["sparse", "preallocated"].includes(fields.allocation) || !["ro", "rw"].includes(fields.access) ||
-      !["chap", "mutual-chap"].includes(fields.auth) || !user(fields["chap-user"]) || !identifier(fields["secret-ref"])) invalid();
+      !["sparse", "preallocated"].includes(fields.allocation) || !["ro", "rw"].includes(fields.access)) invalid();
   const capacity = Number(fields.capacity), block = Number(fields["block-size"]);
-  if (!Number.isSafeInteger(capacity) || capacity < block || capacity % block !== 0 ||
+  if (!Number.isSafeInteger(capacity) || capacity < block || capacity % block !== 0) invalid();
+  const target = extra ? p.targets.find(t => t.name === fields.name) : null;
+  const peer = target?.initiators?.find(p => p.name === fields.initiator);
+  if (extra && (!target || target.state !== "disabled" || !Array.isArray(target.luns) || target.luns.length < 1 || target.luns.length >= 16 ||
+      target.luns.some(l => l.number === number) || !peer || !Array.isArray(peer.grants) || peer.grants.length < 1 || peer.grants.length >= 16)) invalid();
+  if (!extra && (!["chap", "mutual-chap"].includes(fields.auth) || !user(fields["chap-user"]) || !identifier(fields["secret-ref"]) ||
       (fields.auth === "chap" && (fields["target-user"] !== "" || fields["target-secret-ref"] !== "")) ||
-      (fields.auth === "mutual-chap" && (!user(fields["target-user"]) || !identifier(fields["target-secret-ref"]) || fields["secret-ref"] === fields["target-secret-ref"]))) invalid();
+      (fields.auth === "mutual-chap" && (!user(fields["target-user"]) || !identifier(fields["target-secret-ref"]) || fields["secret-ref"] === fields["target-secret-ref"])))) invalid();
   const unique = (items, prefix) => {
     for (let i = 1; i <= 65; i++) if (!items.some(item => item.id === `${prefix}-${i}`)) return `${prefix}-${i}`;
     invalid();
   };
-  const targetID = unique(p.targets, "target"), backingID = unique(p.backings, "backing"), lunID = unique(p.targets.flatMap(t => t.luns), "lun");
-  const auth = { mode: fields.auth, initiator_user: fields["chap-user"], initiator_secret_ref: fields["secret-ref"] };
-  if (fields.auth === "mutual-chap") { auth.target_user = fields["target-user"]; auth.target_secret_ref = fields["target-secret-ref"]; }
-  p.backings.push({ id: backingID, volume_id: fields.volume, relative_path: fields.path, capacity_bytes: capacity, block_size: block, allocation: fields.allocation });
-  p.targets.push({ id: targetID, name: fields.name, state: "disabled", luns: [{ id: lunID, number: 0, backing_id: backingID, access: fields.access }],
-    initiators: [{ name: fields.initiator, authentication: auth, grants: [{ lun_id: lunID, access: fields.access }] }] });
+  const targetID = target?.id ?? unique(p.targets, "target"), backingID = unique(p.backings, "backing"), lunID = unique(p.targets.flatMap(t => t.luns), "lun");
+  const backing = { id: backingID, volume_id: fields.volume, relative_path: fields.path, capacity_bytes: capacity, block_size: block, allocation: fields.allocation };
+  const lun = { id: lunID, number, backing_id: backingID, access: fields.access }, grant = { lun_id: lunID, access: fields.access };
+  p.backings.push(backing);
+  if (extra) { target.luns.push(lun); peer.grants.push(grant); }
+  else {
+    const auth = { mode: fields.auth, initiator_user: fields["chap-user"], initiator_secret_ref: fields["secret-ref"] };
+    if (fields.auth === "mutual-chap") { auth.target_user = fields["target-user"]; auth.target_secret_ref = fields["target-secret-ref"]; }
+    p.targets.push({ id: targetID, name: fields.name, state: "disabled", luns: [lun],
+      initiators: [{ name: fields.initiator, authentication: auth, grants: [grant] }] });
+  }
   c.revision++;
   fs.revision = fs.shares.revision = fs.nfs.revision = fs.nfs.volume_revision = p.revision = p.volume_revision = c.revision;
   const candidate = JSON.stringify(c);
   if (new TextEncoder().encode(candidate).byteLength > 656128) invalid();
-  return { text: candidate, revision: String(c.revision), targetID, targets: p.targets.length, backings: p.backings.length };
+  return { text: candidate, revision: String(c.revision), targetID, targets: p.targets.length, backings: p.backings.length,
+    extra, lun, backing, initiator: fields.initiator };
 }
 
 function validateISCSIPreview(value) {
@@ -259,8 +282,11 @@ async function submitISCSIPreview(event, draft = false) {
       let value = await review(text);
       if (candidate) {
         value = await review(candidate.text);
+        const target = value.targets.find(t => t.id === candidate.targetID), backing = value.backings.find(b => b.id === candidate.backing.id);
         if (value.revision !== candidate.revision || value.targets.length !== candidate.targets || value.backings.length !== candidate.backings ||
-            !value.targets.some(t => t.id === candidate.targetID && t.desired_state === "disabled")) throw new Error("Draft preview mismatch");
+            target?.desired_state !== "disabled" || !target.luns.some(l => Object.keys(candidate.lun).every(k => l[k] === candidate.lun[k])) ||
+            !target.initiators.some(p => p.name === candidate.initiator && p.grants.some(g => g.lun_id === candidate.lun.id && g.access === candidate.lun.access)) ||
+            !backing || Object.keys(candidate.backing).some(k => backing[k] !== (k === "capacity_bytes" ? String(candidate.backing[k]) : candidate.backing[k]))) throw new Error("Draft preview mismatch");
       }
       renderISCSIPreview(value);
       if (candidate) {
@@ -269,7 +295,7 @@ async function submitISCSIPreview(event, draft = false) {
         byId("iscsi-document").value = candidate.text;
         iscsiPreviewState.origin = iscsiPreviewState.staged = { baseline, text: candidate.text };
       }
-      setText("iscsi-status", candidate ? "Disabled target staged in this draft only. Nothing was saved, created, opened or activated." : "Desired definitions reviewed. Nothing was saved, opened or activated.");
+      setText("iscsi-status", candidate ? `${candidate.extra ? "Additional LUN staged; existing authentication retained" : "Disabled target staged"} in this draft only. Nothing was saved, created, opened or activated.` : "Desired definitions reviewed. Nothing was saved, opened or activated.");
     };
     await new Promise((resolve, reject) => {
       abort = () => reject(canceled());
@@ -290,6 +316,7 @@ async function submitISCSIPreview(event, draft = false) {
       byId("iscsi-submit").disabled = false; byId("iscsi-submit").removeAttribute("aria-busy");
       byId("iscsi-draft-add").disabled = false; byId("iscsi-draft-add").removeAttribute("aria-busy");
       byId("iscsi-draft-fields").disabled = false;
+      syncISCSIDraftMode();
       syncNASRestoreControls();
     }
   }

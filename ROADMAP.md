@@ -3155,6 +3155,9 @@ support per tested combination; refuse untested combinations without mutation.
   retired reads preserve input, while session loss clears private text.
   Guided additions can enter the existing full NAS diff/explicit save with a
   matching original baseline, retired stale views and uncertain-save reconciliation.
+  An additional-LUN mode targets an existing disabled target and existing peer
+  by exact IQN, retaining authentication/definitions and adding only that grant.
+  It reuses strict preview and explicit save; it does not provision or activate.
   General target editing/removal, credential provisioning and activation remain open.
   **M9.2a — internal desired file-LUN model (locally tested prototype):**
   `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,

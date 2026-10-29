@@ -345,10 +345,12 @@
           <textarea id="iscsi-document" class="iscsi-document" rows="10" maxlength="656128" spellcheck="false" autocomplete="off" required></textarea>
           <p id="iscsi-privacy" class="policy-help">Contains private paths, IQNs and symbolic SecretRefs. Never paste actual CHAP passwords or keys. Input is sent only to this local API and is cleared when the administrator session ends; it is not stored in browser storage.</p>
           <details>
-            <summary id="iscsi-draft-toggle">Add a disabled target to this draft</summary>
-            <p id="iscsi-draft-help" class="policy-help">Add one target, LUN 0 and initiator to the submitted policy, preserving existing definitions. Both original and candidate are validated by the API. No save, file creation, credential provisioning or activation occurs. Use an existing logical VolumeID, not a bay or device path. Guided editing requires exact browser-safe integers; larger values remain available for manual JSON review.</p>
+            <summary id="iscsi-draft-toggle">Add a target or LUN to this draft</summary>
+            <p id="iscsi-draft-help" class="policy-help">Create a disabled target with LUN 0, or add a LUN to an existing disabled target using its exact IQN and one existing initiator IQN. Only that initiator receives the new grant; its authentication and all existing definitions are retained. Both original and candidate are validated by the API. No save, file creation, credential provisioning or activation occurs. Use an existing logical VolumeID. Guided editing requires exact browser-safe integers; larger values remain available for manual JSON review.</p>
             <fieldset id="iscsi-draft-fields" class="policy-grid" aria-describedby="iscsi-draft-help">
               <legend>Proposed target and backing</legend>
+              <label>Draft operation<select id="iscsi-draft-action"><option value="target">Create disabled target</option><option value="lun">Add LUN to existing disabled target</option></select></label>
+              <label>New LUN number (0–65535, unused in target)<input id="iscsi-draft-lun-number" maxlength="5" inputmode="numeric" value="0" disabled></label>
               <label>Target IQN<input id="iscsi-draft-name" maxlength="223" spellcheck="false" placeholder="iqn.2026-01.example.org:archive"></label>
               <label>Logical VolumeID<input id="iscsi-draft-volume" maxlength="64" spellcheck="false" placeholder="bulk"></label>
               <label>Relative backing file<input id="iscsi-draft-path" maxlength="1024" spellcheck="false" placeholder="luns/archive.img"></label>
@@ -357,7 +359,7 @@
               <label>Desired allocation<select id="iscsi-draft-allocation"><option value="sparse">Sparse</option><option value="preallocated">Preallocated</option></select></label>
               <label>LUN and initiator access<select id="iscsi-draft-access"><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
               <label>Initiator IQN<input id="iscsi-draft-initiator" maxlength="223" spellcheck="false" placeholder="iqn.2026-01.example.org:client"></label>
-              <label>Authentication<select id="iscsi-draft-auth"><option value="chap">CHAP</option><option value="mutual-chap">Mutual CHAP</option></select></label>
+              <label>New-target authentication (existing authentication is retained)<select id="iscsi-draft-auth"><option value="chap">CHAP</option><option value="mutual-chap">Mutual CHAP</option></select></label>
               <label>Initiator CHAP username<input id="iscsi-draft-chap-user" maxlength="128" spellcheck="false"></label>
               <label>Unique initiator SecretRef (not password)<input id="iscsi-draft-secret-ref" maxlength="64" spellcheck="false"></label>
               <label>Target CHAP username (mutual only)<input id="iscsi-draft-target-user" maxlength="128" spellcheck="false"></label>

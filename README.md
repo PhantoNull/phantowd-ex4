@@ -58,9 +58,10 @@ target/LUN/initiator grants. It does not activate targets.
 The form can manually load saved definitions into its draft through the same
 NAS authority. Invalid or inexact replies retain existing input; session loss
 clears private text. Loading does not save configuration or activate services.
-A guided form can stage one disabled target and LUN 0 after validating both the
-original policy and the candidate. Guided edits refuse unsafe browser integers;
-manual review preserves the full supported integer range.
+A guided form can stage a disabled target with LUN 0, or add a numbered LUN to
+an existing disabled target and one existing initiator. Existing authentication
+and definitions are retained. Original and candidate policies are validated;
+unsafe browser integers refuse while manual review preserves the full range.
 With the optional NAS-policy channel, staged additions enter the existing full
 configuration review and explicit save. The saved baseline must still match;
 unrelated changes are refused and uncertain replies require manual reconciliation.
