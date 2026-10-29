@@ -95,7 +95,23 @@ observations; the pure matcher itself cannot establish that provenance.
 When one role is ambiguous, return no usable match. Retain the existing separate
 invalid/unsupported diagnostic rather than inventing an automatic migration.
 
-## Follow-up writer protocol: requirements, not an implementation
+## Adopted writer retention and initial publication primitive
+
+Retain current, the previous exact base and the latest operation records only.
+A new explicitly authorized operation may rotate a verified completed set;
+unknown, partial or pending evidence is preserved. Low space refuses rather
+than deleting history. Keep the six fixed roles and stage through the exclusive
+pending name. This is the adopted internal host/disposable-QEMU direction,
+not product provisioning, reconciliation, boot admission or physical placement.
+
+The private `stageNASEvidenceRole` implements one fixed-role write/sync/close/
+rename/directory-sync/exact-readback step. It never removes pending evidence,
+rewrites the header or resets a watch. A retained coordinator must still validate
+policy transitions (including NFS bindings), authorize replacements, account for
+its own events and preserve review across all stages. The complete ordered
+base/intent/prior-receipt retirement/current/receipt transaction is not wired.
+
+## Follow-up coordinator: requirements, not an implementation
 
 Do not bolt receipt writes onto the existing two-name policy directory: its
 bootstrap census intentionally treats unknown entries as evidence. Define a
@@ -171,12 +187,12 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 
 ## Decisions still required
 
-- Approve a durable record/collector namespace before adding product state I/O.
+- Product state I/O needs admission beyond the adopted NAS evidence namespace.
 - Choose the state-root/bundle namespace and atomic publication strategy; a
   generation/manifest design is an option, not a silently selected format.
 - Specify what can authorize reconciliation after receipt-publication uncertainty,
   and how durable review survives inability to persist another record.
-- Decide retention limits and low-space behavior without erasing useful evidence.
+- Qualify the adopted latest-operation retention and low-space refusal behavior.
 - Define installation provisioning/replacement and anti-rollback expectations;
   opaque random IDs alone do not solve ownership, cloning or rollback.
 
