@@ -43,7 +43,18 @@ for name in TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery; do
         proof+=$'\n'"    --- PASS: $name/$point (0.01s)"
     done
 done
-proof+=$'\n--- PASS: TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestNASBootstrapAdapterNeverImportsLegacyState (0.01s)\nPASS\n'"$done"
+proof+=$'\n--- PASS: TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview (0.01s)'
+roles=(nas-evidence.json nas-services.json .nas-services.pending .nas-services.intent .nas-services.receipt .nas-services.base)
+proof+=$'\n--- PASS: TestNASEvidenceMediaForeignOwner (0.01s)\n--- PASS: TestNASEvidenceMediaForeignOwner/container (0.01s)'
+for role in "${roles[@]}"; do proof+=$'\n'"--- PASS: TestNASEvidenceMediaForeignOwner/$role (0.01s)"; done
+proof+=$'\n--- PASS: TestNASEvidenceMediaMountCrossings (0.01s)'
+for kind in same-dev other-dev; do
+    for role in "${roles[@]}"; do
+        if [ "$kind" = same-dev ] && [ "$role" = .nas-services.pending ]; then continue; fi
+        proof+=$'\n'"--- PASS: TestNASEvidenceMediaMountCrossings/$kind-$role (0.01s)"
+    done
+done
+proof+=$'\n--- PASS: TestNASBootstrapAdapterNeverImportsLegacyState (0.01s)\nPASS\n'"$done"
 verify() { awk -f "$source/support/tests/verify-revisionstore-media-log.awk"; }
 printf '%s\n' "$proof" | verify
 printf '%s\r\n' "${proof//$'\n'/$'\r\n'}" | verify

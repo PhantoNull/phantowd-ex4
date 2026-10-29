@@ -39,6 +39,9 @@ on:
       - 'src/phantowd-api/shareconfig/**'
       - 'src/phantowd-api/fileservicestore/**'
       - 'src/phantowd-api/internal/revisionstore/**'
+      - 'support/tests/revisionstore-media-init.sh'
+      - 'support/tests/test-revisionstore-media-log.sh'
+      - 'support/tests/verify-revisionstore-media-log.awk'
       - 'src/phantowd-api/internal/naspolicy/**'
       - 'src/phantowd-api/internal/naspolicystore/**'
       - 'src/phantowd-service-launcher/**'
@@ -142,6 +145,9 @@ on:
       - 'src/phantowd-api/shareconfig/**'
       - 'src/phantowd-api/fileservicestore/**'
       - 'src/phantowd-api/internal/revisionstore/**'
+      - 'support/tests/revisionstore-media-init.sh'
+      - 'support/tests/test-revisionstore-media-log.sh'
+      - 'support/tests/verify-revisionstore-media-log.awk'
       - 'src/phantowd-api/internal/naspolicy/**'
       - 'src/phantowd-api/internal/naspolicystore/**'
       - 'src/phantowd-service-launcher/**'
@@ -262,6 +268,12 @@ jobs:
           GOTOOLCHAIN: local
           GOFLAGS: -mod=vendor
         run: go test -race -count=3 ./fileservice ./internal/revisionstore ./fileservicestore ./internal/naspolicystore
+
+      - name: Verify NAS evidence media fixture contracts
+        working-directory: src/phantowd-api
+        run: |
+          GOPROXY=off GOTOOLCHAIN=local GOFLAGS=-mod=vendor go test -race -tags=qemu -count=3 ./internal/revisionstore
+          bash ../../support/tests/test-revisionstore-media-log.sh ../..
 
       - name: Verify host-tool packages
         working-directory: tools/phantowd-lab
