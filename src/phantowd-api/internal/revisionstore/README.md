@@ -11,6 +11,11 @@ formats, promotes pending state or treats corruption as empty configuration.
 
 `OpenNASEvidenceAuthority` adds a separate read-only six-role NAS observer.
 Full fault qualification, recovery and boot admission remain open; Store/bootstrap is unchanged.
+Linux tests exercise metadata/header and orphan refusals, explicit absence,
+byte preservation, prework/in-flight cancellation, unchanged-byte writable-open
+review and repeated-read descriptor use. A controlled premature-watch close
+checks retained locks and no retry, not real media EIO. Cross-mount/foreign-owner
+faults, physical durability and the complete product state bundle remain separate.
 
 A fixed trusted codec may check decoded current/candidate transitions under the
 store lock, after revision matching and before pending-file inspection/cleanup.
