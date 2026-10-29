@@ -27,6 +27,7 @@ type BootstrapAuthority[T any] struct {
 	initial                     unix.Stat_t
 	codec                       Codec[T]
 	watch                       int
+	descriptor                  int
 	review, closed, closeFailed bool
 }
 
@@ -73,7 +74,8 @@ func OpenBootstrapAuthorityWithCodec[T any](ctx context.Context, directory strin
 	if err != nil {
 		return nil, ErrIO
 	}
-	if wd, err := unix.InotifyAddWatch(a.watch, "/proc/self/fd/"+strconv.Itoa(fd), policyEvents|unix.IN_ONLYDIR); err != nil || wd < 0 {
+	a.descriptor, err = unix.InotifyAddWatch(a.watch, "/proc/self/fd/"+strconv.Itoa(fd), policyEvents|unix.IN_ONLYDIR)
+	if err != nil || a.descriptor < 0 {
 		return nil, ErrIO
 	}
 	var after unix.Stat_t

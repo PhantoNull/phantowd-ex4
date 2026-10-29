@@ -118,6 +118,15 @@ func (a *NASEvidenceAuthority) Observe(ctx context.Context) (value NASEvidenceOb
 }
 
 func collectNASEvidence(ctx context.Context, cursor *os.File, root unix.Stat_t, installation string) (NASEvidenceObservation, error) {
+	return collectNASEvidenceSet(ctx, cursor, root, installation, nil)
+}
+
+type nasEvidenceFile struct {
+	stat unix.Stat_t
+	data []byte
+}
+
+func collectNASEvidenceSet(ctx context.Context, cursor *os.File, root unix.Stat_t, installation string, capture map[string]nasEvidenceFile) (NASEvidenceObservation, error) {
 	var names []string
 	for {
 		if err := ctx.Err(); err != nil {
@@ -184,6 +193,11 @@ func collectNASEvidence(ctx context.Context, cursor *os.File, root unix.Stat_t, 
 	kind := nasEvidenceKind(installation, data)
 	if pending {
 		kind = naspolicyevidence.Inconsistent
+	}
+	for name, st := range known {
+		if capture != nil {
+			capture[name] = nasEvidenceFile{st, data[name]}
+		}
 	}
 	return NASEvidenceObservation{Kind: kind, Roles: len(names), BasePresent: data[".nas-services.base"] != nil, Pending: pending}, nil
 }
