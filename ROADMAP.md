@@ -749,7 +749,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   not an implemented journal or approved admission protocol. Implement in order:
   **M1.3b.1/b.2** private NAS-only strict record comparison now exists with host
   and required ARM fixtures; it grants no I/O, recovery or boot authority.
-  **M1.3b.3** retained read-only evidence collection;
+  **M1.3b.3** initial retained read-only six-role NAS evidence collector exists;
+  fixed header/current/pending/intent/receipt/base roles retain the original
+  root/lock/watch without mutation or Owner admission. Linux refusal/lifetime
+  tests do not complete the cross-mount/foreign-owner or product fault matrix;
   **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
