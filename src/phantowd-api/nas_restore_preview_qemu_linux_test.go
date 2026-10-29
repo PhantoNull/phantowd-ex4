@@ -261,3 +261,59 @@ func TestNASPolicyRestorePreviewSavesAddedDisabledTarget(t *testing.T) {
 		t.Fatal("saved target changed unrelated definitions", err)
 	}
 }
+
+func TestNASPolicyRestorePreviewSavesAdditionalLUN(t *testing.T) {
+	owner := nasStateTestOwner(t)
+	auth, cookie := newTestAuth(t)
+	h := newHandlerWithNASPolicy(nil, nil, nil, nil, auth, nil, nil, nil, newNASStateHandler(auth, owner))
+	desired := qemuPersistentNASPolicy(1)
+	backing := desired.ISCSI.Backings[0]
+	backing.ID, backing.RelativePath, backing.CapacityBytes = "extra-backing", "luns/extra.img", 8192
+	target := &desired.ISCSI.Targets[0]
+	lun, grant := target.LUNs[0], target.Initiators[0].Grants[0]
+	lun.ID, lun.Number, lun.BackingID, grant.LUNID = "extra-lun", 65535, backing.ID, "extra-lun"
+	target.LUNs, target.Initiators[0].Grants = append(target.LUNs, lun), append(target.Initiators[0].Grants, grant)
+	desired.ISCSI.Backings = append(desired.ISCSI.Backings, backing)
+	input, err := json.Marshal(desired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview := httptest.NewRecorder()
+	h.ServeHTTP(preview, iscsiPreviewRequest(auth, cookie, string(input)))
+	if preview.Code != 200 {
+		t.Fatal("additional LUN preview refused", preview.Code)
+	}
+	data, _ := json.Marshal(map[string]any{"format": nasBackupFormat, "schema_version": 1, "configuration": desired})
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, nasRestorePost(auth, cookie, data, "1"))
+	var reply struct {
+		Candidate string `json:"candidate_json"`
+		Saved     bool   `json:"saved"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Saved {
+		t.Fatal("additional LUN review unavailable", w.Code)
+	}
+	current, err := owner.Snapshot(context.Background())
+	if err != nil || !reflect.DeepEqual(current, qemuPersistentNASPolicy(1)) {
+		t.Fatal("preview changed original policy", err)
+	}
+	candidate, err := naspolicy.Decode(strings.NewReader(reply.Candidate))
+	want := nasRestoreRevision(desired, 2)
+	if err != nil || !reflect.DeepEqual(candidate, want) {
+		t.Fatal("additional LUN or preserved definitions differ", err)
+	}
+	for _, status := range []int{200, 409} {
+		request := serviceWriteRequest(auth, cookie, candidate.FileServices)
+		request.URL.Path = nasStatePath
+		request.Body, request.ContentLength = io.NopCloser(strings.NewReader(reply.Candidate)), int64(len(reply.Candidate))
+		output := httptest.NewRecorder()
+		h.ServeHTTP(output, request)
+		if output.Code != status {
+			t.Fatal("additional LUN lost commit/stale semantics", output.Code, status)
+		}
+	}
+	current, err = owner.Snapshot(context.Background())
+	if err != nil || !reflect.DeepEqual(current, want) {
+		t.Fatal("saved LUN changed unrelated definitions", err)
+	}
+}

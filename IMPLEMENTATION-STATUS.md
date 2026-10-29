@@ -9,6 +9,14 @@ The smoke uses the existing retained controller with a fixed peer-only profile.
 Two guests verify NFSv3/TCP read/write/fsync and client/server teardown without
 host networking. Own-head qualification is required; product startup remains open.
 
+## Additional iSCSI LUN draft - development dashboard
+
+The guided form appends a numbered LUN/backing and one existing peer grant to a
+disabled target, retaining authentication, other peers and SMB/NFS definitions.
+DOM fixtures cover batch staging/explicit save, limits, response binding and
+retired replies; real-handler fixtures cover preview/save/stale preservation.
+Exact-head qualification remains required. Provisioning and activation stay open.
+
 ## Current iSCSI policy loading - development dashboard
 
 The guided form reads the existing NAS snapshot on explicit request, validates
