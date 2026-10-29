@@ -572,10 +572,14 @@ The [M1.3b recovery design](src/phantowd-api/internal/revisionstore/RECOVERY-DES
 defines proposed bounded intent/receipt records, read-only matching, ordered work
 packets and interruption/refusal tests. It distinguishes recorded local commit
 confirmation from client acknowledgement and preserves current bootstrap/Owner
-boundaries. Schema approval, a retained evidence collector, writer/reconciliation,
-complete state-bundle provisioning and physical placement remain outstanding.
-No journal, automatic recovery, HTTP surface or service activation is added by
-this documentation checkpoint.
+boundaries. The adopted six-role NAS format now has an internal retained
+read-only collector: fixed header/current/pending/intent/receipt/base roles,
+complete bounded census, strict reads and original root/lock/watch retention.
+Linux tests cover metadata/header/orphan refusals, absence and byte preservation,
+cancellation, writable-open review and descriptor/close lifetimes. A controlled
+premature-watch close is not a real I/O fault. Cross-mount/foreign-owner faults,
+writer/reconciliation, complete state-bundle provisioning and physical placement
+remain outstanding. No automatic recovery, HTTP or service activation is added.
 
 ## Retained policy bootstrap authority — read-only lifetime only
 
