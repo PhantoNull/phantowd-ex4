@@ -9,6 +9,9 @@ trusted codecs, file sync, one rename and directory sync. It never imports old
 formats, promotes pending state or treats corruption as empty configuration.
 `Store` remains the original snapshot/transaction API.
 
+`OpenNASEvidenceAuthority` adds a separate read-only six-role NAS observer.
+Full fault qualification, recovery and boot admission remain open; Store/bootstrap is unchanged.
+
 A fixed trusted codec may check decoded current/candidate transitions under the
 store lock, after revision matching and before pending-file inspection/cleanup.
 Refusal returns `ErrInvalid` without changing current or pending evidence;
