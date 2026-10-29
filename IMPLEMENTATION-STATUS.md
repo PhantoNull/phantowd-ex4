@@ -612,6 +612,9 @@ and binds exact bytes/uint64 revisions. No ID allocator, file write, historical
 ID-reuse check or receipt-publication authority is provided by this codec.
 The existing nine-case synthetic QEMU observer now consumes this encoder's
 records instead of hand-built tuples; its readiness contract is unchanged.
+An internal bounded event fence now checks actual stage/receipt-retirement
+queues, split rename pairs and malformed/foreign/incomplete refusal paths.
+It provides no writer attribution, mutable epoch, transaction or admission.
 
 ## Retained policy bootstrap authority — read-only lifetime only
 
