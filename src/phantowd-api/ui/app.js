@@ -1280,4 +1280,7 @@ byId("iscsi-document").addEventListener("input", () => retireISCSIPreview());
 byId("iscsi-clear").addEventListener("click", clearISCSIPreview);
 byId("iscsi-draft-add").addEventListener("click", event => submitISCSIPreview(event, true));
 byId("iscsi-review-save").addEventListener("click", reviewISCSIDraftSave);
-for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).addEventListener("input", () => retireISCSIPreview());
+for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).addEventListener("input", () => {
+  if (field === "action") byId("iscsi-draft-lun-number").value = byId("iscsi-draft-action").value === "lun" ? "" : "0";
+  retireISCSIPreview();
+});
