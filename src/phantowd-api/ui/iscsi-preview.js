@@ -9,6 +9,8 @@ const iscsiPreviewState = { operation: null, staged: null, origin: null };
 const iscsiDraftFields = Object.freeze(["name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref", "action", "lun-number"]);
 const iscsiDraftDefaults = Object.freeze({ "block-size": "512", allocation: "sparse", access: "ro", auth: "chap", action: "target", "lun-number": "0" });
 
+const iscsiEditFields = Object.freeze(["mode", "target-id", "name", "state", "lun-id", "initiator", "access"]);
+
 function syncISCSIDraftMode() {
   const extra = byId("iscsi-draft-action").value === "lun";
   byId("iscsi-draft-lun-number").disabled = !extra;
@@ -28,6 +30,8 @@ function retireISCSIPreview(clearInput = false) {
   byId("iscsi-draft-add").disabled = false;
   byId("iscsi-draft-add").removeAttribute("aria-busy");
   byId("iscsi-draft-fields").disabled = false;
+  byId("iscsi-edit-submit").disabled = false; byId("iscsi-edit-submit").removeAttribute("aria-busy");
+  byId("iscsi-edit-fields").disabled = false;
   byId("iscsi-review-save").disabled = true;
   if (staged) { policyGeneration++; invalidateServiceDraft(); }
   if (clearInput || iscsiPreviewState.origin?.text !== byId("iscsi-document").value) iscsiPreviewState.origin = null;
@@ -36,6 +40,7 @@ function retireISCSIPreview(clearInput = false) {
   if (clearInput) {
     byId("iscsi-document").value = "";
     for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).value = iscsiDraftDefaults[field] ?? "";
+    for (const field of iscsiEditFields) byId(`iscsi-edit-${field}`).value = "";
   }
   syncISCSIDraftMode();
   setText("iscsi-status", "No current preview. Nothing was saved or activated.");
@@ -51,7 +56,7 @@ async function loadISCSIPolicy() {
     const original = byId("iscsi-document").value;
     const operation = { controller: serviceState.controller, timer: null };
     iscsiPreviewState.operation = operation;
-    for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields"]) byId(id).disabled = true;
+    for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields", "iscsi-edit-submit", "iscsi-edit-fields"]) byId(id).disabled = true;
     syncNASRestoreControls();
     setText("iscsi-status", "Reading saved policy. The draft is replaced only after validation.");
     try {
@@ -77,7 +82,7 @@ async function loadISCSIPolicy() {
     } finally {
       if (iscsiPreviewState.operation === operation) {
         iscsiPreviewState.operation = null;
-        for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields"]) byId(id).disabled = false;
+        for (const id of ["iscsi-submit", "iscsi-draft-add", "iscsi-draft-fields", "iscsi-edit-submit", "iscsi-edit-fields"]) byId(id).disabled = false;
         syncNASRestoreControls();
       }
     }
@@ -153,6 +158,61 @@ function buildISCSIDraft(text, fields) {
   if (new TextEncoder().encode(candidate).byteLength > 656128) invalid();
   return { text: candidate, revision: String(c.revision), targetID, targets: p.targets.length, backings: p.backings.length,
     extra, lun, backing, initiator: fields.initiator };
+}
+
+function iscsiEditProjection(value, policy = false) {
+  const p = policy ? value.iscsi : value;
+  return { revision: String(value.revision), smb_definitions: policy ? value.file_services.shares.shares.length : value.smb_definitions,
+    nfs_definitions: policy ? value.file_services.nfs.exports.length : value.nfs_definitions,
+    backings: p.backings.map(b => ({ id: b.id, volume_id: b.volume_id, relative_path: b.relative_path,
+      capacity_bytes: String(b.capacity_bytes), block_size: b.block_size, allocation: b.allocation })),
+    targets: p.targets.map(t => ({ id: t.id, name: t.name, desired_state: policy ? t.state : t.desired_state,
+      luns: t.luns.map(l => ({ id: l.id, number: l.number, backing_id: l.backing_id, access: l.access })),
+      initiators: t.initiators.map(p => ({ name: p.name, desired_authentication: policy ? p.authentication.mode : p.desired_authentication,
+        grants: p.grants.map(g => ({ lun_id: g.lun_id, access: g.access })) })) })) };
+}
+
+// One scoped desired-state edit. Like additions, the exact ORIGINAL text must
+// pass the existing strict server decoder before this candidate is submitted.
+function buildISCSIEdit(text, fields) {
+  const invalid = () => { throw new Error("Invalid guided iSCSI edit"); };
+  const c = JSON.parse(text, (_key, value) => {
+    if (typeof value === "number" && !Number.isSafeInteger(value)) invalid();
+    return value;
+  });
+  const p = c?.iscsi, fs = c?.file_services;
+  if (c?.format !== "phantowd-nas-service-config" || c.schema_version !== 1 || !Number.isSafeInteger(c.revision) || c.revision < 1 ||
+      !Number.isSafeInteger(c.revision + 1) || !Array.isArray(p?.targets) || p.targets.length > 16 ||
+      !Array.isArray(p?.backings) || p.backings.length > 64 || !fs?.shares || !fs?.nfs) invalid();
+  for (const key of iscsiEditFields) if (typeof fields[key] !== "string" || fields[key].length > 1024 || /[\u0000-\u001f\u007f]/.test(fields[key])) invalid();
+  const selected = p.targets.filter(t => t.id === fields["target-id"] && t.name === fields.name);
+  if (selected.length !== 1 || !["target-state", "lun-access", "grant-access"].includes(fields.mode)) invalid();
+  const target = selected[0];
+  if (fields.mode === "target-state") {
+    if (!["enabled", "disabled"].includes(fields.state) || target.state === fields.state) invalid();
+    target.state = fields.state;
+  } else {
+    if (target.state !== "disabled" || !["ro", "rw"].includes(fields.access)) invalid();
+    const luns = target.luns.filter(l => l.id === fields["lun-id"]);
+    if (luns.length !== 1) invalid();
+    const lun = luns[0];
+    if (fields.mode === "lun-access") {
+      // Never silently downgrade grants. Request those edits explicitly first.
+      if (lun.access === fields.access || (fields.access === "ro" && target.initiators.some(p => p.grants.some(g => g.lun_id === lun.id && g.access === "rw")))) invalid();
+      lun.access = fields.access;
+    } else {
+      const peers = target.initiators.filter(p => p.name === fields.initiator);
+      if (peers.length !== 1 || (lun.access === "ro" && fields.access === "rw")) invalid();
+      const grants = peers[0].grants.filter(g => g.lun_id === lun.id);
+      if (grants.length !== 1 || grants[0].access === fields.access) invalid();
+      grants[0].access = fields.access;
+    }
+  }
+  c.revision++;
+  fs.revision = fs.shares.revision = fs.nfs.revision = fs.nfs.volume_revision = p.revision = p.volume_revision = c.revision;
+  const candidate = JSON.stringify(c);
+  if (new TextEncoder().encode(candidate).byteLength > 656128) invalid();
+  return { text: candidate, expected: iscsiEditProjection(c, true) };
 }
 
 function validateISCSIPreview(value) {
@@ -233,7 +293,7 @@ function renderISCSIPreview(value) {
   byId("iscsi-result").hidden = false;
 }
 
-async function submitISCSIPreview(event, draft = false) {
+async function submitISCSIPreview(event, draft = false, edit = false) {
   event?.preventDefault();
   if (iscsiPreviewState.operation) return;
   retireISCSIPreview();
@@ -242,15 +302,16 @@ async function submitISCSIPreview(event, draft = false) {
     setText("iscsi-status", "Provide one complete coherent NAS policy, at most 656128 UTF-8 bytes. Nothing was sent."); return;
   }
   let candidate;
-  if (draft) {
-    try { candidate = buildISCSIDraft(text, Object.fromEntries(iscsiDraftFields.map(field => [field, byId(`iscsi-draft-${field}`).value]))); }
+  if (draft || edit) {
+    try { candidate = edit ? buildISCSIEdit(text, Object.fromEntries(iscsiEditFields.map(field => [field, byId(`iscsi-edit-${field}`).value])))
+      : buildISCSIDraft(text, Object.fromEntries(iscsiDraftFields.map(field => [field, byId(`iscsi-draft-${field}`).value]))); }
     catch { setText("iscsi-status", "Guided draft refused. Check the complete policy, exact safe integers and proposed fields. The original text is unchanged; nothing was sent."); return; }
   }
   const operation = { controller: new AbortController(), timer: null };
   iscsiPreviewState.operation = operation;
   syncNASRestoreControls();
   const signal = operation.controller.signal;
-  const current = () => iscsiPreviewState.operation === operation && !signal.aborted;
+  const current = () => iscsiPreviewState.operation === operation && !signal.aborted && byId("iscsi-document").value === text;
   const canceled = () => { const e = new Error("iSCSI preview canceled"); e.name = "AbortError"; return e; };
   const ensureCurrent = () => { if (!current()) throw canceled(); };
   const request = async (path, options = {}) => {
@@ -264,6 +325,8 @@ async function submitISCSIPreview(event, draft = false) {
   byId("iscsi-submit").disabled = true; byId("iscsi-submit").setAttribute("aria-busy", "true");
   byId("iscsi-draft-add").disabled = true; byId("iscsi-draft-add").setAttribute("aria-busy", "true");
   byId("iscsi-draft-fields").disabled = true;
+  byId("iscsi-edit-submit").disabled = true; byId("iscsi-edit-submit").setAttribute("aria-busy", "true");
+  byId("iscsi-edit-fields").disabled = true;
   setText("iscsi-status", "Validating submitted definitions only…");
   operation.timer = setTimeout(() => operation.controller.abort(), 10000);
   let abort;
@@ -282,11 +345,15 @@ async function submitISCSIPreview(event, draft = false) {
       let value = await review(text);
       if (candidate) {
         value = await review(candidate.text);
-        const target = value.targets.find(t => t.id === candidate.targetID), backing = value.backings.find(b => b.id === candidate.backing.id);
-        if (value.revision !== candidate.revision || value.targets.length !== candidate.targets || value.backings.length !== candidate.backings ||
-            target?.desired_state !== "disabled" || !target.luns.some(l => Object.keys(candidate.lun).every(k => l[k] === candidate.lun[k])) ||
-            !target.initiators.some(p => p.name === candidate.initiator && p.grants.some(g => g.lun_id === candidate.lun.id && g.access === candidate.lun.access)) ||
-            !backing || Object.keys(candidate.backing).some(k => backing[k] !== (k === "capacity_bytes" ? String(candidate.backing[k]) : candidate.backing[k]))) throw new Error("Draft preview mismatch");
+        if (edit) {
+          if (JSON.stringify(iscsiEditProjection(value)) !== JSON.stringify(candidate.expected)) throw new Error("Edit preview mismatch");
+        } else {
+          const target = value.targets.find(t => t.id === candidate.targetID), backing = value.backings.find(b => b.id === candidate.backing.id);
+          if (value.revision !== candidate.revision || value.targets.length !== candidate.targets || value.backings.length !== candidate.backings ||
+              target?.desired_state !== "disabled" || !target.luns.some(l => Object.keys(candidate.lun).every(k => l[k] === candidate.lun[k])) ||
+              !target.initiators.some(p => p.name === candidate.initiator && p.grants.some(g => g.lun_id === candidate.lun.id && g.access === candidate.lun.access)) ||
+              !backing || Object.keys(candidate.backing).some(k => backing[k] !== (k === "capacity_bytes" ? String(candidate.backing[k]) : candidate.backing[k]))) throw new Error("Draft preview mismatch");
+        }
       }
       renderISCSIPreview(value);
       if (candidate) {
@@ -295,7 +362,7 @@ async function submitISCSIPreview(event, draft = false) {
         byId("iscsi-document").value = candidate.text;
         iscsiPreviewState.origin = iscsiPreviewState.staged = { baseline, text: candidate.text };
       }
-      setText("iscsi-status", candidate ? `${candidate.extra ? "Additional LUN staged; existing authentication retained" : "Disabled target staged"} in this draft only. Nothing was saved, created, opened or activated.` : "Desired definitions reviewed. Nothing was saved, opened or activated.");
+      setText("iscsi-status", candidate ? `${edit ? "Selected desired edit staged" : candidate.extra ? "Additional LUN staged; existing authentication retained" : "Disabled target staged"} in this draft only. Nothing was saved, created, opened or activated.` : "Desired definitions reviewed. Nothing was saved, opened or activated.");
     };
     await new Promise((resolve, reject) => {
       abort = () => reject(canceled());
@@ -316,6 +383,8 @@ async function submitISCSIPreview(event, draft = false) {
       byId("iscsi-submit").disabled = false; byId("iscsi-submit").removeAttribute("aria-busy");
       byId("iscsi-draft-add").disabled = false; byId("iscsi-draft-add").removeAttribute("aria-busy");
       byId("iscsi-draft-fields").disabled = false;
+      byId("iscsi-edit-submit").disabled = false; byId("iscsi-edit-submit").removeAttribute("aria-busy");
+      byId("iscsi-edit-fields").disabled = false;
       syncISCSIDraftMode();
       syncNASRestoreControls();
     }
