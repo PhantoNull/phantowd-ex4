@@ -604,8 +604,8 @@ complete writer/reconciliation, state-bundle provisioning and physical placement
 remain outstanding. No automatic recovery, HTTP or service activation is added.
 The adopted writer direction retains the latest operation set. A private
 fixed-role publication primitive preserves pending evidence and verifies exact
-readback; it has no caller in product code. The ordered retained coordinator,
-watch accounting, transition validation and full fault campaign remain open.
+readback. A private ordered writer now composes capture, events and encoding;
+product composition, interruption/fault qualification and own-head gates remain open.
 Pure NAS operation encoding now reuses the existing record codec and retained
 NFS binding rule, rejects invalid/nonconsecutive pairs without partial output,
 and binds exact bytes/uint64 revisions. No ID allocator, file write, historical
