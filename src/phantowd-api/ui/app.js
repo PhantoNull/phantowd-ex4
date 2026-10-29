@@ -1284,3 +1284,6 @@ for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).addEventListe
   if (field === "action") byId("iscsi-draft-lun-number").value = byId("iscsi-draft-action").value === "lun" ? "" : "0";
   retireISCSIPreview();
 });
+
+byId("iscsi-edit-submit").addEventListener("click", event => submitISCSIPreview(event, false, true));
+for (const field of iscsiEditFields) byId(`iscsi-edit-${field}`).addEventListener("input", () => retireISCSIPreview());

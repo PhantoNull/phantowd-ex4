@@ -66,6 +66,10 @@ With the optional NAS-policy channel, staged additions enter the existing full
 configuration review and explicit save. The saved baseline must still match;
 unrelated changes are refused and uncertain replies require manual reconciliation.
 Saving definitions never creates backing files, provisions secrets or starts targets.
+The same review/save flow supports scoped desired target-state, LUN-access and
+existing-peer grant changes. LUN/grant edits require a disabled definition;
+read/write grants must be explicitly reduced before a LUN becomes read-only.
+Desired state changes do not start, stop or revoke a target.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
