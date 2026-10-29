@@ -547,6 +547,7 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
 fi
 
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
+require_triggered_path "$host_workflow" 'src/phantowd-api/internal/naspolicyevidence/**'
 for path in support/tests/revisionstore-media-init.sh \
     support/tests/test-revisionstore-media-log.sh support/tests/verify-revisionstore-media-log.awk; do
     require_ignored_path "$stage_b3_workflow" "$path"

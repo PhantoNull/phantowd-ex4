@@ -110,6 +110,10 @@ rewrites the header or resets a watch. A retained coordinator must still validat
 policy transitions (including NFS bindings), authorize replacements, account for
 its own events and preserve review across all stages. The complete ordered
 base/intent/prior-receipt retirement/current/receipt transaction is not wired.
+The pure NAS `EncodeOperation` prepares bounded metadata using the strict
+existing records, exact policy hashes/revisions and retained NFS source checks.
+Prepared receipt bytes are not confirmation: ID allocation/reuse checks and
+the publication order remain obligations of that future retained coordinator.
 
 ## Follow-up coordinator: requirements, not an implementation
 
