@@ -24,6 +24,33 @@ class LIOResult(unittest.TestCase):
             markers += result.IDLE_MARKERS
         return ("ordinary boot log\n" + "\n".join(markers) + "\n").encode()
 
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux regular-image tools required; no guest boot")
+    def test_actual_runner_replaces_api_without_allocating_a_duplicate(self):
+        completed = subprocess.run(
+            ["sh", str(ROOT / "support/tests/test-qemu-lio-image-injection.sh"), str(ROOT)],
+            capture_output=True, text=True, timeout=20, check=True,
+        )
+        self.assertIn("actual injection verified, guest and validator stubbed", completed.stdout)
+
+    def test_ordered_policy_requires_real_client_exclusion_and_matching_receipt(self):
+        marker = "PHANTOWD_LIO_ORDERED_POLICY_READY original_owner=true ordered_writer=true client_rw=verified " \
+                 "update_while_running=busy commit_after_teardown=true receipt=verified kernel_backend=lio " \
+                 "activation=true scope=disposable-qemu-only"
+        self.assertIn(marker, result.IDLE_MARKERS)
+        good = self.valid(idle=True)
+        result.validate(good, idle_guard=True)
+        for old, new in (("original_owner=true", "original_owner=false"),
+                         ("ordered_writer=true", "ordered_writer=false"),
+                         ("client_rw=verified", "client_rw=unknown"),
+                         ("update_while_running=busy", "update_while_running=committed"),
+                         ("commit_after_teardown=true", "commit_after_teardown=false"),
+                         ("receipt=verified", "receipt=missing"),
+                         ("kernel_backend=lio", "kernel_backend=fake"),
+                         ("activation=true", "activation=false"),
+                         ("scope=disposable-qemu-only", "scope=product")):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), marker.replace(old, new).encode()), idle_guard=True)
+
     def test_idle_mode_matrix_refuses_missing_duplicate_weakened_or_wrong_profile(self):
         for strict in (False, True):
             good = self.valid(strict, idle=True)

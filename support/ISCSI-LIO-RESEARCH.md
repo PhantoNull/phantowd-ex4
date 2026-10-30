@@ -6,6 +6,10 @@ initiators. The original single-peer fixture now also checks two simultaneous
 peers with independent credentials/grants. No NAS, physical device, host port
 forwarding or product activation.
 
+The runner replaces the package-owned API in its temporary image rather than
+allocating a second binary copy. Each injected file is read back and compared;
+the original image remains read-only and its hashes are checked before/after.
+
 ## Source findings
 
 The pinned Linux version in `versions.env` contains LIO/FILEIO. The current
