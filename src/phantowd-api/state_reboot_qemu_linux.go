@@ -56,8 +56,11 @@ func runQEMUStateTest(phase string) (result error) {
 		return err
 	}
 	source := os.NewFile(uintptr(fd), "qemu-state-disk")
-	var mounted bool
+	var mounted, retainNFS bool
 	defer func() {
+		if retainNFS {
+			return // Original source/mount/guard remain in the failed NFS lifetime.
+		}
 		// Keep the verified block-device descriptor pinned through fixture work,
 		// then close it before unmounting: an open source-device FD can keep the
 		// kernel block device busy even after the filesystem is otherwise idle.
@@ -100,9 +103,11 @@ func runQEMUStateTest(phase string) (result error) {
 	if err != nil {
 		return err
 	}
-	if err := guard.Close(); err != nil {
-		return err
-	}
+	defer func() {
+		if !retainNFS {
+			result = errors.Join(result, guard.Close())
+		}
+	}()
 	if err := exerciseQEMUStatePersistence(qemuStateAnchor, phase); err != nil {
 		return fmt.Errorf("state persistence %s: %w", phase, err)
 	}
@@ -111,6 +116,12 @@ func runQEMUStateTest(phase string) (result error) {
 	}
 	if phase == "verify" {
 		fmt.Println("PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only")
+	}
+	nfs := &qemuNFSReboot{source: source, mount: guard}
+	if err := nfs.run(phase); err != nil {
+		retainNFS = true
+		qemuNFSRebootRetained = append(qemuNFSRebootRetained, nfs)
+		return fmt.Errorf("NFS persistence %s: %w", phase, err)
 	}
 	return nil
 }
