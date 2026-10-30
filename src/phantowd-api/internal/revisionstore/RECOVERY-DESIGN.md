@@ -216,6 +216,19 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 - Define installation provisioning/replacement and anti-rollback expectations;
   opaque random IDs alone do not solve ownership, cloning or rollback.
 
+## Owner-capable bootstrap handoff
+
+`OpenNASOwnerBootstrap` is a separate trusted-parent capability; existing
+read-only observers cannot convert into it. After observation, explicit
+confirmation requires independently known exact policy bytes and separate
+consumer exclusion. It transfers the original root, flock and watch into the
+ordered Owner without closing or reopening the directory. The old bootstrap
+then refuses observation, confirmation and close; it cannot release the Owner.
+Pending evidence, wrong base, drift and uncertain cleanup retain review and
+original exclusion. Confirmation does not replay, repair or adopt observed data.
+The two-kernel NFS fixture exercises this handoff before actual service use.
+This is not full state-bundle admission, product startup or automatic recovery.
+
 ## Related contracts
 
 - [Current transaction/Owner/bootstrap boundaries](README.md).

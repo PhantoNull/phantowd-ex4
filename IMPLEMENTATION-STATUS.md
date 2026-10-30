@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Original bootstrap authority into the ordered NAS Owner
+
+A distinct owner-capable bootstrap now observes and explicitly confirms a
+separately known base while retaining the same directory/lock/watch. Existing
+read-only observers gain no admission method. The two-kernel NFS fixture uses
+the handoff before real client access and ordered publication. Refusals preserve
+evidence and exclusion; full state-bundle admission and recovery remain open.
+Local and exact-head hosted qualification must be recorded separately.
+
 ## NFS across two independent ARMv5 kernels
 
 The guarded state fixture now retains the original mounted synthetic medium and

@@ -33,13 +33,14 @@ var errQEMURebootNFS = errors.New("fixed NFS reboot fixture requires review")
 var qemuNFSRebootRetained []*qemuNFSReboot
 
 type qemuNFSReboot struct {
-	source *os.File
-	mount  *mountguard.Root
-	seed   *naspolicystore.Store
-	owner  *naspolicystore.Owner
-	lease  *naspolicystore.Lease
-	reader *revisionstore.NASEvidenceAuthority
-	rev    uint64
+	source    *os.File
+	mount     *mountguard.Root
+	seed      *naspolicystore.Store
+	owner     *naspolicystore.Owner
+	lease     *naspolicystore.Lease
+	reader    *revisionstore.NASEvidenceAuthority
+	bootstrap *naspolicystore.OwnerBootstrap
+	rev       uint64
 }
 
 func qemuNFSRebootPolicy(rev uint64) naspolicy.Config {
@@ -91,9 +92,19 @@ func (b *qemuNFSReboot) policy(ctx context.Context, root, phase string) error {
 	if err != nil {
 		return err
 	}
-	b.owner, err = naspolicystore.OpenConfirmedOwner(ctx, dir, qemuNFSRebootInstallation, expected)
+	b.bootstrap, err = naspolicystore.OpenOwnerBootstrap(ctx, dir, qemuNFSRebootInstallation)
 	if err != nil {
 		return err
+	}
+	if _, err = b.bootstrap.Observe(ctx); err != nil {
+		return err
+	}
+	b.owner, err = b.bootstrap.Confirm(ctx, expected)
+	if err != nil {
+		return err
+	}
+	if !errors.Is(b.bootstrap.Close(), naspolicystore.ErrClosed) {
+		return errQEMURebootNFS
 	}
 	b.lease, err = b.owner.Acquire(ctx, b.rev)
 	return err
@@ -170,7 +181,7 @@ func (b *qemuNFSReboot) run(phase string) error {
 		return errQEMURebootNFS
 	}
 	if phase == "verify" {
-		fmt.Println("PHANTOWD_NFS_REBOOT_READY boots=2 protocol=nfs3 transport=tcp kernel_backend=true activation=true read=true write=sync-verified previous_bytes=true original_policy=true ordered_writer=true receipt=verified teardown=clean scope=clean-qemu-reboot-only")
+		fmt.Println("PHANTOWD_NFS_REBOOT_READY boots=2 protocol=nfs3 transport=tcp kernel_backend=true activation=true read=true write=sync-verified previous_bytes=true original_policy=true ordered_writer=true bootstrap_handoff=original receipt=verified teardown=clean scope=clean-qemu-reboot-only")
 	}
 	return nil
 }
