@@ -165,11 +165,7 @@ func main() {
 	if os.Geteuid() == 0 {
 		log.Fatal("refusing to serve as root")
 	}
-	stateDir, err := configuredAccountStateDirectory(os.Getenv("PHANTOWD_STATE_DIR"))
-	if err != nil {
-		log.Fatal("account state directory is not configured")
-	}
-	accounts, err := openAccountStore(stateDir)
+	accounts, err := openConfiguredAccountStore(os.Getenv("PHANTOWD_STATE_DIR"), os.Getenv("PHANTOWD_STATE_FD"))
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
 	}

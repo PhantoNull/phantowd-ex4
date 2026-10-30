@@ -357,6 +357,28 @@ class BuildFeedbackTests(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, accepted)
                 self.assertEqual(result.stdout, b"")
 
+    def test_inherited_admin_directory_requires_exact_unique_receipt(self):
+        marker = ("PHANTOWD_ADMIN_STATE_GRANT_READY standard_main=true "
+                  "modes=directory-fd,path api_uid=65534 private_parent=denied "
+                  "credentials_retained=true original_directory=true "
+                  "scope=disposable-qemu-only")
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(row.strip() for row in source.splitlines()
+                    if row.strip().startswith("if ! ") and marker in row)
+        command = line[len("if ! "):-len("; then")]
+        cases = [(marker + "\n", True), (marker + "\r\n", True), ("", False),
+                 ((marker + "\n") * 2, False), ("prefix " + marker + "\n", False),
+                 (marker + " suffix\n", False), (marker[:-1] + "\n", False),
+                 (marker.replace("private_parent=denied", "private_parent=allowed") + "\n", False)]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for payload, accepted in cases:
+                log.write_bytes(payload.encode("ascii"))
+                result = subprocess.run(["sh", "-c", command], capture_output=True,
+                                        env={**os.environ, "log_file": str(log)}, timeout=3)
+                self.assertEqual(result.returncode == 0, accepted)
+                self.assertEqual(result.stdout, b"")
+
     def test_ordered_nfs_activation_requires_exact_unique_receipt(self):
         marker = (
             "PHANTOWD_NFS_ORDERED_POLICY_READY original_owner=true "
