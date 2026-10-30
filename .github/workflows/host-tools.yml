@@ -277,6 +277,7 @@ jobs:
         working-directory: src/phantowd-api
         run: |
           GOPROXY=off GOTOOLCHAIN=local GOFLAGS=-mod=vendor go test -race -tags=qemu -count=3 ./internal/revisionstore
+          GOPROXY=off GOTOOLCHAIN=local GOFLAGS=-mod=vendor go test -race -tags=qemu -count=3 -run '^TestQEMUNFSReboot' .
           bash ../../support/tests/test-revisionstore-media-log.sh ../..
 
       - name: Verify host-tool packages

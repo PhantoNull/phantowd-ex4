@@ -3,6 +3,17 @@
 
 # Implementation status
 
+## NFS across two independent ARMv5 kernels
+
+The guarded state fixture now retains the original mounted synthetic medium and
+confirmed ordered NAS policy while the real NFSD controller serves NFSv3/TCP.
+Both boots verify client read/write/fsync, live-policy update exclusion and
+complete teardown before publication; the second reads the first boot's bytes.
+Missing or unexpected policy refuses without initialization or repair. Local
+two-boot and ordinary controller/separate-client overlays pass; own-head hosted
+qualification remains required. This is clean-reboot fixture evidence, not
+product bootstrap, ordinary-unclean automatic recovery or EX4 qualification.
+
 ## Separate NFS client - disposable ARMv5 guests
 
 The smoke uses the existing retained controller with a fixed peer-only profile.

@@ -37,6 +37,31 @@ def make_target_position(script, target):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_nfs_reboot_gate_accepts_crlf_and_requires_one_exact_row(self):
+        script = (ROOT / "support/qemu-state-reboot.sh").read_text()
+        gate = script[script.index("nfs_reboot="):]
+        marker = re.search(r"nfs_reboot='([^']+)'", gate).group(1).encode()
+        cases = [(b"", False), (marker + b"\n", True),
+                 (marker + b"\r\n", True),
+                 (marker + b"\n" + marker + b"\r\n", False),
+                 (marker + b" extra\n", False), (marker[:-1] + b"\n", False),
+                 (marker[:20] + b"\r" + marker[20:] + b"\n", False)]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for data, accepted in cases:
+                with self.subTest(data=data):
+                    log.write_bytes(data)
+                    result = subprocess.run(
+                        ["sh", "-eu", "-c", "log=$1\n" + gate,
+                         "nfs-proof-gate", str(log)],
+                        capture_output=True, text=True)
+                    self.assertEqual(result.returncode == 0, accepted)
+                    if accepted:
+                        self.assertIn("PHANTOWD_STATE_REBOOT_READY", result.stdout)
+                    else:
+                        self.assertIn("NFS two-kernel controller/policy proof missing or repeated",
+                                      result.stderr)
+
     def test_reproducibility_full_builder_receives_fixture_scratch(self):
         step = workflow_step(
             "Boot and original integration fixtures (45 minute ceiling)",
