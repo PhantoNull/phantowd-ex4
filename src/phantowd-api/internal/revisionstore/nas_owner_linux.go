@@ -20,6 +20,10 @@ import (
 // Lock order: Owner.mu, then the writer's retention.mu. No watch is replaced.
 func OpenConfirmedNASOwner(ctx context.Context, directory, installation string, confirmed []byte) (*OwnedStore[naspolicy.Config], error) {
 	w, openErr := openNASWriter(ctx, directory, installation, confirmed, systemNASWriterBackend())
+	return ownNASWriter(ctx, w, openErr)
+}
+
+func ownNASWriter(ctx context.Context, w *nasWriter, openErr error) (*OwnedStore[naspolicy.Config], error) {
 	if w == nil {
 		return nil, openErr
 	}

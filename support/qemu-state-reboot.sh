@@ -71,7 +71,7 @@ grep -F 'PHANTOWD_ADMIN_CREDENTIALS_READY after_reboot=true legacy_preserved=tru
 grep -F 'PHANTOWD_ADMIN_BACKEND_READY after_reboot=true backend=transactional-store login_verified=true scope=qemu-handler-dispatch-only' "$log" >/dev/null
 grep -F 'PHANTOWD_PASSWORD_REBOOT_READY changed_via=authenticated-handler legacy_and_native=true old_password_denied=true scope=clean-qemu-reboot-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only' "$log" >/dev/null
-nfs_reboot='PHANTOWD_NFS_REBOOT_READY boots=2 protocol=nfs3 transport=tcp kernel_backend=true activation=true read=true write=sync-verified previous_bytes=true original_policy=true ordered_writer=true receipt=verified teardown=clean scope=clean-qemu-reboot-only'
+nfs_reboot='PHANTOWD_NFS_REBOOT_READY boots=2 protocol=nfs3 transport=tcp kernel_backend=true activation=true read=true write=sync-verified previous_bytes=true original_policy=true ordered_writer=true bootstrap_handoff=original receipt=verified teardown=clean scope=clean-qemu-reboot-only'
 if [ "$(awk -v marker="$nfs_reboot" '{ sub(/\r$/, ""); if ($0 == marker) n++ } END { print n+0 }' "$log")" != 1 ]; then
     echo 'NFS two-kernel controller/policy proof missing or repeated' >&2
     exit 1
