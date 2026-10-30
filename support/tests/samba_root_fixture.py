@@ -13,7 +13,12 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
              "exit", "held", "file", "file-source")
-FOCUSED_CAMPAIGNS = CAMPAIGNS
+FOCUSED_CAMPAIGNS = CAMPAIGNS + ("persistent",)
+PERSISTENT_MARKER = ("PHANTOWD_SAMBA_OWNER_PERSISTENT_STATE_READY "
+                     "ext4_private_state=true tmpfs_runtime=true "
+                     "original_inputs=true authenticated=true "
+                     "wrong_password_denied=true stopped_reaped=true "
+                     "no_fd_leak=true reboot=false scope=qemu-only")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -319,6 +324,9 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
+        "persistent": census + (
+            MARKERS[enrollment], PERSISTENT_MARKER,
+            "PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE"),
         "candidate": (census + (MARKERS[enrollment], planned)
                       + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
         "lifecycle": (census + (MARKERS[enrollment], MARKERS[-4],

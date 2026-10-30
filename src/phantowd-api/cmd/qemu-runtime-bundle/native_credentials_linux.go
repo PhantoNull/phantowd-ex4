@@ -37,10 +37,11 @@ const (
 	nativePendingClientCampaignQEMU
 	nativePendingPeerExitCampaignQEMU
 	nativePendingHandleCampaignQEMU
+	nativePersistentCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePendingHandleCampaignQEMU {
+	if campaign > nativePersistentCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -153,7 +154,30 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		}
 		callers = append(callers, os.NewFile(uintptr(fd), "native-credential-authority-caller"))
 	}
-	runtime, err := plan.NewNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], lookup)
+	var runtime *runtimebundle.NativeSambaRuntimeQEMU
+	if campaign == nativePersistentCampaignQEMU {
+		for _, wrong := range []*os.File{nil, callers[2]} {
+			refused, refusal := plan.NewPersistentNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], wrong, lookup)
+			if refused != nil || refusal == nil {
+				return errors.New("native persistent profile accepted missing or tmpfs backing root")
+			}
+		}
+		const persistent = "/run/phantowd-samba-source/native-state"
+		for _, name := range []string{persistent, persistent + "/private", persistent + "/state"} {
+			if err := os.Mkdir(name, 0700); err != nil {
+				return err
+			}
+		}
+		fd, openErr := unix.Open(persistent, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		if openErr != nil {
+			return openErr
+		}
+		grant := os.NewFile(uintptr(fd), "persistent-state-caller")
+		runtime, err = plan.NewPersistentNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], grant, lookup)
+		err = errors.Join(err, grant.Close())
+	} else {
+		runtime, err = plan.NewNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], lookup)
+	}
 	for _, caller := range callers {
 		err = errors.Join(err, caller.Close())
 	}
@@ -237,6 +261,35 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return fmt.Errorf("native enrollment phase completion: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
+	if campaign == nativePersistentCampaignQEMU {
+		probe, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := runtime.ProbeNativeDaemonQEMU(probe); err != nil {
+			return err
+		}
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		var stateFS unix.Statfs_t
+		info, err := os.Lstat("/run/phantowd-samba-source/native-state/private/passdb.tdb")
+		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 ||
+			unix.Statfs("/run/phantowd-samba-source/native-state/private", &stateFS) != nil || stateFS.Type != unix.EXT4_SUPER_MAGIC {
+			return errors.New("native persistent passdb missing from original ext4 state")
+		}
+		if _, err := os.Lstat(state + "/private/passdb.tdb"); !errors.Is(err, os.ErrNotExist) {
+			return errors.New("native passdb written to runtime placeholder")
+		}
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("native persistent state descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println("PHANTOWD_SAMBA_OWNER_PERSISTENT_STATE_READY ext4_private_state=true tmpfs_runtime=true original_inputs=true authenticated=true wrong_password_denied=true stopped_reaped=true no_fd_leak=true reboot=false scope=qemu-only")
+		return nil
+	}
 	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU || campaign == nativePendingHandleCampaignQEMU {
 		if err := owner.Close(); err != nil {
 			return err

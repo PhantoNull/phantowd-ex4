@@ -117,6 +117,9 @@ run_native_fixture() {
     elif [ "$campaign" = file-source ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-planned-file-source || return 1
         echo PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE
+    elif [ "$campaign" = persistent ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-persistent || return 1
+        echo PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE
     else
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
@@ -131,6 +134,7 @@ run_fixture() {
     case "$campaign" in
         phantowd_samba_campaign=service) campaign=service ;;
         phantowd_samba_campaign=native) campaign=native ;;
+        phantowd_samba_campaign=persistent) campaign=persistent ;;
         phantowd_samba_campaign=candidate) campaign=candidate ;;
         phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
         phantowd_samba_campaign=fault) campaign=fault ;;

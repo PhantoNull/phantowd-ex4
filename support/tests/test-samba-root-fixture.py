@@ -91,6 +91,29 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_persistent_state_profile_is_focused_and_keeps_old_union(self):
+        self.assertEqual(fixture.select_campaigns("persistent"),
+                         ("persistent",))
+        self.assertNotIn("persistent", fixture.select_campaigns("all"))
+        self.assertEqual(fixture.guest_timeout("persistent"), 180)
+
+    def test_persistent_state_receipt_is_exact_complete_and_scoped(self):
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = (*fixture.MARKERS[:3], CENSUS, enrollment,
+                fixture.PERSISTENT_MARKER,
+                "PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE", SCAN_COST)
+        log = "\n".join(rows)
+        fixture.check_campaign(log, "persistent")
+        fixture.check_campaign(log.replace("\n", "\r\n"), "persistent")
+        for bad in (log.replace(fixture.PERSISTENT_MARKER, ""),
+                    log + "\n" + fixture.PERSISTENT_MARKER,
+                    log.replace("ext4_private_state=true",
+                                "ext4_private_state=false"),
+                    log.replace("reboot=false", "reboot=true")):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign(bad, "persistent")
+
     def test_descriptor_data_proof_belongs_once_to_existing_data_guest(self):
         rows = campaign_rows()
         proof = next(row for row in fixture.MARKERS if row.startswith(

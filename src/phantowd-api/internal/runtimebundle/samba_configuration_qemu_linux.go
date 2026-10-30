@@ -363,7 +363,7 @@ func (o *Owner) verifyLiveSambaStateQEMU(pid int) error {
 		if err != nil {
 			return err
 		}
-		_, inspectErr := inspectSambaState(fd)
+		_, inspectErr := inspectSambaStateKind(fd, o.sambaState.persistentRole(name))
 		var fs unix.Statfs_t
 		fsErr := unix.Fstatfs(fd, &fs)
 		closeErr := unix.Close(fd)

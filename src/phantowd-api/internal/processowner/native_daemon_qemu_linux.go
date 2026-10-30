@@ -20,7 +20,11 @@ const nativeDaemonBootstrapMarker = "PHANTOWD_NATIVE_DAEMON_HANDOFF_READY inputs
 // inputs. The containing runtime separately qualifies their contents/roles and
 // revalidates the complete tuple immediately before and after launch.
 func NewNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File) (_ *PinnedSet, result error) {
-	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, nil)
+	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, nil, false)
+}
+
+func NewPersistentNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File) (*PinnedSet, error) {
+	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, nil, true)
 }
 
 // NewNativeSambaDataPinnedSetQEMU fixes a separate fourteen-input daemon ABI:
@@ -29,11 +33,17 @@ func NewNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5
 // This is a fixed disposable fixture profile, not product authorization or an
 // ExtraFiles option on generic launchers. Credential workers stay at twelve.
 func NewNativeSambaDataPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File, roots [2]*os.File) (_ *PinnedSet, result error) {
-	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, &roots)
+	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, &roots, false)
 }
 
-func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File, roots *[2]*os.File) (_ *PinnedSet, result error) {
+func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File, roots *[2]*os.File, persistent bool) (_ *PinnedSet, result error) {
+	if roots != nil && persistent {
+		return nil, ErrInvalid
+	}
 	name, argument := "native-samba", "native-server"
+	if persistent {
+		name, argument = "native-samba-persistent", "native-persistent-server"
+	}
 	if roots != nil {
 		name, argument = "native-samba-data", "native-data-server"
 	}
@@ -59,7 +69,7 @@ func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5
 		if index < 5 {
 			pin, err = duplicateNativeConfigurationModeQEMU(config[index], index == 0, index == 4)
 		} else {
-			pin, err = duplicateSambaStateDirectoryQEMU(state[index-5])
+			pin, err = duplicateNativeStateDirectoryQEMU(state[index-5], index-5, persistent)
 		}
 		if err != nil {
 			return nil, err
@@ -68,6 +78,9 @@ func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5
 		base := 0
 		if index >= 5 {
 			base = 5
+			if persistent && persistentSambaRoleQEMU(index-5) {
+				base = 6
+			}
 		}
 		if unix.Fstat(int(pin.Fd()), &identities[index]) != nil || identities[index].Dev != identities[base].Dev {
 			return nil, ErrInvalid
@@ -112,7 +125,7 @@ func (s *PinnedSet) CheckNativeSambaBootstrapQEMU(ctx context.Context) error {
 	marker := nativeDaemonBootstrapMarker
 	if len(s.pins) == 15 && s.set.members[0].name == "native-samba-data" {
 		marker = nativeDataBootstrapMarkerQEMU
-	} else if len(s.pins) != 13 || s.set.members[0].name != "native-samba" {
+	} else if len(s.pins) != 13 || (s.set.members[0].name != "native-samba" && s.set.members[0].name != "native-samba-persistent") {
 		return ErrInvalid
 	}
 	owner := s.set.members[0].owner
