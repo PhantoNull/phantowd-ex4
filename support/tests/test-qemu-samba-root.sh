@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
+    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|persistent|pending|pending-peer-exit|pending-handle) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -52,7 +52,7 @@ cleanup() {
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
         "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
-    rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
+    rm -f "$scratch/persistent.log" "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
     if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
@@ -219,6 +219,9 @@ if [ "$verified" -ne 1 ]; then
     exit 1
 fi
 done
+if [ "$selection" = persistent ] && [ -n "$failure_log" ]; then
+    cp "$scratch/persistent.log" "$failure_log"
+fi
 if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
     "$scratch/service.log" --native-log "$scratch/native.log" \
     --candidate-log "$scratch/candidate.log" \

@@ -193,7 +193,7 @@ func TestNativeLivePhasesInvalidInputsHaveNoEffects(t *testing.T) {
 }
 
 func TestOnlyNativeCredentialsSelectsQualificationProfile(t *testing.T) {
-	for campaign := nativeCredentialsCampaignQEMU; campaign <= nativePendingHandleCampaignQEMU; campaign++ {
+	for campaign := nativeCredentialsCampaignQEMU; campaign <= nativePersistentCampaignQEMU; campaign++ {
 		if got := nativeCredentialUsesQualificationQEMU(campaign); got != (campaign == nativeCredentialsCampaignQEMU) {
 			t.Fatalf("qualification profile escaped dedicated native campaign: %d %t", campaign, got)
 		}

@@ -1,7 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
 
-# Internal code-only runtime bundle inspection
+# Internal runtime bundle inspection and retained lifetimes
+
+The fixed persistent-state QEMU profile borrows a caller-qualified synthetic
+ext4 root for `private`/`state`, retaining readable originals and tmpfs runtime
+roles through native workers and the real daemon. Old tmpfs profiles remain.
+The focused guest checks authentication, refusal and verified closure, not
+cross-kernel recovery, media compatibility, product boot or a new state format.
 
 `DecodeNFSExpectedQEMU` consumes bounded six-entry NFS build metadata against
 a separately supplied expected root digest, returning only the existing inert
