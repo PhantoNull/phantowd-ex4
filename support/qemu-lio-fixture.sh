@@ -43,6 +43,7 @@ cp "$base/rootfs.ext2" "$temporary/rootfs.ext2"
 replace() {
     from=$1
     to=$2
+    debugfs -w -R "rm $to" "$temporary/rootfs.ext2" >/dev/null 2>&1
     debugfs -w -R "write $from $to" "$temporary/rootfs.ext2"
     debugfs -w -R "set_inode_field $to mode 0100755" "$temporary/rootfs.ext2"
     debugfs -R "dump $to $temporary/verify" "$temporary/rootfs.ext2"
@@ -50,7 +51,8 @@ replace() {
     rm "$temporary/verify"
 }
 replace "$client" /usr/libexec/phantowd-iscsi-fixture-client
-replace "$api" /usr/libexec/phantowd-lio-credential-fixture
+# Reuse the package-owned slot; a duplicate API can exhaust a complete image.
+replace "$api" /usr/bin/phantowd-api
 replace "$source_dir/support/fixtures/qemu-lio-init.sh" /usr/libexec/phantowd-lio-fixture-init
 set --
 if [ "$idle_guard" = 1 ]; then

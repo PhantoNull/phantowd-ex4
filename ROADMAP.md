@@ -2984,8 +2984,11 @@ support per tested combination; refuse untested combinations without mutation.
   durable recovery, startup and authenticated UI transactions be composed.
   Disabled snapshots are not atomic/continuous history proof; configured mutual
   credentials are not required-mutual enforcement or kernel memory erasure.
-- **M9.1f — retained-storage LIO composition (private prerequisite).** Capture
-  a validated immutable target definition; independently retain root-only
+- **M9.1f — retained-storage LIO composition (private prerequisite).**
+  The disposable target path retains the confirmed ordered NAS policy Owner;
+  valid updates stay busy during use, with receipt verification after teardown.
+  Product state admission and complete interruption qualification remain open.
+  Capture a validated immutable target definition; independently retain root-only
   configfs directories and every exact admitted LUN descriptor. Create NEW
   objects only and witness each directory/link before use/removal. Bind data
   through integer-only proc-FD values, never desired paths. Fixed typed CHAP

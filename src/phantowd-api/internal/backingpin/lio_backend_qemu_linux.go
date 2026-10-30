@@ -8,6 +8,7 @@ package backingpin
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,7 +21,9 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsicredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyevidence"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"golang.org/x/sys/unix"
 )
 
@@ -186,7 +189,29 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 	if err := errors.Join(commitErr, store.Close()); err != nil {
 		return err
 	}
-	policy, err := naspolicystore.OpenOwner(dir + "/policy")
+	// Independently known fresh synthetic provisioning, never legacy adoption.
+	const installation = "77777777777777777777777777777777"
+	confirmed, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	header := []byte(`{"format":"phantowd-nas-evidence-container","schema_version":1,"installation_id":"` + installation + `"}`)
+	f, err := os.OpenFile(dir+"/policy/nas-evidence.json", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	n, writeErr := f.Write(header)
+	if syncErr, closeErr := f.Sync(), f.Close(); n != len(header) || errors.Join(writeErr, syncErr, closeErr) != nil {
+		return ErrUnavailable
+	}
+	parent, err := os.Open(dir + "/policy")
+	if err != nil {
+		return err
+	}
+	if err := errors.Join(parent.Sync(), parent.Close()); err != nil {
+		return err
+	}
+	policy, err := naspolicystore.OpenConfirmedOwner(ctx, dir+"/policy", installation, confirmed)
 	if err != nil {
 		return err
 	}
@@ -251,6 +276,25 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 	}
 	if !errors.Is(policy.Close(), naspolicystore.ErrBusy) || !errors.Is(secrets.Close(), iscsicredentials.ErrBusy) || !errors.Is(lease.Close(), mountowner.ErrBusy) {
 		return ErrReview
+	}
+	next := p
+	next.Revision++
+	next.FileServices.Revision, next.FileServices.Shares.Revision = next.Revision, next.Revision
+	next.FileServices.NFS.Revision, next.FileServices.NFS.VolumeRevision = next.Revision, next.Revision
+	next.ISCSI.Revision, next.ISCSI.VolumeRevision = next.Revision, next.Revision
+	next.ISCSI.Targets = append([]iscsipolicy.Target(nil), p.ISCSI.Targets...)
+	next.ISCSI.Targets[0].State = "disabled"
+	if next.Validate() != nil || !errors.Is(policy.Commit(ctx, 1, next), naspolicystore.ErrBusy) {
+		return ErrReview
+	}
+	current, err := os.ReadFile(dir + "/policy/nas-services.json")
+	if err != nil || !bytes.Equal(current, confirmed) {
+		return ErrReview
+	}
+	for _, role := range []string{".nas-services.base", ".nas-services.intent", ".nas-services.receipt", ".nas-services.pending"} {
+		if _, err := os.Lstat(dir + "/policy/" + role); !errors.Is(err, os.ErrNotExist) {
+			return ErrReview
+		}
 	}
 	cmd := exec.CommandContext(ctx, "/usr/libexec/phantowd-iscsi-fixture-client", "owned-target")
 	cmd.Env, cmd.Dir = []string{"PATH=/usr/bin:/bin"}, "/run/phantowd-lio"
@@ -375,6 +419,29 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		if _, err := peer.Incoming.WriteTo(io.Discard); !errors.Is(err, iscsicredentials.ErrClosed) {
 			return ErrReview
 		}
+	}
+	if kind == "normal" {
+		// All original kernel consumers, backing FDs and credential claims are gone.
+		if err := policy.Commit(ctx, 1, next); err != nil {
+			return err
+		}
+		observed, err := policy.Snapshot(ctx)
+		if err != nil || observed.Revision != 2 || observed.ISCSI.Targets[0].State != "disabled" {
+			return ErrReview
+		}
+		if err := policy.Close(); err != nil {
+			return err
+		}
+		// Final diagnostics only, not a fresh admission or recovery lifetime.
+		reader, err := revisionstore.OpenNASEvidenceAuthority(ctx, dir+"/policy", installation)
+		if err != nil {
+			return err
+		}
+		evidence, observeErr := reader.Observe(ctx)
+		if errors.Join(observeErr, reader.Close()) != nil || evidence.Kind != naspolicyevidence.MatchingLocalRecords || evidence.Pending || evidence.Roles != 5 {
+			return ErrReview
+		}
+		fmt.Println("PHANTOWD_LIO_ORDERED_POLICY_READY original_owner=true ordered_writer=true client_rw=verified update_while_running=busy commit_after_teardown=true receipt=verified kernel_backend=lio activation=true scope=disposable-qemu-only")
 	}
 	return nil
 }

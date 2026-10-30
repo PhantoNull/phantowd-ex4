@@ -4649,6 +4649,11 @@ durable recovery, credential provisioning and UI/startup remain open.
 
 ## M9.1f retained-storage LIO composition — private host/QEMU prerequisite
 
+The guarded target fixture now retains the confirmed NAS Owner with its ordered
+writer. A valid desired-disable update is excluded while LIO holds its claims;
+publication and matching receipt checks follow verified target/data/credential
+teardown. This does not admit product bootstrap or recover an interrupted target.
+
 The private Linux backend captures a validated target definition, duplicates
 root-owned configfs directory references, creates only new owned objects and
 receives the complete already-admitted backing roster from its containing
