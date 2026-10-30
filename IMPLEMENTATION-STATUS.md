@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Inherited administrator-directory startup
+
+The normal Linux API can consume a fixed FD3 credential-directory grant from a
+trusted supervisor, keeping its parent unsearchable to the non-root API. The
+ordinary ARMv5 main-process fixture checks setup via that grant, then a second
+path-mode lifetime using the same persisted credentials and HTTPS/policy checks.
+Complete product admission, supervisor/init wiring and recovery remain open;
+local and exact-head hosted qualification must be recorded separately.
+
 ## Original bootstrap authority into the ordered NAS Owner
 
 A distinct owner-capable bootstrap now observes and explicitly confirms a

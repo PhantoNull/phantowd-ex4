@@ -9,6 +9,11 @@ default password, Unix/Samba account operation or hardware mutation is added.
 
 ## Contract
 
+`OpenDirectory` borrows a trusted startup directory and retains a confined
+readable clone with an independent writer lock, including from an O_PATH grant.
+Caller closure or path replacement cannot redirect it. This is a fresh owner
+with the existing reopen sync boundary, not transfer of a bootstrap/review epoch.
+
 - `Open` requires a dedicated existing 0700 directory owned by the effective
   UID, under trusted parents, on a local filesystem supporting flock, rename
   and fsync. A retained descriptor and exclusive advisory lifetime lock scope

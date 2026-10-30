@@ -750,6 +750,13 @@ and refuses non-Versatile PB machines. See the
   account survives an API-process restart but is erased by a guest reboot.
   Non-Linux binaries refuse this backend; Windows HTTP/TLS tests use explicitly
   injected memory-only fixtures, not a weaker production persistence fallback.
+- A directly supervised Linux child may instead receive a private credential
+  directory as inherited non-CLOEXEC FD3 and set `PHANTOWD_STATE_FD=3`, with
+  `PHANTOWD_STATE_DIR` unset. Ambiguous/noncanonical sources refuse, with no path
+  fallback. The API consumes the grant and owns a confined, independently locked
+  descriptor; the usual schema/permissions/sync rules remain. The current S50
+  path launcher does not implement this descriptor handoff. A trusted parent
+  must separately qualify provisioning/admission; this is not complete boot recovery.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain
