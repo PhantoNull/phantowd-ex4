@@ -40,8 +40,19 @@ func runQEMUNFSKernelActivation() error {
 }
 
 func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, peer bool) error {
+	return runQEMUNFSKernelCycleWithReboot(ctx, cycle, previous, peer, nil)
+}
+
+func runQEMUNFSKernelCycleWithReboot(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, peer bool, reboot *qemuNFSReboot) error {
 	const payload = "retained-controller-nfs3-tcp-write\n"
 	open, rpcAddress := nfskernel.OpenSmokeQEMU, "127.0.0.1"
+	server := "/srv/phantowd-nfs-smoke"
+	if reboot != nil {
+		if peer || reboot.check(ctx) != nil {
+			return errQEMURebootNFS
+		}
+		open, server = nfskernel.OpenRebootQEMU, qemuStateAnchor+"/nfs-reboot"
+	}
 	if peer {
 		open, rpcAddress = nfskernel.OpenPeerQEMU, "192.0.2.1"
 	}
@@ -147,9 +158,8 @@ func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.
 	if err := phase("mountd-ready", ready("100005", "3")); err != nil {
 		return err
 	}
-	const server = "/srv/phantowd-nfs-smoke"
 	const client = "/run/phantowd-nfs-kernel-client"
-	const export = "127.0.0.1:" + server
+	export := "127.0.0.1:" + server
 	if err := os.Chown(server, 65534, 65534); err != nil {
 		return phase("fixture-owner", err)
 	}
@@ -207,6 +217,11 @@ func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.
 	}
 	if err := phase("running-after-io", k.CheckRunning(ctx)); err != nil {
 		return err
+	}
+	if reboot != nil {
+		if err := reboot.busy(ctx); err != nil {
+			return phase("reboot-policy-held", err)
+		}
 	}
 	if err := phase("client-unmount", command("/bin/umount", client)); err != nil {
 		return err

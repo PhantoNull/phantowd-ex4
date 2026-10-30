@@ -79,6 +79,11 @@ socketpair: a separate client mounts the retained controller over NFSv3/TCP,
 reads, writes and fsyncs data, then unmounts before verified server shutdown.
 This is isolated guest qualification, not a production listener or EX4 test.
 
+The two-kernel state fixture also serves NFSv3/TCP through the retained controller
+and original ordered policy, checking previous fsynced bytes, update exclusion
+and verified teardown. It covers clean synthetic reboots; product startup and
+automatic recovery after an unclean shutdown remain incomplete.
+
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.

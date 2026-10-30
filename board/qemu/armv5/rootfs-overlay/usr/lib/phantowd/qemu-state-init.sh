@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 # Dedicated PID 1 for a host-owned two-boot virtual-disk test. Only a guarded,
-# guest-loopback Samba fixture is started; no ordinary NAS init/services.
+# guest-loopback Samba/NFS fixture is started; no ordinary NAS init/services.
 set -efu
 [ "$$" -eq 1 ]
 mount -t proc proc /proc
@@ -30,6 +30,10 @@ for option in $(cat /proc/cmdline); do
     esac
 done
 [ -n "$phase" ]
+mkdir -p /proc/fs/nfsd
+mount -t nfsd nfsd /proc/fs/nfsd
+mkdir /run/nfs
+: > /run/nfs/etab
 /usr/bin/phantowd-api --qemu-state-test="$phase"
 # The helper has closed its stores and ordinarily unmounted the data disk.
 echo "PHANTOWD_STATE_BOOT_READY phase=$phase scope=disposable-qemu-only"

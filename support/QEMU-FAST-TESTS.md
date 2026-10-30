@@ -1767,7 +1767,7 @@ After the normal smoke, both the fast lane and clean Buildroot runner execute
 `support/qemu-state-reboot.sh`. It creates a new 16 MiB regular-file ext2 disk,
 starts two independent ARMv5 kernels and retains only that generated data disk
 between them. Each root disk is separately snapshotted; no NIC is attached.
-Only guest loopback is raised for the HTTP/HTTPS and Samba state fixtures.
+Only guest loopback is raised for the HTTP/HTTPS, Samba and NFS state fixtures.
 A dedicated PID-1 script skips all normal services and accepts only fixed seed
 and verify phases. Compiled machine/VPD/device/UUID checks precede the writable
 mount; the expected mounted identity is verified before touching configuration.
@@ -1811,6 +1811,16 @@ Account-file hashes, file inode/content/mode/ownership and loopback-only listene
 are checked. `PHANTOWD_SMB_REBOOT_READY` is required after daemon cleanup. The
 fixture stops its own Samba instance, syncs the generated filesystem and releases
 its mounts; it neither changes the base root image nor the default service profile.
+
+The NFS fixture holds the original mounted medium and confirmed ordered NAS
+policy through the existing retained NFSD controller and a real NFSv3/TCP client.
+The second kernel requires the independently expected policy and reads the first
+client's fsynced bytes before another exclusive write. Updates stay busy until
+verified client/export/kernel/helper teardown and policy-claim release; ordered
+publication and matching local evidence follow. Failure retains original
+authorities for guest disposal. `PHANTOWD_NFS_REBOOT_READY` must occur exactly
+once; serial CRLF is accepted, missing/repeated/altered rows refuse. Fresh RAM
+runtime tables are prepared only after the compiled disposable-machine guard.
 
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, production account management,
