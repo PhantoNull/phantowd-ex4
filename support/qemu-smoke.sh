@@ -578,6 +578,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "QEMU standard API main process proof missing" >&2
             return 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_ADMIN_STATE_GRANT_READY standard_main=true modes=directory-fd,path api_uid=65534 private_parent=denied credentials_retained=true original_directory=true scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Inherited administrator directory assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_ORDERED_OWNER_READY standard_main=true https=verified original_owner=true leases=retained ordered_writer=true receipt=verified scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo "QEMU ordered NAS Owner through standard HTTPS API proof missing" >&2
             return 1

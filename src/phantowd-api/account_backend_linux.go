@@ -5,12 +5,36 @@ package main
 
 import (
 	"errors"
+	"os"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/admincredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
+	"golang.org/x/sys/unix"
 )
 
 type linuxAccountBackend struct{ store *admincredentials.Store }
+
+func openInheritedAccountStore() (*accountStore, error) {
+	// Only an inherited, non-CLOEXEC directory is consumed. Do not wrap/close a
+	// runtime-created FD when the parent forgot to supply the promised grant.
+	flags, err := unix.FcntlInt(3, unix.F_GETFD, 0)
+	var st unix.Stat_t
+	if err != nil || flags&unix.FD_CLOEXEC != 0 || unix.Fstat(3, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR {
+		return nil, errAccountUnavailable
+	}
+	source := os.NewFile(3, "inherited-administrator-directory")
+	store, err := admincredentials.OpenDirectory(source)
+	if closeErr := source.Close(); closeErr != nil {
+		if store != nil {
+			store.Close()
+		}
+		return nil, errAccountUnavailable
+	}
+	if err != nil {
+		return nil, accountStorageError(err)
+	}
+	return ownAccountBackend(&linuxAccountBackend{store: store}, nil)
+}
 
 func openAccountBackend(dir string) (accountBackend, error) {
 	s, err := admincredentials.Open(dir)

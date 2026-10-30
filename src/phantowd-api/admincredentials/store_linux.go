@@ -5,6 +5,7 @@ package admincredentials
 
 import (
 	"math"
+	"os"
 	"sync"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
@@ -21,16 +22,30 @@ type Store struct {
 	engine *revisionstore.Store[Document]
 }
 
-func Open(directory string) (*Store, error) {
-	engine, err := revisionstore.OpenWithCodec(directory, revisionstore.Codec[Document]{
-		CurrentName: "accounts.json", PendingName: ".accounts.pending",
-		MaxBytes: MaxBytes, Decode: Decode, Validate: Document.Validate,
-		Revision: func(d Document) uint64 { return d.Revision },
-	})
+// OpenDirectory borrows a trusted startup directory; the Store owns a confined
+// clone and its independent lifetime lock. It is not bootstrap reconciliation.
+func OpenDirectory(directory *os.File) (*Store, error) {
+	engine, err := revisionstore.OpenDirectoryWithCodec(directory, credentialCodec())
 	if err != nil {
 		return nil, err
 	}
 	return &Store{engine: engine}, nil
+}
+
+func Open(directory string) (*Store, error) {
+	engine, err := revisionstore.OpenWithCodec(directory, credentialCodec())
+	if err != nil {
+		return nil, err
+	}
+	return &Store{engine: engine}, nil
+}
+
+func credentialCodec() revisionstore.Codec[Document] {
+	return revisionstore.Codec[Document]{
+		CurrentName: "accounts.json", PendingName: ".accounts.pending",
+		MaxBytes: MaxBytes, Decode: Decode, Validate: Document.Validate,
+		Revision: func(d Document) uint64 { return d.Revision },
+	}
 }
 
 // Load never serves a cached verifier. An uncertain publication poisons all
