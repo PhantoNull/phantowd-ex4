@@ -13,6 +13,31 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func TestPersistentSambaRootHasIndependentReadableDirectory(t *testing.T) {
+	fd, err := unix.Open(t.TempDir(), unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller := os.NewFile(uintptr(fd), "persistent-state-caller")
+	defer caller.Close()
+	root, err := readableSambaRoot(caller)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	if err := caller.Close(); err != nil {
+		t.Fatal(err)
+	}
+	flags, err := unix.FcntlInt(root.Fd(), unix.F_GETFL, 0)
+	if err != nil || flags&unix.O_PATH != 0 || flags&unix.O_DIRECTORY == 0 {
+		t.Fatal("persistent state parent must be a readable directory, not O_PATH", err)
+	}
+	_, err = unix.Fgetxattr(int(root.Fd()), "system.posix_acl_access", nil)
+	if !errors.Is(err, unix.ENODATA) && !errors.Is(err, unix.ENOTSUP) {
+		t.Fatal("retained state root cannot read permission metadata", err)
+	}
+}
+
 func TestRetainedSambaStateKeepsOriginalDirectoriesAndAllowsMutableContents(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("private state fixture requires root")

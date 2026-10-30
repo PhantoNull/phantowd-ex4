@@ -3,6 +3,16 @@
 
 # Implementation status
 
+## Retained Samba split-state profile — local research
+
+A separate fixed QEMU profile retains original ext4 `private`/`state` directories
+and tmpfs runtime directories through credential workers and the real daemon.
+The local ARM tracer passes disabled-first enrollment, two-user authentication,
+wrong-password refusal, verified stop and descriptor closure. The original
+ten-campaign union and deadlines remain; the focused guest uses 180 seconds.
+Full local campaigns and exact-head hosted qualification remain required.
+Cross-kernel recovery, product startup and physical qualification remain open.
+
 ## Inherited administrator-directory startup
 
 The normal Linux API can consume a fixed FD3 credential-directory grant from a
