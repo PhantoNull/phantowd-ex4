@@ -47,6 +47,15 @@ usage with `docker system df -v`; use
 the unreferenced PhantoWD build volumes. Do not use broad Docker prune commands
 to reclaim this project's space on a shared Docker installation.
 
+Independent builds admit only a clean GitHub-hosted Ubuntu 24.04 x64 checkout
+with at least 40 GiB free on both the checkout and Docker data filesystems.
+If needed, that disposable job removes only unused host .NET, Android and
+preinstalled tool-cache directories, then measures again before building.
+The pinned container supplies subsequent build tools. Local/self-hosted callers
+refuse before cleanup; no Docker prune is used. This is an initial headroom
+policy, not a measured peak-space guarantee or a change to phase timeouts.
+See the [runner environment contract](https://docs.github.com/en/actions/reference/workflows-and-actions/variables).
+
 The [fast QEMU lane](support/QEMU-FAST-TESTS.md) is an iteration tool, not a
 substitute for clean package/kernel builds or hardware qualification.
 Do not hide failures with retries, relaxed guards, fabricated observations or
