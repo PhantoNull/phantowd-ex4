@@ -360,6 +360,10 @@ func OpenCodeQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEM
 // Its trusted main-package caller MUST retain the original synthetic-disk guard.
 func OpenRebootQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEMU(ctx, "reboot") }
 
+// RebootFixtureQEMU checks the fixed role before fixture-only state preparation.
+// This grants no controller, storage, policy or product admission authority.
+func RebootFixtureQEMU() bool { return fixtureGuardQEMU("reboot") }
+
 // OpenSmokeQEMU admits only the explicit disposable baseline smoke.
 func OpenSmokeQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEMU(ctx, "smoke") }
 
