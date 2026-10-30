@@ -43,7 +43,7 @@ client=/usr/libexec/phantowd-iscsi-fixture-client
 backing=/run/phantowd-lio/backing,comma.img
 mkdir "$fabric" "$core"
 phase=typed-credentials
-/usr/libexec/phantowd-lio-credential-fixture -qemu-lio-credential-test
+/usr/bin/phantowd-api -qemu-lio-credential-test
 if [ "$idle_mode" = phantowd.lio_idle=guarded ]; then
     phase=owned-target-volume
     [ -b /dev/sdb ]
@@ -51,7 +51,7 @@ if [ "$idle_mode" = phantowd.lio_idle=guarded ]; then
     mkdir /srv/phantowd/volumes/qemu-only
     mount -t ext2 -o rw,nosuid,nodev /dev/sdb /srv/phantowd/volumes/qemu-only
     phase=owned-target
-    /usr/libexec/phantowd-lio-credential-fixture -qemu-lio-target-test
+    /usr/bin/phantowd-api -qemu-lio-target-test
     phase=owned-target-unmount
     umount /srv/phantowd/volumes/qemu-only
     rmdir /srv/phantowd/volumes/qemu-only
