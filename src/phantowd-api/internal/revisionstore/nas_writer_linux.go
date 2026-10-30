@@ -29,7 +29,7 @@ func systemNASWriterBackend() nasWriterBackend {
 	return nasWriterBackend{systemOps(), rand.Read, unix.Unlinkat}
 }
 
-// nasWriter owns fresh, never-exposed root/lock/watch and backend lifetimes, independent of diagnostic readers.
+// nasWriter owns original root/lock/watch and backend lifetimes, independent of diagnostic readers.
 // A trusted parent separately confirms exact base bytes and absence of consumers;
 // matching records alone grant neither. No leases, RPC or product caller exist.
 type nasWriter struct {
@@ -42,8 +42,7 @@ type nasWriter struct {
 }
 
 func openNASWriter(ctx context.Context, directory, installation string, confirmed []byte, backend nasWriterBackend) (*nasWriter, error) {
-	if naspolicyevidence.Inspect(installation, confirmed, nil, nil, true) != naspolicyevidence.NoRecordedOperation ||
-		backend.random == nil || backend.remove == nil || backend.io.write == nil || backend.io.sync == nil || backend.io.close == nil || backend.io.rename == nil || backend.io.syncDir == nil {
+	if !validNASWriterInput(installation, confirmed, backend) {
 		return nil, ErrInvalid
 	}
 	r, err := OpenBootstrapAuthorityWithCodec(ctx, directory, nasEvidenceCodec())
@@ -55,16 +54,35 @@ func openNASWriter(ctx context.Context, directory, installation string, confirme
 	if err != nil {
 		return w, err // Preserve originals after uncertain constructor cleanup.
 	}
-	kind, err := w.refresh(ctx, nil, "")
-	if err == nil && bytes.Equal(w.files["nas-services.json"].data, confirmed) &&
-		((kind == naspolicyevidence.NoRecordedOperation && len(w.files) == 2) || (kind == naspolicyevidence.MatchingLocalRecords && len(w.files) == 5)) {
+	if w.confirm(ctx, confirmed) == nil {
 		return w, nil
 	}
-	r.review = true
 	if w.Close() != nil {
 		return w, ErrReview
 	}
 	return nil, ErrReview
+}
+
+func validNASWriterInput(installation string, confirmed []byte, backend nasWriterBackend) bool {
+	return naspolicyevidence.Inspect(installation, confirmed, nil, nil, true) == naspolicyevidence.NoRecordedOperation &&
+		backend.random != nil && backend.remove != nil && backend.io.write != nil && backend.io.sync != nil && backend.io.close != nil && backend.io.rename != nil && backend.io.syncDir != nil
+}
+
+// confirm never opens a root or closes/releases originals on refusal.
+func (w *nasWriter) confirm(ctx context.Context, confirmed []byte) error {
+	r := w.retention
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.review || r.closeFailed || r.closed {
+		return ErrReview
+	}
+	kind, err := w.refresh(ctx, nil, "")
+	if err == nil && bytes.Equal(w.files["nas-services.json"].data, confirmed) &&
+		((kind == naspolicyevidence.NoRecordedOperation && len(w.files) == 2) || (kind == naspolicyevidence.MatchingLocalRecords && len(w.files) == 5)) {
+		return nil
+	}
+	r.review = true
+	return ErrReview
 }
 
 // refresh uses a fresh confined cursor, never a new root/lock/watch. Only the

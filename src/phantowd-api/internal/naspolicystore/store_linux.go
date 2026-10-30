@@ -18,6 +18,7 @@ type Store = revisionstore.Store[naspolicy.Config]
 type Owner = revisionstore.OwnedStore[naspolicy.Config]
 type Lease = revisionstore.PolicyLease[naspolicy.Config]
 type BootstrapAuthority = revisionstore.BootstrapAuthority[naspolicy.Config]
+type OwnerBootstrap = revisionstore.NASOwnerBootstrap
 
 var (
 	ErrNotInitialized = revisionstore.ErrNotInitialized
@@ -47,6 +48,12 @@ func OpenOwner(directory string) (*Owner, error) {
 // this does not provision state or authorize product boot/reconciliation.
 func OpenConfirmedOwner(ctx context.Context, directory, installation string, confirmed []byte) (*Owner, error) {
 	return revisionstore.OpenConfirmedNASOwner(ctx, directory, installation, confirmed)
+}
+
+// OpenOwnerBootstrap is a distinct trusted-parent capability, never a conversion
+// of a read-only observer. Confirm requires independent bytes and consumer exclusion.
+func OpenOwnerBootstrap(ctx context.Context, directory, installation string) (*OwnerBootstrap, error) {
+	return revisionstore.OpenNASOwnerBootstrap(ctx, directory, installation)
 }
 
 // ObserveBootstrap uses only this package's fixed names/schema. The redacted
