@@ -5,7 +5,7 @@
 // clearly identified in the page; this server is not part of firmware images.
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const host = "127.0.0.1";
@@ -115,10 +115,11 @@ const assets = new Map([
   ["/assets/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/assets/service-policy.js", ["service-policy.js", "text/javascript; charset=utf-8"]],
   ["/assets/support-bundle.js", ["support-bundle.js", "text/javascript; charset=utf-8"]],
+  ["/assets/iscsi-preview.js", ["iscsi-preview.js", "text/javascript; charset=utf-8"]],
   ["/assets/ghost.svg", ["ghost.svg", "image/svg+xml"]],
 ]);
 
-const server = createServer(async (request, response) => {
+export const createPreviewServer = () => createServer(async (request, response) => {
   response.setHeader("Cache-Control", "no-store");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "no-referrer");
@@ -185,10 +186,12 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
-  process.stdout.write(`Dashboard preview at http://${host}:${port}/ (synthetic data only)\n`);
-});
-
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => server.close(() => process.exit(0)));
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const server = createPreviewServer();
+  server.listen(port, host, () => {
+    process.stdout.write(`Dashboard preview at http://${host}:${port}/ (synthetic data only)\n`);
+  });
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => server.close(() => process.exit(0)));
+  }
 }
