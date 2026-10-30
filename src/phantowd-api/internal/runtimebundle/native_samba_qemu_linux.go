@@ -71,6 +71,13 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 }
 
 func (p *Plan) newNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots *[2]*os.File) (_ *NativeSambaRuntimeQEMU, result error) {
+	return p.newNativeSambaRuntimeWithStateQEMU(ctx, code, configuration, state, lookup, roots, nil)
+}
+
+func (p *Plan) newNativeSambaRuntimeWithStateQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots *[2]*os.File, persistent *os.File) (_ *NativeSambaRuntimeQEMU, result error) {
+	if roots != nil && persistent != nil {
+		return nil, ErrInvalid
+	}
 	if ctx == nil || code == nil || configuration == nil || state == nil {
 		return nil, ErrInvalid
 	}
@@ -111,7 +118,7 @@ func (p *Plan) newNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 	}()
 	o.configuration, err = expected.retain(ctx, configuration)
 	if err == nil {
-		o.sambaState, err = retainSambaState(ctx, state)
+		o.sambaState, err = retainSambaStateRoots(ctx, state, persistent)
 	}
 	if err == nil {
 		r.helper, err = os.Open(sambaFixtureHelper)
@@ -210,7 +217,12 @@ func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation proc
 	for index, name := range sambaStateDirectories {
 		state[index] = r.owner.sambaState.files[name]
 	}
-	capture, err := processowner.NewNativeSambaCaptureQEMU(r.helper, input, config, state, operation, name)
+	var capture *processowner.CaptureOwner
+	if r.owner.sambaState.persistent != nil {
+		capture, err = processowner.NewPersistentNativeSambaCaptureQEMU(r.helper, input, config, state, operation, name)
+	} else {
+		capture, err = processowner.NewNativeSambaCaptureQEMU(r.helper, input, config, state, operation, name)
+	}
 	err = errors.Join(err, root.Close(), input.Close())
 	if err != nil {
 		if capture != nil {

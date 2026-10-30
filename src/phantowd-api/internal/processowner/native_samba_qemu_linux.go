@@ -66,13 +66,25 @@ func (op NativeSambaOperationQEMU) argument() string {
 // directory identities survive legitimate mutable TDB contents. Input must be
 // a sealed read-only memfd, empty except for the bounded repeated password.
 func NewNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, state [7]*os.File, operation NativeSambaOperationQEMU, name string) (_ *CaptureOwner, result error) {
+	return newNativeSambaCaptureQEMU(executable, input, config, state, operation, name, false)
+}
+
+func NewPersistentNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, state [7]*os.File, operation NativeSambaOperationQEMU, name string) (_ *CaptureOwner, result error) {
+	return newNativeSambaCaptureQEMU(executable, input, config, state, operation, name, true)
+}
+
+func newNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, state [7]*os.File, operation NativeSambaOperationQEMU, name string, persistent bool) (_ *CaptureOwner, result error) {
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if err != nil || string(model) != "ARM Versatile PB\x00" || os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 || !operation.valid(name) {
 		return nil, ErrInvalid
 	}
+	verb := "native-credential"
+	if persistent {
+		verb = "native-persistent-credential"
+	}
 	c, err := NewCapture(CaptureSpec{
 		ExecutableLabel: "/usr/sbin/phantowd-samba-root-launcher",
-		Args:            []string{"native-credential", operation.argument(), name},
+		Args:            []string{verb, operation.argument(), name},
 		RunAs:           &Credentials{UID: 0, GID: 0}, Timeout: 10 * time.Second, StopTimeout: time.Second,
 	}, executable, input)
 	if err != nil {
@@ -139,16 +151,20 @@ func NewNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, s
 		}
 	}
 	for index, source := range state {
-		pin, err := duplicateSambaStateDirectoryQEMU(source)
+		pin, err := duplicateNativeStateDirectoryQEMU(source, index, persistent)
 		if err != nil {
 			return nil, err
 		}
 		c.fixtureInputs = append(c.fixtureInputs, pin)
-		if unix.Fstat(int(pin.Fd()), &metadata[index+5]) != nil || metadata[index+5].Dev != metadata[5].Dev {
+		base := 5
+		if persistent && persistentSambaRoleQEMU(index) {
+			base = 6
+		}
+		if unix.Fstat(int(pin.Fd()), &metadata[index+5]) != nil || metadata[index+5].Dev != metadata[base].Dev {
 			return nil, ErrInvalid
 		}
 		for prior := 0; prior < index; prior++ {
-			if metadata[index+5].Ino == metadata[prior+5].Ino {
+			if metadata[index+5].Dev == metadata[prior+5].Dev && metadata[index+5].Ino == metadata[prior+5].Ino {
 				return nil, ErrInvalid
 			}
 		}
@@ -163,7 +179,7 @@ func NewNativeSambaCaptureQEMU(executable, input *os.File, config [5]*os.File, s
 			if index < 5 {
 				checked, err = duplicateNativeConfigurationModeQEMU(pin, index == 0, index == 4)
 			} else {
-				checked, err = duplicateSambaStateDirectoryQEMU(pin)
+				checked, err = duplicateNativeStateDirectoryQEMU(pin, index-5, persistent)
 			}
 			if err != nil {
 				return false

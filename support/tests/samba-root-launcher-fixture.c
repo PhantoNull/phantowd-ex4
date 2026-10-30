@@ -846,7 +846,7 @@ static int native_data_view(const char *native_root, int clones[2], struct stat 
  * Admission receives five original immutable config objects followed
  * by seven original mutable state directories; no pathname fallback is used.
  * Only the distinct data-server verb accepts the two additional data objects. */
-static int native_credential_fixture(const char *operation, const char *name)
+static int native_credential_fixture(const char *operation, const char *name, int persistent)
 {
     const char native_root[] = "/run/phantowd-native-samba-root";
     const char config[] = "/run/phantowd-native-samba-root/etc";
@@ -887,13 +887,14 @@ static int native_credential_fixture(const char *operation, const char *name)
             (S_IFREG | (index == 4 ? 0600 : 0644));
         unsigned long expected = ST_NOSUID | ST_NODEV | ST_NOEXEC |
             (index < 5 ? ST_RDONLY : 0);
+        int on_disk = persistent && (index == 6 || index == 8);
         if (flags < 0 || (flags & O_ACCMODE) != O_RDONLY || (flags & O_PATH) ||
             !!(flags & O_DIRECTORY) != directory || fstat(fd, &objects[index]) ||
             objects[index].st_mode != mode || objects[index].st_uid || objects[index].st_gid ||
             (!directory && (objects[index].st_nlink != 1 || objects[index].st_size <= 0 || objects[index].st_size > 32768)) ||
-            fstatfs(fd, &fs) || fs.f_type != TMPFS_MAGIC ||
+            fstatfs(fd, &fs) || fs.f_type != (on_disk ? EXT4_SUPER_MAGIC : TMPFS_MAGIC) ||
             (fs.f_flags & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected ||
-            objects[index].st_dev != objects[index < 5 ? 0 : 5].st_dev)
+            objects[index].st_dev != objects[index < 5 ? 0 : on_disk ? 6 : 5].st_dev)
             return fail();
         for (int prior = 0; prior < index; ++prior)
             if (objects[index].st_dev == objects[prior].st_dev && objects[index].st_ino == objects[prior].st_ino)
@@ -1126,11 +1127,15 @@ int main(int argc, char **argv)
     if (argc == 2 && !strcmp(argv[1], "native-lookup-retained"))
         return native_lookup_fixture(1);
     if (argc == 4 && !strcmp(argv[1], "native-credential"))
-        return native_credential_fixture(argv[2], argv[3]);
+        return native_credential_fixture(argv[2], argv[3], 0);
+    if (argc == 4 && !strcmp(argv[1], "native-persistent-credential"))
+        return native_credential_fixture(argv[2], argv[3], 1);
     if (argc == 2 && !strcmp(argv[1], "native-server"))
-        return native_credential_fixture("server", "");
+        return native_credential_fixture("server", "", 0);
+    if (argc == 2 && !strcmp(argv[1], "native-persistent-server"))
+        return native_credential_fixture("server", "", 1);
     if (argc == 2 && !strcmp(argv[1], "native-data-server"))
-        return native_credential_fixture("data-server", "");
+        return native_credential_fixture("data-server", "", 0);
     if (argc == 4 && !strcmp(argv[1], "native-client"))
         return native_client(argv[2], argv[3], 0);
     if (argc == 3 && !strcmp(argv[1], "native-data-client"))

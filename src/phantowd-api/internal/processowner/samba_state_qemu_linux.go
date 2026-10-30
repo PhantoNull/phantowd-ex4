@@ -67,6 +67,16 @@ func NewSambaStatePinnedSetQEMU(spec MemberSpec, executable *os.File, directorie
 }
 
 func duplicateSambaStateDirectoryQEMU(source *os.File) (*os.File, error) {
+	return duplicateSambaStateDirectoryKindQEMU(source, false)
+}
+
+func persistentSambaRoleQEMU(index int) bool { return index == 1 || index == 3 }
+
+func duplicateNativeStateDirectoryQEMU(source *os.File, index int, persistent bool) (*os.File, error) {
+	return duplicateSambaStateDirectoryKindQEMU(source, persistent && persistentSambaRoleQEMU(index))
+}
+
+func duplicateSambaStateDirectoryKindQEMU(source *os.File, persistent bool) (*os.File, error) {
 	if source == nil {
 		return nil, ErrInvalid
 	}
@@ -83,9 +93,13 @@ func duplicateSambaStateDirectoryQEMU(source *os.File) (*os.File, error) {
 	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFL, 0)
 	var st unix.Stat_t
 	var fs unix.Statfs_t
+	kind := int64(unix.TMPFS_MAGIC)
+	if persistent {
+		kind = unix.EXT4_SUPER_MAGIC
+	}
 	if err != nil || flags&unix.O_ACCMODE != unix.O_RDONLY || flags&unix.O_PATH != 0 || flags&unix.O_DIRECTORY == 0 ||
 		unix.Fstat(fd, &st) != nil || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 || st.Gid != 0 ||
-		unix.Fstatfs(fd, &fs) != nil || fs.Type != unix.TMPFS_MAGIC || fs.Flags&unix.ST_RDONLY != 0 {
+		unix.Fstatfs(fd, &fs) != nil || int64(fs.Type) != kind || fs.Flags&unix.ST_RDONLY != 0 {
 		_ = pin.Close()
 		return nil, ErrInvalid
 	}

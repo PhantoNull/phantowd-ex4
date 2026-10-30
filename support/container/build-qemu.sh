@@ -708,6 +708,15 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
     exit 1
 fi
 
+# Retained Samba state on the existing synthetic ext4 medium, fixed profile.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-samba-root.sh" \
+    "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
+    "$output_dir/host/sbin/debugfs" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
+    "$external_dir" "$artifact_dir/qemu-samba-persistent.log" persistent; then
+    echo "Preserved failed persistent Samba-state diagnostics in $artifact_dir" >&2
+    exit 1
+fi
+
 # Pure report interpretation only: no SMART executable or device commands.
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
