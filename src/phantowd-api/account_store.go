@@ -55,6 +55,25 @@ func configuredAccountStateDirectory(dir string) (string, error) {
 
 func openAccountStore(dir string) (*accountStore, error) {
 	backend, err := openAccountBackend(dir)
+	return ownAccountBackend(backend, err)
+}
+
+// Trusted startup only: one path OR the parent's fixed inherited directory slot.
+func openConfiguredAccountStore(dir, slot string) (*accountStore, error) {
+	if slot != "" {
+		if slot != "3" || dir != "" {
+			return nil, errAccountUnavailable
+		}
+		return openInheritedAccountStore()
+	}
+	dir, err := configuredAccountStateDirectory(dir)
+	if err != nil {
+		return nil, err
+	}
+	return openAccountStore(dir)
+}
+
+func ownAccountBackend(backend accountBackend, err error) (*accountStore, error) {
 	if err != nil {
 		return nil, err
 	}
