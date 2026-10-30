@@ -52,6 +52,14 @@ substitute for clean package/kernel builds or hardware qualification.
 Do not hide failures with retries, relaxed guards, fabricated observations or
 lazy unmounts.
 
+## Dashboard preview
+
+For a synthetic dashboard preview, run `node support/dashboard-preview.mjs`
+and open the printed loopback URL. This host helper never examines disks or
+starts NAS services. `node support/test-dashboard-ui.mjs` also starts an
+ephemeral loopback preview, checks every HTML asset's bytes and MIME type,
+then closes it. These checks do not qualify browser rendering or accessibility.
+
 ## Qualified main promotions
 
 Promotions use `chore/promote-...` branches and an exact qualified source tree.
