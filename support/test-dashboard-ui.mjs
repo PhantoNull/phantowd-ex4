@@ -3392,4 +3392,6 @@ async function testISCSIScopedLateRepliesAndRetirement() {
 }
 await testISCSIScopedLateRepliesAndRetirement();
 
+await import("./tests/test-dashboard-preview.mjs");
+
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
