@@ -105,6 +105,8 @@ on:
       - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
       - '.github/workflows/reproducibility.yml'
+      - 'support/container/prepare-repro-runner.sh'
+      - 'support/tests/test-repro-runner.py'
       - '.github/workflows/promotion-tree.yml'
       - 'support/verify-promotion-tree.py'
       - 'support/tests/test-promotion-tree.py'
@@ -213,6 +215,8 @@ on:
       - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
       - '.github/workflows/reproducibility.yml'
+      - 'support/container/prepare-repro-runner.sh'
+      - 'support/tests/test-repro-runner.py'
       - '.github/workflows/promotion-tree.yml'
       - 'support/verify-promotion-tree.py'
       - 'support/tests/test-promotion-tree.py'
@@ -303,6 +307,7 @@ jobs:
         run: |
           python3 -B support/tests/test-qemu-build-feedback.py
           python3 -B support/tests/test-build-jobs.py
+          python3 -B support/tests/test-repro-runner.py
 
       - name: Verify cached-only local wrapper command boundary
         shell: pwsh
