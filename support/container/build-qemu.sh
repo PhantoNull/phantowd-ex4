@@ -372,6 +372,8 @@ if [ -d "$cached_samba_source" ] && {
 		"$cached_samba_source/source3/smbd/smbXsrv_session.c" >/dev/null ||
 	! grep -F 'unix_info->unix_name' \
 		"$cached_samba_source/source3/smbd/smbXsrv_session.c" >/dev/null ||
+	[ "$(sha256sum "$cached_samba_source/source3/lib/sessionid_tdb.c" | cut -d ' ' -f1)" != \
+		f46fb71327fdce21bd26d0f6b05dd2442705123f3a14dc22c8ff416bd12ff443 ] ||
 	! grep -F 'MSG_SMB_LOGOFF_USER' \
 		"$cached_samba_source/source3/smbd/server.c" >/dev/null ||
 	! grep -F 'msg_logoff_user' \
@@ -512,6 +514,10 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     PARALLEL_JOBS="$build_jobs" -j"$build_jobs"
 
+grep -F 'sessionid_traverse_read_complete' \
+    "$output_dir/build/samba4-4.22.11/source3/utils/status.c" >/dev/null
+python3 -B "$external_dir/support/tests/test-samba-complete-session-source.py" \
+    "$output_dir/build/samba4-4.22.11"
 sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
     "$output_dir/host" "$OPENSSL_VERSION"
 
