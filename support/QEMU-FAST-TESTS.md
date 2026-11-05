@@ -10,6 +10,7 @@ rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
 | --- | --- | --- | --- |
 | Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
 | Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
+| Focused `persistent` service/data |4 /4 /20 s|Existing credential and planned phases|360 s|
 | Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
 | Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
 
@@ -20,8 +21,21 @@ are unchanged. Independent phase caps are not reserved whole-guest runtime.
 The existing backend constructor keeps its old profile; only the dedicated
 credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
 or operation accepts a duration or replacement backend. The Python helper's
-fixed mapping gives `native` and the six planned-service campaigns360s;
+fixed mapping gives `native`, the six planned-service campaigns and the focused
+`persistent` campaign360s;
 unknown names/duration arguments refuse. Other profiles remain180s.
+
+## Persistent service/data qualification
+
+The focused `persistent` campaign now re-admits its existing ext4 enrollment
+through the actual retained planned service, then runs its complete read/write,
+denial, supervision and closure trace. The fixed fourteen-input daemon ABI
+combines original share roots with ext4 private/state roles and tmpfs runtime
+roles; the generic launcher and privilege set are unchanged. Credential-only
+receipts refuse. Added service work gives this guest360s instead of180s;
+the original40s startup/data/supervision contexts and worker limits stay fixed.
+The ten original guests keep their profiles. This is same-kernel qualification,
+not clean-reboot recovery, product startup or physical EX4 evidence.
 
 ## Planned-service qualification profile
 

@@ -19,6 +19,11 @@ PERSISTENT_MARKER = ("PHANTOWD_SAMBA_OWNER_PERSISTENT_STATE_READY "
                      "original_inputs=true authenticated=true "
                      "wrong_password_denied=true stopped_reaped=true "
                      "no_fd_leak=true reboot=false scope=qemu-only")
+PERSISTENT_DATA_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PERSISTENT_DATA_READY "
+    "ext4_private_state=true tmpfs_runtime=true existing_enrollment=true "
+    "actual_controller=true smb_read=true smb_write=true readonly_denied=true "
+    "ungranted_denied=true stopped_reaped=true reboot=false scope=qemu-only")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -326,6 +331,9 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
         "persistent": census + (
             MARKERS[enrollment], PERSISTENT_MARKER,
+        ) + tuple(row for row in access if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_PLANNED_")) + (
+            PERSISTENT_DATA_MARKER,
             "PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE"),
         "candidate": (census + (MARKERS[enrollment], planned)
                       + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
@@ -372,7 +380,7 @@ def guest_timeout(phase):
                              "pending-peer-exit", "pending-handle")):
         raise ValueError("invalid guest campaign")
     extended = ("native", "fault", "data", "exit", "held", "file",
-                "file-source")
+                "file-source", "persistent")
     return 360 if phase in extended else 180
 
 

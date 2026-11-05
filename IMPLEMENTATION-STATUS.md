@@ -8,8 +8,12 @@
 A separate fixed QEMU profile retains original ext4 `private`/`state` directories
 and tmpfs runtime directories through credential workers and the real daemon.
 The local ARM tracer passes disabled-first enrollment, two-user authentication,
-wrong-password refusal, verified stop and descriptor closure. The original
-ten-campaign union and deadlines remain; the focused guest uses 180 seconds.
+wrong-password refusal, then new admission of the existing enrollment into the
+retained planned service. That same service proves SMB read/write, Unix ownership,
+read-only and ungranted-user refusal, supervision and verified closure, with
+private/state still on ext4. Credential-only receipts no longer qualify this
+focused campaign. Its whole-guest bound is 360 seconds for the added lifecycle;
+inner phase/worker limits and the original ten-campaign union are unchanged.
 Full local campaigns and exact-head hosted qualification remain required.
 Cross-kernel recovery, product startup and physical qualification remain open.
 

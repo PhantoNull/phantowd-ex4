@@ -76,8 +76,14 @@ func TestNativeDataDaemonRefusesHostAndPreservesCallers(t *testing.T) {
 		t.Fatal(err)
 	}
 	spec := MemberSpec{Name: "native-samba-data", Process: Spec{Executable: "/usr/sbin/phantowd-samba-root-launcher", Args: []string{"native-data-server"}, RunAs: &Credentials{UID: 0, GID: 0}}}
-	for range 16 {
-		set, err := NewNativeSambaDataPinnedSetQEMU(spec, caller, [5]*os.File{caller, caller, caller, caller, caller}, [7]*os.File{caller, caller, caller, caller, caller, caller, caller}, [2]*os.File{caller, caller})
+	for attempt := range 32 {
+		open := NewNativeSambaDataPinnedSetQEMU
+		spec.Process.Args[0] = "native-data-server"
+		if attempt%2 != 0 {
+			open = NewPersistentNativeSambaDataPinnedSetQEMU
+			spec.Process.Args[0] = "native-persistent-data-server"
+		}
+		set, err := open(spec, caller, [5]*os.File{caller, caller, caller, caller, caller}, [7]*os.File{caller, caller, caller, caller, caller, caller, caller}, [2]*os.File{caller, caller})
 		if set != nil || !errors.Is(err, ErrInvalid) {
 			t.Fatal("host acquired data daemon authority", err)
 		}
