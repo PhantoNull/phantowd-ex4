@@ -14,6 +14,8 @@ read-only and ungranted-user refusal, supervision and verified closure, with
 private/state still on ext4. Credential-only receipts no longer qualify this
 focused campaign. Its whole-guest bound is 360 seconds for the added lifecycle;
 inner phase/worker limits and the original ten-campaign union are unchanged.
+The original `lifecycle` guest also has a fixed 360-second outer bound; its
+preparation, enrollment, startup, coordinator and supervision caps are unchanged.
 Full local campaigns and exact-head hosted qualification remain required.
 Cross-kernel recovery, product startup and physical qualification remain open.
 

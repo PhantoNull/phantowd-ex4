@@ -11,6 +11,7 @@ rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
 | Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
 | Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
 | Focused `persistent` service/data |4 /4 /20 s|Existing credential and planned phases|360 s|
+| Retained-identity `lifecycle` |4 /4 /20 s|Existing startup/coordinator/supervision phases|360 s|
 | Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
 | Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
 
@@ -21,8 +22,8 @@ are unchanged. Independent phase caps are not reserved whole-guest runtime.
 The existing backend constructor keeps its old profile; only the dedicated
 credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
 or operation accepts a duration or replacement backend. The Python helper's
-fixed mapping gives `native`, the six planned-service campaigns and the focused
-`persistent` campaign360s;
+fixed mapping gives `native`, `lifecycle`, the six planned-service campaigns and
+the focused `persistent` campaign360s;
 unknown names/duration arguments refuse. Other profiles remain180s.
 
 ## Persistent service/data qualification
@@ -34,8 +35,19 @@ combines original share roots with ext4 private/state roles and tmpfs runtime
 roles; the generic launcher and privilege set are unchanged. Credential-only
 receipts refuse. Added service work gives this guest360s instead of180s;
 the original40s startup/data/supervision contexts and worker limits stay fixed.
-The ten original guests keep their profiles. This is same-kernel qualification,
+The ten original guests keep their inner profiles. This is same-kernel qualification,
 not clean-reboot recovery, product startup or physical EX4 evidence.
+
+## Retained-identity lifecycle guest bound
+
+The fixed `lifecycle` outer bound is360s. Its independent preparation20,
+enrollment75, construction/start40, coordinator preparation20, revocation45 and
+observation/supervision20 allowances total220s before boot/teardown. Original
+hosted and controlled local traces reached the former180s outer bound after
+enrollment without a final startup proof. All inner deadlines, complete checks,
+proofs, stop/refusal behavior and campaign membership remain unchanged. This is
+an outer fixture allowance correction, not a runtime performance improvement,
+a completed hosted qualification or a product timeout change.
 
 ## Planned-service qualification profile
 
@@ -49,8 +61,8 @@ Their original2-second command WaitDelay and1024-byte exact-proof cap remain.
 Original identity-fault parent40/child35 is separate and unchanged.
 
 Only `fault`, `data`, `exit`, `held`, `file` and `file-source` change their whole
-guest bound from180 to360 seconds. Native already uses360; service, candidate,
-lifecycle and all pending variants retain180. Fault's nominal preparation20,
+guest bound from180 to360 seconds. Native and lifecycle use360; service,
+candidate and all pending variants retain180. Fault's nominal preparation20,
 enrollment75, identity child40 and planned child150 sum285 seconds within360.
 These are cooperative context allowances, not a physical or scheduling SLA.
 The existing whole-guest mapping is unchanged by this supervision increment.
