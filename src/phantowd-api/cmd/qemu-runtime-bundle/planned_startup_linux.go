@@ -59,16 +59,11 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	var dataStarted time.Time
 	phase := "construction"
 	defer func() {
-		if fault != "" {
-			fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
-		}
+		fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
 		if result != nil && phase == "data" && !dataStarted.IsZero() {
 			// Failure-only wall intervals include quarantine/return work. The
 			// inner probe separately accounts daemon checks and SMB clients.
 			// No success proof, budget, context or teardown behavior changes.
-			if fault == "" {
-				fmt.Fprint(os.Stderr, plannedDataRefusalDiagnosticQEMU(result))
-			}
 			ended := time.Now()
 			fmt.Fprint(os.Stderr, plannedPhaseCostDiagnosticQEMU(dataStarted.Sub(started).Milliseconds(), ended.Sub(dataStarted).Milliseconds(), ended.Sub(started).Milliseconds()))
 		}
