@@ -56,11 +56,18 @@ class SDKAptBudgets(unittest.TestCase):
                                 'file:/tmp/sdk-snapshot/debian-security/'])
         docker = (ROOT / 'support/docker/Dockerfile').read_text()
         docker = docker.replace('\\\n', '')
-        locked = re.findall(r'ADD --chmod=0644 --checksum=sha256:[a-f0-9]{64}'
-                            r'\s+https://snapshot.debian.org/file/'
-                            r'[a-f0-9]{40}/'
-                            r'(?:InRelease|Packages\.xz)', docker)
+        locked = re.findall(r'ADD --chmod=0644 --checksum=sha256:'
+                            r'([a-f0-9]{64})\s+(\S+)\s+/tmp/sdk-snapshot/',
+                            docker)
         self.assertEqual(len(locked), 6)
+        for digest, uri in locked:
+            if uri.startswith('https://deb.debian.org/'):
+                self.assertEqual(uri, 'https://deb.debian.org/debian/dists/'
+                                 'bookworm/main/binary-amd64/by-hash/SHA256/'
+                                 + digest)
+            else:
+                self.assertRegex(uri, r'^https://snapshot.debian.org/file/'
+                                 r'[a-f0-9]{40}/(?:InRelease|Packages\.xz)$')
         self.assertIn('Snapshot20260925T000000Z', text)
         self.assertEqual(text.count('Signed-By: /usr/share/keyrings/'
                                     'debian-archive-keyring.gpg'), 2)

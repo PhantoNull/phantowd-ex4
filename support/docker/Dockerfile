@@ -18,7 +18,7 @@ ADD --chmod=0644 --checksum=sha256:77737fa4b34f2693e982cc9ee35736816c35a7778fc2d
     /tmp/sdk-snapshot/debian/dists/bookworm/InRelease
 
 ADD --chmod=0644 --checksum=sha256:9e0b5aabb2465b3d2e7a7fe27f9913846277833f7a2826e7767acccff5b588c5 \
-    https://snapshot.debian.org/file/efe5b90ec48b9c017922c5aa4996807d0f044064/Packages.xz \
+    https://deb.debian.org/debian/dists/bookworm/main/binary-amd64/by-hash/SHA256/9e0b5aabb2465b3d2e7a7fe27f9913846277833f7a2826e7767acccff5b588c5 \
     /tmp/sdk-snapshot/debian/dists/bookworm/main/binary-amd64/Packages.xz
 
 ADD --chmod=0644 --checksum=sha256:ecd2a6713a8d2e02c07d914d71f2a73519a7049746cf6a9de6898fae894e927d \
