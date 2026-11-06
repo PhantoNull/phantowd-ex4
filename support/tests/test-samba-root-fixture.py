@@ -145,8 +145,8 @@ class SambaRootFixture(unittest.TestCase):
                   "pending-handle")
         helper = Path(fixture.__file__)
         for phase in phases:
-            extended = ("native", "fault", "data", "exit", "held", "file",
-                        "file-source")
+            extended = ("native", "lifecycle", "fault", "data", "exit",
+                        "held", "file", "file-source")
             expected = 360 if phase in extended else 180
             self.assertEqual(fixture.guest_timeout(phase), expected)
             result = subprocess.run(

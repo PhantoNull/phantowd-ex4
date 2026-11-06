@@ -371,8 +371,8 @@ def guest_timeout(phase):
             or phase not in (*FOCUSED_CAMPAIGNS, "pending",
                              "pending-peer-exit", "pending-handle")):
         raise ValueError("invalid guest campaign")
-    extended = ("native", "fault", "data", "exit", "held", "file",
-                "file-source")
+    extended = ("native", "lifecycle", "fault", "data", "exit",
+                "held", "file", "file-source")
     return 360 if phase in extended else 180
 
 

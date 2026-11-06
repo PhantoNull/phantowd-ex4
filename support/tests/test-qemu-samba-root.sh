@@ -164,7 +164,7 @@ sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
     "$scratch/rootfs.ext2" "$scratch/manifest" \
     /usr/lib/phantowd/qemu-samba-root.manifest "$scratch/stage-roundtrip" 0100644
 # Default remains the complete qualification. Explicit local selection narrows
-# only which fresh guest is run. Native uses360s; all other guests keep180s.
+# only which fresh guest is run. The helper owns the fixed per-campaign bounds.
 # Selection never changes assertions, authority or retries.
 for campaign in $campaigns; do
     guest_timeout=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" guest-timeout "$campaign")
