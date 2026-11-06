@@ -42,12 +42,11 @@ not clean-reboot recovery, product startup or physical EX4 evidence.
 
 The fixed `lifecycle` outer bound is360s. Its independent preparation20,
 enrollment75, construction/start40, coordinator preparation20, revocation45 and
-observation/supervision20 allowances total220s before boot/teardown. Original
-hosted and controlled local traces reached the former180s outer bound after
-enrollment without a final startup proof. All inner deadlines, complete checks,
-proofs, stop/refusal behavior and campaign membership remain unchanged. This is
-an outer fixture allowance correction, not a runtime performance improvement,
-a completed hosted qualification or a product timeout change.
+observation/supervision20 allowances total220s before boot/teardown. The former
+180s outer bound could interrupt the complete trace after enrollment. All inner
+deadlines, complete checks, proofs, stop/refusal behavior and campaign membership
+remain unchanged. This corrects the fixture allowance, not runtime performance
+or product timeouts; independent phase caps do not reserve whole-guest runtime.
 
 ## Planned-service qualification profile
 
