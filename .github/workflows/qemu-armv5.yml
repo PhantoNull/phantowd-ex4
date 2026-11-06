@@ -183,7 +183,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/phantowd-buildroot-ccache"
           sudo chown -R 1000:1000 "$RUNNER_TEMP/phantowd-buildroot-ccache"
 
+      - name: Verify SDK APT phase refusals
+        run: python3 -B support/tests/test-sdk-apt-budgets.py
+
       - name: Build pinned environment
+        timeout-minutes: 12
         run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
 
       - name: Create isolated QEMU build volume
