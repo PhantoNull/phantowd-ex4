@@ -104,3 +104,60 @@ func TestPendingClientOwnerStopIsStickyWithoutReadmission(t *testing.T) {
 		}
 	}
 }
+
+func TestPendingClientOwnerInputLossHostRefusesAndPreservesBorrowedRoots(t *testing.T) {
+	if sambaCodeFixtureGuard() == nil {
+		t.Skip("host refusal only; actual constructor fault has a guarded guest entry")
+	}
+	client, bootstrap := pendingPlansFixture(t)
+	root, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	for range 2 {
+		if err := client.ProbePendingClientOwnerInputLossQEMU(context.Background(), bootstrap, root, root); !errors.Is(err, ErrInvalid) {
+			t.Fatal("host fixture did not refuse before admission", err)
+		}
+		if _, err := root.Stat(); err != nil {
+			t.Fatal("host refusal consumed a caller-owned root", err)
+		}
+	}
+}
+
+func TestPendingClientOwnerReviewPreservesStopAndReleaseCauses(t *testing.T) {
+	stopCause, releaseCause := errors.New("stop fixture"), errors.New("release fixture")
+	o := &pendingClientOwnerQEMU{gate: make(chan struct{}, 1), review: true, stopTried: true, stopErr: stopCause, releaseErr: releaseCause}
+	o.self = o
+	for range 2 {
+		for _, err := range []error{o.close(), o.start(context.Background()), o.stop(context.Background()), o.recheckCaptureConnectionQEMU(context.Background())} {
+			if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, stopCause) || !errors.Is(err, releaseCause) {
+				t.Fatal("review lost recorded stop/release uncertainty", err)
+			}
+		}
+	}
+}
+
+func TestPendingClientOwnerReviewPreservesFirstCauseAcrossRefusals(t *testing.T) {
+	// Diagnostic state only: no admitted input, successful adapter or live child
+	// is fabricated. The constructor-backed guest covers the actual input loss.
+	o := &pendingClientOwnerQEMU{gate: make(chan struct{}, 1)}
+	o.self = o
+	first := errors.Join(ErrMismatch, context.DeadlineExceeded)
+	if err := o.fail(first); !errors.Is(err, first) {
+		t.Fatal("initial failure lost its cause", err)
+	}
+	replacement := errors.New("later refusal must not replace original")
+	if err := o.fail(replacement); !errors.Is(err, first) || errors.Is(err, replacement) {
+		t.Fatal("later failure replaced the first cause", err)
+	}
+	for range 2 {
+		_, handleErr := o.initialHandle(context.Background())
+		_, frameErr := o.readCaptureFrameQEMU(context.Background())
+		for _, err := range []error{o.close(), o.start(context.Background()), o.closeClient(context.Background()), o.stop(context.Background()), o.recheckConnection(context.Background()), o.recheckCaptureConnectionQEMU(context.Background()), handleErr, frameErr} {
+			if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, first) || !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatal("review refusal lost the first cause", err)
+			}
+		}
+	}
+}
