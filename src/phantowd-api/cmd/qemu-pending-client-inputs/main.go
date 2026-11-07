@@ -44,7 +44,8 @@ func run() error {
 	}
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if err != nil || string(model) != "ARM Versatile PB\x00" || os.Getuid() != 0 || os.Geteuid() != 0 ||
-		os.Getgid() != 0 || os.Getegid() != 0 || len(os.Args) != 2 || (os.Args[1] != "stage" && os.Args[1] != "retain") {
+		os.Getgid() != 0 || os.Getegid() != 0 || len(os.Args) != 2 ||
+		(os.Args[1] != "stage" && os.Args[1] != "retain" && os.Args[1] != "preclose-input-loss") {
 		return errors.New("fixture guard")
 	}
 	file, err := os.Open("/usr/lib/phantowd/qemu-pending-client-inputs.json")
@@ -87,6 +88,9 @@ func run() error {
 			return err
 		}
 		return bootstrap.StageQEMU(context.Background(), source, bootstrapRoot)
+	}
+	if os.Args[1] == "preclose-input-loss" {
+		return client.ProbePendingClientOwnerInputLossQEMU(context.Background(), bootstrap, clientRoot, bootstrapRoot)
 	}
 	if err := client.ProbePendingClientInputsQEMU(context.Background(), bootstrap, clientRoot, bootstrapRoot); err != nil {
 		return err

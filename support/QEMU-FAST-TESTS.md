@@ -10,6 +10,7 @@ rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
 | --- | --- | --- | --- |
 | Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
 | Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
+| Retained-identity `lifecycle` |4 /4 /20 s|Existing startup/coordinator/supervision phases|360 s|
 | Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
 | Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
 
@@ -20,8 +21,18 @@ are unchanged. Independent phase caps are not reserved whole-guest runtime.
 The existing backend constructor keeps its old profile; only the dedicated
 credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
 or operation accepts a duration or replacement backend. The Python helper's
-fixed mapping gives `native` and the six planned-service campaigns360s;
+fixed mapping gives `native`, `lifecycle` and the six planned-service campaigns360s;
 unknown names/duration arguments refuse. Other profiles remain180s.
+
+## Retained-identity lifecycle guest bound
+
+The fixed `lifecycle` outer bound is360s. Its independent preparation20,
+enrollment75, construction/start40, coordinator preparation20, revocation45 and
+observation/supervision20 allowances total220s before boot/teardown. The former
+180s outer bound could interrupt the complete trace after enrollment. All inner
+deadlines, complete checks, proofs, stop/refusal behavior and campaign membership
+remain unchanged. This corrects the fixture allowance, not runtime performance
+or product timeouts; independent phase caps do not reserve whole-guest runtime.
 
 ## Planned-service qualification profile
 
@@ -35,8 +46,8 @@ Their original2-second command WaitDelay and1024-byte exact-proof cap remain.
 Original identity-fault parent40/child35 is separate and unchanged.
 
 Only `fault`, `data`, `exit`, `held`, `file` and `file-source` change their whole
-guest bound from180 to360 seconds. Native already uses360; service, candidate,
-lifecycle and all pending variants retain180. Fault's nominal preparation20,
+guest bound from180 to360 seconds. Native and lifecycle use360; service,
+candidate and all pending variants retain180. Fault's nominal preparation20,
 enrollment75, identity child40 and planned child150 sum285 seconds within360.
 These are cooperative context allowances, not a physical or scheduling SLA.
 The existing whole-guest mapping is unchanged by this supervision increment.

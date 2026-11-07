@@ -699,6 +699,18 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
     exit 1
 fi
 
+# Require the existing constructor/input-loss evidence in both standard and
+# reproducibility boots. The fixed guest starts no client or NAS service.
+bash "$external_dir/support/tests/test-pending-client-inputs-log.sh" "$external_dir"
+if ! TMPDIR=/phantowd-qemu-fixture-tmp bash "$external_dir/support/tests/test-pending-client-inputs-qemu.sh" \
+    "$artifact_dir" "$output_dir" "$external_dir" \
+    >"$artifact_dir/qemu-pending-client-inputs.log" 2>&1; then
+    cp "$artifact_dir/qemu-pending-client-inputs.log" "$artifact_dir/qemu-pending-client-inputs-failure.log"
+    cat "$artifact_dir/qemu-pending-client-inputs-failure.log" >&2
+    exit 1
+fi
+cat "$artifact_dir/qemu-pending-client-inputs.log"
+
 # Fixed multi-user Samba experiment, not a product helper/profile installation.
 if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-samba-root.sh" \
     "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
