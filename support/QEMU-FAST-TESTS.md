@@ -2334,6 +2334,14 @@ unchanged qualified-develop validator. Full current-source integration and
 own-head hosted qualification remain required before integration; do not rerun
 heavy CI merely to substitute a lucky green for a diagnosed failure.
 
+The planned service keeps startup40 and observation/data40 (combined80).
+`Start` verifies the original authorities before/after daemon startup. Manual
+`Observe` then shares the data action, before transfers. A live bounded startup
+is required; handoff cancels its context and cannot be repeated after expiry.
+The no-overlay CPU0.70 data replay passes224.03s. All ten original guests pass
+in1218.23s with unchanged-develop proof replay; focused persistent passes147.01s.
+These are cached local results; exact-head hosted qualification remains required.
+
 Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
 not authorization. `reason=other` is not proof that no deadline occurred:
 an intermediate refusal can discard the underlying typed cause. Conversely,

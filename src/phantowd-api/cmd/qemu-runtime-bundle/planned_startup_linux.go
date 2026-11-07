@@ -48,6 +48,32 @@ func plannedDataContextQEMU() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 40*time.Second)
 }
 
+// Separate manual observation/data action after a completed bounded startup.
+// Canceling the original context makes this serialized fixture handoff single-use.
+// No failed/late startup obtains an allowance; the fixed caller stays40+40.
+func plannedDataAfterStartupQEMU(startup context.Context, cancel context.CancelFunc) (context.Context, context.CancelFunc, error) {
+	if startup == nil || cancel == nil {
+		return nil, nil, errors.New("planned data requires bounded startup")
+	}
+	if err := startup.Err(); err != nil {
+		return nil, nil, err
+	}
+	deadline, bounded := startup.Deadline()
+	if !bounded {
+		return nil, nil, errors.New("planned startup allowance invalid")
+	}
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return nil, nil, context.DeadlineExceeded
+	}
+	if remaining > 40*time.Second {
+		return nil, nil, errors.New("planned startup allowance invalid")
+	}
+	cancel()
+	ctx, stop := plannedDataContextQEMU()
+	return ctx, stop, nil
+}
+
 // This fixed QEMU scope includes holder preparation and complete observations.
 // Keep the constructor attached to the real qualifier context, not a spare timer.
 func plannedSupervisionContextQEMU() (context.Context, context.CancelFunc) {
@@ -295,6 +321,16 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 			return errors.New("planned live service retried or released authority")
 		}
+		// Start already verifies the original authorities before and after the
+		// daemon starts. Manual re-observation belongs to the next action, with
+		// its data probe, not the last milliseconds of startup's40 seconds.
+		dataCtx, cancelData, err := plannedDataAfterStartupQEMU(ctx, cancel)
+		if err != nil {
+			return err
+		}
+		defer cancelData()
+		ctx = dataCtx
+		dataStarted = time.Now()
 		phase = "startup-recheck"
 		if err := service.Observe(ctx); err != nil {
 			return err
@@ -303,14 +339,8 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err != nil || status.State != "ready" || status.Checks != 1 || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed {
 			return errors.New("planned startup incomplete live observation")
 		}
-		// The original startup/preparation remains bounded40. Data access is a
-		// NEW action with its OWN fixed40-second QEMU allowance, not leftovers
-		// from startup. Worker/readiness/stop and all authority checks stay fixed.
-		cancel()
-		dataStarted = time.Now()
-		dataCtx, cancelData := plannedDataContextQEMU()
-		defer cancelData()
-		ctx = dataCtx
+		// Re-observation and access share ONE40-second allowance. All original
+		// admission checks remain before transfers; no further timer refresh.
 		canceledData, cancelProbe := context.WithCancel(ctx)
 		cancelProbe()
 		if err := service.VerifyDataAccess(canceledData); !errors.Is(err, context.Canceled) {

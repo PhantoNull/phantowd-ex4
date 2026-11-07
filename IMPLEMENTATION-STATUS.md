@@ -2357,9 +2357,17 @@ including every original proof under both current and unchanged develop
 validators. The earlier45-phase control at that quota failed peer continuity.
 Original failed logs remain preserved. This is an explicit fixture-budget
 increase, not throughput optimization, a proven hosted fix, whole-image build,
-EX4 qualification or product activation. Complete original/focused regression
-and own-head hosted qualification remain open for this increment. The separate
+EX4 qualification or product activation. Complete original/focused regressions
+pass locally; integration requires own-head hosted qualification. The separate
 exclusive-supervision contract is unchanged.
+
+The separate planned data fixture retains startup40 plus observation/data40,
+combined80. Manual Observe moves into the data action, after Start's original
+before/after authority checks and before transfers. Failed, expired, invalid
+or repeated startup cannot refresh the allowance. Host/race and actual ARMv5
+CPU0.70 data replay pass (224.03s), without diagnostic overlay or added time.
+Original failures remain preserved. All ten original guests pass in1218.23s,
+including unchanged-develop proof replay; focused persistent passes147.01s.
 
 ## Current native component — terminal session-observation fences
 

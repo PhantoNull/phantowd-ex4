@@ -60,10 +60,14 @@ func TestPlannedFixedBudgetsExpireAndCancel(t *testing.T) {
 // Wiring is checked separately: exercising a detached timer would not cover
 // the actual orchestration. Full guest checks remain the integration evidence.
 func TestPlannedFixedBudgetsUseRealCallsites(t *testing.T) {
-	for _, site := range []struct{ file, caller, callee string }{
-		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", "plannedDataContextQEMU"},
-		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", "plannedSupervisionContextQEMU"},
-		{"planned_source_fault_linux.go", "nativePlannedFaultSubprocessQEMU", "plannedFaultContextQEMU"},
+	for _, site := range []struct {
+		file, caller, callee string
+		arguments            int
+	}{
+		{"planned_startup_linux.go", "plannedDataAfterStartupQEMU", "plannedDataContextQEMU", 0},
+		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", "plannedDataAfterStartupQEMU", 2},
+		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", "plannedSupervisionContextQEMU", 0},
+		{"planned_source_fault_linux.go", "nativePlannedFaultSubprocessQEMU", "plannedFaultContextQEMU", 0},
 	} {
 		file, err := parser.ParseFile(token.NewFileSet(), site.file, nil, 0)
 		if err != nil {
@@ -81,7 +85,7 @@ func TestPlannedFixedBudgetsUseRealCallsites(t *testing.T) {
 					name, ok := call.Fun.(*ast.Ident)
 					if ok && name.Name == site.callee {
 						calls++
-						if len(call.Args) != 0 {
+						if len(call.Args) != site.arguments {
 							t.Fatal("caller-selectable fixture deadline")
 						}
 					}
@@ -92,6 +96,72 @@ func TestPlannedFixedBudgetsUseRealCallsites(t *testing.T) {
 		if calls != 1 {
 			t.Errorf("%s must call %s once, got %d", site.caller, site.callee, calls)
 		}
+	}
+}
+
+func TestPlannedManualObservationAndAccessHaveOneBoundedAction(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		started := time.Now()
+		startup, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+		defer cancel()
+		time.Sleep(38 * time.Second)
+		data, stop, err := plannedDataAfterStartupQEMU(startup, cancel)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer stop()
+		deadline, ok := data.Deadline()
+		if !ok || time.Until(deadline) != 40*time.Second || !errors.Is(startup.Err(), context.Canceled) {
+			t.Fatal("handoff lost fixed40 or retained startup timer")
+		}
+		if next, retryStop, err := plannedDataAfterStartupQEMU(startup, cancel); err == nil || next != nil || retryStop != nil {
+			t.Fatal("repeated handoff refreshed allowance")
+		}
+		// Manual complete observation plus transfers, without resetting between.
+		time.Sleep(37 * time.Second)
+		if data.Err() != nil || time.Since(started) != 75*time.Second {
+			t.Fatal("independent action inherited startup leftovers")
+		}
+		time.Sleep(4 * time.Second)
+		if !errors.Is(data.Err(), context.DeadlineExceeded) {
+			t.Fatal("late observation/access escaped fixed40")
+		}
+	})
+}
+
+func TestPlannedDataHandoffRefusesInvalidOrIncompleteStartup(t *testing.T) {
+	for _, state := range []string{"nil", "unbounded", "too-long", "expired", "canceled", "no-cancel"} {
+		t.Run(state, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+				defer cancel()
+				calls := 0
+				stop := context.CancelFunc(func() { calls++; cancel() })
+				switch state {
+				case "nil":
+					ctx = nil
+				case "unbounded":
+					ctx = context.Background()
+				case "too-long":
+					long, closeLong := context.WithTimeout(context.Background(), time.Minute)
+					defer closeLong()
+					ctx = long
+				case "expired":
+					time.Sleep(41 * time.Second)
+				case "canceled":
+					cancel()
+				case "no-cancel":
+					stop = nil
+				}
+				next, closeNext, err := plannedDataAfterStartupQEMU(ctx, stop)
+				if err == nil || next != nil || closeNext != nil || calls != 0 {
+					t.Fatal("invalid startup admitted data or changed original timer")
+				}
+				if state == "expired" && !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatal("startup expiry lost its cause")
+				}
+			})
+		})
 	}
 }
 
