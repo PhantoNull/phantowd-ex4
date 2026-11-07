@@ -53,7 +53,10 @@ func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context, ro
 		ReadyTimeout: 12 * time.Second, ProbeInterval: 200 * time.Millisecond, StopTimeout: 4 * time.Second,
 	}}
 	var set *processowner.PinnedSet
-	if r.owner.sambaState.persistent != nil {
+	if r.owner.sambaState.persistent != nil && roots != nil {
+		spec.Process.Args = []string{"native-persistent-data-server"}
+		set, err = processowner.NewPersistentNativeSambaDataPinnedSetQEMU(spec, r.helper, config, state, *roots)
+	} else if r.owner.sambaState.persistent != nil {
 		spec.Name, spec.Process.Args = "native-samba-persistent", []string{"native-persistent-server"}
 		set, err = processowner.NewPersistentNativeSambaPinnedSetQEMU(spec, r.helper, config, state)
 	} else if roots == nil {

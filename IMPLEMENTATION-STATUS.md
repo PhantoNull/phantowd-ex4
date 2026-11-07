@@ -8,8 +8,14 @@
 A separate fixed QEMU profile retains original ext4 `private`/`state` directories
 and tmpfs runtime directories through credential workers and the real daemon.
 The local ARM tracer passes disabled-first enrollment, two-user authentication,
-wrong-password refusal, verified stop and descriptor closure. The original
-ten-campaign union and deadlines remain; the focused guest uses 180 seconds.
+wrong-password refusal, then new admission of the existing enrollment into the
+retained planned service. That same service proves SMB read/write, Unix ownership,
+read-only and ungranted-user refusal, supervision and verified closure, with
+private/state still on ext4. Credential-only receipts no longer qualify this
+focused campaign. Its whole-guest bound is 360 seconds for the added lifecycle;
+inner phase/worker limits and the original ten-campaign union are unchanged.
+The original `lifecycle` guest also has a fixed 360-second outer bound; its
+preparation, enrollment, startup, coordinator and supervision caps are unchanged.
 Full local campaigns and exact-head hosted qualification remain required.
 Cross-kernel recovery, product startup and physical qualification remain open.
 
@@ -2331,27 +2337,37 @@ build-policy validation, not a new whole-image, security or performance result.
 
 ## Current QEMU fixture — separately bounded lifecycle workloads
 
-The lifecycle driver separates held-client preparation20 from the original
-revocation/peer/new-login verification45. Its combined contextual allowance
-changes from45 to65 seconds; no worker, service, readiness, stop or guest180
-limit changes. It retains the SAME service/Owner/backend/journal/session pair,
+The lifecycle driver separates held-client preparation20 from
+revocation/peer/new-login verification90 and selects the existing native
+qualification backend8/8/40 before admission. Its combined allowance increases
+from65 to110 seconds; this is not a performance improvement. Other profiles,
+readiness/stop and guest360 stay unchanged. It retains the SAME service, Owner,
+backend, journal and session pair,
 refuses continuation or retry after failed/expired preparation, preserves typed
 uncertainty, respects shorter parents and rejects late successful results.
 
 The real internal runner first fails a virtual-clock regression under the old
-cumulative budget, then passes the timing/cancellation/uncertainty cases.
-Pinned Go1.26.8 Linux tagged command vet/tests and race-count3, Windows API/UI/
-vet/contracts/ARMv5 cross-compilation, and one actual focused ARMv5 lifecycle
-campaign pass with every original proof. The final tool transcript is clipped;
-its observed terminal acceptance is not a claimed complete archived guest log.
+45-second phase, then passes with90 while retaining cancellation, uncertainty,
+shorter-parent and late-success refusals. Pinned Go1.26.8 Linux tagged vet and
+race-count3 on four packages,82 fixture checks and Windows API/UI/vet/tests/
+ARMv5 cross-compilation pass. Windows uses local Go1.27, not guest execution.
 
-Fresh unchanged-source guests both fail and pass: the failure is an independent
-post-admission worker deadline during client preparation, not the historical
-hosted outer continuity timeout. This is fixture orchestration, not a proven
-hosted fix, repeatable-load result, product activation or EX4 qualification.
-The complete current-source suite/image audit now passes at the exact checkpoint
-above; own-head hosted gates remain open. The separate exclusive-supervision
-contract is unchanged.
+An actual cached ARMv5 lifecycle guest with CPU quota0.65 now passes in266.79s,
+including every original proof under both current and unchanged develop
+validators. The earlier45-phase control at that quota failed peer continuity.
+Original failed logs remain preserved. This is an explicit fixture-budget
+increase, not throughput optimization, a proven hosted fix, whole-image build,
+EX4 qualification or product activation. Complete original/focused regressions
+pass locally; integration requires own-head hosted qualification. The separate
+exclusive-supervision contract is unchanged.
+
+The separate planned data fixture retains startup40 plus observation/data40,
+combined80. Manual Observe moves into the data action, after Start's original
+before/after authority checks and before transfers. Failed, expired, invalid
+or repeated startup cannot refresh the allowance. Host/race and actual ARMv5
+CPU0.70 data replay pass (224.03s), without diagnostic overlay or added time.
+Original failures remain preserved. All ten original guests pass in1218.23s,
+including unchanged-develop proof replay; focused persistent passes147.01s.
 
 ## Current native component — terminal session-observation fences
 
