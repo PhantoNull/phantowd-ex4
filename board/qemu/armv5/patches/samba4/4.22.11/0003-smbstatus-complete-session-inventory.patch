@@ -1,0 +1,237 @@
+From: PhantoWD EX4 contributors
+Subject: [PATCH] smbstatus: refuse incomplete JSON session inventories
+
+Complete reads retain errors; existing early-stop traversal APIs are unchanged.
+
+--- a/source3/include/proto.h
++++ b/source3/include/proto.h
+@@ -647,2 +647,6 @@
+ 
++NTSTATUS sessionid_traverse_read_complete(
++	int (*fn)(const char *key, struct sessionid *session, void *private_data),
++	void *private_data);
++
+ /* The following definitions come from lib/avahi.c */
+--- a/source3/lib/dbwrap/dbwrap_watch.c
++++ b/source3/lib/dbwrap/dbwrap_watch.c
+@@ -718,2 +718,55 @@
+ 
++struct dbwrap_complete_read_state {
++	int (*fn)(struct db_record *, void *);
++	void *private_data;
++	NTSTATUS error;
++};
++
++static int dbwrap_complete_read_fn(struct db_record *rec, void *private_data)
++{
++	struct dbwrap_complete_read_state *state = private_data;
++	struct db_record unwrapped = *rec;
++	int ret;
++
++	if (!dbwrap_watch_rec_parse(rec->value, NULL, NULL, &unwrapped.value)) {
++		state->error = NT_STATUS_FILE_CORRUPT_ERROR;
++		return -1;
++	}
++	/* Empty values are valid deleted records, not malformed inventory. */
++	if (unwrapped.value.dsize == 0) {
++		return 0;
++	}
++	unwrapped.value_valid = true;
++	ret = state->fn(&unwrapped, state->private_data);
++	if (ret != 0) {
++		state->error = NT_STATUS_REQUEST_ABORTED;
++		return -1;
++	}
++	return 0;
++}
++
++NTSTATUS dbwrap_watched_traverse_read_complete(
++	struct db_context *db,
++	int (*fn)(struct db_record *rec, void *private_data),
++	void *private_data)
++{
++	struct db_watched_ctx *ctx = talloc_get_type_abort(
++		db->private_data, struct db_watched_ctx);
++	struct dbwrap_complete_read_state state = {
++		.fn = fn,
++		.private_data = private_data,
++		.error = NT_STATUS_OK,
++	};
++	NTSTATUS status;
++	int count;
++
++	status = dbwrap_traverse_read(ctx->backend, dbwrap_complete_read_fn,
++				      &state, &count);
++	/* TDB returns a visited count even when a callback stopped traversal. */
++	if (!NT_STATUS_IS_OK(state.error)) {
++		return state.error;
++	}
++	return status;
++}
++
+ static int dbwrap_watched_get_seqnum(struct db_context *db)
+--- a/source3/lib/dbwrap/dbwrap_watch.h
++++ b/source3/lib/dbwrap/dbwrap_watch.h
+@@ -29,2 +29,7 @@
+ 				   struct messaging_context *msg);
++/* Complete read: malformed records and every callback stop are errors. */
++NTSTATUS dbwrap_watched_traverse_read_complete(
++	struct db_context *db,
++	int (*fn)(struct db_record *rec, void *private_data),
++	void *private_data);
+ uint64_t dbwrap_watched_watch_add_instance(struct db_record *rec);
+--- a/source3/lib/sessionid_tdb.c
++++ b/source3/lib/sessionid_tdb.c
+@@ -104 +104,46 @@
+ }
++
++struct sessionid_complete_read_state {
++	struct sessionid_traverse_read_state conversion;
++	bool partial_record;
++};
++
++static int sessionid_complete_read_fn(
++	struct smbXsrv_session_global0 *global, void *private_data)
++{
++	struct sessionid_complete_read_state *state = private_data;
++
++	if (global == NULL || global->num_channels == 0 ||
++	    global->channels == NULL || global->channels[0].remote_name == NULL ||
++	    global->channels[0].remote_address == NULL) {
++		state->partial_record = true;
++		return -1;
++	}
++	if (global->auth_session_info != NULL &&
++	    (global->auth_session_info->security_token == NULL ||
++	     global->auth_session_info->unix_token == NULL ||
++	     global->auth_session_info->unix_info == NULL ||
++	     global->auth_session_info->unix_info->unix_name == NULL)) {
++		state->partial_record = true;
++		return -1;
++	}
++	return sessionid_traverse_read_fn(global, &state->conversion);
++}
++
++NTSTATUS sessionid_traverse_read_complete(
++	int (*fn)(const char *key, struct sessionid *session, void *private_data),
++	void *private_data)
++{
++	struct sessionid_complete_read_state state = {
++		.conversion = { .fn = fn, .private_data = private_data },
++	};
++	NTSTATUS status = smbXsrv_session_global_traverse_complete(
++		sessionid_complete_read_fn, &state);
++
++	if (state.partial_record &&
++	    NT_STATUS_EQUAL(status, NT_STATUS_REQUEST_ABORTED)) {
++		return NT_STATUS_INFO_LENGTH_MISMATCH;
++	}
++	return status;
++}
++
+--- a/source3/smbd/smbXsrv_session.c
++++ b/source3/smbd/smbXsrv_session.c
+@@ -2561,2 +2561,3 @@
+ 	void *private_data;
++	bool invalid_record;
+ };
+@@ -2575,2 +2576,3 @@
+ 
++	state->invalid_record = true;
+ 	ndr_err = ndr_pull_struct_blob(&blob, frame, &global_blob,
+@@ -2601,2 +2603,3 @@
+ 	global_blob.info.info0->db_rec = rec;
++	state->invalid_record = false;
+ 	ret = state->fn(global_blob.info.info0, state->private_data);
+@@ -2634,2 +2637,27 @@
+ 
++	return status;
++}
++
++NTSTATUS smbXsrv_session_global_traverse_complete(
++	int (*fn)(struct smbXsrv_session_global0 *, void *),
++	void *private_data)
++{
++	struct smbXsrv_session_global_traverse_state state = {
++		.fn = fn,
++		.private_data = private_data,
++	};
++	NTSTATUS status;
++
++	become_root();
++	status = smbXsrv_session_global_init(NULL);
++	if (NT_STATUS_IS_OK(status)) {
++		status = dbwrap_watched_traverse_read_complete(
++			smbXsrv_session_global_db_ctx,
++			smbXsrv_session_global_traverse_fn, &state);
++	}
++	unbecome_root();
++	if (state.invalid_record &&
++	    NT_STATUS_EQUAL(status, NT_STATUS_REQUEST_ABORTED)) {
++		return NT_STATUS_INFO_LENGTH_MISMATCH;
++	}
+ 	return status;
+--- a/source3/smbd/smbXsrv_session.h
++++ b/source3/smbd/smbXsrv_session.h
+@@ -101,2 +101,5 @@
+ 	void *private_data);
++NTSTATUS smbXsrv_session_global_traverse_complete(
++	int (*fn)(struct smbXsrv_session_global0 *, void *),
++	void *private_data);
+ struct tevent_req *smb2srv_session_close_previous_send(
+--- a/source3/utils/status.c
++++ b/source3/utils/status.c
+@@ -63,2 +63,9 @@
+ #endif /* HAVE_JANSSON */
++
++enum session_scan_exit {
++	SESSION_SCAN_CALLBACK_STOP = 20,
++	SESSION_SCAN_PARTIAL_RECORD = 21,
++	SESSION_SCAN_SERIALIZATION = 22,
++	SESSION_SCAN_WATCHED_RECORD = 23,
++};
+ 
+@@ -703,3 +710,3 @@
+ 	} else {
+-		add_section_to_json(state, "sessions");
++		return add_section_to_json(state, "sessions");
+ 	}
+@@ -1214,4 +1221,25 @@
+ 	if ( show_processes ) {
+-		prepare_sessionid(&state);
+-		sessionid_traverse_read(traverse_sessionid, &state);
++		NTSTATUS session_status;
++		if (prepare_sessionid(&state) != 0) {
++			ret = SESSION_SCAN_SERIALIZATION;
++			fprintf(stderr, "Session scan refused: JSON preparation failed\n");
++			goto done;
++		}
++		session_status = sessionid_traverse_read_complete(traverse_sessionid, &state);
++		if (!NT_STATUS_IS_OK(session_status)) {
++			if (NT_STATUS_EQUAL(session_status, NT_STATUS_FILE_CORRUPT_ERROR)) {
++				ret = SESSION_SCAN_WATCHED_RECORD;
++				fprintf(stderr, "Session scan refused: malformed watched record\n");
++			} else if (NT_STATUS_EQUAL(session_status, NT_STATUS_INFO_LENGTH_MISMATCH)) {
++				ret = SESSION_SCAN_PARTIAL_RECORD;
++				fprintf(stderr, "Session scan refused: partial record\n");
++			} else if (NT_STATUS_EQUAL(session_status, NT_STATUS_REQUEST_ABORTED)) {
++				ret = SESSION_SCAN_CALLBACK_STOP;
++				fprintf(stderr, "Session scan refused: callback stopped\n");
++			} else {
++				ret = 1;
++				fprintf(stderr, "Session scan unavailable\n");
++			}
++			goto done;
++		}
+ 
+@@ -1301,4 +1329,8 @@
+ #ifdef HAVE_JANSSON
+-	if (state.json_output) {
+-		d_printf("%s\n", json_to_string(frame, &state.root_json));
++	if (state.json_output && ret == 0) {
++		const char *serialized = json_to_string(frame, &state.root_json);
++		if (serialized == NULL || d_printf("%s\n", serialized) < 0) {
++			ret = SESSION_SCAN_SERIALIZATION;
++			fprintf(stderr, "Session scan refused: serialization failed\n");
++		}
+ 	}
