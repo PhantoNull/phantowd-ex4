@@ -23,7 +23,7 @@ func TestPlannedDataDiagnosticsShareDirectAndFaultWiring(t *testing.T) {
 		file, function string
 		callees        []string
 	}{
-		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", []string{"plannedDataRefusalDiagnosticQEMU"}},
+		{"planned_startup_linux.go", "nativePlannedServiceFixtureQEMU", []string{"plannedFaultFailureDiagnosticQEMU"}},
 		{"planned_fault_diagnostic_linux.go", "plannedFaultFailureDiagnosticQEMU", []string{"plannedDataRefusalDiagnosticQEMU"}},
 		{"planned_fault_diagnostic_linux.go", "plannedDataRefusalDiagnosticQEMU", []string{
 			"plannedAccessStageDiagnosticQEMU", "plannedAccessContextDiagnosticQEMU", "plannedAccessCostDiagnosticQEMU",

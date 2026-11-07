@@ -19,6 +19,8 @@ on:
       - 'support/container/build-qemu*'
       - 'support/compare-build-artifacts.sh'
       - 'support/test-compare-build-artifacts.sh'
+      - 'support/container/prepare-repro-runner.sh'
+      - 'support/tests/test-repro-runner.py'
   workflow_dispatch:
 
 permissions:
@@ -50,6 +52,11 @@ jobs:
         run: |
           sh support/test-compare-build-artifacts.sh
           python3 -B support/tests/test-repro-phases.py
+          python3 -B support/tests/test-repro-runner.py
+
+      - name: Prepare hosted runner disk budget
+        timeout-minutes: 3
+        run: sh support/container/prepare-repro-runner.sh
 
       - name: Build pinned environment
         run: docker build --file support/docker/Dockerfile --tag "$BUILD_IMAGE" .

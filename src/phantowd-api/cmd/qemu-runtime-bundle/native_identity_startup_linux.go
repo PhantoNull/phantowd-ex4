@@ -98,7 +98,7 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 	// The added live-session campaign has its own fixed45-second deadline.
 	// Startup's40 seconds never governs that unrelated workload. Complete manual/
 	// timed observation and accepted cancellation now have a stricter20 seconds;
-	// the original worker/revocation/guest180 bounds remain unchanged.
+	// worker/revocation bounds remain unchanged; the lifecycle guest has360s.
 	cancel()
 	ctx, cancel = context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -228,8 +228,8 @@ func nativeCoordinatorDisableFixtureQEMU(service *smbexec.NativeIdentityServiceQ
 // Fixed fixture callbacks, not backend selection or a product timing policy.
 // Preparation gets 20 seconds; original revocation/continuity/login checks keep
 // their full 45 seconds. The SAME runtime, Owner and held pair cross this seam.
-// Context expiry or uncertain work never proceeds/retries; all worker and
-// external 180-second guest limits remain independent and unchanged.
+// Context expiry or uncertain work never proceeds/retries; worker bounds and
+// the fixed external lifecycle guest360 bound remain independent.
 func runNativeCoordinatorPhasesQEMU(parent context.Context, prepare, revoke func(context.Context) error) error {
 	if parent == nil || prepare == nil || revoke == nil {
 		return errors.New("native coordinator requires both fixture phases and parent")
