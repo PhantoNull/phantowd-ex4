@@ -26,7 +26,7 @@ func TestNativeCoordinatorPreparationCannotSpendRevocationBudget(t *testing.T) {
 			return ctx.Err()
 		}, func(ctx context.Context) error {
 			deadline, ok := ctx.Deadline()
-			if !ok || time.Until(deadline) != 45*time.Second {
+			if !ok || time.Until(deadline) != 90*time.Second {
 				t.Errorf("revocation inherits preparation cost: remaining=%v", time.Until(deadline))
 			}
 			if !errors.Is(prepared.Err(), context.Canceled) {
@@ -35,12 +35,12 @@ func TestNativeCoordinatorPreparationCannotSpendRevocationBudget(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(40 * time.Second):
+			case <-time.After(85 * time.Second):
 				completed++
 				return nil
 			}
 		})
-		if err != nil || completed != 1 || time.Since(begin) != 59*time.Second {
+		if err != nil || completed != 1 || time.Since(begin) != 104*time.Second {
 			t.Fatalf("separately bounded workloads failed: completed=%d elapsed=%v error=%v", completed, time.Since(begin), err)
 		}
 	})
@@ -121,7 +121,7 @@ func TestNativeCoordinatorRevocationCannotReturnLateSuccess(t *testing.T) {
 		err := runNativeCoordinatorPhasesQEMU(context.Background(), func(context.Context) error { return nil }, func(ctx context.Context) error {
 			revocation = ctx
 			calls++
-			time.Sleep(46 * time.Second)
+			time.Sleep(91 * time.Second)
 			return nil
 		})
 		if !errors.Is(err, context.DeadlineExceeded) || calls != 1 || revocation.Err() == nil {

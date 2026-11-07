@@ -46,7 +46,7 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 		return err
 	}
 	defer func() { reportNativeWorkerFailureQEMU(runtime, result) }()
-	backend, err := smbexec.NewNativeBackendQEMU(ctx, runtime)
+	backend, err := smbexec.NewNativeQualificationBackendQEMU(ctx, runtime)
 	if err != nil {
 		return errors.Join(err, runtime.Close(context.Background()))
 	}
@@ -95,10 +95,10 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 	if err := nativeCoordinatorDisableFixtureQEMU(service, owner, target); err != nil {
 		return err
 	}
-	// The added live-session campaign has its own fixed45-second deadline.
+	// The added live-session campaign has its own fixed90-second deadline.
 	// Startup's40 seconds never governs that unrelated workload. Complete manual/
 	// timed observation and accepted cancellation now have a stricter20 seconds;
-	// worker/revocation bounds remain unchanged; the lifecycle guest has360s.
+	// this final phase never refreshes backend bounds; the guest has360s.
 	cancel()
 	ctx, cancel = context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -226,15 +226,15 @@ func nativeCoordinatorDisableFixtureQEMU(service *smbexec.NativeIdentityServiceQ
 }
 
 // Fixed fixture callbacks, not backend selection or a product timing policy.
-// Preparation gets 20 seconds; original revocation/continuity/login checks keep
-// their full 45 seconds. The SAME runtime, Owner and held pair cross this seam.
-// Context expiry or uncertain work never proceeds/retries; worker bounds and
-// the fixed external lifecycle guest360 bound remain independent.
+// Preparation gets20 seconds; revocation/continuity/login gets90 seconds with
+// the fixed qualification backend8/8/40. This raises the allowance from65 to110
+// seconds, not throughput. The SAME runtime, Owner and held pair cross the seam.
+// Expiry/uncertainty never proceeds/retries; the guest360 bound is unchanged.
 func runNativeCoordinatorPhasesQEMU(parent context.Context, prepare, revoke func(context.Context) error) error {
 	if parent == nil || prepare == nil || revoke == nil {
 		return errors.New("native coordinator requires both fixture phases and parent")
 	}
-	budgets := [...]time.Duration{20 * time.Second, 45 * time.Second}
+	budgets := [...]time.Duration{20 * time.Second, 90 * time.Second}
 	for index, phase := range []func(context.Context) error{prepare, revoke} {
 		if err := parent.Err(); err != nil {
 			return err

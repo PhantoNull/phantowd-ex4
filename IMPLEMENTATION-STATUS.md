@@ -2337,27 +2337,29 @@ build-policy validation, not a new whole-image, security or performance result.
 
 ## Current QEMU fixture — separately bounded lifecycle workloads
 
-The lifecycle driver separates held-client preparation20 from the original
-revocation/peer/new-login verification45. Its combined contextual allowance
-changes from45 to65 seconds; no worker, service, readiness, stop or guest180
-limit changes. It retains the SAME service/Owner/backend/journal/session pair,
+The lifecycle driver separates held-client preparation20 from
+revocation/peer/new-login verification90 and selects the existing native
+qualification backend8/8/40 before admission. Its combined allowance increases
+from65 to110 seconds; this is not a performance improvement. Other profiles,
+readiness/stop and guest360 stay unchanged. It retains the SAME service, Owner,
+backend, journal and session pair,
 refuses continuation or retry after failed/expired preparation, preserves typed
 uncertainty, respects shorter parents and rejects late successful results.
 
 The real internal runner first fails a virtual-clock regression under the old
-cumulative budget, then passes the timing/cancellation/uncertainty cases.
-Pinned Go1.26.8 Linux tagged command vet/tests and race-count3, Windows API/UI/
-vet/contracts/ARMv5 cross-compilation, and one actual focused ARMv5 lifecycle
-campaign pass with every original proof. The final tool transcript is clipped;
-its observed terminal acceptance is not a claimed complete archived guest log.
+45-second phase, then passes with90 while retaining cancellation, uncertainty,
+shorter-parent and late-success refusals. Pinned Go1.26.8 Linux tagged vet and
+race-count3 on four packages,82 fixture checks and Windows API/UI/vet/tests/
+ARMv5 cross-compilation pass. Windows uses local Go1.27, not guest execution.
 
-Fresh unchanged-source guests both fail and pass: the failure is an independent
-post-admission worker deadline during client preparation, not the historical
-hosted outer continuity timeout. This is fixture orchestration, not a proven
-hosted fix, repeatable-load result, product activation or EX4 qualification.
-The complete current-source suite/image audit now passes at the exact checkpoint
-above; own-head hosted gates remain open. The separate exclusive-supervision
-contract is unchanged.
+An actual cached ARMv5 lifecycle guest with CPU quota0.65 now passes in266.79s,
+including every original proof under both current and unchanged develop
+validators. The earlier45-phase control at that quota failed peer continuity.
+Original failed logs remain preserved. This is an explicit fixture-budget
+increase, not throughput optimization, a proven hosted fix, whole-image build,
+EX4 qualification or product activation. Complete original/focused regression
+and own-head hosted qualification remain open for this increment. The separate
+exclusive-supervision contract is unchanged.
 
 ## Current native component — terminal session-observation fences
 

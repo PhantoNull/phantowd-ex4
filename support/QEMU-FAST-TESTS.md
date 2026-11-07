@@ -2265,8 +2265,8 @@ as the same timeout:
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
 | Native enrollment, 75 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
-| Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, native360 s; others180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Lifecycle revocation, 90 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification; fixed qualification status/control8 and total revocation40 | Every individual worker exceeded its own deadline |
+| Guest, lifecycle360 s | The complete disposable boot and selected lifecycle campaign; other campaign mappings unchanged | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2315,24 +2315,24 @@ revocation. Local native success and a slower-emulation negative do not establis
 that the integration PR's own hosted failure is fixed; full current-source and
 own-head hosted qualification remain separate gates.
 
-The current QEMU-only lifecycle driver replaces its former cumulative45 context
-with serial preparation20 and revocation45 contexts. This deliberately raises
-the combined contextual allowance to65 seconds; it is not a performance gain
+The current QEMU-only lifecycle driver uses serial preparation20 and
+revocation90 contexts, and the existing native qualification backend8/8/40.
+This raises the former20+45 allowance65 to110 seconds; it is not a performance gain
 or product request policy. The SAME service, Owner, startup-fixed backend,
 journal and opaque original session pair cross the handoff. Uncertain/expired
 preparation refuses the second phase, shorter parent deadlines still bound both,
 and a late nil return cannot report success. Contexts are cooperative, not a
-guarantee to preempt an uninterruptible callback. Worker/readiness/stop and the
-external guest180 guard are unchanged. Fake-clock regression tests exercise the
-actual internal phase runner without inventing runtime/session authority.
+guarantee to preempt an uninterruptible callback. Other backend profiles,
+readiness/stop and the lifecycle guest360 guard are unchanged. Fake-clock tests
+exercise the actual internal phase runner without inventing runtime/session authority.
 
-A focused local ARMv5 lifecycle replay passes all original proofs after this
-change. An unchanged-source fresh guest also passed, while another failed on an
-independent post-admission worker deadline during client preparation. Therefore
-one candidate pass does not establish that historical hosted outer deadlines
-or independent child expiries are fixed. Full current-source integration and
-own-head hosted qualification remain required; do not rerun heavy CI merely to
-substitute a lucky green for a diagnosed failure.
+A focused cached ARMv5 lifecycle replay with CPU quota0.65 passes all original
+proofs in266.79 seconds with the approved90 phase and qualification backend.
+The earlier45-phase control at the same quota failed peer continuity; neither
+result is an EX4 performance measure. The successful log also passes the
+unchanged qualified-develop validator. Full current-source integration and
+own-head hosted qualification remain required before integration; do not rerun
+heavy CI merely to substitute a lucky green for a diagnosed failure.
 
 Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
 not authorization. `reason=other` is not proof that no deadline occurred:
