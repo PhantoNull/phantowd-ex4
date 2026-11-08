@@ -154,6 +154,11 @@ run_fixture() {
     echo 'PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only'
     mount -t tmpfs -o mode=0755,size=96m tmpfs /run || return 1
     ifconfig lo up || return 1
+    if [ "$campaign" = service ]; then
+        grep -Fx 'phantowd-hash:x:59999:59999:Fixed read-only runtime hash worker:/:/bin/false' /etc/passwd || return 1
+        grep -Fx 'phantowd-hash:x:59999:' /etc/group || return 1
+        grep -Fx 'phantowd-hash:*:::::::' /etc/shadow || return 1
+    fi
     root=/run/phantowd-samba-root
     code=/run/phantowd-samba-code
     source=/run/phantowd-samba-source
@@ -380,6 +385,7 @@ run_fixture() {
     # independent real NSS/config/handoff tests; it passes NO state to another.
     setup_native_fixture || return 1
     /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
+    /usr/sbin/phantowd-code-hash-tests-init || return 1
     echo PHANTOWD_SAMBA_ROOT_SERVICE_DONE
 }
 if ! run_fixture; then
