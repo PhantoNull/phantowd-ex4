@@ -8,6 +8,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
@@ -22,7 +25,11 @@ const plannedHeldCloseMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READ
 // must stay bound to the SAME backend session and both authorities through the
 // complete supervised scan. Accepted cancellation stops, but does not release;
 // only a subsequent verified full Close may release the original authorities.
-func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
+func qualifyPlannedHeldCancellationQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) (result error) {
+	ctx = runtimebundle.WithNativeWorkerTimingQEMU(ctx)
+	defer func() {
+		fmt.Fprint(os.Stderr, plannedHeldParentFailureDiagnosticQEMU(ctx, result, time.Now()))
+	}()
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 	if err := service.StartHeldSessionQEMU(canceled); !errors.Is(err, context.Canceled) {
