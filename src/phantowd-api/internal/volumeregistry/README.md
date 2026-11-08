@@ -1,6 +1,37 @@
-# Internal volume registry observation (M3.2g)
+# Internal volume registry (M3.2g)
 
-## Task contract (before implementation)
+## Explicit persistent claims: task contract
+
+The following reader contracts describe earlier read-only increments. The new
+Linux writer extends persistence only; no product startup or storage adoption.
+
+1. Input: a borrowed trusted descriptor for a separately provisioned owned0700
+   local directory. Reuse revisionstore's fixed-name, exclusive-lock and atomic
+   transaction engine; no request path, device, inferred ID or second journal.
+2. Transition: explicit first commit at revision1, then exact expected+1 CAS.
+   Existing ID/UUID pairs must remain unchanged; only new validated claims may
+   be appended. Removal, ID renaming and backing reassignment are refused.
+3. Failure: malformed/duplicate claims, stale revision or retained-binding change
+   must not modify current or pending files. Reader/writer lifetimes exclude
+   one another. Uncertain publication retains the existing revisionstore error
+   contract; no retry, automatic registration, recovery or service activation.
+4. Boundary: internal normal Linux code, not QEMU-only. No directory provisioning,
+   HTTP/CLI, broker change, mount/import, strong physical identity or NAS operation.
+5. Acceptance: real temporary Linux files survive writer close/protected-reader
+   reopen; append-only rejection preserves bytes/inodes, reader/writer exclusion,
+   stale concurrent CAS, unsafe directory/current/pending and codec bounds. Reuse
+   generic revisionstore interruption/fsync tests; no physical durability claim.
+
+The current implementation passes pinned Linux tagged whole-API vet/race,
+three registry/transaction race repetitions, Windows API/UI checks and ARMv5
+cross-compilation. Tests preserve current/pending bytes and file identity on
+retained-binding refusal, verify one successful concurrent CAS, retain borrowed
+FD ownership and enforce reader/writer exclusion. The existing disposable
+ARMv5 registry fixture now provisions claims through this normal Linux writer
+before its protected reader; execution on this changed head is still pending.
+No HTTP/CLI or production bootstrap is added. Registration is not adoption.
+
+## Initial reader task contract (before implementation)
 
 1. **Input/authority:** a bounded versioned document holds explicit logical
    VolumeID/expected-filesystem-UUID claims. Reuse `shareconfig` validation and
