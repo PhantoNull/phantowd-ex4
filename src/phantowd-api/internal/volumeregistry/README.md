@@ -16,20 +16,23 @@ Linux writer extends persistence only; no product startup or storage adoption.
    one another. Uncertain publication retains the existing revisionstore error
    contract; no retry, automatic registration, recovery or service activation.
 4. Boundary: internal normal Linux code, not QEMU-only. No directory provisioning,
-   HTTP/CLI, broker change, mount/import, strong physical identity or NAS operation.
+   HTTP, broker change, mount/import, strong physical identity or NAS operation.
 5. Acceptance: real temporary Linux files survive writer close/protected-reader
    reopen; append-only rejection preserves bytes/inodes, reader/writer exclusion,
    stale concurrent CAS, unsafe directory/current/pending and codec bounds. Reuse
    generic revisionstore interruption/fsync tests; no physical durability claim.
 
-The current implementation passes pinned Linux tagged whole-API vet/race,
-three registry/transaction race repetitions, Windows API/UI checks and ARMv5
-cross-compilation. Tests preserve current/pending bytes and file identity on
-retained-binding refusal, verify one successful concurrent CAS, retain borrowed
-FD ownership and enforce reader/writer exclusion. The existing disposable
-ARMv5 registry fixture now provisions claims through this normal Linux writer
-before its protected reader; execution on this changed head is still pending.
-No HTTP/CLI or production bootstrap is added. Registration is not adoption.
+The normal Linux binary exposes one explicit operator transaction:
+`--commit-volume-registry --expected-registry-revision=N`. A trusted parent
+passes a separately provisioned owned0700 local directory at inherited FD3;
+the bounded versioned JSON document arrives only on stdin. Revision must be
+N+1. Success prints only revision/claim counts. The command neither provisions
+the directory nor changes default server privileges. Invalid inputs, concurrent
+readers, stale revisions and retained-binding changes fail without registration;
+uncertain results require manual state inspection before another operation.
+No HTTP, product bootstrap, mount/import or service activation is added.
+Registration is not adoption. The disposable guest fixture uses this same CLI
+before its protected reader; physical/reboot durability remains unqualified.
 
 ## Initial reader task contract (before implementation)
 
