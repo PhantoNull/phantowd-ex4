@@ -191,7 +191,7 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
-		if (validPlannedAccessStageDiagnosticQEMU(fields) || validPlannedAccessContextDiagnosticQEMU(fields) || validPlannedAccessCostDiagnosticQEMU(fields) || validPlannedDataCostDiagnosticQEMU(fields) || validPlannedCheckCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
+		if (validNativeWorkerFailureDiagnosticQEMU(fields) || validPlannedAccessStageDiagnosticQEMU(fields) || validPlannedAccessContextDiagnosticQEMU(fields) || validPlannedAccessCostDiagnosticQEMU(fields) || validPlannedDataCostDiagnosticQEMU(fields) || validPlannedCheckCostDiagnosticQEMU(fields) || validPlannedPhaseCostDiagnosticQEMU(fields)) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)
 			output.WriteByte('\n')
@@ -229,4 +229,23 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 		output.WriteByte('\n')
 	}
 	return output.String()
+}
+
+// The bounded child's first worker classification is already redacted. Admit
+// only its fixed grammar; these rows never replace the exact successful proof.
+func validNativeWorkerFailureDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 4 || fields[0] != "PHANTOWD_QEMU_NATIVE_WORKER_FAILURE" || fields[3] != "scope=diagnostic-only" {
+		return false
+	}
+	switch fields[1] {
+	case "phase=pre-admission", "phase=settlement", "phase=execution", "phase=post-admission", "phase=result", "phase=unknown":
+	default:
+		return false
+	}
+	switch fields[2] {
+	case "reason=deadline", "reason=canceled", "reason=mismatch", "reason=unavailable", "reason=other":
+		return true
+	default:
+		return false
+	}
 }
