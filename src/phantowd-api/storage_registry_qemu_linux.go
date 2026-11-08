@@ -39,14 +39,23 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 			{ID: "logical-missing", FilesystemUUID: "77777777-8888-9999-aaaa-bbbbbbbbbbbb"}}}
 	data, err := json.Marshal(d)
 	file := filepath.Join(dir, "volumes.json")
-	if err != nil || os.WriteFile(file, data, 0600) != nil {
-		return errors.New("registry fixture provision failed")
+	if err != nil {
+		return errors.New("registry fixture encoding failed")
 	}
 	f, err := os.Open(dir)
 	if err != nil {
 		return errors.New("registry fixture descriptor unavailable")
 	}
 	defer f.Close()
+	writer, err := volumeregistry.OpenWriter(f)
+	if err != nil {
+		return errors.New("registry fixture writer unavailable")
+	}
+	commitErr := writer.Commit(0, d)
+	closeErr := writer.Close()
+	if commitErr != nil || closeErr != nil {
+		return errors.New("explicit registry fixture commit failed")
+	}
 	r, err := volumeregistry.Open(f)
 	if err != nil {
 		return errors.New("protected registry reader unavailable")

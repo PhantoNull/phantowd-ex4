@@ -3,6 +3,18 @@
 
 # Implementation status
 
+## M3.2g explicit registry claim persistence - local qualification
+
+The internal normal Linux registry writer now reuses revisionstore through a
+borrowed trusted directory descriptor, fixed volumes.json/pending names and an
+exclusive lock. Explicit revisioned commits may append validated claims; removing,
+renaming or rebinding an existing logical ID is refused before pending cleanup.
+Pinned whole-API tagged vet/race, registry/store race3, Windows API/UI and ARMv5
+cross-compilation pass. Real temporary-file tests verify reopen, preserved refusal
+evidence, concurrent CAS and reader/writer exclusion. The existing ARMv5 fixture
+now uses this writer; changed-head guest execution and hosted CI remain pending.
+No provisioning, HTTP/CLI, production boot, adoption, mount or NAS operation.
+
 ## Retained Samba split-state profile — local research
 
 A separate fixed QEMU profile retains original ext4 `private`/`state` directories
