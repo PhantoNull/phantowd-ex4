@@ -1,6 +1,7 @@
 menu "PhantoWD packages"
 
 source "$BR2_EXTERNAL_PHANTOWD_EX4_PATH/package/phantowd-api/Config.in"
+source "$BR2_EXTERNAL_PHANTOWD_EX4_PATH/package/phantowd-code-hash/Config.in"
 source "$BR2_EXTERNAL_PHANTOWD_EX4_PATH/package/phantowd-volume-probe/Config.in"
 
 endmenu
