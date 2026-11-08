@@ -5,6 +5,6 @@ config BR2_PACKAGE_PHANTOWD_CODE_HASH
 	depends on BR2_ARM_CPU_ARMV5
 	select BR2_PACKAGE_NETTLE
 	help
-	  Fixed descriptor-only read-only hash worker for the EX4 service Owner.
-	  Reuses the configured generic C Nettle implementation on ARMv5.
-	  Installation reserves its service identity; it does not activate a service.
+	  Fixed read-only hash worker using inherited descriptors.
+	  Uses configured generic C Nettle routines on ARMv5.
+	  Reserves a service identity; never activates a service.

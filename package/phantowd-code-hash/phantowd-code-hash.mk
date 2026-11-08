@@ -1,5 +1,7 @@
 ################################################################################
+#
 # phantowd-code-hash
+#
 ################################################################################
 
 PHANTOWD_CODE_HASH_VERSION = 0.1.0
@@ -10,7 +12,7 @@ PHANTOWD_CODE_HASH_LICENSE_FILES = LICENSE COPYING.LESSERv3 COPYINGv3
 PHANTOWD_CODE_HASH_DEPENDENCIES = nettle
 
 define PHANTOWD_CODE_HASH_USERS
-phantowd-hash 59999 phantowd-hash 59999 * - /bin/false - Fixed read-only runtime hash worker
+	phantowd-hash 59999 phantowd-hash 59999 * - /bin/false - Fixed read-only runtime hash worker
 endef
 
 # Recompile only these unmodified upstream C units. Never consume cached .o
