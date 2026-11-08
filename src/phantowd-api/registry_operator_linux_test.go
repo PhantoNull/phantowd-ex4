@@ -35,6 +35,9 @@ func operatorRegistryCommand(t *testing.T, directory *os.File, document []byte, 
 	defer cancel()
 	command := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestVolumeRegistryOperatorProcess$", "--"}, args...)...)
 	command.Env = []string{"PHANTOWD_REGISTRY_OPERATOR_TEST=1"}
+	if coverage := os.Getenv("GOCOVERDIR"); coverage != "" {
+		command.Env = append(command.Env, "GOCOVERDIR="+coverage)
+	}
 	if directory != nil {
 		command.ExtraFiles = []*os.File{directory}
 	}
