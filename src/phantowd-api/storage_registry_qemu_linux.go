@@ -6,12 +6,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
@@ -47,14 +50,14 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 		return errors.New("registry fixture descriptor unavailable")
 	}
 	defer f.Close()
-	writer, err := volumeregistry.OpenWriter(f)
-	if err != nil {
-		return errors.New("registry fixture writer unavailable")
-	}
-	commitErr := writer.Commit(0, d)
-	closeErr := writer.Close()
-	if commitErr != nil || closeErr != nil {
-		return errors.New("explicit registry fixture commit failed")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, "/proc/self/exe", "--commit-volume-registry", "--expected-registry-revision=0")
+	command.ExtraFiles = []*os.File{f}
+	command.Stdin = bytes.NewReader(data)
+	output, err := command.CombinedOutput()
+	if err != nil || ctx.Err() != nil || string(output) != "revision=1 claims=2\n" {
+		return fmt.Errorf("registry operator fixture command=%v context=%v output=%q", err, ctx.Err(), output)
 	}
 	r, err := volumeregistry.Open(f)
 	if err != nil {
