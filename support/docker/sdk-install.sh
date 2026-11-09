@@ -30,12 +30,14 @@ prefetch() {
         case "$hash" in SHA256:*) digest=${hash#SHA256:} ;; *) refuse hash ;; esac
         [ "${#digest}" -eq 64 ] || refuse hash
         case "$digest" in *[!0-9a-f]*) refuse hash ;; esac
-        # Two historical objects have left the live pool; hashes remain signed.
+        # Historical objects can leave the live pool; hashes remain signed.
         case "$digest" in
           04405c19b977d19c5e0fd7210e452b8044a065cb45a82012d45046738920ca75)
             url=https://snapshot.debian.org/file/4fd1e3742c4ad584c12ad55fa8a4b85a23d6ffe2 ;;
           ebcd139c31438e19f161bcf277a38708402ddd0e3acbe208cbbb27bff1c52bb9)
             url=https://snapshot.debian.org/file/0ed67619a7af7e8e00326f6de6c9b60c95427201 ;;
+          62b08a77d985d4253894b1f69aebda5925034ca4e294add364167fad8cb64a44)
+            url=https://snapshot.debian.org/file/85be8fcf3d5e2c7a62329c40f4d35762f186a8ab ;;
         esac
         set -- "$@" "$url" "/var/cache/apt/archives/$file" "$hash"
     done < "$plan"
