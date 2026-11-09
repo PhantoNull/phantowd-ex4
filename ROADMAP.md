@@ -1239,6 +1239,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   sequential bracket is not an atomic/global snapshot, continued freshness,
   retained lease, compatibility qualifier or activation/planner authority.
   No writer, product startup, HTTP, mount/import or new privilege is added.
+  **Explicit claim persistence (partial; locally tested):** the normal Linux
+  registry writer reuses revisionstore's retained-directory/CAS/atomic transaction
+  engine. Existing ID/UUID pairs cannot be removed, renamed or rebound; appends
+  require validated explicit claims. Native real-file/race3 and whole API tagged
+  vet/race, Windows and ARMv5 cross-compilation pass. The existing guest fixture
+  now uses the writer; execution on this changed head remains pending. No product
+  bootstrap, registration UI/CLI, adoption, physical identity or mount authority.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

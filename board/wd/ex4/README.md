@@ -8,6 +8,10 @@ The [installation layout review](INSTALLATION-DESIGN.md) records candidates,
 space/state/trust requirements and unresolved recovery evidence. It selects no
 production layout and provides no installation or device-write procedure.
 
+The [legacy hardware comparison](LEGACY-HARDWARE-COMPATIBILITY.md) maps
+SATA, networking, fan, LEDs and display against the research tag, with remaining
+compatibility work and static evidence anchors.
+
 Known discovery baseline:
 
 - vendor firmware 2.13.108;

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+config BR2_PACKAGE_PHANTOWD_CODE_HASH
+	bool "phantowd-code-hash"
+	depends on BR2_ARM_CPU_ARMV5
+	select BR2_PACKAGE_NETTLE
+	help
+	  Fixed read-only hash worker using inherited descriptors.
+	  Uses configured generic C Nettle routines on ARMv5.
+	  Reserves a service identity; never activates a service.

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package volumeregistry observes explicitly provisioned registry claims.
-// It does not register volumes, grant leases or authorize storage operations.
+// Package volumeregistry records explicit registry claims and observes them.
+// Persisted claims do not adopt volumes, grant leases or authorize storage operations.
 package volumeregistry
 
 import (

@@ -19,6 +19,8 @@ import (
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
 	storageBroker := flag.Bool("storage-broker", false, "serve the local read-only storage broker")
+	registryCommit := flag.Bool("commit-volume-registry", false, "persist explicit claims using inherited directory 3; no storage adoption")
+	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
@@ -36,7 +38,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -45,6 +47,16 @@ func main() {
 	}
 	if flag.NArg() != 0 || modes > 1 {
 		log.Fatal("unexpected arguments")
+	}
+	if !*registryCommit && *registryExpected != "" {
+		log.Fatal("registry revision requires commit mode")
+	}
+	if *registryCommit {
+		if err := commitInheritedVolumeRegistry(*registryExpected); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_REGISTRY_COMMIT_ERROR", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *writableConsumer {
 		if err := runQEMUWritableBackingConsumer(); err != nil {

@@ -1845,6 +1845,10 @@ class SambaRootFixture(unittest.TestCase):
         ]
         # The new independent exit proof is additional; all older literal
         # golden proofs remain required, in their original relative order.
+        hash_index = next(i for i, row in enumerate(lines) if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        lines.insert(hash_index, fixture.CODE_HASH_MARKER)
+        lines.insert(hash_index + 1, fixture.CODE_OWNER_MARKER)
         index = next(i for i, row in enumerate(lines) if row.startswith(
             "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY"))
         lines.insert(index, fixture.PLANNED_EXIT_FAULT_MARKER)
@@ -2161,6 +2165,35 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn('mount -t ext4 -o acl,nosuid,nodev,noexec', init)
         self.assertIn('file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on',
                       driver)
+
+
+class CodeHashReaderProofTests(unittest.TestCase):
+    def test_service_refuses_missing_or_repeated_reader_proof(self):
+        rows = campaign_rows()["service"]
+        log = "\n".join(rows)
+        fixture.check_campaign(log, "service")
+        for marker in ("", fixture.CODE_HASH_MARKER + "\n"
+                       + fixture.CODE_HASH_MARKER):
+            with self.subTest(marker=bool(marker)):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        log.replace(fixture.CODE_HASH_MARKER, marker),
+                        "service")
+
+
+class CodeHashOwnerProofTests(unittest.TestCase):
+    def test_service_refuses_missing_or_repeated_owner_proof(self):
+        proof = (
+            "PHANTOWD_SAMBA_ROOT_CODE_OWNER_READY normal_owner=true "
+            "start_stop=true drift_refused=true cancellation=true "
+            "review_sticky=true scope=qemu-only")
+        log = "\n".join(campaign_rows()["service"])
+        fixture.check_campaign(log, "service")
+        for replacement in ("", proof + "\n" + proof):
+            with self.subTest(repeated=bool(replacement)):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(log.replace(proof, replacement),
+                                           "service")
 
 
 if __name__ == "__main__":
