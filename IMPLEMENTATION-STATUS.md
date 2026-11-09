@@ -3,6 +3,16 @@
 
 # Implementation status
 
+## Explicit volume registration - operator boundary
+
+The normal Linux API binary accepts explicit registry commits through bounded
+stdin JSON and a trusted directory inherited at FD3. Existing ID/UUID pairs are
+preserved by revision CAS. The existing local two-kernel fixture verifies chosen
+IDs, stale-revision refusal and append after clean reboot using that same CLI.
+HTTP registration, product state placement/startup, automatic adoption and
+physical/power-loss qualification remain open. Hosted exact-head acceptance
+must be recorded separately from local fixture evidence.
+
 ## M3.2g explicit registry claim persistence - local qualification
 
 The internal normal Linux registry writer now reuses revisionstore through a

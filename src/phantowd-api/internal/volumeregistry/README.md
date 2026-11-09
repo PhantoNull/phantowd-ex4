@@ -31,8 +31,9 @@ the directory nor changes default server privileges. Invalid inputs, concurrent
 readers, stale revisions and retained-binding changes fail without registration;
 uncertain results require manual state inspection before another operation.
 No HTTP, product bootstrap, mount/import or service activation is added.
-Registration is not adoption. The disposable guest fixture uses this same CLI
-before its protected reader; physical/reboot durability remains unqualified.
+Registration is not adoption. Disposable guest tests use this same CLI before
+protected reads and across two independent kernels, preserving existing IDs
+and refusing stale revisions. Physical/power-loss durability remains unqualified.
 
 ## Initial reader task contract (before implementation)
 
