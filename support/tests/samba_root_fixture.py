@@ -86,6 +86,14 @@ PLANNED_FILE_SOURCE_FAULT_MARKER = (
     "restoration_refused=true close_refused=true "
     "private_mount_namespace=true subprocess_disposal=true "
     "parent_fd_equal=true activation=false scope=qemu-only")
+CODE_HASH_MARKER = (
+    "PHANTOWD_SAMBA_ROOT_CODE_HASH_READY fixed_program=true "
+    "inherited_ro_files=true bytes=true refusals=true canceled=true "
+    "settled=true scope=qemu-only")
+CODE_OWNER_MARKER = (
+    "PHANTOWD_SAMBA_ROOT_CODE_OWNER_READY normal_owner=true "
+    "start_stop=true drift_refused=true cancellation=true "
+    "review_sticky=true scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -172,6 +180,8 @@ MARKERS = (
     "readonly_noexec=true closed_before_exec=true late_drift_refused=true "
     "review_sticky=true partial_cleanup=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",
+    CODE_HASH_MARKER,
+    CODE_OWNER_MARKER,
     "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
     "owner_bound=true original_config=true original_state=true "
     "disabled_first=true stdin_only=true same_sid=true explicit_enable=true "

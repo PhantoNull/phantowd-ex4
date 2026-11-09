@@ -218,7 +218,7 @@ func (r *NativeSambaRuntimeQEMU) StopNativeServiceQEMU(ctx context.Context) erro
 		return ErrReviewRequired
 	}
 	err := r.stopNativeDaemonQEMU()
-	if r.pending != nil {
+	if r.pending != nil || (r.owner.hashProgram != nil && r.owner.hashProgram.pending != nil) {
 		r.owner.review = true
 		return errors.Join(ErrReviewRequired, err)
 	}

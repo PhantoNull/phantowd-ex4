@@ -198,10 +198,14 @@ Trusted parent provisioning and cooperative writers are prerequisites.
 Private reconciliation reuses the complete mounted-ext census validator and
 alias/clone/missing semantics. No selected path, qualification or activation
 token is returned. Protected snapshot provenance is distinct from decoded data
-and desired policy; raw snapshots/reviews reject JSON serialization. This is
-not durable adoption or a production registry: no writer, state location,
-registration API, import/mount, planner/Owner construction or service activation
-is implemented. The UUID-only schema does not prove global uniqueness or legacy
+and desired policy; raw snapshots/reviews reject JSON serialization.
+The normal Linux binary exposes explicit registration through
+`--commit-volume-registry --expected-registry-revision=N`, bounded stdin JSON
+and a pre-provisioned trusted directory inherited at FD3. Existing ID/UUID
+pairs cannot be removed or rebound. Product state placement, registration HTTP,
+import/mount, planner/Owner construction and service activation remain open.
+Registration is not adoption. The UUID-only schema does not prove global
+uniqueness or legacy
 compatibility. Windows preflight, whole pinned Linux tagged vet/race, native
 reader/complete-resolver regressions and actual ARMv5 standard/two-boot overlay
 pass locally. The guest fixture refuses unsafe file modes and a foreign owner,

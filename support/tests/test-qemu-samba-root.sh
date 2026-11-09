@@ -55,6 +55,7 @@ cleanup() {
     rm -f "$scratch/persistent.log" "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
     if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi
     rm -rf "$scratch/go-cache" "$scratch/go-path"
+    rm -rf "$scratch/code-hash"
     rmdir "$scratch"
 }
 trap cleanup EXIT
@@ -82,8 +83,14 @@ python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     -o "$scratch/launcher" "$source_dir/support/tests/samba-root-launcher-fixture.c"
 "$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
     -o "$scratch/charset" "$source_dir/support/tests/samba-charset-fixture.c"
+if [ ! -f "$target/usr/sbin/phantowd-code-hash" ] || [ -L "$target/usr/sbin/phantowd-code-hash" ]; then
+    echo 'Code hash binding requires the built package artifact' >&2; exit 1
+fi
+hash_program_sha=$(sha256sum "$target/usr/sbin/phantowd-code-hash" | awk '{print $1}')
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
-    "$go_binary" build -tags=qemu -trimpath -o "$scratch/bundle" ./cmd/qemu-runtime-bundle)
+    "$go_binary" build -tags=qemu -trimpath \
+    -ldflags "-X github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle.nativeCodeHashProgramSHA256QEMU=$hash_program_sha" \
+    -o "$scratch/bundle" ./cmd/qemu-runtime-bundle)
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/owner" ./cmd/qemu-samba-owner)
 if [ "$pending_profile" -eq 1 ]; then
@@ -136,6 +143,10 @@ cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 }
 truncate -s 128M "$scratch/rootfs.ext2"
 "$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
+if [ "$selection" = all ] || [ "$selection" = service ]; then
+    sh "$source_dir/support/tests/stage-code-hash-tests.sh" "$target" "$go_binary" \
+        "$compiler" "$debugfs" "$source_dir" "$scratch" "$scratch/rootfs.ext2"
+fi
 if [ "$pending_profile" -eq 1 ]; then
     "$debugfs" -w -f "$scratch/pending/stage.commands" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "write $scratch/pending/inputs.json /usr/lib/phantowd/qemu-pending-client-inputs.json" "$scratch/rootfs.ext2" >/dev/null 2>&1
