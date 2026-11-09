@@ -13,6 +13,8 @@ directory="$scratch/code-hash"
 mkdir "$directory"
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" test -c -trimpath -o "$directory/tests" ./internal/processowner)
+(cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    "$go_binary" test -c -trimpath -o "$directory/owner-tests" ./internal/runtimebundle)
 printf '%s\n' 'export PHANTOWD_CODE_HASH_TEST_HELPER=/usr/sbin/phantowd-code-hash' > "$directory/environment"
 for index in 0 1 2 3 4; do
     binary=$helper
@@ -27,6 +29,7 @@ for index in 0 1 2 3 4; do
     printf 'export PHANTOWD_CODE_HASH_TEST_SHA256_%s=%s\n' "$index" "$digest" >> "$directory/environment"
 done
 for pair in "$directory/tests phantowd-code-hash-tests" \
+    "$directory/owner-tests phantowd-code-owner-tests" \
     "$source_dir/support/tests/code-hash-tests-init.sh phantowd-code-hash-tests-init"; do
     sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" "$image" \
         "${pair%% *}" "/usr/sbin/${pair#* }" "$scratch/hash-roundtrip" 0100755

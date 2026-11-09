@@ -3,6 +3,17 @@
 
 # Internal runtime bundle inspection and retained lifetimes
 
+`Plan.NewOwnerWithCodeHash` binds a static hash program and independently
+admitted digest at construction, preserving the static/non-root service
+contract. Census, file/alias checks and original references remain retained;
+drift or uncertain teardown keeps review without retry or restart. A non-nil
+Owner returned with an error retains unresolved authority and must stay held
+by its trusted caller. Ordinary `Plan.Inspect` remains Go-only.
+
+The guarded Samba fixture receives its expected program digest from the trusted
+builder through Go linker input. Eight direct ARM Owner tests run in its
+existing service guest. This adds no product boot publisher or activation UI.
+
 The fixed persistent-state QEMU profile borrows a caller-qualified synthetic
 ext4 root for `private`/`state`, retaining readable originals and tmpfs runtime
 roles through native workers and the real daemon. Old tmpfs profiles remain.
