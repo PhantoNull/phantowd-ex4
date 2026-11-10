@@ -14,8 +14,10 @@ helper = source[source.index("count_parent_fds() {"):
 start = source.index(
     "/usr/sbin/phantowd-pending-client-inputs retain || return 1\n")
 start = source.index("\n", start) + 1
-end = source.index(
-    "    echo 'PHANTOWD_PENDING_OWNER_INPUT_LOSS_PROCESS_READY", start)
+# Include the final census postcondition, independent of the following log.
+end_anchor = '    [ "$before_fds" = "$after_fds" ] || return 1\n'
+assert source.count(end_anchor) == 1
+end = source.index(end_anchor, start) + len(end_anchor)
 cycle = source[start:end]
 child = "/usr/sbin/phantowd-pending-client-inputs preclose-input-loss"
 assert cycle.count(child) == 1
