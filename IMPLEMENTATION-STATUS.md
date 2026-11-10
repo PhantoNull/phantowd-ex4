@@ -3,6 +3,13 @@
 
 # Implementation status
 
+## QEMU NAS-policy provider boot/admission
+
+A separate read-only-root boot exercises S49 root provider, protected 0710/0660
+channel, S50 non-root HTTPS API, absent-provider refusal and authenticated readback.
+Local proof passes; exact-head CI remains required. Product provider/persistence,
+certificate lifecycle, service activation and new boot stop/reconnect proof remain open.
+
 ## Explicit volume registration - operator boundary
 
 The normal Linux API binary accepts explicit registry commits through bounded

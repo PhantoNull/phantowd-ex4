@@ -1545,6 +1545,12 @@ symlink traversal, brackets the socket metadata around a descriptor-relative
 connection, checks the root kernel peer and retains that connection/directory.
 It never provisions state/provider, reconnects or selects an HTTP-supplied path.
 
+QEMU smoke additionally boots a read-only root with the fixed
+`--qemu-nas-policy-owner-service`, S49 provider before S50 non-root HTTPS API,
+and disposable `/run` policy/certificate fixtures. It checks absent-provider
+refusal and authenticated readback. Product startup/state, certificate lifecycle,
+and the new provider-stop/no-reconnect boot test remain separate work.
+
 The standard router exposes authenticated GET/PUT at
 `/api/v1/nas-services/configuration` inside its existing admission bound.
 Authenticated GET `/api/v1/nas-services/summary` uses that SAME authority and

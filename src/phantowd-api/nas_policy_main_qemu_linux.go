@@ -127,6 +127,10 @@ func exerciseQEMUNASPolicyMainProcess() error {
 }
 
 func qemuNASMainTLS() (*http.Transport, error) {
+	return qemuNASMainTLSAt(nasMainFixture, 65534, 65534)
+}
+
+func qemuNASMainTLSAt(root string, uid, gid int) (*http.Transport, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -142,9 +146,9 @@ func qemuNASMainTLS() (*http.Transport, error) {
 		return nil, err
 	}
 	public := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	if err := errors.Join(os.WriteFile(nasMainFixture+"/cert.pem", public, 0644),
-		os.WriteFile(nasMainFixture+"/key.pem", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0600),
-		os.Chown(nasMainFixture+"/key.pem", 65534, 65534)); err != nil {
+	if err := errors.Join(os.WriteFile(root+"/cert.pem", public, 0644),
+		os.WriteFile(root+"/key.pem", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0600),
+		os.Chown(root+"/key.pem", uid, gid)); err != nil {
 		return nil, err
 	}
 	pool := x509.NewCertPool()

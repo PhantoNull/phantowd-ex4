@@ -644,6 +644,11 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         }
         cat "$log_file.peer.server" "$log_file.peer.client" >> "$log_file"
+        if ! sh "$script_dir/qemu-nas-policy-boot.sh" "$images_dir" "$log_file.nas-boot"; then
+            cat "$log_file.nas-boot" >> "$log_file"
+            exit 1
+        fi
+        cat "$log_file.nas-boot" >> "$log_file"
         echo "QEMU ARMv5 smoke test passed"
         exit 0
     fi
