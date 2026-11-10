@@ -164,6 +164,21 @@ class SDKAptBudgets(unittest.TestCase):
                              'https://snapshot.debian.org/file/' + locator)
             self.assertEqual(fetch['args'][-1], 'SHA256:' + digest)
 
+    def test_retired_ca_package_uses_snapshot_without_changing_hash(self):
+        digest = ('62b08a77d985d4253894b1f69aebda592'
+                  '5034ca4e294add364167fad8cb64a44')
+        name = 'ca-certificates_20250419~deb12u1_all.deb'
+        plan = ("'file:/tmp/sdk-snapshot/debian-security/pool/updates/main/"
+                "c/ca-certificates/" + name + "' " + name +
+                ' 161988 SHA256:' + digest)
+        result, rows = self.invoke(SDK_PLAN=plan)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        fetch = next(row for row in rows if row['tool'] == 'apt-helper')
+        self.assertEqual(fetch['args'][-3:], [
+            'https://snapshot.debian.org/file/'
+            '85be8fcf3d5e2c7a62329c40f4d35762f186a8ab',
+            '/var/cache/apt/archives/' + name, 'SHA256:' + digest])
+
     def test_prefetch_errors_never_reach_install(self):
         for phase in ('plan', 'fetch'):
             result, rows = self.invoke(**{'SDK_EXIT_' + phase.upper(): 100})
