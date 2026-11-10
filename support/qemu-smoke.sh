@@ -644,6 +644,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         }
         cat "$log_file.peer.server" "$log_file.peer.client" >> "$log_file"
+        sh "$script_dir/tests/test-qemu-nas-policy-boot-log.sh"
         if ! sh "$script_dir/qemu-nas-policy-boot.sh" "$images_dir" "$log_file.nas-boot"; then
             cat "$log_file.nas-boot" >> "$log_file"
             exit 1

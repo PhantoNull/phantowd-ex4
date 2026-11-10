@@ -19,7 +19,6 @@ boot() {
     echo 'PHANTOWD_NAS_BOOT_BEFORE_PROVIDER_READY init_exit_nonzero=true api_started=false'
     /etc/init.d/S49phantowd-nas-policy-owner start || return 1
     /usr/bin/phantowd-api --qemu-nas-policy-client=boot-missing || return 1
-    /etc/init.d/S50phantowd-api start || return 1
     /usr/bin/phantowd-api --qemu-nas-policy-client=boot || return 1
 }
 if boot; then echo PHANTOWD_NAS_BOOT_DONE; else echo PHANTOWD_NAS_BOOT_FAILED; fi

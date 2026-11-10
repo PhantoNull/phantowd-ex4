@@ -18,6 +18,8 @@ import (
 	"os/exec"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func exerciseQEMUNASBoot(phase string) error {
@@ -41,6 +43,15 @@ func exerciseQEMUNASBoot(phase string) error {
 		}
 		fmt.Println("PHANTOWD_NAS_BOOT_MISSING_READY standard_main=true exit_nonzero=true no_fallback=true")
 		return nil
+	}
+	// Reap only the API launched by the existing init hook, so exit status
+	// proves its normal close path rather than merely successful signalling.
+	if err := unix.Prctl(unix.PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0); err != nil {
+		return err
+	}
+	defer unix.Prctl(unix.PR_SET_CHILD_SUBREAPER, 0, 0, 0, 0)
+	if err := exec.CommandContext(ctx, "/etc/init.d/S50phantowd-api", "start").Run(); err != nil {
+		return err
 	}
 	public, err := os.ReadFile(nasBootRoot + "/cert.pem")
 	pool := x509.NewCertPool()
@@ -67,5 +78,5 @@ func exerciseQEMUNASBoot(phase string) error {
 		return errors.New("boot API did not observe the root provider")
 	}
 	fmt.Println("PHANTOWD_NAS_BOOT_API_READY init=true nonroot=true https=verified authenticated=true config=provider scope=qemu-only")
-	return nil
+	return exerciseQEMUNASBootStop(ctx, h)
 }

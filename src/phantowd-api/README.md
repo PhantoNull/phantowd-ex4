@@ -1548,8 +1548,12 @@ It never provisions state/provider, reconnects or selects an HTTP-supplied path.
 QEMU smoke additionally boots a read-only root with the fixed
 `--qemu-nas-policy-owner-service`, S49 provider before S50 non-root HTTPS API,
 and disposable `/run` policy/certificate fixtures. It checks absent-provider
-refusal and authenticated readback. Product startup/state, certificate lifecycle,
-and the new provider-stop/no-reconnect boot test remain separate work.
+refusal and authenticated readback. Its stop phase pins both original processes,
+stops the provider through init and requires two authenticated 503 reconciliation refusals.
+A protected replacement listener observes zero reconnects without accepting;
+the same API exits with status 0 after init stop. Only this test adopts/reaps the init-created
+API to verify its actual close result. Product startup/state, certificate lifecycle
+and service activation remain separate; exact-head qualification is required.
 
 The standard router exposes authenticated GET/PUT at
 `/api/v1/nas-services/configuration` inside its existing admission bound.

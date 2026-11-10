@@ -3,12 +3,20 @@
 
 # Implementation status
 
+## QEMU NAS-policy provider-stop proof
+
+The existing boot campaign pins provider/API generations, verifies init stop and
+removed readiness/socket/pidfile, then requires two authenticated 503 refusals.
+A protected non-accepting listener detects reconnect attempts; original API PID
+and exit status 0 are checked. Local host/ARM evidence and exact-head CI are separate.
+Product provider/state, certificate lifecycle and service activation remain open.
+
 ## QEMU NAS-policy provider boot/admission
 
 A separate read-only-root boot exercises S49 root provider, protected 0710/0660
 channel, S50 non-root HTTPS API, absent-provider refusal and authenticated readback.
 Local proof passes; exact-head CI remains required. Product provider/persistence,
-certificate lifecycle, service activation and new boot stop/reconnect proof remain open.
+certificate lifecycle and service activation remain open; stop proof is scoped above.
 
 ## Explicit volume registration - operator boundary
 

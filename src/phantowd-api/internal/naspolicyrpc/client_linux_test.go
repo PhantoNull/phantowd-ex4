@@ -7,6 +7,7 @@ package naspolicyrpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"os"
@@ -14,6 +15,39 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 )
+
+func TestClientPeerExitAfterSnapshotRefusesUntilCleanClose(t *testing.T) {
+	a, b := net.Pipe()
+	c := newClient(a)
+	defer c.Close()
+	done := make(chan error, 1)
+	go func() {
+		defer b.Close()
+		if _, err := readFrame(b); err != nil {
+			done <- err
+			return
+		}
+		payload, err := json.Marshal(policy(1))
+		if err == nil {
+			err = writeFrame(b, message(0, 1, payload))
+		}
+		done <- err
+	}()
+	if got, err := c.Snapshot(context.Background()); err != nil || got.Revision != 1 {
+		t.Fatal("original stream not admitted", got, err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if got, err := c.Snapshot(context.Background()); !errors.Is(err, naspolicystore.ErrReview) || got.Revision != 0 {
+			t.Fatal("lost provider reused or returned a fallback", got, err)
+		}
+	}
+	if err := c.Close(); err != nil || c.Close() != nil {
+		t.Fatal("lost provider prevented clean disposal", err)
+	}
+}
 
 func TestClientUncertainReplyRefusesFurtherOperations(t *testing.T) {
 	a, b := net.Pipe()
