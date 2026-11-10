@@ -28,7 +28,7 @@ func openNASPolicyHTTP(auth *authController, path string, legacy, tls bool) (htt
 		return nil, func() error { return nil }, nil
 	}
 	refused := errors.New("NAS policy channel unavailable")
-	if auth == nil || legacy || !tls || os.Getuid() == 0 || os.Geteuid() == 0 || os.Getgid() == 0 || os.Getgid() > 65534 || !filepath.IsAbs(path) || filepath.Clean(path) != path || filepath.Base(path) != "channel" {
+	if auth == nil || !nasPolicyStartupAllowed(path, legacy, tls, os.Getuid(), os.Geteuid(), os.Getgid()) {
 		return nil, nil, refused
 	}
 	dir, err := unix.Openat2(unix.AT_FDCWD, filepath.Dir(path), &unix.OpenHow{
@@ -54,9 +54,9 @@ func openNASPolicyHTTP(auth *authController, path string, legacy, tls bool) (htt
 	var parent, before, after, finalParent unix.Stat_t
 	gid := uint32(os.Getgid())
 	socketSafe := func(st unix.Stat_t) bool {
-		return st.Mode == unix.S_IFSOCK|0660 && st.Uid == 0 && st.Gid == gid && st.Nlink == 1 && st.Dev == parent.Dev
+		return nasPolicySocketSafe(st, parent, gid)
 	}
-	if unix.Fstat(dir, &parent) != nil || parent.Mode != unix.S_IFDIR|0710 || parent.Uid != 0 || parent.Gid != gid || unix.Fstatat(dir, "channel", &before, unix.AT_SYMLINK_NOFOLLOW) != nil || !socketSafe(before) {
+	if unix.Fstat(dir, &parent) != nil || !nasPolicyParentSafe(parent, gid) || unix.Fstatat(dir, "channel", &before, unix.AT_SYMLINK_NOFOLLOW) != nil || !socketSafe(before) {
 		return nil, nil, refused
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -85,4 +85,17 @@ func openNASPolicyHTTP(auth *authController, path string, legacy, tls bool) (htt
 	}
 	keep = true
 	return newNASStateHandler(auth, client), close, nil
+}
+
+func nasPolicyStartupAllowed(path string, legacy, tls bool, uid, euid, gid int) bool {
+	return !legacy && tls && uid != 0 && euid != 0 && gid > 0 && gid <= 65534 &&
+		filepath.IsAbs(path) && filepath.Clean(path) == path && filepath.Base(path) == "channel"
+}
+
+func nasPolicyParentSafe(st unix.Stat_t, gid uint32) bool {
+	return st.Mode == unix.S_IFDIR|0710 && st.Uid == 0 && st.Gid == gid
+}
+
+func nasPolicySocketSafe(st, parent unix.Stat_t, gid uint32) bool {
+	return st.Mode == unix.S_IFSOCK|0660 && st.Uid == 0 && st.Gid == gid && st.Nlink == 1 && st.Dev == parent.Dev
 }
