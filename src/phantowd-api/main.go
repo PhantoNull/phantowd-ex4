@@ -31,6 +31,7 @@ func main() {
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	nasPolicyClient := flag.String("qemu-nas-policy-client", "", "fixed unprivileged NAS-policy fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
+	nasOwnerService := flag.Bool("qemu-nas-policy-owner-service", false, "fixed root NAS-policy provider; QEMU only")
 	writableConsumer := flag.Bool("qemu-writable-backing-consumer", false, "fixed inherited-descriptor consumer; disposable QEMU only")
 	targetConsumer := flag.Bool("qemu-target-backing-consumer", false, "fixed two-descriptor consumer; disposable QEMU only")
 	lioCredentialTest := flag.Bool("qemu-lio-credential-test", false, "fixed root credential installation fixture; disposable LIO QEMU only")
@@ -39,7 +40,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *registryCommit, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
 			modes++
@@ -110,6 +111,13 @@ func main() {
 	if *identityOwnerService {
 		if err := runQEMUIdentityOwnerService(); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_IDENTITY_OWNER_ERROR startup refused")
+			os.Exit(1)
+		}
+		return
+	}
+	if *nasOwnerService {
+		if runQEMUNASPolicyOwnerService() != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_NAS_PROVIDER_ERROR startup refused")
 			os.Exit(1)
 		}
 		return
