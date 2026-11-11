@@ -254,6 +254,15 @@ func (k *ControllerQEMU) Start(ctx context.Context) error {
 	if err != nil {
 		return k.retain()
 	}
+	// An accepted loopback connection can outlive a clean NFSD shutdown
+	// in TIME_WAIT. Enable reuse before bind so both lifetimes can rebind
+	// after that shutdown. A live listener still makes bind fail.
+	if k.address == [4]byte{127, 0, 0, 1} {
+		k.phase = "loopback-address-reuse"
+		if err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
+			return errors.Join(k.retain(), err)
+		}
+	}
 	k.phase = "bind-socket"
 	if err := unix.Bind(fd, &unix.SockaddrInet4{Port: 2049, Addr: k.address}); err != nil {
 		if errors.Is(err, unix.EADDRINUSE) {

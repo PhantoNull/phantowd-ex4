@@ -20,7 +20,7 @@ import (
 
 // A second explicit lifetime only after verified stop/close, never a retry.
 // The parent retains the original policy/identity/storage Owners and dataset.
-func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nfsowner.Owner) (result error) {
+func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nfsowner.Owner, previousTCPPeer string) (result error) {
 	b := &ownerNFSQEMU{storage: parent.storage, identity: parent.identity, policyOwner: parent.policyOwner,
 		uid: parent.uid, gid: parent.gid, access: "rw", phase: "revision2-prepare"}
 	var owner *nfsowner.Owner
@@ -71,6 +71,10 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	owner, err = nfsowner.NewQEMU(candidate, b)
 	if err != nil {
 		return err
+	}
+	b.phase = "revision2-server-time-wait"
+	if present, err := ownerNFSTCPStateQEMU(previousTCPPeer, "06"); err != nil || !present {
+		return errors.Join(errors.New("previous NFSD connection is not in server-side TIME_WAIT"), err)
 	}
 	b.phase = "revision2-start"
 	if err := owner.Start(ctx); err != nil {
