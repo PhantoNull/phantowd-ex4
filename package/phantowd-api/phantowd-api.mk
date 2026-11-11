@@ -31,8 +31,6 @@ PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT = \
 		$(TARGET_DIR)/etc/init.d/S49phantowd-identity-owner && \
 	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner \
 		$(TARGET_DIR)/etc/init.d/K49phantowd-identity-owner
-else
-PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT = true
 endif
 
 define PHANTOWD_API_COPY_LICENSE
@@ -56,6 +54,7 @@ define PHANTOWD_API_INSTALL_LICENSES
 endef
 PHANTOWD_API_POST_INSTALL_TARGET_HOOKS += PHANTOWD_API_INSTALL_LICENSES
 
+ifeq ($(BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST),y)
 define PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
 	mdev_conf="$(TARGET_DIR)/etc/mdev.conf"; \
 	mdev_tmp="$$mdev_conf.phantowd-tmp"; \
@@ -85,5 +84,7 @@ define PHANTOWD_API_INSTALL_INIT_SYSV
 		$(TARGET_DIR)/etc/init.d/S50phantowd-api
 	$(PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT)
 endef
+
+endif
 
 $(eval $(golang-package))
