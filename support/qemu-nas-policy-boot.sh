@@ -18,6 +18,9 @@ PHANTOWD_NAS_PROVIDER_READY root=true directory_mode=0710 socket_mode=0660 runti
 PHANTOWD_NAS_PROVIDER_INIT_READY before_api=true runtime=run
 PHANTOWD_NAS_BOOT_MISSING_READY standard_main=true exit_nonzero=true no_fallback=true
 PHANTOWD_NAS_BOOT_API_READY init=true nonroot=true https=verified authenticated=true config=provider scope=qemu-only
+PHANTOWD_NAS_BOOT_STOP_READY provider_exited=true api_pid_unchanged=true socket_absent=true pidfile_absent=true readiness_absent=true
+PHANTOWD_NAS_BOOT_REFUSED_READY https=verified authenticated=true first=503 second=503 code=nas_configuration_reconciliation_required reconnects=0 respawn=false
+PHANTOWD_NAS_BOOT_API_STOP_READY exited=true close_error=false services_activated=false
 PHANTOWD_NAS_BOOT_DONE
 EOF
 )

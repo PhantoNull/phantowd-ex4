@@ -7,6 +7,11 @@ Reviewed: **2026-10-15**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
+The separate QEMU provider boot campaign now tests init-driven provider loss,
+two stable HTTPS refusals, original API lifetime and clean exit without reconnect.
+Its exact-head gates remain required; product provider/state, certificate lifecycle,
+service activation and physical qualification are not closed by this fixture.
+
 The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.

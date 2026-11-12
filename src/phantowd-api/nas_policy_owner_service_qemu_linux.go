@@ -93,6 +93,19 @@ func runQEMUNASPolicyOwnerService() (runErr error) {
 	if err := os.Rename(nasBootRoot+"/ready.pending", nasBootRoot+"/ready"); err != nil {
 		return err
 	}
+	readyInfo, err := os.Lstat(nasBootRoot + "/ready")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		current, err := os.Lstat(nasBootRoot + "/ready")
+		if err == nil && os.SameFile(readyInfo, current) && current.Mode().IsRegular() {
+			err = os.Remove(nasBootRoot + "/ready")
+		} else if err == nil {
+			err = errors.New("NAS provider readiness identity changed")
+		}
+		runErr = errors.Join(runErr, err)
+	}()
 	conn, err := listener.AcceptUnix() // Exactly one stream; never accept again.
 	if err != nil {
 		return err
