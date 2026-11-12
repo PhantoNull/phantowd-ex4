@@ -61,6 +61,15 @@ substitute for clean package/kernel builds or hardware qualification.
 Do not hide failures with retries, relaxed guards, fabricated observations or
 lazy unmounts.
 
+### RC0 boot profile
+
+In the pinned Buildroot container, run `support/container/build-rc0-profile.sh`
+with the repository mounted at `/external` and the project workspace at
+`/workspace`. The check builds the normal ARMv5 API without the QEMU self-test
+tag, audits the root filesystem, and boots it on the Versatile PB model. The
+build directory is temporary. The profile is compile-only, `flashable=no` and
+`installable=no`.
+
 ## Dashboard preview
 
 For a synthetic dashboard preview, run `node support/dashboard-preview.mjs`

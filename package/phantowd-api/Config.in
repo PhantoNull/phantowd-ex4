@@ -1,12 +1,13 @@
 config BR2_PACKAGE_PHANTOWD_API
-	bool "phantowd-api (loopback development dashboard)"
+	bool "phantowd-api (management API)"
 	depends on BR2_PACKAGE_HOST_GO_TARGET_ARCH_SUPPORTS
 	select BR2_PACKAGE_HOST_GO
 	select BR2_PACKAGE_PHANTOWD_CODE_HASH if BR2_ARM_CPU_ARMV5
 	help
-	  Go diagnostics API and embedded dashboard prototype for the non-flashable
-	  QEMU target. Only 127.0.0.1:8080 is used; storage mutation, hardware
-	  control, installation and remote/LAN service are not enabled.
+	  Go management API and embedded dashboard. The QEMU self-test option
+	  installs the development init services and storage-device rules.
+	  Normal builds provide the binary; the selected product profile
+	  supplies its service startup configuration.
 
 config BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST
 	bool "QEMU-only self-test harness (never for product images)"
