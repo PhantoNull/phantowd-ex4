@@ -30,7 +30,7 @@ jobs:
   build:
     name: Clean build ${{ matrix.instance }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
@@ -64,10 +64,10 @@ jobs:
       - name: Create isolated Buildroot workspace
         run: docker volume create "$BUILD_VOLUME"
 
-      # Per-phase ceilings do not extend the shared 120-minute job budget.
+      # The shared 150-minute job budget includes cold toolchain variance.
       # Each inner timeout precedes its Actions step ceiling for a named error.
-      - name: Toolchain and host preflight (40 minute ceiling)
-        timeout-minutes: 42
+      - name: Toolchain and host preflight (60 minute ceiling)
+        timeout-minutes: 62
         run: sh support/container/run-repro-phase.sh toolchain "$BUILD_IMAGE" "$BUILD_VOLUME"
 
       - name: Kernel (20 minute ceiling)
