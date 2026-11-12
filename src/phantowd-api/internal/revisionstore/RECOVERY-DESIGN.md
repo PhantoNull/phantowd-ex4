@@ -218,6 +218,18 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 
 ## Owner-capable bootstrap handoff
 
+For an initial NAS policy, the explicit Linux root command
+`phantowd-api --provision-nas-policy --nas-installation-id <id>` consumes exact
+revision-1 policy bytes on stdin and an inherited private parent at FD 3 on a
+qualified local ext filesystem. The operator supplies the installation identity
+and keeps the independent copy of those bytes for later Owner confirmation.
+Authorize that handoff only after successful provisioning.
+The command publishes only the two initial policy roles in a new `nas-policy`
+directory. An existing destination or interrupted staging requires operator
+review. The command is offline and requires exclusive access to the parent.
+Product boot admission, confirmation storage across policy updates, and
+installation identity replacement remain separate decisions.
+
 `OpenNASOwnerBootstrap` is a separate trusted-parent capability; existing
 read-only observers cannot convert into it. After observation, explicit
 confirmation requires independently known exact policy bytes and separate
