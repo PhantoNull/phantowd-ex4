@@ -61,6 +61,7 @@ type ownerNFSReview struct {
 	constructionreview.Marker
 	backend     *ownerNFSQEMU
 	owner       *nfsowner.Owner
+	registered  *registeredNFS
 	cause       error
 	contextDone bool
 }
@@ -428,8 +429,8 @@ func verifyOwnerNFSClientAbsent(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func withQEMUNFSGrants(address netip.Addr, quiescent func(context.Context) error,
-	use func(nfsowner.LinuxServiceGrants) (*nfsowner.Owner, error)) (_ *nfsowner.Owner, result error) {
+func withQEMUNFSGrants[T any](address netip.Addr, quiescent func(context.Context) error,
+	use func(nfsowner.LinuxServiceGrants) (T, error)) (_ T, result error) {
 	// The caller established the disposable guest and synthetic disk. Acquire
 	// the originals from this thread and close them before the service starts.
 	runtime.LockOSThread()
@@ -451,7 +452,8 @@ func withQEMUNFSGrants(address netip.Addr, quiescent func(context.Context) error
 	} {
 		file, err := os.Open(entry.path)
 		if err != nil {
-			return nil, err
+			var zero T
+			return zero, err
 		}
 		defer func() { result = errors.Join(result, file.Close()) }()
 		*entry.file = file

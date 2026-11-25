@@ -19,6 +19,8 @@ import (
 // namespaces and service ports. IngressIndex identifies the platform-selected
 // interface in that domain and NFTables is the qualified nft executable.
 // Quiescent verifies client quiescence in the domain within the context.
+// VerifyStorage checks any surrounding storage authority before the retained
+// NFS inputs are inspected. It must not reenter the NFS Owner.
 type LinuxServiceGrants struct {
 	Address                         netip.Addr
 	NFSD, Network, MountNamespace   *os.File
@@ -26,6 +28,7 @@ type LinuxServiceGrants struct {
 	NFTables                        *os.File
 	IngressIndex                    int
 	Quiescent                       func(context.Context) error
+	VerifyStorage                   func(context.Context) error
 }
 
 type managedLinux struct {
@@ -80,7 +83,7 @@ func newManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxSe
 		return nil, err
 	}
 	m := &managedLinux{quiescent: grants.Quiescent}
-	owner, err := newOwner(inputs.candidate, &retainedRuntime{Runtime: m, inputs: inputs})
+	owner, err := newOwner(inputs.candidate, &retainedRuntime{Runtime: m, inputs: inputs, verifyStorage: grants.VerifyStorage})
 	if err != nil || !owner.enabled {
 		return nil, ErrInvalid
 	}

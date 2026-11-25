@@ -10,6 +10,12 @@ trusted runtime. The Owner checks inputs independently of the runtime and
 requires verified stop and runtime closure before releasing storage. While
 attached, the original handle refuses external checks, closure and transfers.
 The caller keeps its borrowed policy and identity claims through closure.
+The Linux registered NFS supervisor now acquires those claims from the
+confirmed policy and identity owners. Its runtime checks the original protected
+registry as well as the retained mounts during startup, health and closure.
+Verified shutdown releases the service claims before the shared storage owner
+can retire the roster. An empty export policy releases its claim without
+opening a kernel or network runtime.
 The Linux RPC component holds executable references for `rpcbind`, `mountd`
 and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
 that NFSD is running. It checks both original processes and program readiness,

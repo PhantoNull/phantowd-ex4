@@ -18,7 +18,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 )
@@ -94,19 +93,18 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if err != nil {
 		return err
 	}
-	err = withQEMUPeerRegisteredStorage(ctx, func(set *mountowner.MountedVolumeSet) (result error) {
-		b := &ownerNFSQEMU{storage: set, phase: "peer-sources"}
-		var owner *nfsowner.Owner
+	err = withQEMUPeerRegisteredStorage(ctx, func(storage *registeredStorage) (result error) {
+		b := &ownerNFSQEMU{phase: "peer-sources"}
+		var owner *registeredNFS
 		defer func() {
 			if result != nil {
-				result = &ownerNFSReview{backend: b, owner: owner, cause: result, contextDone: ctx.Err() != nil}
+				result = &ownerNFSReview{backend: b, registered: owner, cause: result, contextDone: ctx.Err() != nil}
 			}
 		}()
 		if err := b.prepareFixtureSources(ctx, peerNFSAllowed+"/32", "rw"); err != nil {
 			return err
 		}
-		b.inputs, _, err = nfsowner.PrepareInputs(ctx, b.policyLease, b.identityLease, set, 0)
-		if err != nil {
+		if err := b.releaseFixtureClaims(ctx); err != nil {
 			return err
 		}
 		quiescent := true
@@ -117,15 +115,16 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 			return ctx.Err()
 		}
 		b.phase = "peer-runtime"
-		owner, err = withQEMUNFSGrants(netip.MustParseAddr(peerNFSServer), checkQuiescence, func(grants nfsowner.LinuxServiceGrants) (*nfsowner.Owner, error) {
-			if unexpected, err := nfsowner.NewManagedLinux(ctx, b.inputs, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
+		owner, err = withQEMUNFSGrants(netip.MustParseAddr(peerNFSServer), checkQuiescence, func(runtime nfsowner.LinuxServiceGrants) (*registeredNFS, error) {
+			grants := registeredNFSGrants{policy: b.policyOwner, identity: b.identity, storage: storage, desired: 1, runtime: runtime}
+			if unexpected, err := prepareRegisteredNFS(ctx, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
 				return unexpected, errors.Join(errors.New("production NFS admitted a missing firewall grant"), err)
 			}
 			if filter == "export-policy" {
-				return nfsowner.NewManagedLinuxQEMU(ctx, b.inputs, grants)
+				return prepareRegisteredNFSWith(ctx, grants, nfsowner.NewManagedLinuxQEMU)
 			}
-			grants.NFTables, grants.IngressIndex = nft, device.Index
-			return nfsowner.NewManagedLinux(ctx, b.inputs, grants)
+			grants.runtime.NFTables, grants.runtime.IngressIndex = nft, device.Index
+			return prepareRegisteredNFS(ctx, grants)
 		})
 		if err != nil {
 			return err
@@ -191,16 +190,10 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 			return errors.New("remote root write did not retain the policy anonymous identity")
 		}
 		b.phase = "peer-teardown"
-		if err := owner.Stop(ctx); err != nil {
-			return err
-		}
 		if err := owner.Close(ctx); err != nil {
 			return err
 		}
 		if err := nfsowner.CheckManagedStateReapedQEMU(); err != nil {
-			return err
-		}
-		if err := b.releaseFixtureClaims(ctx); err != nil {
 			return err
 		}
 		if err := errors.Join(b.identity.Close(), b.policyOwner.Close()); err != nil {
@@ -214,7 +207,7 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if err := removeConfig(); err != nil {
 		return err
 	}
-	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered scope=isolated-two-guest-only\n", filter)
+	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered supervisor=true scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 

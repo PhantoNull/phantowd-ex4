@@ -18,7 +18,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func withQEMUPeerRegisteredStorage(ctx context.Context, inspect func(*mountowner.MountedVolumeSet) error) error {
+func withQEMUPeerRegisteredStorage(ctx context.Context, inspect func(*registeredStorage) error) error {
 	return mountowner.WithQEMUSupervisedVolumeGrant(ctx, smbFixtureAnchor, func(grant mountowner.LinuxVolumeGrant) (result error) {
 		name, err := os.MkdirTemp("/run", "phantowd-peer-registry-")
 		if err != nil {
@@ -92,7 +92,7 @@ func withQEMUPeerRegisteredStorage(ctx context.Context, inspect func(*mountowner
 		if len(volumes) != 1 || unix.Statfs(volumes[0].MountPath(), &stat) != nil || stat.Flags&restrictions != restrictions {
 			return errors.New("registered bind needs nodev,nosuid,noexec")
 		}
-		if err := inspect(set); err != nil {
+		if err := inspect(storage); err != nil {
 			return err
 		}
 		if err := storage.Close(ctx); err != nil {
