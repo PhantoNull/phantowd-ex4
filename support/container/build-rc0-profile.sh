@@ -40,7 +40,12 @@ build phantowd_rc0_armv5_defconfig
 grep -Fx 'BR2_PACKAGE_PHANTOWD_API=y' "$output/.config" >/dev/null
 grep -Fx '# BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST is not set' "$output/.config" >/dev/null
 grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_NFS_UTILS_RPC_NFSD=y' "$output/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_RPCBIND=y' "$output/.config" >/dev/null
 build all
+linux_config="$output/build/linux-$LINUX_VERSION/.config"
+grep -Fx 'CONFIG_NFSD=y' "$linux_config" >/dev/null
+grep -Fx '# CONFIG_NFSD_V4 is not set' "$linux_config" >/dev/null
 evidence=${reports:-$output}
 # Use the e2fsprogs already compiled for generating the root filesystem.
 export PATH="$output/host/sbin:$PATH"
@@ -56,7 +61,7 @@ if [ -n "$reports" ]; then
         cp --sparse=always -- "$output/images/$artifact" "$comparison/$artifact"
     done
     install -m 0644 "$output/.config" "$comparison/buildroot.config"
-    install -m 0644 "$output/build/linux-$LINUX_VERSION/.config" "$comparison/linux.config"
+    install -m 0644 "$linux_config" "$comparison/linux.config"
 
     schema="$workspace/dl/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
     if [ ! -f "$schema" ]; then
