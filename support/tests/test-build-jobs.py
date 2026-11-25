@@ -70,7 +70,8 @@ make() {
                 at += 1
                 block.append(lines[at])
             blocks.append('\n'.join(block))
-        self.assertEqual(len(blocks), 12)
+        self.assertEqual(len(blocks), 13)
+        self.assertEqual(sum('rpcbind-dirclean' in block for block in blocks), 1)
         for block in blocks:
             with self.subTest(block=block):
                 self.assertIn('PARALLEL_JOBS="$build_jobs"', block)
