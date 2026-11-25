@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## NAS policy bootstrap from a directory grant
+
+The NAS bootstrap accepts an already-open policy directory and keeps an
+independent descriptor, lock and watch through confirmation and handoff. The
+two-boot NFS fixture uses the descriptor path. Linux host tests cover pathname
+replacement, caller closure, conflicting locks and unsafe directory grants.
+Product state-medium selection and supervisor integration remain open.
+
 ## QEMU NAS-policy provider-stop proof
 
 The existing boot campaign pins provider/API generations, verifies init stop and

@@ -9,6 +9,8 @@ package naspolicystore
 
 import (
 	"context"
+	"os"
+
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
@@ -54,6 +56,12 @@ func OpenConfirmedOwner(ctx context.Context, directory, installation string, con
 // of a read-only observer. Confirm requires independent bytes and consumer exclusion.
 func OpenOwnerBootstrap(ctx context.Context, directory, installation string) (*OwnerBootstrap, error) {
 	return revisionstore.OpenNASOwnerBootstrap(ctx, directory, installation)
+}
+
+// OpenOwnerBootstrapFromDirectory uses an existing trusted policy-directory
+// grant and retains an independent descriptor for the bootstrap lifetime.
+func OpenOwnerBootstrapFromDirectory(ctx context.Context, directory *os.File, installation string) (*OwnerBootstrap, error) {
+	return revisionstore.OpenNASOwnerBootstrapFromDirectory(ctx, directory, installation)
 }
 
 // ObserveBootstrap uses only this package's fixed names/schema. The redacted

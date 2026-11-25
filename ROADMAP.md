@@ -767,6 +767,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   matching ordered-operation receipt after verified shutdown. Complete
   transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
+  The NAS bootstrap can borrow an already-open policy-directory grant from a
+  future supervisor and retain the same lock and watch through confirmation.
+  The NFS reboot fixture uses this path. Host tests exercise a replaced
+  pathname, caller closure and unsafe grants.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective

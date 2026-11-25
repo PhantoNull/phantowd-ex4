@@ -241,6 +241,14 @@ original exclusion. Confirmation does not replay, repair or adopt observed data.
 The two-kernel NFS fixture exercises this handoff before actual service use.
 This is not full state-bundle admission, product startup or automatic recovery.
 
+For a supervisor that already owns a policy-directory descriptor,
+`OpenNASOwnerBootstrapFromDirectory` opens an independent description of that
+object. The caller can close its grant after construction. The existing
+ownership, mode, lock, watch and confirmation checks apply to the granted
+directory, including when its former pathname names a different directory.
+The supervisor still establishes the intended state medium and independently
+confirmed bytes before admitting a provider.
+
 ## Related contracts
 
 - [Current transaction/Owner/bootstrap boundaries](README.md).
