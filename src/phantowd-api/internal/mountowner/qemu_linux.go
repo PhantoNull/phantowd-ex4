@@ -427,12 +427,12 @@ func WithQEMUMountedSet(source string, inspect func(*MountedVolumeSet) error) er
 	})
 }
 
-// WithQEMUSupervisedMountedSet calls the regular Linux roster admission in
-// the disposable guest. The caller proves the synthetic disk provenance.
-func WithQEMUSupervisedMountedSet(ctx context.Context, source string, inspect func(*MountedVolumeSet) error) (result error) {
+// WithQEMUSupervisedVolumeGrant supplies a borrowed grant during one isolated
+// guest test. The caller proves the synthetic disk provenance.
+func WithQEMUSupervisedVolumeGrant(ctx context.Context, source string, use func(LinuxVolumeGrant) error) (result error) {
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if err != nil || string(model) != "ARM Versatile PB\x00" || runtime.GOARCH != "arm" ||
-		os.Geteuid() != 0 || source != qemuFixtureSource || inspect == nil {
+		os.Geteuid() != 0 || source != qemuFixtureSource || use == nil || ctx == nil {
 		return ErrRejected
 	}
 	fd, err := openPath(source, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
@@ -481,45 +481,16 @@ func WithQEMUSupervisedMountedSet(ctx context.Context, source string, inspect fu
 	if err := unmountedDirectory.Close(); err != nil {
 		return err
 	}
-	roster, err := AdmitLinuxMountedRoster(ctx, []LinuxVolumeGrant{grant})
-	if err != nil {
-		return err
+	result = use(grant)
+	if constructionreview.Contains(result) {
+		return result
 	}
-	defer func() {
-		if constructionreview.Contains(result) {
-			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: result}
-			return
-		}
-		if err := roster.Close(context.WithoutCancel(ctx)); err != nil {
-			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, err)}
-			return
-		}
-		if _, err := roster.Volumes().Observe(); !errors.Is(err, ErrUnavailable) {
-			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, ErrReview, err)}
-			return
-		}
-		after, targetErr := observer.ObserveTarget(qemuPlannerMountAnchor)
-		sourceAfter, sourceErr := observer.ObserveMount(source)
-		if targetErr != nil || after != before || sourceErr != nil || !sameKernelMount(sourceAfter, expected) {
-			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, ErrReview, targetErr, sourceErr)}
-		}
-	}()
-	var stat unix.Statfs_t
-	const mountRestrictions = unix.ST_NODEV | unix.ST_NOSUID | unix.ST_NOEXEC
-	if err := unix.Statfs(qemuPlannerMountAnchor, &stat); err != nil || stat.Flags&mountRestrictions != mountRestrictions {
-		return errors.Join(errors.New("supervised bind mount needs nodev,nosuid,noexec"), err)
+	after, targetErr := observer.ObserveTarget(qemuPlannerMountAnchor)
+	sourceAfter, sourceErr := observer.ObserveMount(source)
+	if targetErr != nil || after != before || sourceErr != nil || !sameKernelMount(sourceAfter, expected) {
+		return &linuxRosterReview{cause: errors.Join(result, ErrReview, targetErr, sourceErr)}
 	}
-	lease, _, err := roster.Volumes().Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	busyErr := roster.Close(ctx)
-	_, verifyErr := lease.Verify()
-	closeErr := lease.Close()
-	if !errors.Is(busyErr, ErrBusy) || verifyErr != nil || closeErr != nil {
-		return errors.Join(errors.New("supervised roster must preserve a busy lease"), busyErr, verifyErr, closeErr)
-	}
-	return inspect(roster.Volumes())
+	return result
 }
 
 // WithQEMUMountedSetEvidence runs a snapshot observer under all roster locks

@@ -94,7 +94,7 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if err != nil {
 		return err
 	}
-	err = mountowner.WithQEMUSupervisedMountedSet(ctx, smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
+	err = withQEMUPeerRegisteredStorage(ctx, func(set *mountowner.MountedVolumeSet) (result error) {
 		b := &ownerNFSQEMU{storage: set, phase: "peer-sources"}
 		var owner *nfsowner.Owner
 		defer func() {
@@ -214,7 +214,7 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if err := removeConfig(); err != nil {
 		return err
 	}
-	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=supervised scope=isolated-two-guest-only\n", filter)
+	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 

@@ -81,7 +81,7 @@ def run(images, log, legacy_base):
                     "PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true "
                     "activation=true managed=true remote_bytes=true "
                     f"mapped_identity=true tables=private filter={filter_mode} teardown=clean "
-                    "storage=supervised scope=isolated-two-guest-only" if role == "server" else
+                    "storage=registered scope=isolated-two-guest-only" if role == "server" else
                     "PHANTOWD_NFS_PEER_CLIENT_READY protocol=nfs3 "
                     f"transport=tcp denied_source=true filter={filter_mode} "
                     "read=true write=true fsync=true unmount=clean "
@@ -95,7 +95,7 @@ def run(images, log, legacy_base):
             print("PHANTOWD_NFS_PEER_READY guests=2 kernel_backend=true "
                   "activation=true managed=true protocol=nfs3 transport=tcp "
                   f"denied_source=true filter={filter_mode} read=true "
-                  "write=true fsync=true teardown=clean host_network=none storage=supervised "
+                  "write=true fsync=true teardown=clean host_network=none storage=registered "
                   "scope=isolated-two-guest-only")
         finally:
             for endpoint in endpoints:

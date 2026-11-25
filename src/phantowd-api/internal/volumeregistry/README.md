@@ -1,5 +1,14 @@
 # Internal volume registry (M3.2g)
 
+Linux storage admission now retains a protected reader while the registered
+volume roster is active. Every claim must match an independently approved
+mounted descriptor and backing proof against the complete scoped census.
+Only verified service mount additions may appear between the initial and
+final observations. Empty committed claims produce a dormant lifetime and
+hold the same reader lock. The ARMv5 NFS peer fixture supplies synthetic
+storage authority. Physical compatibility approval and the boot provider
+remain separate prerequisites.
+
 ## Explicit persistent claims: task contract
 
 The following reader contracts describe earlier read-only increments. The new
