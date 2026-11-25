@@ -21,17 +21,26 @@ const (
 	initialStageName  = ".nas-policy.provisioning"
 )
 
-// ProvisionInitial publishes a fresh policy from independently supplied bytes.
-// The caller owns the private, qualified parent and excludes other writers and
-// consumers. It retains the input for future confirmation. An interrupted
-// staging directory requires review and cannot be resumed by this operation.
-func ProvisionInitial(parent *os.File, installation string, confirmed []byte) (result error) {
-	if parent == nil || len(confirmed) > naspolicy.MaxInputBytes {
+// ValidateInitial checks exactly the policy bytes and installation identity
+// required for provisioning, before a caller creates staging on its medium.
+func ValidateInitial(installation string, confirmed []byte) error {
+	if len(confirmed) > naspolicy.MaxInputBytes {
 		return ErrInvalid
 	}
 	policy, err := naspolicy.Decode(bytes.NewReader(confirmed))
 	if err != nil || policy.Revision != 1 ||
 		naspolicyevidence.Inspect(installation, confirmed, nil, nil, true) != naspolicyevidence.NoRecordedOperation {
+		return ErrInvalid
+	}
+	return nil
+}
+
+// ProvisionInitial publishes a fresh policy from independently supplied bytes.
+// The caller owns the private, qualified parent and excludes other writers and
+// consumers. It retains the input for future confirmation. An interrupted
+// staging directory requires review and cannot be resumed by this operation.
+func ProvisionInitial(parent *os.File, installation string, confirmed []byte) (result error) {
+	if parent == nil || ValidateInitial(installation, confirmed) != nil {
 		return ErrInvalid
 	}
 	resolve := uint64(unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS)
