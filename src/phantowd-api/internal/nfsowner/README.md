@@ -31,6 +31,11 @@ QEMU API fixtures have an explicit QEMU-only constructor for existing base
 images without nftables. To test actual packet enforcement with a Linux
 kernel, run `sh support/test-nfs-firewall.sh /usr/sbin/nft` on a host with
 user namespaces enabled.
+The full ARMv5 peer runner opens the shipped nft binary and calls
+`NewManagedLinux` with the real test interface. It requires the denied
+peer to time out on all three TCP ports, the admitted peer to connect,
+and a UDP packet to be dropped before the admitted NFS mount and write.
+The legacy-base peer mode reports its export-policy scope separately.
 The ordinary Linux constructor `NewManagedLinux` composes the controller, RPC
 helpers and export manager. It retains the explicit NFSD, namespace and
 executable grants before startup, then sequences rpcbind, NFSD, mountd and

@@ -393,6 +393,7 @@ make -C "$buildroot_source" \
 	phantowd_qemu_armv5_defconfig
 
 grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output_dir/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_NFTABLES=y' "$output_dir/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null
 grep -Fx 'BR2_TOOLCHAIN_BUILDROOT_CXX=y' "$output_dir/.config" >/dev/null
 if grep -Fx 'BR2_PACKAGE_SAMBA4_AD_DC=y' "$output_dir/.config" >/dev/null; then
@@ -587,7 +588,7 @@ save_qemu_failure_log() {
         "$artifact_dir/$1" "$2"
 }
 
-if ! "$external_dir/support/qemu-smoke.sh" \
+if ! PHANTOWD_QEMU_NFS_LEGACY_BASE=0 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"; then
     save_qemu_failure_log qemu-smoke-failure.log "$output_dir/qemu-smoke.log"
     echo "Preserved failed QEMU smoke diagnostics at $artifact_dir/qemu-smoke-failure.log" >&2

@@ -1525,7 +1525,14 @@ storage. No production roster provider or activation path exists.
   rpcbind TCP ports to the selected IPv4 endpoint and original policy sources
   and drops UDP on those ports. Host Linux namespace tests exercise actual
   packet decisions and protect an existing or drifted table from removal.
+  A fresh common ARMv5 image builds the nftables tool and kernel support.
+  Its mandatory peer campaign uses the ordinary production constructor,
+  checks blocked and allowed TCP on all three ports, verifies UDP drop on
+  the connected private link, and requires verified table removal at stop.
+  The old-base overlay mode records export-policy coverage explicitly.
   RC0 includes the command and JSON dependency for future provider wiring.
+  Its NIC-less management build fixture requires an actual inet table
+  transaction, JSON readback and teardown from the shipped nft executable.
   Full RC0 packet tests, RPC socket isolation and qualified storage
   integration remain open.
   Actual root capture and existing process-constructor

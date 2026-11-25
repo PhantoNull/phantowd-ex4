@@ -2,22 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 """Real NFS client/server guests, isolated by inherited Unix socketpair FDs."""
+import argparse
 import hashlib
 import os
 from pathlib import Path
 import shutil
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 
 
-def run(images, log):
+def run(images, log, legacy_base):
     files = [images / n for n in ("rootfs.ext2", "zImage", "versatile-pb.dtb")]
     if any(not p.is_file() or p.is_symlink() for p in files):
         raise RuntimeError("peer fixture requires regular image files")
     original = hashlib.sha256(files[0].read_bytes()).digest()
+    filter_mode = "export-policy" if legacy_base else "nftables"
     processes, outputs = [], []
     with tempfile.TemporaryDirectory(prefix="phantowd-nfs-peer-") as scratch:
         root = Path(scratch) / "rootfs.ext2"
@@ -52,7 +53,8 @@ def run(images, log):
                         "-object", "rng-random,id=rng,filename=/dev/urandom",
                         "-device", "virtio-rng-pci,rng=rng",
                         "-append", "rootwait root=/dev/sda rw console=ttyAMA0 "
-                        f"init=/nfs-peer-init phantowd_nfs_peer={role}",
+                        f"init=/nfs-peer-init phantowd_nfs_peer={role} "
+                        f"phantowd_nfs_peer_filter={filter_mode}",
                         "-display", "none", "-serial", "stdio", "-monitor",
                         "none", "-no-reboot", "-nic", "none", "-netdev",
                         f"socket,id=peer,fd={fd}", "-device",
@@ -78,13 +80,13 @@ def run(images, log):
                 marker = (
                     "PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true "
                     "activation=true managed=true remote_bytes=true "
-                    "mapped_identity=true tables=private teardown=clean "
+                    f"mapped_identity=true tables=private filter={filter_mode} teardown=clean "
                     "scope=isolated-two-guest-only" if role == "server" else
                     "PHANTOWD_NFS_PEER_CLIENT_READY protocol=nfs3 "
-                    "transport=tcp denied_source=true "
+                    f"transport=tcp denied_source=true filter={filter_mode} "
                     "read=true write=true fsync=true unmount=clean "
                     "scope=isolated-two-guest-only")
-                if text.count(marker) != 1 or any(word in text for word in (
+                if text.splitlines().count(marker) != 1 or any(word in text for word in (
                         "PHANTOWD_NFS_PEER_ERROR", "Kernel panic")):
                     raise RuntimeError(
                         f"NFS peer {role} proof missing or failed")
@@ -92,7 +94,7 @@ def run(images, log):
                 raise RuntimeError("NFS peer fixture changed base root")
             print("PHANTOWD_NFS_PEER_READY guests=2 kernel_backend=true "
                   "activation=true managed=true protocol=nfs3 transport=tcp "
-                  "denied_source=true read=true "
+                  f"denied_source=true filter={filter_mode} read=true "
                   "write=true fsync=true teardown=clean host_network=none "
                   "scope=isolated-two-guest-only")
         finally:
@@ -107,4 +109,10 @@ def run(images, log):
 
 
 if __name__ == "__main__":
-    run(Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("images", type=Path)
+    parser.add_argument("log", type=Path)
+    parser.add_argument("--legacy-base", action="store_true",
+                        help="run export-policy coverage on an older kernel/rootfs")
+    args = parser.parse_args()
+    run(args.images.resolve(), args.log.resolve(), args.legacy_base)
