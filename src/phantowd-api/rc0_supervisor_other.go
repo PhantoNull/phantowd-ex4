@@ -40,3 +40,7 @@ func provisionInheritedRC0SambaState(context.Context) error {
 func verifyRC0SambaCode(context.Context) error {
 	return errors.New("RC0 Samba runtime verification requires Linux")
 }
+
+func runRC0SambaChild(context.Context) error {
+	return errors.New("RC0 Samba runtime requires Linux")
+}
