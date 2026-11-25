@@ -9,4 +9,3 @@ CONFIG_NFS_FS=y
 # CONFIG_NFS_V2 is not set
 CONFIG_NFS_V3=y
 # CONFIG_NFS_V4 is not set
-CONFIG_8139TOO=y

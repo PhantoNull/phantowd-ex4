@@ -45,7 +45,7 @@ grep -Fx 'BR2_PACKAGE_RPCBIND=y' "$output/.config" >/dev/null
 build all
 kernel_config="$output/build/linux-$LINUX_VERSION/.config"
 for expected in 'CONFIG_MD=y' 'CONFIG_BLK_DEV_MD=y' 'CONFIG_MD_RAID1=y' '# CONFIG_MD_AUTODETECT is not set' \
-    'CONFIG_NFSD=y' '# CONFIG_NFSD_V4 is not set' 'CONFIG_NFS_FS=y' 'CONFIG_NFS_V3=y' 'CONFIG_8139TOO=y' \
+    'CONFIG_NFSD=y' '# CONFIG_NFSD_V4 is not set' 'CONFIG_NFS_FS=y' 'CONFIG_NFS_V3=y' 'CONFIG_8139CP=y' \
     'CONFIG_NF_TABLES=y' 'CONFIG_NF_TABLES_INET=y'; do
     grep -Fx "$expected" "$kernel_config" >/dev/null
 done
