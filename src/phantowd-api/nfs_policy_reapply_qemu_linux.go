@@ -22,7 +22,7 @@ import (
 // The parent retains the original policy/identity/storage Owners and dataset.
 func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nfsowner.Owner, previousTCPPeer string) (result error) {
 	b := &ownerNFSQEMU{storage: parent.storage, identity: parent.identity, policyOwner: parent.policyOwner,
-		uid: parent.uid, gid: parent.gid, access: "rw", phase: "revision2-prepare"}
+		uid: parent.uid, gid: parent.gid, phase: "revision2-prepare"}
 	var owner *nfsowner.Owner
 	defer func() {
 		if result != nil {
@@ -52,7 +52,6 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil || !enabled || len(roots) != 1 || len(lines) != 2 || !matchesQEMUOwnerMountedExportAccess(lines[1], ownerNFSRoot, b.uid, b.gid, "rw") {
 		return errors.New("saved NFS revision did not derive the fixed read-write export")
 	}
-	b.options = strings.TrimSuffix(strings.TrimPrefix(strings.Fields(lines[1])[1], "127.0.0.1/32("), ")")
 	before, err := os.ReadFile(ownerNFSPolicy + "/nas-services.json")
 	if err != nil {
 		return err

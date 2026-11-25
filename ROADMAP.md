@@ -1501,6 +1501,10 @@ storage. No production roster provider or activation path exists.
   `mountd` and `rpcinfo` executables and checks process and RPC readiness in
   the admitted domain. It owns helper shutdown before releasing executable
   references. Both real guest lifetimes use this layer.
+  A retained Linux export component publishes the attached candidate into an
+  empty table, checks each rule through pinned `exportfs` and withdraws only
+  its own observed rules after NFSD stop. Both guest lifetimes use the same
+  path. The platform still supplies the private runtime state and storage.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

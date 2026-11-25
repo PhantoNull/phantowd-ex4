@@ -15,7 +15,13 @@ and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
 that NFSD is running. It checks both original processes and program readiness,
 then reaps the process groups in reverse order before releasing the grants.
 The guarded guest composes the Linux components in both real lifetimes. The
-platform must still provide namespace isolation, RPC state and export policy.
+platform must still provide namespace isolation and private RPC/export state.
+The Linux export component pins `exportfs` and takes the original candidate
+from the attached input handle. It starts from an empty table and checks the
+exact nfs-utils display of each generated client rule. After verified NFSD
+stop, it removes only observed rules from its own candidate and verifies an
+empty table before releasing the executable. Unexpected entries require
+review and inhibit withdrawal.
 
 Construction captures one typed candidate and fixed trusted backend without I/O.
 Close serializes input/stopped checks before release; uncertainty retains review

@@ -214,16 +214,7 @@ func Build(p Policy, volumes shareconfig.Config) (Preview, error) {
 	for _, export := range preview.Exports {
 		table.WriteString(escapePath(export.Path))
 		for _, client := range export.Clients {
-			squash := "root_squash"
-			if client.Squash == "all" {
-				squash += ",all_squash"
-			}
-			subtree := "subtree_check"
-			if export.Path == export.MountPath {
-				subtree = "no_subtree_check"
-			}
-			fmt.Fprintf(&table, " %s(%s,sync,secure,%s,%s,nocrossmnt,sec=%s,anonuid=%d,anongid=%d,fsid=%s,mountpoint=%s)",
-				client.Network, client.Access, squash, subtree, client.Security, client.AnonymousUID, client.AnonymousGID, export.ID, export.MountPath)
+			fmt.Fprintf(&table, " %s(%s)", client.Network, ExportOptions(client, export.ID, export.MountPath, export.Path == export.MountPath))
 			preview.UsesAUTH_SYS = preview.UsesAUTH_SYS || client.Security == "sys"
 			preview.RequiresKerberos = preview.RequiresKerberos || client.Security != "sys"
 		}
@@ -231,6 +222,20 @@ func Build(p Policy, volumes shareconfig.Config) (Preview, error) {
 	}
 	preview.Table = table.String()
 	return preview, nil
+}
+
+// ExportOptions renders one already-validated export client from a policy.
+func ExportOptions(client Client, id, mount string, wholeVolume bool) string {
+	squash := "root_squash"
+	if client.Squash == "all" {
+		squash += ",all_squash"
+	}
+	subtree := "subtree_check"
+	if wholeVolume {
+		subtree = "no_subtree_check"
+	}
+	return fmt.Sprintf("%s,sync,secure,%s,%s,nocrossmnt,sec=%s,anonuid=%d,anongid=%d,fsid=%s,mountpoint=%s",
+		client.Access, squash, subtree, client.Security, client.AnonymousUID, client.AnonymousGID, id, mount)
 }
 
 func escapePath(s string) string {
