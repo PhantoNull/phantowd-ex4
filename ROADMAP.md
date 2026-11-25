@@ -1367,7 +1367,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   identity, and emits an all-or-error aggregate fingerprint/generation. The
   current QEMU roster is one synthetic volume; completeness applies only to the
   roster supplied by trusted construction and does not establish physical
-  inventory completeness. No production roster source or adapter exists. A
+  inventory completeness. The Linux roster adapter accepts only already-mounted
+  sources from a trusted supervisor. It revalidates the supplied descriptor
+  and authorized UUID, rejects aliases and unsafe target mount propagation,
+  and publishes the roster only after verifying every restricted bind. The
+  ARMv5 two-guest NFS test passes a synthetic volume through this same adapter
+  and checks wrong-descriptor and wrong-UUID refusal, busy-lease preservation
+  and exact restoration of the service mountpoint. A trusted EX4 storage
+  discovery, compatibility and startup provider is still pending. A
   `MountedVolumeSet.Acquire` operation now retains leases for every member
   under the same canonical lock set and returns no partial authority: failed
   member revalidation rolls earlier leases back, and uncertain cleanup moves
@@ -1460,7 +1467,9 @@ separate. These tests reject stale identity/storage fingerprints and do not
 enroll Samba identities or activate a product service. Roster completeness
 means only that all Owners in that trusted roster were observed while their
 locks were held; the QEMU fixture does not prove completeness over appliance
-storage. No production roster provider or activation path exists.
+storage. The Linux roster adapter consumes independently admitted mounts.
+Appliance-wide qualification, roster provisioning and service startup remain
+open.
 **Depends on:** M1, M2, M3; M6/M7 before LAN qualification.
 
 - **M4.1 — Typed activation plan.** Resolve validated policy against qualified

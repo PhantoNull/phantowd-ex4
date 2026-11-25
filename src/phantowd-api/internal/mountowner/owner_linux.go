@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package mountowner is an internal, single-owner mount lifecycle prototype.
-// It is not wired to an HTTP/RPC endpoint or a product storage qualifier.
+// Package mountowner controls the lifecycle of qualified Linux volume mounts.
 package mountowner
 
 import (
@@ -90,8 +89,7 @@ type rootGuard interface {
 type rootOpener func(string, mountguard.Expected) (rootGuard, error)
 
 // Qualification is a one-use capability minted by trusted in-process code.
-// Its fields are intentionally private: current production code has no
-// constructor, and the only current constructor is compiled into QEMU tests.
+// Its fields are intentionally private to keep admission in this package.
 // The tuple is transient to one kernel/mount namespace; never serialize it.
 type Qualification struct {
 	mu            sync.Mutex

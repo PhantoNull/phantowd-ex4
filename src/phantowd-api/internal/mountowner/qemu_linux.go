@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
@@ -426,6 +427,101 @@ func WithQEMUMountedSet(source string, inspect func(*MountedVolumeSet) error) er
 	})
 }
 
+// WithQEMUSupervisedMountedSet calls the regular Linux roster admission in
+// the disposable guest. The caller proves the synthetic disk provenance.
+func WithQEMUSupervisedMountedSet(ctx context.Context, source string, inspect func(*MountedVolumeSet) error) (result error) {
+	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
+	if err != nil || string(model) != "ARM Versatile PB\x00" || runtime.GOARCH != "arm" ||
+		os.Geteuid() != 0 || source != qemuFixtureSource || inspect == nil {
+		return ErrRejected
+	}
+	fd, err := openPath(source, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
+	if err != nil {
+		return err
+	}
+	sourceFile := os.NewFile(uintptr(fd), "qemu-supervised-volume")
+	defer func() { result = errors.Join(result, sourceFile.Close()) }()
+	observer := linuxObserver{}
+	expected, err := observer.ObserveMount(source)
+	if err != nil || !expected.RequireWritable {
+		return errors.Join(ErrRejected, err)
+	}
+	expected.FilesystemUUID = qemuFixtureUUID
+	if err := os.Mkdir(qemuPlannerMountAnchor, 0700); err != nil {
+		return err
+	}
+	defer func() {
+		if !constructionreview.Contains(result) {
+			result = errors.Join(result, os.Remove(qemuPlannerMountAnchor))
+		}
+	}()
+	before, err := observer.ObserveTarget(qemuPlannerMountAnchor)
+	if err != nil {
+		return err
+	}
+	grant := LinuxVolumeGrant{VolumeID: qemuPlannerVolumeID, SourcePath: source, Source: sourceFile, Expected: expected}
+	wrongUUID := grant
+	wrongUUID.Expected.FilesystemUUID = qemuMDStackFilesystem
+	unmountedDirectory, err := os.Open(qemuPlannerMountAnchor)
+	if err != nil {
+		return err
+	}
+	wrongFD := grant
+	wrongFD.Source = unmountedDirectory
+	for _, invalid := range []LinuxVolumeGrant{wrongUUID, wrongFD} {
+		unexpected, admissionErr := AdmitLinuxMountedRoster(ctx, []LinuxVolumeGrant{invalid})
+		if unexpected != nil || !errors.Is(admissionErr, ErrRejected) || constructionreview.Contains(admissionErr) {
+			_ = unmountedDirectory.Close()
+			if unexpected != nil {
+				return &linuxRosterReview{owners: unexpected.set.lockOrder, cause: errors.New("wrong fixture volume admitted")}
+			}
+			return errors.Join(errors.New("wrong fixture volume was not cleanly rejected"), admissionErr)
+		}
+	}
+	if err := unmountedDirectory.Close(); err != nil {
+		return err
+	}
+	roster, err := AdmitLinuxMountedRoster(ctx, []LinuxVolumeGrant{grant})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if constructionreview.Contains(result) {
+			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: result}
+			return
+		}
+		if err := roster.Close(context.WithoutCancel(ctx)); err != nil {
+			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, err)}
+			return
+		}
+		if _, err := roster.Volumes().Observe(); !errors.Is(err, ErrUnavailable) {
+			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, ErrReview, err)}
+			return
+		}
+		after, targetErr := observer.ObserveTarget(qemuPlannerMountAnchor)
+		sourceAfter, sourceErr := observer.ObserveMount(source)
+		if targetErr != nil || after != before || sourceErr != nil || !sameKernelMount(sourceAfter, expected) {
+			result = &linuxRosterReview{owners: roster.set.lockOrder, cause: errors.Join(result, ErrReview, targetErr, sourceErr)}
+		}
+	}()
+	var stat unix.Statfs_t
+	const mountRestrictions = unix.ST_NODEV | unix.ST_NOSUID | unix.ST_NOEXEC
+	if err := unix.Statfs(qemuPlannerMountAnchor, &stat); err != nil || stat.Flags&mountRestrictions != mountRestrictions {
+		return errors.Join(errors.New("supervised bind mount needs nodev,nosuid,noexec"), err)
+	}
+	lease, _, err := roster.Volumes().Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	busyErr := roster.Close(ctx)
+	_, verifyErr := lease.Verify()
+	closeErr := lease.Close()
+	if !errors.Is(busyErr, ErrBusy) || verifyErr != nil || closeErr != nil {
+		return errors.Join(errors.New("supervised roster must preserve a busy lease"), busyErr, verifyErr, closeErr)
+	}
+	return inspect(roster.Volumes())
+}
+
 // WithQEMUMountedSetEvidence runs a snapshot observer under all roster locks
 // using the one fixed logical volume in the disposable guest.
 func WithQEMUMountedSetEvidence(source string, inspect func(MountedVolumeSetEvidence) error) error {
@@ -586,118 +682,6 @@ func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, req
 	return errors.Join(inspectErr, verifyErr, drainErr, unmountErr)
 }
 
-type linuxObserver struct{}
-
-func (linuxObserver) ObserveMount(path string) (mountguard.Expected, error) {
-	fd, err := openPath(path, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
-	if err != nil {
-		return mountguard.Expected{}, err
-	}
-	defer unix.Close(fd)
-	var st unix.Statx_t
-	if err := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT,
-		unix.STATX_TYPE|unix.STATX_INO|unix.STATX_MNT_ID_UNIQUE, &st); err != nil {
-		return mountguard.Expected{}, err
-	}
-	if st.Mask&(unix.STATX_TYPE|unix.STATX_INO|unix.STATX_MNT_ID_UNIQUE) !=
-		(unix.STATX_TYPE|unix.STATX_INO|unix.STATX_MNT_ID_UNIQUE) || st.Mode&unix.S_IFMT != unix.S_IFDIR {
-		return mountguard.Expected{}, mountguard.ErrUnsupported
-	}
-	var filesystem unix.Statfs_t
-	if err := unix.Fstatfs(fd, &filesystem); err != nil {
-		return mountguard.Expected{}, err
-	}
-	return mountguard.Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major,
-		DeviceMinor: st.Dev_minor, FilesystemType: uint32(filesystem.Type),
-		RequireWritable: filesystem.Flags&unix.ST_RDONLY == 0}, nil
-}
-
-func (linuxObserver) ObserveTarget(path string) (TargetIdentity, error) {
-	fd, err := openPath(path, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
-	if err != nil {
-		return TargetIdentity{}, err
-	}
-	defer unix.Close(fd)
-	return observeTargetFD(fd)
-}
-
-func observeTargetFD(fd int) (TargetIdentity, error) {
-	var st unix.Statx_t
-	if err := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT,
-		unix.STATX_TYPE|unix.STATX_INO|unix.STATX_MNT_ID_UNIQUE|unix.STATX_BASIC_STATS, &st); err != nil {
-		return TargetIdentity{}, err
-	}
-	const required = unix.STATX_TYPE | unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
-	if st.Mask&required != required || st.Attributes_mask&unix.STATX_ATTR_MOUNT_ROOT == 0 || st.Mode&unix.S_IFMT != unix.S_IFDIR {
-		return TargetIdentity{}, mountguard.ErrUnsupported
-	}
-	var filesystem unix.Statfs_t
-	if err := unix.Fstatfs(fd, &filesystem); err != nil {
-		return TargetIdentity{}, err
-	}
-	return TargetIdentity{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major,
-		DeviceMinor: st.Dev_minor, FilesystemType: uint32(filesystem.Type),
-		MountRoot: st.Attributes&unix.STATX_ATTR_MOUNT_ROOT != 0, MountRootKnown: true}, nil
-}
-
-func (linuxObserver) PinTarget(path string) (targetHandle, error) {
-	fd, err := openPath(path, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
-	if err != nil {
-		return nil, err
-	}
-	pin := &linuxTargetPin{file: os.NewFile(uintptr(fd), "mount-owner-target-pin")}
-	if _, err := pin.Identity(); err != nil {
-		_ = pin.Close()
-		return nil, err
-	}
-	return pin, nil
-}
-
-type linuxTargetPin struct{ file *os.File }
-
-func (p *linuxTargetPin) Identity() (TargetIdentity, error) {
-	if p == nil || p.file == nil {
-		return TargetIdentity{}, mountguard.ErrUnavailable
-	}
-	return observeTargetFD(int(p.file.Fd()))
-}
-
-func (p *linuxTargetPin) Empty() (bool, error) {
-	if p == nil || p.file == nil {
-		return false, mountguard.ErrUnavailable
-	}
-	fd, err := unix.Openat(int(p.file.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
-	if err != nil {
-		return false, mountguard.ErrUnavailable
-	}
-	directory := os.NewFile(uintptr(fd), "mount-owner-target-empty-check")
-	defer directory.Close()
-	entries, err := directory.ReadDir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	if err != nil {
-		return false, mountguard.ErrUnavailable
-	}
-	return len(entries) == 0, nil
-}
-
-func (p *linuxTargetPin) File() *os.File {
-	if p == nil {
-		return nil
-	}
-	return p.file
-}
-
-func (p *linuxTargetPin) Close() error {
-	if p == nil || p.file == nil {
-		return nil
-	}
-	err := p.file.Close()
-	p.file = nil
-	return err
-}
-
 func (linuxObserver) TargetEmpty(path string) (bool, error) {
 	fd, err := openPath(path, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC)
 	if err != nil {
@@ -713,15 +697,6 @@ func (linuxObserver) TargetEmpty(path string) (bool, error) {
 		return false, mountguard.ErrUnavailable
 	}
 	return len(entries) == 0, nil
-}
-
-func openPath(path string, flags int) (int, error) {
-	how := &unix.OpenHow{Flags: uint64(flags), Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS}
-	fd, err := unix.Openat2(unix.AT_FDCWD, path, how)
-	if err != nil {
-		return -1, mountguard.ErrUnavailable
-	}
-	return fd, nil
 }
 
 type qemuBindDriver struct {
