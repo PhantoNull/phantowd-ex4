@@ -10,8 +10,12 @@ trusted runtime. The Owner checks inputs independently of the runtime and
 requires verified stop and runtime closure before releasing storage. While
 attached, the original handle refuses external checks, closure and transfers.
 The caller keeps its borrowed policy and identity claims through closure.
-Both real guest lifetimes use these Linux paths. The kernel and RPC runtime
-remains restricted to the guarded QEMU adapter.
+The Linux RPC component holds executable references for `rpcbind`, `mountd`
+and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
+that NFSD is running. It checks both original processes and program readiness,
+then reaps the process groups in reverse order before releasing the grants.
+The guarded guest composes the Linux components in both real lifetimes. The
+platform must still provide namespace isolation, RPC state and export policy.
 
 Construction captures one typed candidate and fixed trusted backend without I/O.
 Close serializes input/stopped checks before release; uncertainty retains review

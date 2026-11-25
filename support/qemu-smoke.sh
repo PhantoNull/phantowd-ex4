@@ -554,6 +554,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Linux NFSD retained kernel admission assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Managed NFS RPC helper assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo 'Original NAS-policy NFS activation assertion missing' >&2
             exit 1

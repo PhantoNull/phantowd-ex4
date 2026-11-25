@@ -17,6 +17,8 @@ import (
 
 type ControllerQEMU = Controller
 
+func (k *Controller) CheckPreparedQEMU(ctx context.Context) error { return k.CheckPrepared(ctx) }
+
 func SocketRequestQEMU(fd int) ([]byte, error) { return socketRequest(fd) }
 
 func openQEMU(ctx context.Context, role string) (*ControllerQEMU, error) {

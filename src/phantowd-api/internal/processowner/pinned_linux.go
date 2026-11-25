@@ -65,6 +65,12 @@ func duplicateExecutable(source *os.File) (*os.File, error) {
 	return pin, nil
 }
 
+// RetainExecutable pins trusted code for an internal one-shot command.
+// The caller qualifies the executable and owns the returned reference.
+func RetainExecutable(source *os.File) (*os.File, error) {
+	return duplicateExecutable(source)
+}
+
 // Duplicates a regular O_RDONLY descriptor while holding the caller's file
 // reference. This is retention only; callers separately qualify code or input.
 func duplicateReadOnlyRegular(source *os.File) (*os.File, error) {
