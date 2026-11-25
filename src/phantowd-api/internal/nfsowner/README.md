@@ -14,6 +14,12 @@ The Linux RPC component holds executable references for `rpcbind`, `mountd`
 and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
 that NFSD is running. It checks both original processes and program readiness,
 then reaps the process groups in reverse order before releasing the grants.
+The managed binder requires an unused local socket and lock pathname on the
+admitted runtime tmpfs. The shipped rpcbind creates a root-only Unix socket
+and removes only its bound socket and lock inodes. The owner pins both and verifies the
+connected peer PID and root credentials before NFSD starts and on health
+checks. Closure requires the socket and lock to be absent. The disconnected
+legacy QEMU constructor accepts the older mode for baseline overlays only.
 `mountd` uses TCP on port 20048. Before publishing exports the runtime
 matches the kernel listener inodes to the retained process and refuses UDP,
 unexpected owned ports and foreign listeners on the mount port. The same

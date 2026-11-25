@@ -27,6 +27,7 @@ type RPC struct {
 	address                 netip.Addr
 	sets                    [2]*processowner.PinnedSet
 	probe                   *os.File
+	local                   rpcLocal
 	started                 int
 	stopped, closed, review bool
 }
@@ -40,9 +41,9 @@ type rpcConstructionReview struct {
 func (*rpcConstructionReview) Error() string   { return "NFS RPC construction requires review" }
 func (r *rpcConstructionReview) Unwrap() error { return r.cause }
 
-// NewRPC borrows a controller and the three qualified executable grants.
+// newRPC borrows a controller, admitted runtime state and executable grants.
 // It starts no helper and keeps independent executable references.
-func NewRPC(ctx context.Context, kernel *nfskernel.Controller, address netip.Addr, bind, mount, probe *os.File) (_ *RPC, result error) {
+func newRPC(ctx context.Context, kernel *nfskernel.Controller, address netip.Addr, bind, mount, probe *os.File, local rpcLocal) (_ *RPC, result error) {
 	if err := kernel.CheckDomain(ctx, address); err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func NewRPC(ctx context.Context, kernel *nfskernel.Controller, address netip.Add
 	if err != nil {
 		return nil, err
 	}
-	r := &RPC{gate: make(chan struct{}, 1), kernel: kernel, address: address, probe: pinned}
+	r := &RPC{gate: make(chan struct{}, 1), kernel: kernel, address: address, probe: pinned, local: local}
 	r.original = r
 	defer func() {
 		if result != nil {
@@ -106,6 +107,11 @@ func (r *RPC) start(ctx context.Context, role int) error {
 	if err := checkKernel(ctx); err != nil {
 		return err
 	}
+	if role == 0 {
+		if err := r.local.requireAbsent(); err != nil {
+			return err
+		}
+	}
 	if role == 1 {
 		if err := checkMountTransport(ctx, 0); err != nil {
 			return err
@@ -115,6 +121,12 @@ func (r *RPC) start(ctx context.Context, role int) error {
 	if err != nil || snapshot.State != processowner.StateReady {
 		r.review = true
 		return errors.Join(ErrReviewRequired, err)
+	}
+	if role == 0 {
+		if err := r.verifyLocalBind(ctx, snapshot, true); err != nil {
+			r.review = true
+			return errors.Join(ErrReviewRequired, err)
+		}
 	}
 	if role == 1 {
 		if err := r.verifyMountdTransport(ctx, snapshot); err != nil {
@@ -160,6 +172,12 @@ func (r *RPC) VerifyReady(ctx context.Context) error {
 			r.review = true
 			return errors.Join(ErrReviewRequired, err)
 		}
+		if i == 0 {
+			if err := r.verifyLocalBind(ctx, state, false); err != nil {
+				r.review = true
+				return errors.Join(ErrReviewRequired, err)
+			}
+		}
 		if i == 1 {
 			if err := r.verifyMountdTransport(ctx, state); err != nil {
 				r.review = true
@@ -168,6 +186,26 @@ func (r *RPC) VerifyReady(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (r *RPC) verifyLocalBind(ctx context.Context, original processowner.SetSnapshot, pin bool) error {
+	if len(original.Members) != 1 || original.Members[0].Process.PID <= 0 {
+		return ErrState
+	}
+	pid := original.Members[0].Process.PID
+	check := r.local.check
+	if pin {
+		check = r.local.pin
+	}
+	if err := check(ctx, pid); err != nil {
+		return err
+	}
+	current, err := r.sets[0].Observe(ctx)
+	if err != nil || current.State != processowner.StateReady || current.Generation != original.Generation ||
+		len(current.Members) != 1 || current.Members[0].Process.PID != pid {
+		return errors.Join(ErrState, err)
+	}
+	return r.kernel.CheckDomain(ctx, r.address)
 }
 
 // The caller holds the RPC gate and the OS thread throughout the observations.
@@ -239,6 +277,9 @@ func (r *RPC) verifyStopped(ctx context.Context) error {
 	if err := checkMountTransport(ctx, 0); err != nil {
 		return err
 	}
+	if err := r.local.requireAbsent(); err != nil {
+		return err
+	}
 	return r.kernel.CheckDomain(ctx, r.address)
 }
 
@@ -259,6 +300,14 @@ func (r *RPC) Close(ctx context.Context) error {
 }
 
 func (r *RPC) release() error {
+	for _, slot := range []**os.File{&r.local.socket, &r.local.lock} {
+		if *slot != nil {
+			if err := (*slot).Close(); err != nil {
+				return err
+			}
+			*slot = nil
+		}
+	}
 	for _, set := range r.sets {
 		if set != nil {
 			if err := set.Close(); err != nil {

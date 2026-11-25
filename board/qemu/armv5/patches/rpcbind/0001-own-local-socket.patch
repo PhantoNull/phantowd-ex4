@@ -1,0 +1,101 @@
+Subject: [PATCH] Restrict and retain the local rpcbind socket
+
+Bind the local transport with mode 0600. Let bind refuse a preexisting
+pathname and unlink only the socket and lock inodes owned by this process.
+
+Signed-off-by: PhantoWD EX4 contributors
+---
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -86,7 +86,8 @@
+ int debugging = 0;	/* Tell me what's going on */
+ int doabort = 0;	/* When debugging, do an abort on errors */
+ int dofork = 1;		/* fork? */
+-int createdsocket = 0;  /* Did I create the socket or systemd did it for me? */
++static volatile sig_atomic_t createdsocket = 0;
++static struct stat local_socket;
+ 
+ rpcblist_ptr list_rbl;	/* A list of version 3/4 rpcbind services */
+ 
+@@ -155,11 +156,11 @@
+ 
+ 	/* Check that another rpcbind isn't already running. */
+ 	if ((rpcbindlockfd = (open(RPCBINDDLOCK,
+-	    O_RDONLY|O_CREAT, 0444))) == -1)
++	    O_RDONLY|O_CREAT|O_NOFOLLOW|O_CLOEXEC, 0444))) == -1)
+ 		err(1, "%s", RPCBINDDLOCK);
+ 
+-	if(flock(rpcbindlockfd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK)
+-		errx(1, "another rpcbind is already running. Aborting");
++	if (flock(rpcbindlockfd, LOCK_EX|LOCK_NB) == -1)
++		err(1, "cannot acquire %s", RPCBINDDLOCK);
+ 
+ 	getrlimit(RLIMIT_NOFILE, &rl);
+ 	if (rl.rlim_cur < 128) {
+@@ -210,7 +211,8 @@
+ 	}
+ 	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
+ 
+-	init_transport(nconf);
++	if (init_transport(nconf) != 0)
++		errx(1, "cannot initialize the local RPC transport");
+ 
+ 	while ((nconf = getnetconfig(nc_handle))) {
+ 		if (nconf->nc_flag & NC_VISIBLE)
+@@ -449,8 +451,6 @@
+ 	    (strcmp(nconf->nc_netid, "unix") == 0)) {
+ 		memset(&sun, 0, sizeof sun);
+ 		sun.sun_family = AF_LOCAL;
+-		unlink(_PATH_RPCBINDSOCK);
+-		createdsocket = 1; /* We are now in the process of creating the unix socket */
+ 		strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
+ 		addrlen = SUN_LEN(&sun);
+ 		sa = (struct sockaddr *)&sun;
+@@ -630,7 +630,9 @@
+ 			addrlen = res->ai_addrlen;
+ 			sa = (struct sockaddr *)res->ai_addr;
+ 		}
+-		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
++		/* Only the managed root RPC helpers need the local transport. */
++		oldmask = umask(sa->sa_family == AF_LOCAL ?
++		    S_IXUSR|S_IRWXG|S_IRWXO : S_IXUSR|S_IXGRP|S_IXOTH);
+ 		__rpc_fd2sockinfo(fd, &si);
+ 		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
+ 				sizeof(on)) != 0) {
+@@ -647,6 +649,15 @@
+ 			return 1;
+ 		}
+ 		(void) umask(oldmask);
++		if (sa->sa_family == AF_LOCAL) {
++			if (lstat(_PATH_RPCBINDSOCK, &local_socket) != 0 ||
++			    !S_ISSOCK(local_socket.st_mode)) {
++				syslog(LOG_ERR, "cannot verify bound local socket: %m");
++				close(fd);
++				return 1;
++			}
++			createdsocket = 1;
++		}
+ 
+ 		/* Copy the address */
+ 		taddr.addr.len = taddr.addr.maxlen = addrlen;
+@@ -861,10 +872,17 @@
+ static void
+ terminate(int dummy /*__unused*/)
+ {
++	struct stat current, lock;
++
++	if (createdsocket && lstat(_PATH_RPCBINDSOCK, &current) == 0 &&
++	    S_ISSOCK(current.st_mode) && current.st_dev == local_socket.st_dev &&
++	    current.st_ino == local_socket.st_ino)
++		unlink(_PATH_RPCBINDSOCK);
++	if (fstat(rpcbindlockfd, &lock) == 0 &&
++	    lstat(RPCBINDDLOCK, &current) == 0 && S_ISREG(current.st_mode) &&
++	    current.st_dev == lock.st_dev && current.st_ino == lock.st_ino)
++		unlink(RPCBINDDLOCK);
+ 	close(rpcbindlockfd);
+-	if(createdsocket)
+-		unlink(_PATH_RPCBINDSOCK);
+-	unlink(RPCBINDDLOCK);
+ #ifdef WARMSTART
+ 	write_warmstart();	/* Dump yourself */
+ #endif

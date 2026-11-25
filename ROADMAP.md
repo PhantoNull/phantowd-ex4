@@ -1533,7 +1533,11 @@ storage. No production roster provider or activation path exists.
   RC0 includes the command and JSON dependency for future provider wiring.
   Its NIC-less management build fixture requires an actual inet table
   transaction, JSON readback and teardown from the shipped nft executable.
-  Full RC0 packet tests, RPC socket isolation and qualified storage
+  The managed RPC lifetime requires its local socket and lock paths to be
+  absent before startup and after shutdown. It pins the live Unix socket and
+  checks the retained rpcbind process credentials through the actual socket.
+  The shipped rpcbind creates the Unix transport root-only and preserves
+  foreign or replaced paths. Full RC0 packet tests and qualified storage
   integration remain open.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.

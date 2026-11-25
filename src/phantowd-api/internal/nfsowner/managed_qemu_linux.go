@@ -45,6 +45,9 @@ func CheckManagedRefusalsQEMU(ctx context.Context, owner *Owner) error {
 		if err := verifyOccupiedMountPortQEMU(ctx, m.rpc); err != nil {
 			return err
 		}
+		if err := verifyForeignRPCBindQEMU(ctx, m.rpc); err != nil {
+			return err
+		}
 	case Running:
 		if !errors.Is(m.rpc.Close(ctx), ErrState) || !errors.Is(m.exports.Close(ctx), ErrState) {
 			return errors.New("running NFS released managed helper or export references")
@@ -53,6 +56,21 @@ func CheckManagedRefusalsQEMU(ctx context.Context, owner *Owner) error {
 		return ErrState
 	}
 	return nil
+}
+
+func verifyForeignRPCBindQEMU(ctx context.Context, rpc *RPC) error {
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: rpcLocalPath, Net: "unix"})
+	if err != nil {
+		return err
+	}
+	refused := rpc.VerifyStopped(ctx)
+	if err := listener.Close(); err != nil {
+		return err
+	}
+	if !errors.Is(refused, ErrState) {
+		return errors.Join(errors.New("managed RPC admitted a foreign local socket"), refused)
+	}
+	return rpc.VerifyStopped(ctx)
 }
 
 func verifyOccupiedMountPortQEMU(ctx context.Context, rpc *RPC) error {
