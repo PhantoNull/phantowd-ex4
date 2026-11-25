@@ -15,9 +15,11 @@ func runRC0Management(context.Context, string, string, string) error {
 	return errors.New("RC0 management supervision requires Linux")
 }
 
-func runRC0BootManagement(context.Context, func() error) error {
+func runRC0BootManagement(context.Context, *rc0BootStopAuthority, func() error) error {
 	return errors.New("RC0 boot supervision requires Linux")
 }
+
+type rc0BootStopAuthority struct{}
 
 func manageRC0BootService(context.Context, string) error {
 	return errors.New("RC0 boot service requires Linux")

@@ -593,6 +593,9 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := withdrawInitGrant(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("withdrawal was accepted while the managed supervisor was live")
 	}
+	if err := exec.CommandContext(ctx, api, "--rc0-boot-service=stop-nfs-drained").Run(); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("management-only supervisor accepted NFS drain")
+	}
 	fingerprint, err := observeHTTPS(ctx, credentials)
 	if err != nil {
 		return err
@@ -623,6 +626,7 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	}
 	fmt.Println("PHANTOWD_RC0_GRANT interrupted=refused self_confirmation=refused wrong_tls=refused duplicate=refused live_withdraw=refused withdraw=confirmed")
 	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
+	fmt.Println("PHANTOWD_RC0_NFS_DRAIN management_only=refused https=preserved")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
 	return nil
 }

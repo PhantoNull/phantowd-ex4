@@ -50,7 +50,7 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	if err != nil {
 		return err
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo, nil, nil)
+	return superviseRC0State(ctx, plan, state, known, proofInfo, nil, nil, nil)
 }
 
 func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
@@ -62,7 +62,7 @@ func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
 	return known, proofInfo, errors.Join(readErr, proof.Close())
 }
 
-func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, approval *rc0StorageApproval, started func() error) (result error) {
+func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, approval *rc0StorageApproval, control *rc0BootStopAuthority, started func() error) (result error) {
 	uid, gid, err := managementAPIIdentity()
 	if err != nil {
 		return err
@@ -126,7 +126,6 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-
 	cmd := exec.Command("/proc/self/exe")
 	cmd.Dir = "/"
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C",
@@ -139,7 +138,29 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	cmd.ExtraFiles = []*os.File{accounts, identity}
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
-	return superviseRC0API(ctx, cmd, listener, server, uid, gid, started)
+	ready := started
+	if approval != nil && approval.NFS != nil {
+		if started == nil {
+			return errRC0Review
+		}
+		var nfs *registeredNFS
+		ready = func() error {
+			var err error
+			nfs, err = startRC0NFS(ctx, control, approval, owner, identities, storage)
+			if err != nil {
+				return err
+			}
+			return started()
+		}
+		// The policy worker has joined before teardown. Close the NFS
+		// lifetime before touching its original storage and identity claims.
+		defer func() {
+			if nfs != nil {
+				result = errors.Join(result, nfs.Close(context.WithoutCancel(ctx)))
+			}
+		}()
+	}
+	return superviseRC0API(ctx, cmd, listener, server, uid, gid, ready)
 }
 
 func managementAPIIdentity() (uint32, uint32, error) {

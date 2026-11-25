@@ -41,7 +41,7 @@ type rc0BootPlan struct {
 
 // The early launcher admits a local state root and independently selects its
 // policy and TLS generations. Only its descriptors enter this process.
-func runRC0BootManagement(ctx context.Context, started func() error) (result error) {
+func runRC0BootManagement(ctx context.Context, control *rc0BootStopAuthority, started func() error) (result error) {
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0Review
 	}
@@ -62,14 +62,17 @@ func runRC0BootManagement(ctx context.Context, started func() error) (result err
 		return errRC0Review
 	}
 	descriptor := 6
-	if started != nil {
+	if control != nil {
 		descriptor = 7 // BusyBox startup uses FD 6 for the readiness pipe.
 	}
 	storage, _, err := takeRC0StorageApproval(plan, descriptor)
 	if err != nil {
 		return err
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo, storage, started)
+	if storage != nil && storage.NFS != nil && control == nil {
+		return errRC0Review
+	}
+	return superviseRC0State(ctx, plan, state, known, proofInfo, storage, control, started)
 }
 
 func readRC0BootGrant(descriptor int) (rc0BootPlan, error) {

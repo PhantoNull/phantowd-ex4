@@ -26,6 +26,11 @@ func TestRC0StorageApprovalRequiresExactMountAndBacking(t *testing.T) {
 	if _, err := decodeRC0StorageApproval([]byte(proof), digest(proof+" ")); err == nil {
 		t.Fatal("altered boot approval hash was accepted")
 	}
+	withNFS := strings.TrimSuffix(proof, "}") + `,"nfs":{"address":"192.0.2.2","ingress_index":4}}`
+	approval, err = decodeRC0StorageApproval([]byte(withNFS), digest(withNFS))
+	if err != nil || approval.NFS == nil || approval.NFS.Address.String() != "192.0.2.2" || approval.NFS.IngressIndex != 4 {
+		t.Fatalf("valid NFS endpoint rejected: %v", err)
+	}
 	for _, changed := range []string{
 		strings.Replace(proof, `"id":"boot-data"`, `"id":"../other"`, 1),
 		strings.Replace(proof, `"id":"boot-data"`, `"id":"boot-data","source":"/elsewhere"`, 1),
@@ -34,6 +39,10 @@ func TestRC0StorageApprovalRequiresExactMountAndBacking(t *testing.T) {
 		strings.Replace(proof, `"device_minor":0,`, "", 1),
 		strings.Replace(proof, strings.Repeat("a", 64), strings.Repeat("0", 64), 1),
 		strings.Replace(proof, `"arrays":[]`, `"arrays":null`, 1),
+		strings.Replace(withNFS, "192.0.2.2", "127.0.0.1", 1),
+		strings.Replace(withNFS, "192.0.2.2", "::ffff:192.0.2.2", 1),
+		strings.Replace(withNFS, `"ingress_index":4`, `"ingress_index":0`, 1),
+		strings.Replace(withNFS, `"ingress_index":4`, `"ingress_index":4,"nfsd":"/tmp/nfsd"`, 1),
 	} {
 		if _, err := decodeRC0StorageApproval([]byte(changed), digest(changed)); err == nil {
 			t.Fatalf("accepted invalid approval: %s", changed)

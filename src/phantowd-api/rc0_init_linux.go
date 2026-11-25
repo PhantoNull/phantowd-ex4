@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"golang.org/x/sys/unix"
 )
@@ -23,7 +24,9 @@ const (
 	rc0BootStagingName    = ".phantowd-boot.staging"
 	rc0BootControlDir     = "/run/phantowd-boot-control"
 	rc0BootControlSocket  = rc0BootControlDir + "/stop"
-	rc0BootServiceTimeout = 12 * time.Second
+	rc0BootServiceTimeout = 20 * time.Second
+	rc0StopRequest        = 'S'
+	rc0DrainedStopRequest = 'D'
 )
 
 func manageRC0BootService(ctx context.Context, action string) error {
@@ -45,7 +48,9 @@ func manageRC0BootService(ctx context.Context, action string) error {
 	case "start":
 		return startRC0BootService(ctx)
 	case "stop":
-		return stopRC0BootService(ctx)
+		return stopRC0BootService(ctx, rc0StopRequest)
+	case "stop-nfs-drained":
+		return stopRC0BootService(ctx, rc0DrainedStopRequest)
 	case "publish":
 		return publishRC0BootGrant(ctx)
 	case "withdraw":
@@ -210,11 +215,13 @@ func runRC0BootService(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stop := make(chan *net.UnixConn, 1)
-	go receiveRC0Stop(listener, cancel, stop)
+	control := &rc0BootStopAuthority{}
+	go receiveRC0Stop(listener, control, cancel, stop)
 
 	admitted := false
-	err = runRC0BootManagement(ctx, func() error {
+	err = runRC0BootManagement(ctx, control, func() error {
 		admitted = true
+		control.ready.Store(true)
 		_, writeErr := ack.Write([]byte{'R'})
 		return errors.Join(writeErr, ack.Close())
 	})
@@ -227,7 +234,7 @@ func runRC0BootService(ctx context.Context) error {
 	// it admitted the API, preserve the already-reserved control directory
 	// unless an explicit stop completed successfully. A killed supervisor
 	// also leaves the directory behind.
-	if admitted && (err != nil || conn == nil) {
+	if constructionreview.Contains(err) || (admitted || control.nfs.Load()) && (err != nil || conn == nil) {
 		return errors.Join(errRC0Review, err)
 	}
 	if err := errors.Join(err, os.Remove(rc0BootControlDir)); err != nil || conn == nil {
@@ -240,16 +247,14 @@ func runRC0BootService(ctx context.Context) error {
 	return err
 }
 
-func receiveRC0Stop(listener *net.UnixListener, cancel context.CancelFunc, stop chan<- *net.UnixConn) {
+func receiveRC0Stop(listener *net.UnixListener, control *rc0BootStopAuthority, cancel context.CancelFunc, stop chan<- *net.UnixConn) {
 	for {
 		conn, err := listener.AcceptUnix()
 		if err != nil {
 			stop <- nil
 			return
 		}
-		conn.SetReadDeadline(time.Now().Add(time.Second))
-		var request [1]byte
-		if _, err := io.ReadFull(conn, request[:]); err == nil && request[0] == 'S' {
+		if receiveRC0StopRequest(conn, control) {
 			stop <- conn
 			cancel()
 			return
@@ -258,11 +263,32 @@ func receiveRC0Stop(listener *net.UnixListener, cancel context.CancelFunc, stop 
 	}
 }
 
-func stopRC0BootService(ctx context.Context) error {
+func receiveRC0StopRequest(conn *net.UnixConn, control *rc0BootStopAuthority) bool {
+	raw, err := conn.SyscallConn()
+	if err != nil {
+		return false
+	}
+	root := false
+	err = raw.Control(func(fd uintptr) {
+		peer, err := unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+		root = err == nil && peer.Uid == 0 && peer.Pid > 0
+	})
+	if err != nil || !root || conn.SetReadDeadline(time.Now().Add(time.Second)) != nil {
+		return false
+	}
+	var request [1]byte
+	_, err = io.ReadFull(conn, request[:])
+	return err == nil && control.accept(request[0])
+}
+
+func stopRC0BootService(ctx context.Context, request byte) error {
 	var st unix.Stat_t
 	err := unix.Lstat(rc0BootControlDir, &st)
 	if errors.Is(err, unix.ENOENT) {
-		return nil
+		if request == rc0StopRequest {
+			return nil
+		}
+		return errRC0Review
 	}
 	if err != nil || !safeRC0RunDirectory() || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 {
 		return errRC0Review
@@ -279,7 +305,7 @@ func stopRC0BootService(ctx context.Context) error {
 	if err := conn.SetDeadline(deadline); err != nil {
 		return err
 	}
-	if _, err := conn.Write([]byte{'S'}); err != nil {
+	if _, err := conn.Write([]byte{request}); err != nil {
 		return err
 	}
 	var reply [1]byte

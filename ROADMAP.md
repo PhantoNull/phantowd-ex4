@@ -1537,8 +1537,15 @@ open.
   acknowledging readiness. Clean shutdown restores the target directory and
   releases the registry. The synthetic state and data media are distinct in
   the ARMv5 fixture. The RC0 research kernel supplies the MD census with
-  automatic assembly disabled. This opens no raw storage and starts no data service until
-  a protocol owner is joined to the admitted roster.
+  automatic assembly disabled.
+  The normal BusyBox handoff can opt in to managed NFSv3 through a digest-bound
+  IPv4 endpoint and ingress interface, with the platform's existing NFSD mount.
+  It starts the retained protocol owner after the management listener has bound.
+  A private root control request authorizes teardown once clients have drained.
+  The kernel stop checks that confirmation before modifying listeners or
+  exports. Ordinary stop refuses an active NFS lifetime. An uncertain exit
+  preserves the boot grant for review. Positive coverage of this complete
+  handoff and a physical EX4 platform provider are release prerequisites.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

@@ -867,7 +867,20 @@ and refuses non-Versatile PB machines. See the
   `/srv/phantowd/volumes/<id>`. Startup checks the complete registry in the
   admitted state and binds only its approved roster. It releases those binds
   before confirming stop, and withdrawal refuses a target that remains
-  mounted. This storage handoff precedes protocol activation.
+  mounted.
+- The same digest-bound storage document can include an `nfs` object with
+  `address` (one unicast IPv4 address) and `ingress_index` (the current
+  interface index). The trusted platform configures that interface and mounts
+  the stopped NFSD filesystem at `/proc/fs/nfsd` before normal init startup.
+  The supervisor verifies the actual interface, admits a nonempty confirmed
+  NFSv3 policy and starts it with the image's helpers and packet filter after
+  authenticating the management child. The default profile leaves NFS dormant.
+  Keep the source mounts in place while NFS owns them. After ensuring all
+  clients have flushed their writes and unmounted, root can run
+  `/usr/bin/phantowd-api --rc0-boot-service=stop-nfs-drained`. That request
+  applies to the running supervisor and waits for verified service teardown.
+  Plain init stop refuses while the NFS lifetime needs this confirmation.
+  An interrupted active lifetime retains the boot grant for review.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

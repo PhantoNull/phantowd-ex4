@@ -39,6 +39,7 @@ type managedLinux struct {
 	firewall        *nfsFirewall
 	quiescent       func(context.Context) error
 	kernelAttempted bool
+	exportAttempted bool
 }
 
 type managedConstructionReview struct {
@@ -190,7 +191,10 @@ func (m *managedLinux) Start(ctx context.Context) error {
 	if err := m.kernel.Start(ctx); err != nil {
 		return fmt.Errorf("start NFSD: %w", err)
 	}
-	return checked(ctx, m.state.check, m.rpc.StartMountd, m.checkFirewall, m.exports.Publish)
+	return checked(ctx, m.state.check, m.rpc.StartMountd, m.checkFirewall, func(ctx context.Context) error {
+		m.exportAttempted = true
+		return m.exports.Publish(ctx)
+	})
 }
 
 func (m *managedLinux) VerifyReady(ctx context.Context) error {
@@ -198,6 +202,9 @@ func (m *managedLinux) VerifyReady(ctx context.Context) error {
 }
 
 func (m *managedLinux) Stop(ctx context.Context) error {
+	if err := m.checkQuiescence(ctx); err != nil {
+		return err
+	}
 	if m.kernelAttempted {
 		if err := m.kernel.Stop(ctx); err != nil {
 			return err
@@ -211,7 +218,14 @@ func (m *managedLinux) VerifyStopped(ctx context.Context) error {
 	if m.kernelAttempted {
 		checkKernel = m.kernel.CheckStopped
 	}
-	return checked(ctx, m.quiescent, checkKernel, m.state.check, m.exports.VerifyEmpty, m.rpc.VerifyStopped, m.checkFirewall)
+	return checked(ctx, m.checkQuiescence, checkKernel, m.state.check, m.exports.VerifyEmpty, m.rpc.VerifyStopped, m.checkFirewall)
+}
+
+func (m *managedLinux) checkQuiescence(ctx context.Context) error {
+	if !m.exportAttempted {
+		return ctx.Err()
+	}
+	return checked(ctx, m.quiescent)
 }
 
 func (m *managedLinux) Close(ctx context.Context) error {

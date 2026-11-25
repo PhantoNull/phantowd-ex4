@@ -85,7 +85,7 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		var err error
 		if *superviseRC0Boot {
-			err = runRC0BootManagement(ctx, nil)
+			err = runRC0BootManagement(ctx, nil, nil)
 		} else {
 			err = runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
 		}
