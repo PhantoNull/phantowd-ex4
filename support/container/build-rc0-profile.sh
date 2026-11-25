@@ -45,7 +45,11 @@ grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/nul
 grep -Fx 'BR2_PACKAGE_NFS_UTILS_RPC_NFSD=y' "$output/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_RPCBIND=y' "$output/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output/.config" >/dev/null
-grep -Fx '# BR2_PACKAGE_SAMBA4_AD_DC is not set' "$output/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output/.config" >/dev/null
+if grep -Fx 'BR2_PACKAGE_SAMBA4_AD_DC=y' "$output/.config" >/dev/null; then
+    echo 'RC0 Samba must use the standalone file-server profile' >&2
+    exit 1
+fi
 build all
 kernel_config="$output/build/linux-$LINUX_VERSION/.config"
 for expected in 'CONFIG_MD=y' 'CONFIG_BLK_DEV_MD=y' 'CONFIG_MD_RAID1=y' '# CONFIG_MD_AUTODETECT is not set' \
