@@ -780,8 +780,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   generated ext4 media. The RC0 BusyBox init hook consumes a fixed protected
   handoff directory, starts the supervisor after admission and waits for
   verified stop. The default console boot remains available when no handoff
-  is staged. Physical placement, complete state-bundle admission and recovery
-  remain open.
+  is staged. The trusted launcher can publish and withdraw the volatile
+  handoff from admitted descriptors, with an independent policy confirmation
+  and a pinned certificate. Withdrawing releases only the mount clone.
+  Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective

@@ -288,7 +288,7 @@ func renewCertificate(ctx context.Context, credentials []byte) error {
 	return serve(ctx, "replacement", credentials, nil)
 }
 
-func command(ctx context.Context, confirmation string, change func(*bootPlan)) (*exec.Cmd, error) {
+func command(ctx context.Context, mode, confirmation string, change func(*bootPlan)) (*exec.Cmd, error) {
 	state, err := os.Open(root)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func command(ctx context.Context, confirmation string, change func(*bootPlan)) (
 	if err != nil {
 		return nil, errors.Join(err, state.Close(), plan.Close())
 	}
-	cmd := exec.CommandContext(ctx, api, "--supervise-rc0-boot")
+	cmd := exec.CommandContext(ctx, api, mode)
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "PHANTOWD_LISTEN_ADDR=127.0.0.1:1", "PHANTOWD_PUBLIC_ORIGIN=http://127.0.0.1:1"}
 	cmd.ExtraFiles = []*os.File{state, plan, grant}
 	return cmd, nil
@@ -345,7 +345,7 @@ func closeBootGrants(cmd *exec.Cmd) error {
 }
 
 func expectRefusal(ctx context.Context, confirmation string, change func(*bootPlan)) error {
-	cmd, err := command(ctx, confirmation, change)
+	cmd, err := command(ctx, "--supervise-rc0-boot", confirmation, change)
 	if err != nil {
 		return err
 	}
@@ -382,16 +382,20 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := rejectSymlinkedInitState(ctx, slot); err != nil {
 		return err
 	}
-	if err := os.Mkdir(slot, 0700); err != nil {
+	for _, path := range []string{bootDir + "/boot.json", bootDir + "/policy.json", bootDir} {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
+	if err := proveInitPublication(ctx); err != nil {
 		return err
 	}
-	if err := unix.Mount(root, slot, "", unix.MS_BIND, ""); err != nil {
-		return err
-	}
-	defer func() { result = errors.Join(result, unix.Unmount(slot, 0)) }()
-	if err := stageInitBootRecord(slot); err != nil {
-		return err
-	}
+	withdrawn := false
+	defer func() {
+		if !withdrawn {
+			result = errors.Join(result, withdrawInitGrant(ctx))
+		}
+	}()
 	if err := rejectOccupiedInitListener(ctx); err != nil {
 		return err
 	}
@@ -415,6 +419,9 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := runInitHook(ctx, "start"); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("init accepted a duplicate supervisor")
 	}
+	if err := withdrawInitGrant(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("withdrawal was accepted while the managed supervisor was live")
+	}
 	fingerprint, err := observeHTTPS(ctx, credentials)
 	if err != nil {
 		return err
@@ -430,8 +437,67 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 		conn.Close()
 		return errors.New("management listener remains open after init stop")
 	}
+	if err := withdrawInitGrant(ctx); err != nil {
+		return fmt.Errorf("withdraw after confirmed shutdown: %w", err)
+	}
+	withdrawn = true
+	if _, err := os.Lstat(bootDir); !os.IsNotExist(err) {
+		return errors.New("boot grant remained published after withdrawal")
+	}
+	if _, err := os.Stat(root + "/accounts/accounts.json"); err != nil {
+		return errors.New("withdrawal lost access to the original admitted state")
+	}
+	fmt.Println("PHANTOWD_RC0_GRANT interrupted=refused self_confirmation=refused wrong_tls=refused duplicate=refused live_withdraw=refused withdraw=confirmed")
 	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
+	return nil
+}
+
+func publishInitGrant(ctx context.Context, confirmation string, change func(*bootPlan)) error {
+	cmd, err := command(ctx, "--rc0-boot-service=publish", confirmation, change)
+	if err != nil {
+		return err
+	}
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return errors.Join(cmd.Run(), closeBootGrants(cmd))
+}
+
+func withdrawInitGrant(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, api, "--rc0-boot-service=withdraw")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
+func proveInitPublication(ctx context.Context) error {
+	const staged = "/run/.phantowd-boot.staging"
+	if err := os.Mkdir(staged, 0700); err != nil {
+		return err
+	}
+	var exit *exec.ExitError
+	if err := runInitHook(ctx, "start"); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("init ignored interrupted boot staging")
+	}
+	if err := publishInitGrant(ctx, proof, nil); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("publisher ignored interrupted boot staging")
+	}
+	if err := os.Remove(staged); err != nil {
+		return err
+	}
+	current := root + "/nas-policy/nas-services.json"
+	if err := publishInitGrant(ctx, current, nil); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("publisher accepted the current policy as its own confirmation")
+	}
+	if err := publishInitGrant(ctx, proof, func(p *bootPlan) {
+		p.TLSLeafSHA256 = strings.Repeat("0", 64)
+	}); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("publisher accepted the wrong TLS identity")
+	}
+	if err := publishInitGrant(ctx, proof, nil); err != nil {
+		return fmt.Errorf("publish the admitted state: %w", err)
+	}
+	if err := publishInitGrant(ctx, proof, nil); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("publisher accepted a second grant")
+	}
 	return nil
 }
 
@@ -484,7 +550,7 @@ func rejectOccupiedInitListener(ctx context.Context) (result error) {
 }
 
 func serve(ctx context.Context, phase string, credentials []byte, during func(string) error) error {
-	cmd, err := command(ctx, proof, nil)
+	cmd, err := command(ctx, "--supervise-rc0-boot", proof, nil)
 	if err != nil {
 		return err
 	}

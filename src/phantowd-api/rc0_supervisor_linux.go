@@ -101,11 +101,8 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 		return err
 	}
 	defer func() { result = errors.Join(result, identity.Close()) }()
-	if plan.TLSLeafSHA256 != "" {
-		pair, err := readTLSIdentity(identity, 0)
-		if err != nil || tlsLeafFingerprint(pair.Certificate[0]) != plan.TLSLeafSHA256 {
-			return errRC0Review
-		}
+	if plan.TLSLeafSHA256 != "" && !plan.matchesTLS(identity) {
+		return errRC0Review
 	}
 	listener, err := openRC0PolicyListener(gid)
 	if err != nil {
@@ -196,10 +193,14 @@ func openRC0PrivateFile(root *os.File, name string, limit int64) (*os.File, erro
 	return file, nil
 }
 
-func admitRC0Policy(ctx context.Context, policy *os.File, installation string, known []byte, proof unix.Stat_t) (owner *naspolicystore.Owner, result error) {
+func independentRC0PolicyProof(policy *os.File, proof unix.Stat_t) bool {
 	var current unix.Stat_t
-	if unix.Fstatat(int(policy.Fd()), "nas-services.json", &current, unix.AT_SYMLINK_NOFOLLOW) != nil ||
-		current.Dev == proof.Dev && current.Ino == proof.Ino {
+	return unix.Fstatat(int(policy.Fd()), "nas-services.json", &current, unix.AT_SYMLINK_NOFOLLOW) == nil &&
+		(current.Dev != proof.Dev || current.Ino != proof.Ino)
+}
+
+func admitRC0Policy(ctx context.Context, policy *os.File, installation string, known []byte, proof unix.Stat_t) (owner *naspolicystore.Owner, result error) {
+	if !independentRC0PolicyProof(policy, proof) {
 		return nil, errRC0Review
 	}
 	bootstrap, err := naspolicystore.OpenOwnerBootstrapFromDirectory(ctx, policy, installation)

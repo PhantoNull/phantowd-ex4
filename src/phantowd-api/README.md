@@ -841,6 +841,18 @@ and refuses non-Versatile PB machines. See the
   Stop waits for verified supervisor teardown through a private control
   socket. The physical EX4 launcher that admits and mounts the medium
   needs separate qualification.
+- A trusted root launcher can publish those roles using
+  `--rc0-boot-service=publish` with the same three descriptors. In this mode
+  the boot record describes the original admitted directory on FD 3. The
+  publisher checks that identity, the independently supplied policy and the
+  expected certificate. It clones only that directory mount into the private
+  tmpfs staging area with `nosuid,nodev,noexec`, records the clone's mount ID
+  and atomically publishes the directory. The policy Owner still checks
+  complete state admission when management starts.
+  After verified stop, `--rc0-boot-service=withdraw` detaches the identified
+  clone and removes the fixed runtime roles. The platform keeps its original
+  mount. An interrupted publication or withdrawal retains staging for review
+  and inhibits the next start. A new boot clears the volatile publication.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain
