@@ -6,6 +6,7 @@
 package serviceaccountstore
 
 import (
+	"os"
 	"sync"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
@@ -22,16 +23,28 @@ type Store struct {
 }
 
 func Open(directory string) (*Store, error) {
-	engine, err := revisionstore.OpenWithCodec(directory, revisionstore.Codec[serviceaccounts.Registry]{
-		CurrentName: "service-accounts.json", PendingName: ".service-accounts.pending",
-		MaxBytes: serviceaccounts.MaxInputBytes, Decode: serviceaccounts.Decode,
-		Validate: serviceaccounts.Registry.Validate,
-		Revision: func(r serviceaccounts.Registry) uint64 { return r.Revision },
-	})
+	engine, err := revisionstore.OpenWithCodec(directory, registryCodec)
 	if err != nil {
 		return nil, err
 	}
 	return &Store{engine: engine}, nil
+}
+
+// OpenFromDirectory borrows the supervisor's descriptor and acquires an
+// independent lock on the same directory.
+func OpenFromDirectory(directory *os.File) (*Store, error) {
+	engine, err := revisionstore.OpenDirectoryWithCodec(directory, registryCodec)
+	if err != nil {
+		return nil, err
+	}
+	return &Store{engine: engine}, nil
+}
+
+var registryCodec = revisionstore.Codec[serviceaccounts.Registry]{
+	CurrentName: "service-accounts.json", PendingName: ".service-accounts.pending",
+	MaxBytes: serviceaccounts.MaxInputBytes, Decode: serviceaccounts.Decode,
+	Validate: serviceaccounts.Registry.Validate,
+	Revision: func(r serviceaccounts.Registry) uint64 { return r.Revision },
 }
 
 func (s *Store) Load() (serviceaccounts.Registry, error) {
