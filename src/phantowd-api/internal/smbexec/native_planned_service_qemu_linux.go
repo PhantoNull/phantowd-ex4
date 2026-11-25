@@ -95,7 +95,7 @@ func NewNativePlannedServiceQEMU(ctx context.Context, inputs NativePlannedInputs
 	if err != nil {
 		return nil, ErrInvalid
 	}
-	if err := inputs.Shares.VerifySourceSetQEMU(inputs.Storage); err != nil {
+	if err := inputs.Shares.VerifySourceSet(inputs.Storage); err != nil {
 		return nil, err // The caller still owns the original pin on early refusal.
 	}
 	plan, err := fileserviceplan.BuildFromOwners(ctx, inputs.Policy, inputs.ActiveRevision, inputs.Identity, inputs.Storage)
@@ -107,7 +107,7 @@ func NewNativePlannedServiceQEMU(ctx context.Context, inputs NativePlannedInputs
 		return nil, err
 	}
 	candidate, err := roles.ServiceCandidate()
-	if err != nil || candidate.VerifySharePinsQEMU(inputs.Shares) != nil {
+	if err != nil || candidate.VerifyShareRoots(inputs.Storage, inputs.Shares) != nil {
 		return nil, ErrInvalid
 	}
 	lease, err := inputs.Identity.RetainSMBFileServiceSnapshot(ctx, plan.Freshness().IdentityFingerprint, inputs.Backend)
@@ -164,11 +164,8 @@ func (s *NativePlannedServiceQEMU) enter(ctx context.Context) error {
 // storage -> identity compiler may enter the fixed backend's retained workers;
 // reversing that order or invoking it from a runtime callback would deadlock.
 func (s *NativePlannedServiceQEMU) verify(ctx context.Context) error {
-	if err := s.inputs.Shares.VerifySourceSetQEMU(s.inputs.Storage); err != nil {
-		return err
-	}
 	candidate, err := s.roles.ServiceCandidate()
-	if err != nil || candidate.VerifySharePinsQEMU(s.inputs.Shares) != nil {
+	if err != nil || candidate.VerifyShareRoots(s.inputs.Storage, s.inputs.Shares) != nil {
 		return runtimebundle.ErrReviewRequired
 	}
 	fresh, err := fileserviceplan.BuildFromRetainedOwners(ctx, s.inputs.Policy, s.inputs.ActiveRevision, s.lease, s.inputs.Storage)

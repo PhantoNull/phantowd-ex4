@@ -157,8 +157,10 @@ are independent copies. Zero, unsupported whole-volume and NFS-only plans do
 not produce a usable SMB candidate or partial documents. The existing separate
 preview methods remain unchanged.
 
-The QEMU-only `VerifySharePinsQEMU` adapter compares those requests with a live
-trusted handoff's complete declaration. Its `VerifyDeclaredRoots` operation
+`MountShareRoots` attaches these requests against the complete original
+mounted roster. `VerifyShareRoots` checks the retained handoff against the
+candidate's original roster generation and fingerprint. The
+`VerifyDeclaredRoots` operation
 checks original pins and rejects changed share IDs, volumes, paths, RO roles,
 missing/extra/duplicate roots, without invalidating healthy pins merely because
 the caller supplied a different declaration. Actual source loss still enters

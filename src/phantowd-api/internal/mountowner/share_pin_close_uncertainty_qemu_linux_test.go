@@ -34,9 +34,10 @@ func TestSharePinCloseFailureKeepsHandoffReservedAndLaterInputsOpen(t *testing.T
 		t.Fatal(err)
 	}
 	handoff := &ServiceHandoff{isolatedPins: 1, state: ServiceHandoffActive}
-	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRootQEMU{
+	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRoot{
 		{id: "failed", file: failed}, {id: "later", file: later},
 	}}
+	pin.original = pin
 	if err := pin.Close(); !errors.Is(err, ErrHandoffReview) {
 		t.Fatal("real input-close failure did not retain review", err)
 	}
@@ -74,9 +75,10 @@ func TestSharePinCloseFailureDoesNotRetryRepairedInputUnderConcurrentCalls(t *te
 		t.Fatal(err)
 	}
 	handoff := &ServiceHandoff{isolatedPins: 1, state: ServiceHandoffActive}
-	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRootQEMU{
+	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRoot{
 		{id: "failed", file: failed}, {id: "later", file: later},
 	}}
+	pin.original = pin
 	if err := pin.Close(); !errors.Is(err, ErrHandoffReview) {
 		t.Fatal("real original close failure was not quarantined", err)
 	}
@@ -112,9 +114,10 @@ func TestSharePinCloseFailureDoesNotRetryRepairedInputUnderConcurrentCalls(t *te
 func TestSharePinCloseKnownInputsReleasesOnceWithoutGrantingMountAuthority(t *testing.T) {
 	first, second := sharePinCloseBookkeepingPath(t), sharePinCloseBookkeepingPath(t)
 	handoff := &ServiceHandoff{isolatedPins: 1, state: ServiceHandoffActive}
-	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRootQEMU{
+	pin := &ServiceSharePinsQEMU{handoff: handoff, roots: []shareRoot{
 		{id: "first", file: first}, {id: "second", file: second},
 	}}
+	pin.original = pin
 	if !errors.Is(handoff.Close(), ErrHandoffBusy) {
 		t.Fatal("input reservation did not exclude handoff teardown")
 	}

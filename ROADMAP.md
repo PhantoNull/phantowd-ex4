@@ -1558,6 +1558,12 @@ open.
   actual passdb and requires their original inodes after reboot.
   The isolated Samba daemon, policy attachment and controlled client
   shutdown still need the RC0 production supervisor.
+  The Samba planner now attaches only its declared share roots through the
+  normal Linux handoff. It retains the complete original volume roster and
+  exact, mount-protected share descriptors. A stale generation or a foreign
+  roster refuses admission. The bounded ARMv5 planner fixture verifies this
+  path against its generated volume, and the isolated Samba test harness
+  passes these same descriptors to its runtime.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

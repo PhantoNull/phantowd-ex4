@@ -143,19 +143,7 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 			if err := errors.Join(os.Chown(root, 0, 1000), os.Chmod(root, 0710)); err != nil {
 				return err
 			}
-			shares := make([]mountowner.ServiceShare, len(requests))
-			for index, request := range requests {
-				shares[index] = mountowner.ServiceShare{ID: request.ID, VolumeID: string(request.VolumeID),
-					RelativePath: request.RelativePath, ReadOnly: request.ReadOnly}
-			}
-			handoff, err = mountowner.NewServiceHandoff(root, storage, shares, 1000)
-			if err != nil {
-				return err
-			}
-			if _, err := handoff.Mount(ctx); err != nil {
-				return err
-			}
-			pins, err = handoff.RetainShareRootsQEMU()
+			handoff, pins, err = candidate.MountShareRoots(ctx, root, storage, 1000)
 			if err != nil {
 				return err // Non-nil quarantined handles remain retained in this guest.
 			}
@@ -249,9 +237,9 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 			if err != nil || preparedCandidate.VerifySharePinsQEMU(pins) != nil {
 				return errors.New("planned input preparation lost exact original grants")
 			}
-			if !errors.Is(pins.VerifySourceSetQEMU(nil), mountowner.ErrHandoffInvalid) ||
-				!errors.Is(pins.VerifySourceSetQEMU(&mountowner.MountedVolumeSet{}), mountowner.ErrHandoffInvalid) ||
-				pins.VerifySourceSetQEMU(storage) != nil {
+			if !errors.Is(pins.VerifySourceSet(nil), mountowner.ErrHandoffInvalid) ||
+				!errors.Is(pins.VerifySourceSet(&mountowner.MountedVolumeSet{}), mountowner.ErrHandoffInvalid) ||
+				pins.VerifySourceSet(storage) != nil {
 				return errors.New("planned share authority accepted an unrelated roster or changed after refusal")
 			}
 			preparedInputs, err := pins.DuplicateRoots()

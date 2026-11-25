@@ -16,10 +16,5 @@ func (c SambaIsolatedCandidate) VerifySharePinsQEMU(pins *mountowner.ServiceShar
 	if !c.valid || pins == nil {
 		return ErrNotReady
 	}
-	required := make([]mountowner.ServiceShare, len(c.roots))
-	for index, root := range c.roots {
-		required[index] = mountowner.ServiceShare{ID: root.ID, VolumeID: string(root.VolumeID),
-			RelativePath: root.RelativePath, ReadOnly: root.ReadOnly}
-	}
-	return pins.VerifyDeclaredRoots(required)
+	return pins.VerifyDeclaredRoots(c.shareRequests())
 }

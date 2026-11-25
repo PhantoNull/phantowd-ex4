@@ -201,20 +201,8 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := errors.Join(os.Chown(root, 0, 1000), os.Chmod(root, 0710)); err != nil {
 			return err
 		}
-		shares := make([]mountowner.ServiceShare, len(requests))
-		for index, request := range requests {
-			shares[index] = mountowner.ServiceShare{ID: request.ID, VolumeID: string(request.VolumeID),
-				RelativePath: request.RelativePath, ReadOnly: request.ReadOnly}
-		}
 		phase = "handoff"
-		handoff, err := mountowner.NewServiceHandoff(root, storage, shares, 1000)
-		if err != nil {
-			return err
-		}
-		if _, err := handoff.Mount(ctx); err != nil {
-			return err
-		}
-		pins, err := handoff.RetainShareRootsQEMU()
+		handoff, pins, err := candidate.MountShareRoots(ctx, root, storage, 1000)
 		if err != nil {
 			return err
 		}

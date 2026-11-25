@@ -152,13 +152,16 @@ Actual ARMv5 admission matches Plan-derived roots with the SAME native identity
 Owner and verifies fresh evidence, caller closure and retained-authority gates.
 It starts no daemon and is not a production roster or physical-disk qualifier.
 
-`ServiceHandoff.RetainShareRootsQEMU` exclusively retains the original attached
+`ServiceHandoff.RetainShareRoots` exclusively retains the original attached
 share objects after complete verification. `DuplicateRoots` returns independent
 `O_PATH` copies of only those individual declared subdirectories, never the
 whole handoff/volume root; it does not reopen source paths. Pins and descriptors
 refuse JSON. Lock order is pin, handoff, complete roster, canonical volume Owners.
 Direct handoff closure remains busy while the pin exists. Source loss or changed
 objects enter sticky review, with no revival after pathname restoration.
+`VerifyRoster` checks the original roster and complete declaration, then
+returns the evidence revalidated against the original lease. The QEMU
+wrapper uses this Linux lifecycle within its disposable guest guard.
 
 This is lifetime preparation, not Samba admission or isolation. The returned
 labels are not authority; a future fixed native factory must bind the exact
