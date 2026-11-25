@@ -809,6 +809,17 @@ and refuses non-Versatile PB machines. See the
   `.rc0-state.provisioning`, then publishes `rc0-state` after syncing all
   roles. A repeat or interrupted stage requires review. Retain the independent
   policy and certificate confirmation for the boot handoff.
+- A trusted Linux root launcher can use `--publish-rc0-state` with the same
+  admitted parent on FD 3 and a private read-only copy of the independently
+  confirmed policy on FD 4. Supply `--nas-installation-id`,
+  `--expected-tls-certificate`, `PHANTOWD_LISTEN_ADDR` and
+  `PHANTOWD_PUBLIC_ORIGIN`. The expected fingerprint is the SHA-256 of the
+  confirmed DER leaf. The command opens the fixed `rc0-state` child without
+  following links or crossing mounts, checks the retained policy Owner, the
+  initialized credential store and the matching TLS identity, then publishes
+  the boot grant for the init hook. Provisioning stages and stale policy
+  confirmation require review. The launcher selects and admits the physical
+  parent separately.
 - The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
   A trusted root launcher supplies the installation ID as `--nas-installation-id`,
   an open private root-owned local ext directory on FD 3, and a separate

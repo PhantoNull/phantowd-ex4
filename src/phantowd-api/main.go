@@ -27,6 +27,7 @@ func main() {
 	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
 	provisionRC0 := flag.Bool("provision-rc0-state", false, "provision RC0 from an inherited parent, initial policy, TLS bundle and private admin input")
+	publishRC0 := flag.Bool("publish-rc0-state", false, "publish the management boot grant from an inherited provisioned-state parent")
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
@@ -53,7 +54,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*rc0BootService != "",
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionRC0, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionRC0, *publishRC0, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -66,11 +67,11 @@ func main() {
 	if !*registryCommit && *registryExpected != "" {
 		log.Fatal("registry revision requires commit mode")
 	}
-	if *replaceTLS != (*expectedTLS != "") {
-		log.Fatal("RC0 TLS replacement requires the current certificate fingerprint")
+	if (*replaceTLS || *publishRC0) != (*expectedTLS != "") {
+		log.Fatal("RC0 TLS replacement and state publication require the expected certificate fingerprint")
 	}
-	if !*provisionNAS && !*provisionRC0 && !*superviseRC0 && *nasInstallation != "" {
-		log.Fatal("NAS installation ID requires provisioning or supervision mode")
+	if !*provisionNAS && !*provisionRC0 && !*publishRC0 && !*superviseRC0 && *nasInstallation != "" {
+		log.Fatal("NAS installation ID requires provisioning, publication or supervision mode")
 	}
 	if *rc0BootService != "" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -107,6 +108,15 @@ func main() {
 		stop()
 		if err != nil {
 			log.Fatal("RC0 state provisioning refused or requires review")
+		}
+		return
+	}
+	if *publishRC0 {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := publishInheritedRC0State(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv), *expectedTLS)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 state publication refused or requires review")
 		}
 		return
 	}

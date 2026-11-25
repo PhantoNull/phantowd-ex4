@@ -30,3 +30,7 @@ func provisionInheritedRC0TLS(io.Reader, string, string) error {
 func provisionInheritedRC0State(context.Context, io.Reader, string, string) error {
 	return errors.New("RC0 state provisioning requires Linux")
 }
+
+func publishInheritedRC0State(context.Context, string, string, string, string) error {
+	return errors.New("RC0 state publication requires Linux")
+}

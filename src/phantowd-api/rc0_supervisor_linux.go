@@ -172,6 +172,10 @@ func openRC0TLSIdentity(root *os.File) (*os.File, error) {
 }
 
 func openRC0PrivateFile(root *os.File, name string, limit int64) (*os.File, error) {
+	return openRC0OwnedFile(root, name, 0, limit)
+}
+
+func openRC0OwnedFile(root *os.File, name string, owner uint32, limit int64) (*os.File, error) {
 	pinned, err := openRC0Role(root, name, unix.O_PATH)
 	if err != nil {
 		return nil, err
@@ -179,11 +183,11 @@ func openRC0PrivateFile(root *os.File, name string, limit int64) (*os.File, erro
 	defer pinned.Close()
 	var before, after unix.Stat_t
 	var proc unix.Statfs_t
-	if unix.Fstat(int(pinned.Fd()), &before) != nil || !privateStartupFileSafe(before, 0, limit) ||
+	if unix.Fstat(int(pinned.Fd()), &before) != nil || !privateStartupFileSafe(before, owner, limit) ||
 		unix.Statfs("/proc/self/fd", &proc) != nil || proc.Type != unix.PROC_SUPER_MAGIC {
 		return nil, errRC0Review
 	}
-	file, err := os.Open("/proc/self/fd/" + strconv.FormatUint(uint64(pinned.Fd()), 10))
+	file, err := os.OpenFile("/proc/self/fd/"+strconv.FormatUint(uint64(pinned.Fd()), 10), os.O_RDONLY|unix.O_NOATIME, 0)
 	if err != nil {
 		return nil, err
 	}

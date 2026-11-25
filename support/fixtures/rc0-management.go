@@ -41,6 +41,7 @@ const (
 	install  = "c71c2ba76bd04d29816335c13c31a380"
 	api      = "/usr/bin/phantowd-api"
 	tlsRole  = root + "/management-tls.pem"
+	tlsProof = "/mnt/.rc0-fixture-tls-confirmation"
 	policy   = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
 
@@ -314,7 +315,22 @@ func renewCertificate(ctx context.Context, credentials []byte) error {
 		return errors.New("stale TLS replacement was not refused")
 	}
 	fmt.Println("PHANTOWD_RC0_TLS_ROTATION live=refused wrong_fingerprint=refused stale=refused replacement=published")
+	fingerprint, err := fixtureCertificateFingerprint(pair)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(tlsProof, []byte(fingerprint), 0600); err != nil {
+		return err
+	}
 	return serve(ctx, "replacement", credentials, nil)
+}
+
+func fixtureCertificateFingerprint(bundle []byte) (string, error) {
+	public, _ := pem.Decode(bundle)
+	if public == nil || public.Type != "CERTIFICATE" {
+		return "", errors.New("fixture certificate unavailable")
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(public.Bytes)), nil
 }
 
 func command(ctx context.Context, mode, confirmation string, change func(*bootPlan)) (*exec.Cmd, error) {
@@ -347,14 +363,14 @@ func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.F
 		return nil, err
 	}
 	defer clear(identity)
-	public, _ := pem.Decode(identity)
-	if public == nil {
-		return nil, errors.New("fixture certificate unavailable")
+	fingerprint, err := fixtureCertificateFingerprint(identity)
+	if err != nil {
+		return nil, err
 	}
 	plan := bootPlan{
 		Format: "phantowd-rc0-boot-v1", Installation: install, Address: address, Origin: origin,
 		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(policy))),
-		TLSLeafSHA256: fmt.Sprintf("%x", sha256.Sum256(public.Bytes)),
+		TLSLeafSHA256: fingerprint,
 	}
 	if change != nil {
 		change(&plan)
@@ -575,6 +591,22 @@ func withdrawInitGrant(ctx context.Context) error {
 	return cmd.Run()
 }
 
+func publishProvisionedState(ctx context.Context, parent, confirmation, expectedTLS string) error {
+	dir, err := os.Open(parent)
+	if err != nil {
+		return err
+	}
+	proofFile, err := os.Open(confirmation)
+	if err != nil {
+		return errors.Join(err, dir.Close())
+	}
+	cmd := exec.CommandContext(ctx, api, "--publish-rc0-state", "--nas-installation-id", install, "--expected-tls-certificate", expectedTLS)
+	cmd.Env = []string{"PHANTOWD_LISTEN_ADDR=" + address, "PHANTOWD_PUBLIC_ORIGIN=" + origin}
+	cmd.ExtraFiles = []*os.File{dir, proofFile}
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return errors.Join(cmd.Run(), dir.Close(), proofFile.Close())
+}
+
 func proveInitPublication(ctx context.Context) error {
 	const staged = "/run/.phantowd-boot.staging"
 	if err := os.Mkdir(staged, 0700); err != nil {
@@ -599,12 +631,72 @@ func proveInitPublication(ctx context.Context) error {
 	}); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("publisher accepted the wrong TLS identity")
 	}
-	if err := publishInitGrant(ctx, proof, nil); err != nil {
-		return fmt.Errorf("publish the admitted state: %w", err)
+	return proveProvisionedStatePublication(ctx)
+}
+
+func proveProvisionedStatePublication(ctx context.Context) error {
+	const parent = "/mnt"
+	const staged = parent + "/.rc0-state.provisioning"
+	const accountStage = root + "/accounts/.accounts.pending"
+	const other = parent + "/alternate"
+	fingerprint, err := os.ReadFile(tlsProof)
+	if err != nil {
+		return err
 	}
-	if err := publishInitGrant(ctx, proof, nil); !errors.As(err, &exit) || ctx.Err() != nil {
-		return errors.New("publisher accepted a second grant")
+	confirmedTLS := string(fingerprint)
+	refused := func(medium, policyFile, leaf string) bool {
+		var exit *exec.ExitError
+		return errors.As(publishProvisionedState(ctx, medium, policyFile, leaf), &exit) && ctx.Err() == nil
 	}
+	if !refused(parent, proof+".wrong", confirmedTLS) || !refused(parent, proof, strings.Repeat("0", 64)) ||
+		!refused(parent, root+"/nas-policy/nas-services.json", confirmedTLS) {
+		return errors.New("provisioned publisher accepted stale policy, self-confirmation or wrong TLS")
+	}
+	if err := os.Mkdir(other, 0700); err != nil {
+		return err
+	}
+	if !refused(other, proof, confirmedTLS) {
+		return errors.New("provisioned publisher accepted missing state")
+	}
+	if err := os.Symlink(root, other+"/rc0-state"); err != nil {
+		return err
+	}
+	if !refused(other, proof, confirmedTLS) {
+		return errors.New("provisioned publisher followed a state symlink")
+	}
+	if err := errors.Join(os.Remove(other+"/rc0-state"), os.Remove(other)); err != nil {
+		return err
+	}
+	if err := os.Mkdir(staged, 0700); err != nil {
+		return err
+	}
+	if !refused(parent, proof, confirmedTLS) {
+		return errors.New("provisioned publisher ignored interrupted provisioning")
+	}
+	if err := os.Remove(staged); err != nil {
+		return err
+	}
+	if err := os.WriteFile(accountStage, []byte("interrupted fixture"), 0600); err != nil {
+		return err
+	}
+	if !refused(parent, proof, confirmedTLS) {
+		return errors.New("provisioned publisher ignored interrupted administrator state")
+	}
+	if err := os.Remove(accountStage); err != nil {
+		return err
+	}
+	for _, path := range []string{bootDir, "/run/.phantowd-boot.staging"} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			return errors.New("refused provisioned state left a boot grant or staging")
+		}
+	}
+	if err := publishProvisionedState(ctx, parent, proof, confirmedTLS); err != nil {
+		return fmt.Errorf("publish the provisioned state: %w", err)
+	}
+	if !refused(parent, proof, confirmedTLS) {
+		return errors.New("provisioned publisher accepted a second grant")
+	}
+	fmt.Println("PHANTOWD_RC0_STATE_PUBLICATION absent=refused symlink=refused staging=refused credentials_pending=refused stale_policy=refused independent_tls=verified grant=published")
 	return nil
 }
 
