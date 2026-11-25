@@ -25,6 +25,16 @@ under a private workspace. The owner checks their complete bytes and original
 mount before supplying the child descriptor. The emulated service uses this
 constructor and checks the single TCP/445 address and covered-mount refusal.
 
+The provisioned identity owner can bind a fixed credential backend. It stages
+native lookup before a share policy is required and runs `testparm`, `pdbedit`
+and the fixed `smbpasswd` operations in a separate mount and network namespace.
+The ARMv5 guest verifies disabled creation, password assignment while disabled,
+login refusal and explicit enable under the same Samba SID. The tests retain
+the resulting identity evidence through real authenticated SMB3 I/O on the
+original database directories. The offline backend refuses session revocation
+before it changes the journal. Product startup still needs persistent native
+lookup and a session-aware coordinator.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,

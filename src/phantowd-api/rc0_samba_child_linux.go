@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"golang.org/x/sys/unix"
 )
 
@@ -36,7 +37,7 @@ type rc0SambaMountRole struct {
 // share declaration. FD 4 is the verified
 // configuration tree. FD 5 and 6 are its original persistent database roles.
 // Individual service-share mounts follow in declaration order.
-func runRC0SambaChild(ctx context.Context) (result error) {
+func runRC0SambaChild(ctx context.Context) error {
 	// Mount namespace, chroot and capabilities follow the calling thread.
 	// This entry point must exec or exit without returning the thread to Go.
 	runtime.LockOSThread()
@@ -47,6 +48,24 @@ func runRC0SambaChild(ctx context.Context) (result error) {
 	if err != nil {
 		return fmt.Errorf("read launch declaration: %w", err)
 	}
+	return execRC0SambaRole(ctx, shares, false, "/usr/sbin/smbd",
+		[]string{"smbd", "-F", "--no-process-group", "-s", "/etc/samba/smb.conf", "-l", "/state", "--debug-stdout"})
+}
+
+func runRC0SambaWorker(ctx context.Context, operation, name string) error {
+	// As for smbd, this entry point execs or exits on the locked thread.
+	runtime.LockOSThread()
+	if developmentBrowserEnrollment || ctx == nil || ctx.Err() != nil || !rc0SambaChildContext() {
+		return errRC0Review
+	}
+	executable, args, err := smbprovision.WorkerCommand(operation, name)
+	if err != nil || smbprovision.VerifyWorkerInput(os.Stdin, operation) != nil {
+		return errRC0Review
+	}
+	return execRC0SambaRole(ctx, nil, true, executable, args)
+}
+
+func execRC0SambaRole(ctx context.Context, shares []runtimebundle.SambaLaunchRole, worker bool, executable string, args []string) (result error) {
 	code, err := openVerifiedRC0SambaCode(ctx)
 	if err != nil {
 		return fmt.Errorf("verify runtime code: %w", err)
@@ -64,18 +83,16 @@ func runRC0SambaChild(ctx context.Context) (result error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := composeRC0SambaRoot(roles); err != nil {
+	if err := composeRC0SambaRoot(roles, worker); err != nil {
 		return fmt.Errorf("compose isolated root: %w", err)
 	}
-	if err := restrictRC0SambaCapabilities(); err != nil {
+	if err := restrictRC0SambaCapabilities(!worker); err != nil {
 		return fmt.Errorf("restrict capabilities: %w", err)
 	}
 	if err := unix.CloseRange(3, 0xffffffff, unix.CLOSE_RANGE_CLOEXEC); err != nil {
 		return fmt.Errorf("close inherited descriptors on exec: %w", err)
 	}
-	return syscall.Exec("/usr/sbin/smbd",
-		[]string{"smbd", "-F", "--no-process-group", "-s", "/etc/samba/smb.conf", "-l", "/state", "--debug-stdout"},
-		[]string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"})
+	return syscall.Exec(executable, args, []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"})
 }
 
 func rc0SambaChildContext() bool {
@@ -175,7 +192,7 @@ func observeRC0SambaShare(dir *os.File, readOnly bool) (uint64, error) {
 	return st.Mnt_id, nil
 }
 
-func composeRC0SambaRoot(roles []rc0SambaMountRole) (result error) {
+func composeRC0SambaRoot(roles []rc0SambaMountRole, isolateNetwork bool) (result error) {
 	var clones []int
 	defer func() {
 		for _, fd := range clones {
@@ -191,8 +208,12 @@ func composeRC0SambaRoot(roles []rc0SambaMountRole) (result error) {
 		}
 		clones = append(clones, fd)
 	}
-	if err := unix.Unshare(unix.CLONE_NEWNS); err != nil {
-		return fmt.Errorf("unshare mount namespace: %w", err)
+	namespaces := unix.CLONE_NEWNS
+	if isolateNetwork {
+		namespaces |= unix.CLONE_NEWNET
+	}
+	if err := unix.Unshare(namespaces); err != nil {
+		return fmt.Errorf("unshare Samba namespaces: %w", err)
 	}
 	// Mask the original /run only in this private namespace. The new
 	// filesystem and its names disappear when the process group exits.
@@ -266,9 +287,12 @@ func attachRC0SambaMount(role rc0SambaMountRole, detached int) error {
 	return nil
 }
 
-func restrictRC0SambaCapabilities() error {
-	const allowed = (1 << unix.CAP_CHOWN) | (1 << unix.CAP_DAC_OVERRIDE) | (1 << unix.CAP_FOWNER) |
-		(1 << unix.CAP_FSETID) | (1 << unix.CAP_SETGID) | (1 << unix.CAP_SETUID) | (1 << unix.CAP_NET_BIND_SERVICE)
+func restrictRC0SambaCapabilities(bindNetwork bool) error {
+	allowed := uint32((1 << unix.CAP_CHOWN) | (1 << unix.CAP_DAC_OVERRIDE) | (1 << unix.CAP_FOWNER) |
+		(1 << unix.CAP_FSETID) | (1 << unix.CAP_SETGID) | (1 << unix.CAP_SETUID))
+	if bindNetwork {
+		allowed |= 1 << unix.CAP_NET_BIND_SERVICE
+	}
 	if unix.Prctl(unix.PR_CAP_AMBIENT, unix.PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) != nil ||
 		unix.Prctl(unix.PR_SET_KEEPCAPS, 0, 0, 0, 0) != nil {
 		return errRC0Review
@@ -281,7 +305,7 @@ func restrictRC0SambaCapabilities() error {
 		if err != nil {
 			return errRC0Review
 		}
-		keep := capability < 32 && uint32(allowed)&(1<<capability) != 0
+		keep := capability < 32 && allowed&(1<<capability) != 0
 		if keep && present != 1 || !keep && present == 1 && unix.Prctl(unix.PR_CAPBSET_DROP, capability, 0, 0, 0) != nil {
 			return errRC0Review
 		}

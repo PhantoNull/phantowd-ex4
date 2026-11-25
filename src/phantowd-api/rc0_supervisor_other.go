@@ -44,3 +44,7 @@ func verifyRC0SambaCode(context.Context) error {
 func runRC0SambaChild(context.Context) error {
 	return errors.New("RC0 Samba runtime requires Linux")
 }
+
+func runRC0SambaWorker(context.Context, string, string) error {
+	return errors.New("RC0 Samba enrollment requires Linux")
+}

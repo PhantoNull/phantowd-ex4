@@ -25,6 +25,12 @@ type Backend interface {
 	Disable(context.Context, serviceaccounts.Account) error
 }
 
+// SessionRevocationBackend is implemented by profiles that can decline
+// revocation before the journal or passdb changes.
+type SessionRevocationBackend interface {
+	CanRevokeSMBSessions() bool
+}
+
 // Store owns one account's Samba credential journal in a caller-provisioned
 // private directory. It exposes no reset, disable, delete, or secret persistence.
 // Never copy a Store.
@@ -340,6 +346,9 @@ func (s *Store) Disable(ctx context.Context, expected uint64) error {
 		return ctx.Err()
 	}
 	if s.backend == nil {
+		return ErrInvalid
+	}
+	if backend, ok := s.backend.(SessionRevocationBackend); ok && !backend.CanRevokeSMBSessions() {
 		return ErrInvalid
 	}
 	observed, err := s.backend.Observe(ctx, j.Account)

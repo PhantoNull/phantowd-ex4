@@ -20,6 +20,10 @@ on:
       - 'src/phantowd-api/internal/runtimebundle/samba_documents.go'
       - 'src/phantowd-api/internal/runtimebundle/samba_launch_linux.go'
       - 'src/phantowd-api/internal/runtimebundle/samba_service_configuration_linux.go'
+      - 'src/phantowd-api/identityowner/provision_linux.go'
+      - 'src/phantowd-api/internal/processowner/samba_enrollment_linux.go'
+      - 'src/phantowd-api/internal/smbexec/enrollment_linux.go'
+      - 'src/phantowd-api/internal/smbprovision/worker_linux.go'
       - 'tools/phantowd-lab/**'
   push:
     branches: [develop]

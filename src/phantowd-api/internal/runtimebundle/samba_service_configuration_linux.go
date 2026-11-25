@@ -56,20 +56,20 @@ func sambaServiceDocuments(candidate fileserviceplan.SambaIsolatedCandidate, add
 	return boundedSambaDocuments(globals, passwd, group, nss, sections)
 }
 
-// SambaServiceConfiguration owns a temporary read-only mount with the exact
-// service documents. The caller holds policy, identity and share leases and
-// verifies the selected interface before and during the daemon lifetime.
-// Close is permitted once the child group and exported descriptors are gone.
-type SambaServiceConfiguration struct {
-	mu        sync.Mutex
-	original  *SambaServiceConfiguration
-	workspace string
-	path      string
-	mounted   bool
-	mount     unix.Statx_t
-	root      *os.File
-	retained  *retainedConfiguration
-	closeErr  error
+// SambaConfiguration owns the exact read-only configuration of one role.
+// The caller holds the corresponding evidence through each worker or daemon
+// lifetime. Close follows process-group settlement and descriptor release.
+type SambaConfiguration struct {
+	mu         sync.Mutex
+	original   *SambaConfiguration
+	enrollment bool
+	workspace  string
+	path       string
+	mounted    bool
+	mount      unix.Statx_t
+	root       *os.File
+	retained   *retainedConfiguration
+	closeErr   error
 }
 
 const sambaConfigurationMountFlags = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
@@ -78,15 +78,34 @@ const sambaConfigurationMountFlags = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NO
 // It never takes a raw configuration document from the caller. On uncertain
 // cleanup both the remaining owner and the error are returned for review.
 func StageSambaServiceConfiguration(ctx context.Context, candidate fileserviceplan.SambaIsolatedCandidate,
-	address netip.Addr) (output *SambaServiceConfiguration, result error) {
+	address netip.Addr) (*SambaConfiguration, error) {
+	documents, err := sambaServiceDocuments(candidate, address)
+	if err != nil {
+		return nil, err
+	}
+	return stageSambaConfiguration(ctx, documents, false)
+}
+
+// StageSambaEnrollmentConfiguration derives a shareless credential profile
+// from confirmed native accounts, including disabled accounts before creation.
+// The credential worker separately enters its own inactive network namespace.
+func StageSambaEnrollmentConfiguration(ctx context.Context, lookup fileserviceplan.SambaEnrollmentLookup) (*SambaConfiguration, error) {
+	passwd, group, nss, err := lookup.LookupDocuments()
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	documents, err := boundedSambaDocuments("[global]\ninterfaces = 127.0.0.1\n"+sambaServiceSettings, passwd, group, nss, "")
+	if err != nil {
+		return nil, err
+	}
+	return stageSambaConfiguration(ctx, documents, true)
+}
+
+func stageSambaConfiguration(ctx context.Context, documents map[string]string, enrollment bool) (output *SambaConfiguration, result error) {
 	if ctx == nil || os.Getuid() != 0 || os.Geteuid() != 0 || !safeSambaConfigRun() {
 		return nil, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	documents, err := sambaServiceDocuments(candidate, address)
-	if err != nil {
 		return nil, err
 	}
 	files := make([]File, 0, len(documents))
@@ -105,7 +124,7 @@ func StageSambaServiceConfiguration(ctx context.Context, candidate fileservicepl
 	if err != nil {
 		return nil, err
 	}
-	owner := &SambaServiceConfiguration{workspace: workspace}
+	owner := &SambaConfiguration{workspace: workspace, enrollment: enrollment}
 	owner.original = owner
 	defer func() {
 		if result != nil {
@@ -178,7 +197,7 @@ func writeSambaConfigurationFile(path, contents string, mode os.FileMode) error 
 
 // DuplicateRoot rechecks the complete expected tree before providing an
 // independent O_PATH descriptor for the same original mount.
-func (c *SambaServiceConfiguration) DuplicateRoot(ctx context.Context) (*os.File, error) {
+func (c *SambaConfiguration) DuplicateRoot(ctx context.Context) (*os.File, error) {
 	if c == nil || c.original != c {
 		return nil, ErrInvalid
 	}
@@ -191,6 +210,14 @@ func (c *SambaServiceConfiguration) DuplicateRoot(ctx context.Context) (*os.File
 		return nil, err
 	}
 	return duplicateRoot(c.root)
+}
+
+// DuplicateEnrollmentRoot accepts only the confirmed native-lookup profile.
+func (c *SambaConfiguration) DuplicateEnrollmentRoot(ctx context.Context) (*os.File, error) {
+	if c == nil || !c.enrollment {
+		return nil, ErrInvalid
+	}
+	return c.DuplicateRoot(ctx)
 }
 
 func sambaConfigurationIdentity(fd int, path string, flags int) (unix.Statx_t, error) {
@@ -206,7 +233,7 @@ func sambaConfigurationIdentity(fd int, path string, flags int) (unix.Statx_t, e
 	return observed, nil
 }
 
-func (c *SambaServiceConfiguration) originalMountPresent() bool {
+func (c *SambaConfiguration) originalMountPresent() bool {
 	if !c.mounted || c.mount.Mnt_id == 0 {
 		return false
 	}
@@ -214,7 +241,7 @@ func (c *SambaServiceConfiguration) originalMountPresent() bool {
 	return err == nil && visible.Mnt_id == c.mount.Mnt_id && visible.Ino == c.mount.Ino
 }
 
-func (c *SambaServiceConfiguration) Close() error {
+func (c *SambaConfiguration) Close() error {
 	if c == nil || c.original != c {
 		return ErrInvalid
 	}

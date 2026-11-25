@@ -31,6 +31,8 @@ func main() {
 	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
 	verifySambaCode := flag.Bool("verify-rc0-samba-code", false, "verify the fixed isolated Samba code in this RC0 image")
 	runSambaChild := flag.Bool("run-rc0-samba-child", false, "start isolated Samba from inherited supervisor descriptors")
+	sambaWorker := flag.String("run-rc0-samba-worker", "", "run a fixed Samba enrollment operation from inherited supervisor descriptors")
+	sambaAccount := flag.String("rc0-samba-account", "", "native account for the inherited Samba enrollment operation")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
@@ -55,7 +57,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*rc0BootService != "", *verifySambaCode, *runSambaChild,
+		*rc0BootService != "", *verifySambaCode, *runSambaChild, *sambaWorker != "",
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -68,6 +70,9 @@ func main() {
 	}
 	if !*registryCommit && *registryExpected != "" {
 		log.Fatal("registry revision requires commit mode")
+	}
+	if *sambaWorker == "" && *sambaAccount != "" {
+		log.Fatal("Samba account requires worker mode")
 	}
 	if *replaceTLS != (*expectedTLS != "") {
 		log.Fatal("RC0 TLS replacement requires the current certificate fingerprint")
@@ -116,6 +121,12 @@ func main() {
 	if *runSambaChild {
 		if err := runRC0SambaChild(context.Background()); err != nil {
 			log.Fatal("RC0 Samba child requires review: ", err)
+		}
+		return
+	}
+	if *sambaWorker != "" {
+		if err := runRC0SambaWorker(context.Background(), *sambaWorker, *sambaAccount); err != nil {
+			log.Fatal("RC0 Samba enrollment worker requires review: ", err)
 		}
 		return
 	}

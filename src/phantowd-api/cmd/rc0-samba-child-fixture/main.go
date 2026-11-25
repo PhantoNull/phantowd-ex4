@@ -24,8 +24,11 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
@@ -37,6 +40,7 @@ const (
 	address        = "192.0.2.21"
 	endpoint       = address + ":445"
 	fixtureAccount = "qaprobe"
+	accountID      = "writer"
 	fixtureID      = 1701
 )
 
@@ -92,7 +96,7 @@ func expectRefusal(cmd *exec.Cmd) {
 
 func main() {
 	const safe = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 	candidate := fixtureCandidate()
 	owner, err := runtimebundle.StageSambaServiceConfiguration(ctx, candidate, netip.MustParseAddr(address))
@@ -119,10 +123,6 @@ func main() {
 		panic("configuration owner touched a replacement mount")
 	}
 	must(unix.Unmount(mountPath, unix.UMOUNT_NOFOLLOW))
-	// Seed the disposable account with the same NSS records as the child.
-	for _, name := range []string{"passwd", "group"} {
-		must(unix.Mount(filepath.Join(configPath, name), filepath.Join("/etc", name), "", unix.MS_BIND, ""))
-	}
 	for name, spec := range map[string]struct {
 		original string
 		flags    uintptr
@@ -144,28 +144,18 @@ func main() {
 	expectRefusal(makeCmd(false, grantFile, conf, private, private, ro, rw))
 	expectRefusal(makeCmd(false, grantFile, conf, private, state, rw, ro))
 
-	for _, path := range []string{"/run/seed-lock", "/run/seed-cache", "/run/seed-state"} {
-		must(os.Mkdir(path, 0700))
-	}
-	seedConfig := `[global]
-server role = standalone server
-private dir = /run/data/private
-state directory = /run/seed-state
-lock directory = /run/seed-lock
-cache directory = /run/seed-cache
-passdb backend = tdbsam:/run/data/private/passdb.tdb
-`
-	must(os.WriteFile("/run/smb-seed.conf", []byte(seedConfig), 0600))
-	var secret [24]byte
-	_, err = rand.Read(secret[:])
+	var random [24]byte
+	_, err = rand.Read(random[:])
 	must(err)
-	password := hex.EncodeToString(secret[:])
-	seed := exec.Command("/usr/bin/smbpasswd", "-s", "-a", "-c", "/run/smb-seed.conf", fixtureAccount)
-	seed.Stdin = strings.NewReader(password + "\n" + password + "\n")
-	if output, err := seed.CombinedOutput(); err != nil {
-		panic(fmt.Sprintf("seed account: %s %v", output, err))
-	}
-	must(os.WriteFile("/run/smb-client.auth", []byte("username = "+fixtureAccount+"\npassword = "+password+"\n"), 0600))
+	password := make([]byte, hex.EncodedLen(len(random)))
+	hex.Encode(password, random[:])
+	clear(random[:])
+	defer clear(password)
+	identities, enrollment, disabled := enrollDisabled(ctx, private, state, password)
+	auth := append([]byte("username = "+fixtureAccount+"\npassword = "), password...)
+	auth = append(auth, '\n')
+	must(os.WriteFile("/run/smb-client.auth", auth, 0600))
+	clear(auth)
 	must(os.Chown("/run/data/writable", fixtureID, fixtureID))
 	must(os.WriteFile("/run/smb-payload", []byte("isolated write\n"), 0600))
 	cmd := makeCmd(false, grantFile, conf, private, state, ro, rw)
@@ -234,6 +224,35 @@ passdb backend = tdbsam:/run/data/private/passdb.tdb
 	runClient := func(share, command string) ([]byte, error) {
 		return exec.Command("/usr/bin/smbclient", "-A", "/run/smb-client.auth", "-m", "SMB3", "//"+address+"/"+share, "-c", command).CombinedOutput()
 	}
+	if output, err := runClient("fixture-rw", "ls"); err == nil ||
+		(!strings.Contains(string(output), "NT_STATUS_ACCOUNT_DISABLED") && !strings.Contains(string(output), "NT_STATUS_LOGON_FAILURE")) {
+		panic(fmt.Sprintf("disabled SMB credential accepted or unexpected refusal: %s %v", output, err))
+	}
+	must(identities.SMB(accountID).Enable(ctx, disabled.Revision))
+	enabled, err := identities.SMB(accountID).Load(ctx)
+	must(err)
+	if enabled.Phase != smbprovision.Enabled || enabled.SID != disabled.SID {
+		panic("enable did not retain the original journaled SID")
+	}
+	if err := identities.SMB(accountID).Disable(ctx, enabled.Revision); !errors.Is(err, smbprovision.ErrInvalid) {
+		panic("offline enrollment offered session revocation")
+	}
+	afterRefusal, err := identities.SMB(accountID).Load(ctx)
+	must(err)
+	if afterRefusal != enabled {
+		panic("offline revocation refusal changed the enabled journal")
+	}
+	identitySnapshot, err := identities.FileServiceSnapshot(ctx)
+	must(err)
+	if len(identitySnapshot.Samba) != 1 || identitySnapshot.Samba[0].Journal != enabled ||
+		identitySnapshot.Samba[0].Observation.SID != enabled.SID || identitySnapshot.Samba[0].Observation.Disabled {
+		panic("service identity evidence differed from the confirmed passdb and journal")
+	}
+	identityLease, err := identities.RetainFileServiceSnapshot(ctx, identitySnapshot.Fingerprint)
+	must(err)
+	if err := identities.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		panic("retained service identity allowed the owner to close")
+	}
 	if output, err := runClient("fixture-rw", "get marker /run/smb-read; put /run/smb-payload uploaded"); err != nil {
 		panic(fmt.Sprintf("authorized SMB write: %s %v", output, err))
 	}
@@ -285,9 +304,9 @@ passdb backend = tdbsam:/run/data/private/passdb.tdb
 			panic("Samba database was not retained in original private state")
 		}
 	}
-	for _, name := range []string{"passwd", "group"} {
-		must(unix.Unmount(filepath.Join("/etc", name), unix.UMOUNT_NOFOLLOW))
-	}
+	must(identityLease.Release())
+	must(identities.Close())
+	must(enrollment.Close())
 	if err := owner.Close(); !errors.Is(err, unix.EBUSY) {
 		panic("configuration mount did not retain its borrowed descriptor")
 	}
@@ -297,14 +316,67 @@ passdb backend = tdbsam:/run/data/private/passdb.tdb
 	if _, err := owner.DuplicateRoot(ctx); err == nil {
 		panic("closed configuration still supplied an input")
 	}
-	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused")
+	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused")
+}
+
+func enrollDisabled(ctx context.Context, private, state *os.File, password []byte) (*identityowner.Owner, *runtimebundle.SambaConfiguration, smbprovision.Journal) {
+	identityRoot := open("/run/data/identities")
+	defer identityRoot.Close()
+	emptyInventory := func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	}
+	must(identityowner.ProvisionInitial(ctx, identityRoot, fixtureID, fixtureID+10))
+	nativeOwner, err := identityowner.OpenProvisioned(identityRoot, emptyInventory)
+	must(err)
+	account, err := nativeOwner.Reserve(ctx, 1, accountID, fixtureAccount)
+	must(err)
+	if account.UID != fixtureID || account.GID != fixtureID {
+		panic("unexpected identity allocation")
+	}
+	native := nativeOwner.Operation(accountID)
+	for i := 0; i < 2; i++ {
+		journal, err := native.Load(ctx)
+		must(err)
+		must(native.Step(ctx, journal.Revision))
+	}
+	nativeJournal, err := native.Load(ctx)
+	must(err)
+	if nativeJournal.Phase != identityprovision.UnixConfirmed {
+		panic("native fixture identity not confirmed")
+	}
+	lookup, err := fileserviceplan.SambaEnrollmentLookupFromOwner(ctx, nativeOwner)
+	must(err)
+	must(nativeOwner.Close())
+	configuration, err := runtimebundle.StageSambaEnrollmentConfiguration(ctx, lookup)
+	must(err)
+	backend, err := smbexec.NewEnrollmentBackend(ctx, configuration, private, state)
+	must(err)
+	owner, err := identityowner.OpenProvisionedWithSMBBackend(identityRoot, emptyInventory, backend)
+	must(err)
+	operation := owner.SMB(accountID)
+	must(operation.Begin(ctx, nativeJournal.Revision))
+	journal, err := operation.Load(ctx)
+	must(err)
+	must(operation.Step(ctx, journal.Revision))
+	journal, err = operation.Load(ctx)
+	must(err)
+	if journal.Phase != smbprovision.DisabledNoPassword || journal.SID == "" {
+		panic("Samba native account was not created disabled")
+	}
+	pendingSID := journal.SID
+	must(operation.SetPasswordDisabled(ctx, journal.Revision, password))
+	journal, err = operation.Load(ctx)
+	must(err)
+	if journal.Phase != smbprovision.CredentialSetDisabled || journal.SID != pendingSID {
+		panic("setting a password changed the SID or enabled the account")
+	}
+	return owner, configuration, journal
 }
 
 // The fixture constructs the same opaque candidate the product renderer
 // receives. All policy, identity observations and volumes here are synthetic.
 func fixtureCandidate() fileserviceplan.SambaIsolatedCandidate {
 	const uuid = "11111111-2222-3333-4444-555555555555"
-	const accountID = "writer"
 	registry, err := serviceaccounts.New(fixtureID, fixtureID+10)
 	must(err)
 	registry, err = registry.Create(registry.Revision, accountID, fixtureAccount,

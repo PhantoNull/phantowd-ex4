@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"golang.org/x/sys/unix"
@@ -94,27 +95,49 @@ func initializeIdentityStage(stage int, first, last uint32) error {
 
 // OpenProvisioned opens the fixed committed role from the original admitted
 // RC0 state directory. A pending stage takes precedence over the final role.
-func OpenProvisioned(parent *os.File, inventory Inventory) (_ *Owner, result error) {
-	if parent == nil || inventory == nil || os.Getuid() != 0 || os.Geteuid() != 0 {
+func OpenProvisioned(parent *os.File, inventory Inventory) (*Owner, error) {
+	return openProvisioned(parent, ownerDependencies(inventory))
+}
+
+// OpenProvisionedWithSMBBackend binds a trusted isolated backend to the
+// original provisioned descriptor. The backend transfers on entry and is
+// closed if the authority cannot open.
+func OpenProvisionedWithSMBBackend(parent *os.File, inventory Inventory, backend smbprovision.Backend) (*Owner, error) {
+	if backend == nil {
+		return nil, ErrInvalid
+	}
+	deps := ownerDependencies(inventory)
+	deps.smbBackend = backend
+	return openProvisioned(parent, deps)
+}
+
+func openProvisioned(parent *os.File, deps dependencies) (*Owner, error) {
+	transferred := false
+	defer func() {
+		if !transferred {
+			closeSMBBackend(deps.smbBackend)
+		}
+	}()
+	if parent == nil || deps.inventory == nil || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return nil, ErrInvalid
 	}
 	root, err := borrowPrivateDirectory(parent)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err := unix.Close(root); err != nil {
-			result = errors.Join(result, ErrReview)
-		}
-	}()
 	if !identityStateAbsent(root, stateStage) {
-		return nil, ErrReview
+		return nil, errors.Join(ErrReview, unix.Close(root))
 	}
 	dir, _, err := openPrivateDirectoryAt(root, stateDirectory)
+	closeErr := unix.Close(root)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, closeErr)
 	}
-	return openOwned(dir, ownerDependencies(inventory))
+	if closeErr != nil {
+		return nil, errors.Join(ErrReview, closeErr, unix.Close(dir))
+	}
+	transferred = true
+	return openOwned(dir, deps)
 }
 
 func identityStateAbsent(root int, name string) bool {
