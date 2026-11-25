@@ -50,7 +50,7 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	if err != nil {
 		return err
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo)
+	return superviseRC0State(ctx, plan, state, known, proofInfo, nil)
 }
 
 func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
@@ -62,7 +62,7 @@ func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
 	return known, proofInfo, errors.Join(readErr, proof.Close())
 }
 
-func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t) (result error) {
+func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, started func() error) (result error) {
 	uid, gid, err := managementAPIIdentity()
 	if err != nil {
 		return err
@@ -122,10 +122,13 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 		"PHANTOWD_STATE_FD=3", tlsIdentityFDEnv + "=4",
 		listenAddressEnv + "=" + plan.Address, publicOriginEnv + "=" + plan.Origin,
 		"PHANTOWD_NAS_POLICY_SOCKET=" + rc0PolicyChannel}
+	if started != nil {
+		cmd.Env = append(cmd.Env, rc0PrebindEnv+"=1")
+	}
 	cmd.ExtraFiles = []*os.File{accounts, identity}
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
-	return superviseRC0API(ctx, cmd, listener, server, uid, gid)
+	return superviseRC0API(ctx, cmd, listener, server, uid, gid, started)
 }
 
 func managementAPIIdentity() (uint32, uint32, error) {
@@ -168,14 +171,18 @@ func openRC0TLSIdentity(root *os.File) (*os.File, error) {
 	if !rc0AbsentRole(root, rc0TLSStage) {
 		return nil, errRC0Review
 	}
-	pinned, err := openRC0Role(root, rc0TLSIdentity, unix.O_PATH)
+	return openRC0PrivateFile(root, rc0TLSIdentity, maxTLSIdentityBytes)
+}
+
+func openRC0PrivateFile(root *os.File, name string, limit int64) (*os.File, error) {
+	pinned, err := openRC0Role(root, name, unix.O_PATH)
 	if err != nil {
 		return nil, err
 	}
 	defer pinned.Close()
 	var before, after unix.Stat_t
 	var proc unix.Statfs_t
-	if unix.Fstat(int(pinned.Fd()), &before) != nil || !privateStartupFileSafe(before, 0, maxTLSIdentityBytes) ||
+	if unix.Fstat(int(pinned.Fd()), &before) != nil || !privateStartupFileSafe(before, 0, limit) ||
 		unix.Statfs("/proc/self/fd", &proc) != nil || proc.Type != unix.PROC_SUPER_MAGIC {
 		return nil, errRC0Review
 	}
@@ -213,10 +220,7 @@ func admitRC0Policy(ctx context.Context, policy *os.File, installation string, k
 }
 
 func openRC0PolicyListener(gid uint32) (listener *net.UnixListener, result error) {
-	var run unix.Stat_t
-	var fs unix.Statfs_t
-	if unix.Lstat("/run", &run) != nil || run.Mode != unix.S_IFDIR|0755 || run.Uid != 0 ||
-		unix.Statfs("/run", &fs) != nil || fs.Type != unix.TMPFS_MAGIC {
+	if !safeRC0RunDirectory() {
 		return nil, errRC0Review
 	}
 	if err := os.Mkdir(rc0RuntimeDirectory, 0700); err != nil {
@@ -244,7 +248,14 @@ func openRC0PolicyListener(gid uint32) (listener *net.UnixListener, result error
 	return listener, nil
 }
 
-func superviseRC0API(ctx context.Context, cmd *exec.Cmd, listener *net.UnixListener, server *naspolicyrpc.Server, uid, gid uint32) error {
+func safeRC0RunDirectory() bool {
+	var run unix.Stat_t
+	var fs unix.Statfs_t
+	return unix.Lstat("/run", &run) == nil && run.Mode == unix.S_IFDIR|0755 && run.Uid == 0 &&
+		unix.Statfs("/run", &fs) == nil && fs.Type == unix.TMPFS_MAGIC
+}
+
+func superviseRC0API(ctx context.Context, cmd *exec.Cmd, listener *net.UnixListener, server *naspolicyrpc.Server, uid, gid uint32, started func() error) error {
 	// Pdeathsig follows the forking thread on Linux. Keep it for this lifetime.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -260,7 +271,9 @@ func superviseRC0API(ctx context.Context, cmd *exec.Cmd, listener *net.UnixListe
 	defer unix.Close(pidFD)
 	rpcCtx, cancelRPC := context.WithCancel(context.Background())
 	rpcDone := make(chan error, 1)
-	go func() { rpcDone <- serveRC0Policy(rpcCtx, listener, server, cmd.Process.Pid, pidFD, uid, gid) }()
+	go func() {
+		rpcDone <- serveRC0Policy(rpcCtx, listener, server, cmd.Process.Pid, pidFD, uid, gid, started)
+	}()
 
 	var result error
 	rpcFinished := false
@@ -280,7 +293,7 @@ func superviseRC0API(ctx context.Context, cmd *exec.Cmd, listener *net.UnixListe
 	return result
 }
 
-func serveRC0Policy(ctx context.Context, listener *net.UnixListener, server *naspolicyrpc.Server, pid, pidFD int, uid, gid uint32) error {
+func serveRC0Policy(ctx context.Context, listener *net.UnixListener, server *naspolicyrpc.Server, pid, pidFD int, uid, gid uint32, started func() error) error {
 	if err := listener.SetDeadline(time.Now().Add(6 * time.Second)); err != nil {
 		return err
 	}
@@ -295,6 +308,11 @@ func serveRC0Policy(ctx context.Context, listener *net.UnixListener, server *nas
 	}
 	if n, err := unix.Poll([]unix.PollFd{{Fd: int32(pidFD), Events: unix.POLLIN}}, 0); err != nil || n != 0 {
 		return errors.Join(errRC0Review, conn.Close())
+	}
+	if started != nil {
+		if err := started(); err != nil {
+			return errors.Join(err, conn.Close())
+		}
 	}
 	return server.Serve(ctx, conn)
 }
