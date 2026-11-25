@@ -10,7 +10,18 @@ import (
 	"errors"
 	"net"
 	"strconv"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfskernel"
 )
+
+// NewManagedLinuxQEMU admits the existing disconnected QEMU fixtures before
+// their image includes nftables. Production always uses NewManagedLinux.
+func NewManagedLinuxQEMU(ctx context.Context, inputs *RetainedInputs, grants LinuxServiceGrants) (*Owner, error) {
+	if !nfskernel.SmokeFixtureQEMU() && !nfskernel.PeerServerQEMU() {
+		return nil, ErrInvalid
+	}
+	return newManagedLinux(ctx, inputs, grants, true)
+}
 
 // CheckManagedRefusalsQEMU probes the real components without exposing them.
 func CheckManagedRefusalsQEMU(ctx context.Context, owner *Owner) error {

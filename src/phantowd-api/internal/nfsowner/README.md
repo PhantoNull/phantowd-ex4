@@ -18,7 +18,19 @@ then reaps the process groups in reverse order before releasing the grants.
 matches the kernel listener inodes to the retained process and refuses UDP,
 unexpected owned ports and foreign listeners on the mount port. The same
 port must be free before startup and after shutdown. The platform still
-owns interface and source-network access for mountd and rpcbind.
+selects the ingress interface and NFS destination address in the admitted
+namespace. The runtime builds its own nftables input table from the retained
+IPv4 export client prefixes. It installs the table before opening ports and
+checks all three ports for conflicts before and after table installation. It
+checks the table, chain and ordered rules before publication and on health
+checks. It permits TCP to the selected address from the selected interface
+and sources, plus the local self-probes. It drops other TCP and all UDP on
+ports 111, 2049 and 20048. The table stays until verified service shutdown.
+The RC0 profile includes nftables and its JSON dependency. The disconnected
+QEMU API fixtures have an explicit QEMU-only constructor for existing base
+images without nftables. To test actual packet enforcement with a Linux
+kernel, run `sh support/test-nfs-firewall.sh /usr/sbin/nft` on a host with
+user namespaces enabled.
 The ordinary Linux constructor `NewManagedLinux` composes the controller, RPC
 helpers and export manager. It retains the explicit NFSD, namespace and
 executable grants before startup, then sequences rpcbind, NFSD, mountd and

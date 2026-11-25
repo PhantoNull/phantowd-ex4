@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,10 @@ const mountdPort = 20048
 // locked thread. An absent process requires a free service port. A running
 // process must own every listener at that port and only TCP listeners there.
 func checkMountTransport(ctx context.Context, pid int) error {
+	return checkNFSTransport(ctx, pid, []int{mountdPort})
+}
+
+func checkNFSTransport(ctx context.Context, pid int, ports []int) error {
 	var owned map[uint64]struct{}
 	if pid != 0 {
 		var err error
@@ -45,9 +50,9 @@ func checkMountTransport(ctx context.Context, pid int) error {
 		if err != nil {
 			return err
 		}
-		found, checked := scanMountTransport(ctx, file, owned, table.udp)
+		found, checked := scanNFSTransport(ctx, file, owned, table.udp, ports)
 		if err := errors.Join(checked, file.Close()); err != nil {
-			return fmt.Errorf("check %s mount transport: %w", table.name, err)
+			return fmt.Errorf("check %s NFS transport: %w", table.name, err)
 		}
 		if table.name == "tcp" && pid != 0 && !found {
 			return ErrState
@@ -97,7 +102,7 @@ func mountProcessSockets(ctx context.Context, pid int) (_ map[uint64]struct{}, r
 
 // The pinned Linux profile lists TCP, UDP and IPv6 sockets in proc. TCP
 // TIME_WAIT rows do not represent a listener and may have no usable inode.
-func scanMountTransport(ctx context.Context, input io.Reader, owned map[uint64]struct{}, udp bool) (bool, error) {
+func scanNFSTransport(ctx context.Context, input io.Reader, owned map[uint64]struct{}, udp bool, ports []int) (bool, error) {
 	const maxRows = 8192
 	lines := bufio.NewScanner(input)
 	lines.Buffer(make([]byte, 1024), 4096)
@@ -127,7 +132,7 @@ func scanMountTransport(ctx context.Context, input io.Reader, owned map[uint64]s
 		}
 		_, own := owned[inode]
 		switch {
-		case port == mountdPort:
+		case slices.Contains(ports, int(port)):
 			if udp || !own {
 				return false, ErrState
 			}

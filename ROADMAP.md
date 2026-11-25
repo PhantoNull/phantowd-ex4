@@ -1520,8 +1520,14 @@ storage. No production roster provider or activation path exists.
   admits the configured source. The server verifies the fsynced write,
   anonymous UID/GID and private tables on disposable mounted storage.
   The client confirms unmount before the managed runtime drains and closes.
-  RC0 still needs network exposure control, RPC socket isolation and qualified
-  storage integration.
+  The Linux production-path constructor requires an nftables grant and an
+  explicit ingress interface. Its owned input table limits NFS, mountd and
+  rpcbind TCP ports to the selected IPv4 endpoint and original policy sources
+  and drops UDP on those ports. Host Linux namespace tests exercise actual
+  packet decisions and protect an existing or drifted table from removal.
+  RC0 includes the command and JSON dependency for future provider wiring.
+  Full RC0 packet tests, RPC socket isolation and qualified storage
+  integration remain open.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

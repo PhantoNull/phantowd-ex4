@@ -138,7 +138,7 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil {
 			return err
 		}
-		if duplicate, err := nfsowner.NewManagedLinux(ctx, b.inputs, nfsowner.LinuxServiceGrants{}); duplicate != nil || !errors.Is(err, nfsowner.ErrState) {
+		if duplicate, err := nfsowner.NewManagedLinuxQEMU(ctx, b.inputs, nfsowner.LinuxServiceGrants{}); duplicate != nil || !errors.Is(err, nfsowner.ErrState) {
 			return errors.New("NFS runtime took the same retained inputs twice")
 		}
 		b.phase = "start"
@@ -463,7 +463,7 @@ func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs
 
 		wrong := grants
 		wrong.Network, wrong.MountNamespace = wrong.MountNamespace, wrong.Network
-		if owner, err := nfsowner.NewManagedLinux(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
+		if owner, err := nfsowner.NewManagedLinuxQEMU(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
 			return owner, errors.Join(errors.New("managed NFSD did not cleanly refuse swapped namespace grants"), err)
 		}
 		if err := nfsowner.CheckStaleManagedStateQEMU(ctx, inputs, grants); err != nil {
@@ -471,11 +471,11 @@ func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs
 		}
 		incomplete := grants
 		incomplete.Mountd = nil
-		if owner, err := nfsowner.NewManagedLinux(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
+		if owner, err := nfsowner.NewManagedLinuxQEMU(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
 			return owner, errors.Join(errors.New("managed construction did not unwind a refused mountd grant"), err)
 		}
 
-		owner, err := nfsowner.NewManagedLinux(ctx, inputs, grants)
+		owner, err := nfsowner.NewManagedLinuxQEMU(ctx, inputs, grants)
 		if err != nil {
 			return owner, err
 		}
