@@ -25,8 +25,11 @@ data="$scratch/virtual-state.ext4"
 cp --sparse=always -- "$images/rootfs.ext2" "$image"
 truncate -s 32M "$data"
 mkfs.ext4 -F -q "$data"
-CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-    "$host_go" build -trimpath -ldflags='-s -w' -o "$scratch/runner" "$support/fixtures/rc0-management.go"
+(
+    cd "$support/../src/phantowd-api"
+    CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
+        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" "$support/fixtures/rc0-management.go"
+)
 od -An -N24 -tx1 /dev/urandom | tr -d ' \n' > "$scratch/password"
 [ "$(wc -c < "$scratch/password")" -eq 48 ]
 cat > "$scratch/init" <<'SH'
@@ -121,5 +124,7 @@ if [ "$original" != "$reopened" ] || [ "$original" = "$replacement" ] || [ "$rep
 fi
 tr -d '\r' < "$log_prefix.verify.log" |
     grep -Fx 'PHANTOWD_RC0_TLS_ROTATION live=refused wrong_fingerprint=refused stale=refused replacement=published' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_BOOT_HANDOFF wrong_mount=refused wrong_inode=refused wrong_policy=refused wrong_tls=refused' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 sha256sum -c "$scratch/base.sha256"

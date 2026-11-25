@@ -27,11 +27,14 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
 	root    = "/mnt/rc0-state"
 	proof   = "/run/rc0-confirmed-policy.json"
+	launch  = "/run/rc0-boot-v1.json"
 	address = "127.0.0.1:18443"
 	origin  = "https://" + address
 	install = "c71c2ba76bd04d29816335c13c31a380"
@@ -39,6 +42,17 @@ const (
 	tlsRole = root + "/management-tls.pem"
 	policy  = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
+
+type bootPlan struct {
+	Format         string `json:"format"`
+	Installation   string `json:"installation_id"`
+	Address        string `json:"listen_address"`
+	Origin         string `json:"origin"`
+	StateMountID   uint64 `json:"state_mount_id"`
+	StateRootInode uint64 `json:"state_root_inode"`
+	PolicySHA256   string `json:"policy_sha256"`
+	TLSLeafSHA256  string `json:"tls_leaf_sha256"`
+}
 
 func main() {
 	if err := check(); err != nil {
@@ -75,13 +89,13 @@ func check() error {
 	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
 		return errors.New("persistent policy bytes differ before startup")
 	}
-	if err := expectRefusal(ctx, current); err != nil {
+	if err := expectRefusal(ctx, current, nil); err != nil {
 		return err
 	}
 	if err := os.WriteFile(proof+".wrong", []byte(policy+"\n"), 0600); err != nil {
 		return err
 	}
-	if err := expectRefusal(ctx, proof+".wrong"); err != nil {
+	if err := expectRefusal(ctx, proof+".wrong", nil); err != nil {
 		return err
 	}
 	if phase == "seed" {
@@ -89,7 +103,7 @@ func check() error {
 		if err := os.WriteFile(stage, []byte("interrupted TLS fixture"), 0600); err != nil {
 			return err
 		}
-		if err := expectRefusal(ctx, proof); err != nil {
+		if err := expectRefusal(ctx, proof, nil); err != nil {
 			return err
 		}
 		if raw, err := os.ReadFile(stage); err != nil || string(raw) != "interrupted TLS fixture" {
@@ -98,6 +112,17 @@ func check() error {
 		if err := os.Remove(stage); err != nil {
 			return err
 		}
+		for _, change := range []func(*bootPlan){
+			func(p *bootPlan) { p.StateMountID++ },
+			func(p *bootPlan) { p.StateRootInode++ },
+			func(p *bootPlan) { p.PolicySHA256 = strings.Repeat("0", 64) },
+			func(p *bootPlan) { p.TLSLeafSHA256 = strings.Repeat("0", 64) },
+		} {
+			if err := expectRefusal(ctx, proof, change); err != nil {
+				return err
+			}
+		}
+		fmt.Println("PHANTOWD_RC0_BOOT_HANDOFF wrong_mount=refused wrong_inode=refused wrong_policy=refused wrong_tls=refused")
 	}
 	if phase == "verify" {
 		err = renewCertificate(ctx, credentials)
@@ -255,28 +280,69 @@ func renewCertificate(ctx context.Context, credentials []byte) error {
 	return serve(ctx, "replacement", credentials, nil)
 }
 
-func command(ctx context.Context, confirmation string) (*exec.Cmd, error) {
+func command(ctx context.Context, confirmation string, change func(*bootPlan)) (*exec.Cmd, error) {
 	state, err := os.Open(root)
 	if err != nil {
 		return nil, err
 	}
-	grant, err := os.Open(confirmation)
+	plan, err := prepareBootPlan(state, change)
 	if err != nil {
 		return nil, errors.Join(err, state.Close())
 	}
-	cmd := exec.CommandContext(ctx, api, "--supervise-rc0", "--nas-installation-id", install)
-	cmd.Env = []string{"PATH=/usr/bin:/bin", "PHANTOWD_LISTEN_ADDR=" + address, "PHANTOWD_PUBLIC_ORIGIN=" + origin}
-	cmd.ExtraFiles = []*os.File{state, grant}
+	grant, err := os.Open(confirmation)
+	if err != nil {
+		return nil, errors.Join(err, state.Close(), plan.Close())
+	}
+	cmd := exec.CommandContext(ctx, api, "--supervise-rc0-boot")
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "PHANTOWD_LISTEN_ADDR=127.0.0.1:1", "PHANTOWD_PUBLIC_ORIGIN=http://127.0.0.1:1"}
+	cmd.ExtraFiles = []*os.File{state, plan, grant}
 	return cmd, nil
 }
 
-func expectRefusal(ctx context.Context, confirmation string) error {
-	cmd, err := command(ctx, confirmation)
+func prepareBootPlan(state *os.File, change func(*bootPlan)) (*os.File, error) {
+	const mask = unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
+	var st unix.Statx_t
+	if err := unix.Statx(int(state.Fd()), "", unix.AT_EMPTY_PATH, mask, &st); err != nil || st.Mask&mask != mask {
+		return nil, errors.New("fixture state identity unavailable")
+	}
+	identity, err := os.ReadFile(tlsRole)
+	if err != nil {
+		return nil, err
+	}
+	defer clear(identity)
+	public, _ := pem.Decode(identity)
+	if public == nil {
+		return nil, errors.New("fixture certificate unavailable")
+	}
+	plan := bootPlan{
+		Format: "phantowd-rc0-boot-v1", Installation: install, Address: address, Origin: origin,
+		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(policy))),
+		TLSLeafSHA256: fmt.Sprintf("%x", sha256.Sum256(public.Bytes)),
+	}
+	if change != nil {
+		change(&plan)
+	}
+	data, err := json.Marshal(plan)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(launch, data, 0600); err != nil {
+		return nil, err
+	}
+	return os.Open(launch)
+}
+
+func closeBootGrants(cmd *exec.Cmd) error {
+	return errors.Join(cmd.ExtraFiles[0].Close(), cmd.ExtraFiles[1].Close(), cmd.ExtraFiles[2].Close())
+}
+
+func expectRefusal(ctx context.Context, confirmation string, change func(*bootPlan)) error {
+	cmd, err := command(ctx, confirmation, change)
 	if err != nil {
 		return err
 	}
 	output, err := cmd.CombinedOutput()
-	if errors.Join(cmd.ExtraFiles[0].Close(), cmd.ExtraFiles[1].Close(), ctx.Err()) != nil || err == nil || !bytes.Contains(output, []byte("RC0 management startup or shutdown requires review")) {
+	if errors.Join(closeBootGrants(cmd), ctx.Err()) != nil || err == nil || !bytes.Contains(output, []byte("RC0 management startup or shutdown requires review")) {
 		return errors.New("unexpected supervisor refusal evidence")
 	}
 	return runtimeAbsent()
@@ -299,13 +365,13 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if public == nil || !roots.AppendCertsFromPEM(pem.EncodeToMemory(public)) {
 		return errors.New("persistent certificate refused")
 	}
-	cmd, err := command(ctx, proof)
+	cmd, err := command(ctx, proof, nil)
 	if err != nil {
 		return err
 	}
 	cmd.Stderr = os.Stderr
 	startErr := cmd.Start()
-	closeErr := errors.Join(cmd.ExtraFiles[0].Close(), cmd.ExtraFiles[1].Close())
+	closeErr := closeBootGrants(cmd)
 	if startErr != nil {
 		return errors.Join(startErr, closeErr)
 	}

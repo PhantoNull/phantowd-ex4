@@ -27,6 +27,7 @@ func main() {
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
+	superviseRC0Boot := flag.Bool("supervise-rc0-boot", false, "launch RC0 management from the trusted boot handoff")
 	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
@@ -46,7 +47,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *replaceTLS, *superviseRC0, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -65,9 +66,14 @@ func main() {
 	if !*provisionNAS && !*superviseRC0 && *nasInstallation != "" {
 		log.Fatal("NAS installation ID requires provisioning or supervision mode")
 	}
-	if *superviseRC0 {
+	if *superviseRC0 || *superviseRC0Boot {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		err := runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
+		var err error
+		if *superviseRC0Boot {
+			err = runRC0BootManagement(ctx)
+		} else {
+			err = runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
+		}
 		stop()
 		if err != nil {
 			log.Fatal("RC0 management startup or shutdown requires review")

@@ -22,7 +22,7 @@ func provisionInheritedRC0TLS(input io.Reader, origin, expected string) (result 
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0TLSProvision
 	}
-	if expected != "" && !validRC0TLSFingerprint(expected) {
+	if expected != "" && !validRC0SHA256(expected) {
 		return errRC0TLSProvision
 	}
 	state, err := takeStartupFile(3, unix.S_IFDIR)
@@ -66,7 +66,7 @@ func provisionInheritedRC0TLS(input io.Reader, origin, expected string) (result 
 	return publishRC0TLS(root, bundle, expected != "")
 }
 
-func validRC0TLSFingerprint(text string) bool {
+func validRC0SHA256(text string) bool {
 	if len(text) != sha256.Size*2 {
 		return false
 	}

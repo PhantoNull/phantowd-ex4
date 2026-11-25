@@ -37,28 +37,34 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0Review
 	}
-	parsedOrigin, err := parseOrigin(origin)
-	if err != nil || parsedOrigin.Scheme != "https" {
+	plan := rc0BootPlan{Installation: installation, Address: address, Origin: origin}
+	if !plan.validTransport() {
 		return errRC0Review
-	}
-	if _, _, _, err := parseListenAddress(address); err != nil {
-		return errRC0Review
-	}
-	uid, gid, err := managementAPIIdentity()
-	if err != nil {
-		return err
 	}
 	state, err := takeStartupFile(3, unix.S_IFDIR)
 	if err != nil {
 		return err
 	}
 	defer func() { result = errors.Join(result, state.Close()) }()
-	proof, err := takeStartupFile(4, unix.S_IFREG)
+	known, proofInfo, err := readRC0PolicyGrant(4)
 	if err != nil {
 		return err
 	}
+	return superviseRC0State(ctx, plan, state, known, proofInfo)
+}
+
+func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
+	proof, err := takeStartupFile(descriptor, unix.S_IFREG)
+	if err != nil {
+		return nil, unix.Stat_t{}, err
+	}
 	known, proofInfo, readErr := readPrivateStartupFile(proof, 0, naspolicy.MaxInputBytes)
-	if err := errors.Join(readErr, proof.Close()); err != nil {
+	return known, proofInfo, errors.Join(readErr, proof.Close())
+}
+
+func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t) (result error) {
+	uid, gid, err := managementAPIIdentity()
+	if err != nil {
 		return err
 	}
 	stateRoot, err := lockRC0StateRoot(state)
@@ -66,12 +72,15 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 		return err
 	}
 	defer func() { result = errors.Join(result, stateRoot.Close()) }()
+	if plan.StateMountID != 0 && !plan.matchesState(stateRoot) {
+		return errRC0Review
+	}
 	policy, err := openRC0Role(stateRoot, "nas-policy", unix.O_PATH|unix.O_DIRECTORY)
 	if err != nil {
 		return err
 	}
 	defer func() { result = errors.Join(result, policy.Close()) }()
-	owner, err := admitRC0Policy(ctx, policy, installation, known, proofInfo)
+	owner, err := admitRC0Policy(ctx, policy, plan.Installation, known, proofInfo)
 	if owner != nil {
 		defer func() { result = errors.Join(result, owner.Close()) }()
 	}
@@ -92,6 +101,12 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 		return err
 	}
 	defer func() { result = errors.Join(result, identity.Close()) }()
+	if plan.TLSLeafSHA256 != "" {
+		pair, err := readTLSIdentity(identity, 0)
+		if err != nil || tlsLeafFingerprint(pair.Certificate[0]) != plan.TLSLeafSHA256 {
+			return errRC0Review
+		}
+	}
 	listener, err := openRC0PolicyListener(gid)
 	if err != nil {
 		return err
@@ -105,7 +120,7 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	cmd.Dir = "/"
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C",
 		"PHANTOWD_STATE_FD=3", tlsIdentityFDEnv + "=4",
-		listenAddressEnv + "=" + address, publicOriginEnv + "=" + origin,
+		listenAddressEnv + "=" + plan.Address, publicOriginEnv + "=" + plan.Origin,
 		"PHANTOWD_NAS_POLICY_SOCKET=" + rc0PolicyChannel}
 	cmd.ExtraFiles = []*os.File{accounts, identity}
 	cmd.Stderr = os.Stderr

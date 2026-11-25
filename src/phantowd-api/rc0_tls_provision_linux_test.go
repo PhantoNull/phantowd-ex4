@@ -21,7 +21,7 @@ func TestRC0TLSBundleRequiresMatchingCurrentlyValidHTTPSIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	if !validRC0TLSFingerprint(rc0TLSBundleFingerprint(bundle, origin, now)) {
+	if !validRC0SHA256(rc0TLSBundleFingerprint(bundle, origin, now)) {
 		t.Fatal("matching current identity was refused")
 	}
 	for _, wrong := range []string{"http://nas.example:8443", "https://other.example:8443", origin + "/"} {

@@ -774,8 +774,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   An explicit RC0 management supervisor opens the policy, credentials and TLS
   from one admitted local ext state root. It starts one non-root API for the
   confirmed policy lifetime and releases authority after the child stops.
-  Startup requires an independently supplied policy confirmation. Automatic
-  boot binding, complete state-bundle admission and recovery remain open.
+  The early boot handoff binds the selected mount and directory inode, an
+  independent policy confirmation and the expected TLS fingerprint in a
+  protected runtime record. The QEMU launcher exercises the handoff on
+  generated ext4 media. Physical placement, default init integration,
+  complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective
