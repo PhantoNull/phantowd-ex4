@@ -36,3 +36,7 @@ func provisionInheritedRC0ServiceIdentities(context.Context, io.Reader) error {
 func provisionInheritedRC0SambaState(context.Context) error {
 	return errors.New("RC0 Samba state provisioning requires Linux")
 }
+
+func verifyRC0SambaCode(context.Context) error {
+	return errors.New("RC0 Samba runtime verification requires Linux")
+}

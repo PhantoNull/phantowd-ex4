@@ -42,6 +42,8 @@ build phantowd_rc0_armv5_defconfig
 grep -Fx 'BR2_PACKAGE_PHANTOWD_API=y' "$output/.config" >/dev/null
 grep -Fx '# BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST is not set' "$output/.config" >/dev/null
 grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/null
+grep -Fx '# BR2_TARGET_GENERIC_REMOUNT_ROOTFS_RW is not set' "$output/.config" >/dev/null
+grep -Fx 'BR2_TOOLCHAIN_GLIBC_GCONV_LIBS_LIST="IBM850"' "$output/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_NFS_UTILS_RPC_NFSD=y' "$output/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_RPCBIND=y' "$output/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output/.config" >/dev/null

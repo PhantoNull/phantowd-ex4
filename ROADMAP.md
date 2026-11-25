@@ -1564,6 +1564,12 @@ open.
   roster refuses admission. The bounded ARMv5 planner fixture verifies this
   path against its generated volume, and the isolated Samba test harness
   passes these same descriptors to its runtime.
+  The RC0 image build now stages the bounded Samba ELF closure and the
+  fixed CP850 converter in a dedicated code-only root. The image includes
+  its expected file hashes, modes and alias map. The boot test verifies the
+  complete original code tree on a kernel read-only mount before accepting
+  the dormant profile. The isolated code root is ready for the launcher
+  that attaches separate configuration, database and share descriptors.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

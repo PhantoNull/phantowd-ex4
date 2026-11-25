@@ -41,6 +41,7 @@ done
 for helper in /usr/sbin/smbd /usr/bin/testparm /usr/bin/pdbedit /usr/bin/smbpasswd /usr/bin/smbstatus /usr/bin/smbcontrol; do
     [ -n "$(stat_path "$helper")" ] || { echo "Missing RC0 Samba helper: $helper" >&2; exit 1; }
 done
+[ -n "$(stat_path /usr/lib/phantowd-samba-code/manifest.json)" ]
 config=$(CDPATH='' cd -- "$(dirname -- "$0")/../src/phantowd-api/internal/nfsowner" && pwd)/nfs.conf
 debugfs -R "dump /etc/nfs.conf $scratch/nfs.conf" "$images/rootfs.ext2" >/dev/null 2>&1
 cmp -- "$config" "$scratch/nfs.conf"
@@ -109,6 +110,12 @@ for table in /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6; do
     fi
 done
 echo 'PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent'
+if /usr/bin/phantowd-api --verify-rc0-samba-code; then
+    echo 'PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified'
+else
+    echo 'PHANTOWD_RC0_SMB_ERROR isolated code verification failed'
+    exit 1
+fi
 SH
 debugfs -w -R "write $scratch/check-nfs /etc/init.d/S99rc0-nfs-check" "$image" >/dev/null
 debugfs -w -R 'set_inode_field /etc/init.d/S99rc0-nfs-check mode 0100755' "$image" >/dev/null
@@ -129,7 +136,11 @@ while [ "$attempt" -lt 60 ]; do
     if grep -F 'phantowd-rc0 login:' "$log" >/dev/null &&
         grep -F 'PhantoWD RC0 research image' "$log" >/dev/null &&
         grep -F 'PhantoWD management waiting for admitted boot state' "$log" >/dev/null &&
-        awk '{ sub(/\r$/, "") } $0=="PHANTOWD_RC0_NFS_DORMANT version=3 threads=0 rpc=absent listeners=absent exports=empty" { n++ } $0=="PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent" { s++ } END { exit(n!=1 || s!=1) }' "$log"; then
+        awk '{ sub(/\r$/, "") }
+             $0=="PHANTOWD_RC0_NFS_DORMANT version=3 threads=0 rpc=absent listeners=absent exports=empty" { n++ }
+             $0=="PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent" { s++ }
+             $0=="PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified" { c++ }
+             END { exit(n!=1 || s!=1 || c!=1) }' "$log"; then
         echo 'PHANTOWD_RC0_PROFILE_READY boot=busybox fixtures=absent flashable=no installable=no'
         exit 0
     fi
