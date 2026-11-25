@@ -1484,6 +1484,10 @@ storage. No production roster provider or activation path exists.
   prepare source capture; constructor-review classification is model-only and
   grants no authority. A leased-NAS planner now reads original policy and retained
   identity/storage, then rechecks policy; this is data, not atomic service admission.
+  Linux NFS input preparation now holds the complete roster lease and export
+  roots for one exact enabled candidate. It checks the original policy and
+  identity leases through both guest lifetimes and releases storage after
+  verified stop. Kernel control remains limited to the guarded QEMU adapter.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

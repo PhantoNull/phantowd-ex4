@@ -1,4 +1,12 @@
-# Experimental NFS lifetime (QEMU only)
+# NFS input preparation and experimental QEMU lifetime
+
+On Linux, `PrepareInputs` joins the original NAS policy lease, identity lease
+and mounted volume roster for one enabled NFSv3/TCP request. It owns a complete
+roster lease and export-root pins. `Check` compares the exact request and
+rechecks the original sources. `Close` releases the owned inputs after its caller
+verifies service stop. The caller retains both borrowed leases through close.
+The real two-lifetime guest fixture uses this same input preparation path. The
+kernel and RPC lifecycle remains restricted to the guarded QEMU adapter.
 
 Construction captures one typed candidate and fixed trusted backend without I/O.
 Close serializes input/stopped checks before release; uncertainty retains review
@@ -37,7 +45,7 @@ provisioning or this composition across reboots.
 Bracketed owner observations do not establish atomic three-owner admission.
 No polling supervisor, HTTP or product activation exists.
 
-Linux/QEMU ExportRootsQEMU separately captures original-lease directory metadata
+Linux `ExportRoots` separately captures original-lease directory metadata
 and retains uncertain construction/closure. Native refusal/privacy/model tests
 and a guarded ARM fixture cover mixed roots, whole-volume capture, missing and
 symlink refusal, parent-close exclusion and replacement/restoration review.

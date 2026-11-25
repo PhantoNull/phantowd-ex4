@@ -65,6 +65,16 @@ func (c NFSv3Candidate) FreshAgainst(current Freshness) bool {
 	return c.valid && c.freshness == current
 }
 
+// SameAs compares the exact request and its observations. Equal revision
+// numbers alone cannot identify requests from different policy stores.
+func (c NFSv3Candidate) SameAs(other NFSv3Candidate) bool {
+	return other.valid && c.FreshAgainst(other.freshness) && c.table == other.table &&
+		slices.EqualFunc(c.roots, other.roots, func(a, b NFSExportRoot) bool {
+			return a.ID == b.ID && a.Volume == b.Volume && a.RelativePath == b.RelativePath &&
+				a.ReadOnly == b.ReadOnly && slices.Equal(a.Clients, b.Clients)
+		})
+}
+
 // FreshAgainstStorage compares data only. A trusted consumer must obtain this
 // snapshot from its original roster lease; this grants no retained authority.
 func (c NFSv3Candidate) FreshAgainstStorage(s StorageSnapshot) bool {

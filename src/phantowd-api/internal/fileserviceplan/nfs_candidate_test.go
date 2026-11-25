@@ -67,6 +67,31 @@ func TestNFSv3CandidateDoesNotAliasCallerOrReturnedRequests(t *testing.T) {
 	}
 }
 
+func TestNFSv3CandidateComparisonRefusesAnotherRequestAtTheSameRevision(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	build := func() NFSv3Candidate {
+		t.Helper()
+		plan, err := Build(config, active, identity, storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		candidate, err := plan.NFSv3TCPCandidate()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return candidate
+	}
+	original := build()
+	if !original.SameAs(build()) {
+		t.Fatal("independently built identical requests differ")
+	}
+	config.NFS.Exports[0].Clients[0].Access = "ro"
+	other := build()
+	if !other.FreshAgainst(original.freshness) || original.SameAs(other) {
+		t.Fatal("same-revision policy substitution was not distinguished")
+	}
+}
+
 func TestNFSv3CandidateEmptyPolicyIsDisabledNotMissingOrUnsupported(t *testing.T) {
 	config, active, identity, storage := planInputs(t)
 	config.NFS.Exports = []nfsconfig.Export{}
