@@ -7,10 +7,12 @@ package revisionstore
 
 import (
 	"context"
+	"os"
 	"sync"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyevidence"
+	"golang.org/x/sys/unix"
 )
 
 // NASOwnerBootstrap is a separate owner-capable trusted-parent lifetime.
@@ -26,7 +28,21 @@ type NASOwnerBootstrap struct {
 }
 
 func OpenNASOwnerBootstrap(ctx context.Context, directory, installation string) (*NASOwnerBootstrap, error) {
-	a, err := OpenNASEvidenceAuthority(ctx, directory, installation)
+	return newNASOwnerBootstrap(OpenNASEvidenceAuthority(ctx, directory, installation))
+}
+
+// OpenNASOwnerBootstrapFromDirectory borrows a trusted grant for the policy
+// directory. The bootstrap holds its own description, lock and watch. The caller
+// still supplies independent confirmation and consumer exclusion.
+func OpenNASOwnerBootstrapFromDirectory(ctx context.Context, directory *os.File, installation string) (*NASOwnerBootstrap, error) {
+	return newNASOwnerBootstrap(openNASEvidenceAuthority(installation, func() (*BootstrapAuthority[naspolicy.Config], error) {
+		return openBootstrapAuthority(ctx, nasEvidenceCodec(), func() (int, error) {
+			return borrowDirectoryDescription(directory, unix.O_NOATIME)
+		})
+	}))
+}
+
+func newNASOwnerBootstrap(a *NASEvidenceAuthority, err error) (*NASOwnerBootstrap, error) {
 	if a == nil {
 		return nil, err
 	}

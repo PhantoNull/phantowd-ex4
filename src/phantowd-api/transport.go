@@ -22,6 +22,7 @@ const (
 	listenAddressEnv = "PHANTOWD_LISTEN_ADDR"
 	tlsCertFileEnv   = "PHANTOWD_TLS_CERT_FILE"
 	tlsKeyFileEnv    = "PHANTOWD_TLS_KEY_FILE"
+	tlsIdentityFDEnv = "PHANTOWD_TLS_FD"
 	publicOriginEnv  = "PHANTOWD_PUBLIC_ORIGIN"
 
 	defaultListenAddress = "127.0.0.1:8080"
@@ -52,10 +53,14 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 
 	certFile, certSet := lookup(tlsCertFileEnv)
 	keyFile, keySet := lookup(tlsKeyFileEnv)
+	tlsFD, inheritedTLS := lookup(tlsIdentityFDEnv)
+	if inheritedTLS && (tlsFD != "4" || certSet || keySet) {
+		return apiTransportConfig{}, errors.New("inherited TLS identity requires FD 4 and exclusive configuration")
+	}
 	if certSet != keySet || certSet && (strings.TrimSpace(certFile) == "" || strings.TrimSpace(keyFile) == "") {
 		return apiTransportConfig{}, errors.New("TLS certificate and key must be configured together")
 	}
-	tlsEnabled := certSet
+	tlsEnabled := certSet || inheritedTLS
 
 	origin, originSet := lookup(publicOriginEnv)
 	if originSet && strings.TrimSpace(origin) == "" {
@@ -77,10 +82,7 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 	if !tlsEnabled && parsedOrigin.Scheme != "http" {
 		return apiTransportConfig{}, errors.New("HTTPS public origin requires a TLS certificate and key")
 	}
-	if !tlsEnabled && !isLoopbackHost(parsedOrigin.Hostname()) {
-		return apiTransportConfig{}, errors.New("non-loopback listeners require TLS")
-	}
-	if !tlsEnabled && wildcard {
+	if !tlsEnabled && (!isLoopbackHost(host) || !isLoopbackHost(parsedOrigin.Hostname())) {
 		return apiTransportConfig{}, errors.New("non-loopback listeners require TLS")
 	}
 	if !wildcard && isLoopbackHost(host) && !sameHost(host, parsedOrigin.Hostname()) {
@@ -92,10 +94,15 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 
 	config := apiTransportConfig{Address: address, AllowedOrigin: canonicalOrigin(parsedOrigin)}
 	if tlsEnabled {
-		if err := validatePrivateKeyFile(keyFile); err != nil {
-			return apiTransportConfig{}, err
+		var pair tls.Certificate
+		if inheritedTLS {
+			pair, err = loadInheritedTLSKeyPair()
+		} else {
+			if err := validatePrivateKeyFile(keyFile); err != nil {
+				return apiTransportConfig{}, err
+			}
+			pair, err = tls.LoadX509KeyPair(certFile, keyFile)
 		}
-		pair, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
 			return apiTransportConfig{}, errors.New("TLS certificate/key pair could not be loaded")
 		}

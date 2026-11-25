@@ -118,6 +118,9 @@ func exerciseQEMUNASPolicyRPC() error {
 }
 
 func runQEMUNASPolicyClient(phase string) error {
+	if phase == "boot" || phase == "boot-missing" {
+		return exerciseQEMUNASBoot(phase)
+	}
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Getuid() != 65534 || os.Geteuid() != 65534 || os.Getgid() != 65534 || (phase != "held" && phase != "commit") {
 		return errors.New("wrong NAS policy channel fixture principal or phase")
 	}

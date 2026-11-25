@@ -34,7 +34,7 @@ type CaptureOwner struct {
 	current                       *managedProcess
 	consumed, review, closed      bool
 	closeFailed                   bool
-	// Only a fixed guarded QEMU constructor populates these private inputs.
+	// Fixed typed constructors populate these private retained inputs.
 	// Generic CaptureSpec has no descriptor-injection option.
 	fixtureInputs      []*os.File
 	fixtureInputsValid func() bool
@@ -203,6 +203,11 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 		return CaptureResult{}, err
 	}
 	defer func() { <-c.gate }()
+	return c.captureLocked(ctx)
+}
+
+// The caller holds c.gate through capture and any typed output validation.
+func (c *CaptureOwner) captureLocked(ctx context.Context) (CaptureResult, error) {
 	if c.closed {
 		return CaptureResult{}, ErrUnavailable
 	}

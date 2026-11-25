@@ -1,0 +1,37 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+set -eu
+[ -f /run/phantowd-nas-policy-boot-profile ] || exit 0
+pidfile=/run/phantowd-nas-policy-owner.pid
+root=/run/phantowd-nas-policy-boot
+case "$1" in
+    start)
+        [ ! -e "$pidfile" ] && [ ! -e "$root" ] || exit 1
+        start-stop-daemon --start --background --make-pidfile --pidfile "$pidfile" \
+            --exec /usr/bin/phantowd-api -- --qemu-nas-policy-owner-service
+        attempt=0
+        while [ ! -f "$root/ready" ]; do
+            kill -0 "$(cat "$pidfile")" || exit 1
+            attempt=$((attempt + 1)); [ "$attempt" -lt 10 ] || exit 1
+            sleep 1
+        done
+        [ -S "$root/channel" ] && kill -0 "$(cat "$pidfile")" || exit 1
+        cat "$root/ready"
+        echo 'PHANTOWD_NAS_PROVIDER_INIT_READY before_api=true runtime=run'
+        ;;
+    stop)
+        pid=$(cat "$pidfile")
+        case "$pid" in ''|*[!0-9]*|0|1) exit 1 ;; esac
+        start-stop-daemon --stop --pidfile "$pidfile" --exec /usr/bin/phantowd-api
+        attempt=0
+        while kill -0 "$pid" 2>/dev/null; do
+            attempt=$((attempt + 1)); [ "$attempt" -lt 10 ] || exit 1
+            sleep 1
+        done
+        [ ! -e "$root/channel" ] && [ ! -e "$root/ready" ] || exit 1
+        [ "$(cat "$pidfile")" = "$pid" ] || exit 1
+        rm "$pidfile"
+        ;;
+    *) exit 1 ;;
+esac

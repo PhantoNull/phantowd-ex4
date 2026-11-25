@@ -247,7 +247,8 @@ func runQEMUNFSOwnerActivation() error {
 		if err := b.command(ctx, "/bin/umount", ownerNFSClient); err != nil {
 			return err
 		}
-		if err := owner.Stop(ctx); err != nil {
+		previousTCPPeer, err := stopOwnerWithServerTimeWaitQEMU(ctx, owner.Stop)
+		if err != nil {
 			return fmt.Errorf("owner-stop: %w", err)
 		}
 		if b.policyLease.Verify(ctx) != nil || b.management.exchange(ctx, &next, 503) != nil {
@@ -275,7 +276,7 @@ func runQEMUNFSOwnerActivation() error {
 			return errors.New("desired-policy update after NFS close was not observed")
 		}
 		b.phase = "policy-reapply"
-		if err := b.reapplySavedPolicy(ctx, owner); err != nil {
+		if err := b.reapplySavedPolicy(ctx, owner, previousTCPPeer); err != nil {
 			return err
 		}
 		b.phase = "policy-verify-after-reapply"
@@ -320,6 +321,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_ORDERED_POLICY_READY original_owner=true ordered_writer=true receipt=verified reactivation=verified kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_HTTP_READY original_owner=true protocols=smb,nfs,iscsi busy_while_running=true commit_after_close=true revision=2 nfs_reapplied=true scope=qemu-loopback-only")
 	if err := exerciseQEMUNASPolicyRPC(); err != nil {
@@ -417,6 +419,7 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 	}
 	b.phase = phase + "-kernel-start"
 	if err := b.kernel.Start(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_OWNER_KERNEL_START_REFUSED owner_phase=%s cause=%v\n", b.phase, err)
 		return err
 	}
 	b.phase = phase + "-mountd-start"

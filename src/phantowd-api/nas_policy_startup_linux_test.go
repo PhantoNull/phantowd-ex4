@@ -24,6 +24,7 @@ func TestNASPolicyStartupDisabledAndInvalidOptions(t *testing.T) {
 		{"relative/channel", false, true}, {"/run/x/../x/channel", false, true},
 		{"/run/x/other", false, true}, {"/run/x/channel", true, true},
 		{"/run/x/channel", false, false},
+		{"/run/phantowd-no-provider/channel", false, true},
 	} {
 		h, close, err := openNASPolicyHTTP(auth, tc.path, tc.legacy, tc.tls)
 		if err == nil || h != nil || close != nil {

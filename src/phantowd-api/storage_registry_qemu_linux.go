@@ -6,12 +6,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
@@ -39,14 +42,23 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 			{ID: "logical-missing", FilesystemUUID: "77777777-8888-9999-aaaa-bbbbbbbbbbbb"}}}
 	data, err := json.Marshal(d)
 	file := filepath.Join(dir, "volumes.json")
-	if err != nil || os.WriteFile(file, data, 0600) != nil {
-		return errors.New("registry fixture provision failed")
+	if err != nil {
+		return errors.New("registry fixture encoding failed")
 	}
 	f, err := os.Open(dir)
 	if err != nil {
 		return errors.New("registry fixture descriptor unavailable")
 	}
 	defer f.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, "/proc/self/exe", "--commit-volume-registry", "--expected-registry-revision=0")
+	command.ExtraFiles = []*os.File{f}
+	command.Stdin = bytes.NewReader(data)
+	output, err := command.CombinedOutput()
+	if err != nil || ctx.Err() != nil || string(output) != "revision=1 claims=2\n" {
+		return fmt.Errorf("registry operator fixture command=%v context=%v output=%q", err, ctx.Err(), output)
+	}
 	r, err := volumeregistry.Open(f)
 	if err != nil {
 		return errors.New("protected registry reader unavailable")

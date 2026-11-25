@@ -102,6 +102,13 @@ func TestAPITransportRejectsUnsafeOrIncompleteConfiguration(t *testing.T) {
 			},
 		},
 		{
+			name: "non-loopback HTTP bind claiming a loopback origin",
+			values: map[string]string{
+				listenAddressEnv: "192.0.2.10:8080",
+				publicOriginEnv:  "http://127.0.0.1:8080",
+			},
+		},
+		{
 			name: "remote without explicit origin",
 			values: map[string]string{
 				listenAddressEnv: "192.168.1.16:8443",
@@ -113,6 +120,25 @@ func TestAPITransportRejectsUnsafeOrIncompleteConfiguration(t *testing.T) {
 			name: "partial certificate pair",
 			values: map[string]string{
 				tlsCertFileEnv: "unused.crt",
+			},
+		},
+		{
+			name: "invalid inherited TLS slot",
+			values: map[string]string{
+				tlsIdentityFDEnv: "3",
+			},
+		},
+		{
+			name: "empty inherited TLS slot",
+			values: map[string]string{
+				tlsIdentityFDEnv: "",
+			},
+		},
+		{
+			name: "inherited TLS with certificate path",
+			values: map[string]string{
+				tlsIdentityFDEnv: "4",
+				tlsCertFileEnv:   "unused.crt",
 			},
 		},
 		{

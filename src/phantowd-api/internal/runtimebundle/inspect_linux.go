@@ -35,32 +35,9 @@ func (p *Plan) Inspect(ctx context.Context, root *os.File) (Observation, error) 
 	}
 	defer ownedRoot.Close()
 	fd := int(ownedRoot.Fd())
-	initial, err := inspectMetadata(fd, unix.S_IFDIR, 0)
+	initial, err := p.inspectShape(ctx, fd)
 	if err != nil {
 		return Observation{}, err
-	}
-	var original unix.Stat_t
-	if unix.Stat("/", &original) != nil || (initial.Ino == original.Ino && initial.Dev_major == unix.Major(uint64(original.Dev)) && initial.Dev_minor == unix.Minor(uint64(original.Dev))) {
-		return Observation{}, ErrInvalid
-	}
-	seen := make(map[string]bool, len(p.nodes))
-	if err := p.census(ctx, fd, ".", initial.Mnt_id, seen); err != nil || len(seen) != len(p.nodes) {
-		if err != nil {
-			return Observation{}, err
-		}
-		return Observation{}, ErrMismatch
-	}
-	for _, alias := range p.aliases {
-		parent, err := openBeneath(fd, path.Dir(alias.Path), unix.O_PATH|unix.O_DIRECTORY)
-		if err != nil {
-			return Observation{}, err
-		}
-		buffer := make([]byte, len(alias.Target)+2)
-		count, readErr := unix.Readlinkat(parent, path.Base(alias.Path), buffer)
-		_ = unix.Close(parent)
-		if readErr != nil || count != len(alias.Target)+1 || string(buffer[:count]) != "/"+alias.Target {
-			return Observation{}, ErrMismatch
-		}
 	}
 	// Each scan owns one scratch buffer. No cross-call pool, shared mutable Plan
 	// state, hash cache or reduction of any file/metadata/identity check.
@@ -256,4 +233,36 @@ func hashRuntimeFile(ctx context.Context, file *os.File, size int64, scratch []b
 		return [32]byte{}, 0, err
 	}
 	return digest, total, nil
+}
+
+// Shared topology checks only: no process execution or backend selection.
+func (p *Plan) inspectShape(ctx context.Context, fd int) (unix.Statx_t, error) {
+	initial, err := inspectMetadata(fd, unix.S_IFDIR, 0)
+	if err != nil {
+		return unix.Statx_t{}, err
+	}
+	var original unix.Stat_t
+	if unix.Stat("/", &original) != nil || (initial.Ino == original.Ino && initial.Dev_major == unix.Major(uint64(original.Dev)) && initial.Dev_minor == unix.Minor(uint64(original.Dev))) {
+		return unix.Statx_t{}, ErrInvalid
+	}
+	seen := make(map[string]bool, len(p.nodes))
+	if err := p.census(ctx, fd, ".", initial.Mnt_id, seen); err != nil || len(seen) != len(p.nodes) {
+		if err != nil {
+			return unix.Statx_t{}, err
+		}
+		return unix.Statx_t{}, ErrMismatch
+	}
+	for _, alias := range p.aliases {
+		parent, err := openBeneath(fd, path.Dir(alias.Path), unix.O_PATH|unix.O_DIRECTORY)
+		if err != nil {
+			return unix.Statx_t{}, err
+		}
+		buffer := make([]byte, len(alias.Target)+2)
+		count, readErr := unix.Readlinkat(parent, path.Base(alias.Path), buffer)
+		closeErr := unix.Close(parent)
+		if readErr != nil || closeErr != nil || count != len(alias.Target)+1 || string(buffer[:count]) != "/"+alias.Target {
+			return unix.Statx_t{}, ErrMismatch
+		}
+	}
+	return initial, nil
 }

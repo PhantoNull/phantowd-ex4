@@ -8,6 +8,7 @@ package runtimebundle
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -20,6 +21,10 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"golang.org/x/sys/unix"
 )
+
+// Bound by the trusted fixture builder before guest boot, never from the
+// program being admitted. No runtime setter or product use exists.
+var nativeCodeHashProgramSHA256QEMU string
 
 const NativeSambaConfigQEMU = "/run/phantowd-native-samba-root/etc/samba/smb.conf"
 const nativeCredentialHandoff = "PHANTOWD_NATIVE_CREDENTIAL_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n"
@@ -87,6 +92,13 @@ func (p *Plan) newNativeSambaRuntimeWithStateQEMU(ctx context.Context, code, con
 	if err := sambaCodeFixtureGuard(); err != nil {
 		return nil, err
 	}
+
+	programBytes, err := hex.DecodeString(nativeCodeHashProgramSHA256QEMU)
+	if err != nil || len(programBytes) != sha256.Size || hex.EncodeToString(programBytes) != nativeCodeHashProgramSHA256QEMU {
+		return nil, ErrInvalid
+	}
+	var expectedProgramDigest [sha256.Size]byte
+	copy(expectedProgramDigest[:], programBytes)
 	documents, err := SambaCredentialDocumentsQEMU(lookup)
 	if roots != nil {
 		documents, err = SambaNativeDataDocumentsQEMU(lookup)
@@ -131,6 +143,19 @@ func (p *Plan) newNativeSambaRuntimeWithStateQEMU(ctx context.Context, code, con
 	}
 	if err == nil {
 		err = r.prepareNativeClientsQEMU()
+	}
+
+	if err == nil {
+		program, openErr := os.Open("/usr/sbin/phantowd-code-hash")
+		err = openErr
+		if err == nil {
+			input, inputErr := sealedNativeCredentialInputQEMU(nil)
+			err = inputErr
+			if err == nil {
+				err = errors.Join(o.retainCodeHashProgram(ctx, program, input, expectedProgramDigest), input.Close())
+			}
+			err = errors.Join(err, program.Close())
+		}
 	}
 	if err == nil {
 		err = o.revalidate(ctx)

@@ -6,6 +6,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"runtime"
 	"strings"
@@ -27,6 +28,14 @@ func TestQEMUStatePersistence(t *testing.T) {
 		}
 	}
 	dir := t.TempDir()
+	for _, phase := range []string{"unknown", "verify"} {
+		if err := exerciseQEMUVolumeRegistryPersistence(dir, phase); err == nil {
+			t.Fatal("missing registry was accepted or initialized", phase)
+		}
+	}
+	if _, err := os.Lstat(dir + "/volume-registry"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("refused registry scenario changed state", err)
+	}
 	if err := exerciseQEMUStatePersistence(dir, "verify"); err == nil {
 		t.Fatal("missing state accepted")
 	}

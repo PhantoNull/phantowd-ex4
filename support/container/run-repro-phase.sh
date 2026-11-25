@@ -4,7 +4,7 @@ set -eu
 [ "$#" -eq 3 ] || { echo 'Expected phase, image and isolated volume' >&2; exit 2; }
 phase=$1
 case "$phase" in
-    toolchain) seconds=2400 ;;
+    toolchain) seconds=3600 ;;
     kernel) seconds=1200 ;;
     userspace) seconds=3600 ;;
     rootfs) seconds=900 ;;

@@ -76,6 +76,21 @@ func TestFirstAccountSetupProtectsDiagnostics(t *testing.T) {
 	}
 }
 
+func TestLocalEnrollmentDisablesBrowserSetup(t *testing.T) {
+	auth, accounts := newEmptyTestAuth(t)
+	auth.setupDisabled = true
+	handler := newHandler(nil, nil, auth)
+	body, _ := json.Marshal(setupRequest{Username: "nas-admin", Password: testAdminPassword})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, authRequest(http.MethodPost, authSetupPath, string(body)))
+	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "setup_unavailable") || len(response.Result().Cookies()) != 0 {
+		t.Fatalf("browser enrollment was not refused: %d", response.Code)
+	}
+	if configured, err := accounts.configured(); err != nil || configured {
+		t.Fatalf("browser enrollment altered credentials: configured=%t err=%v", configured, err)
+	}
+}
+
 func TestLoginLogoutCSRFAndSessionRevocation(t *testing.T) {
 	auth, accounts := newEmptyTestAuth(t)
 	if err := accounts.setup(context.Background(), "nas-admin", testAdminPassword); err != nil {

@@ -7,6 +7,8 @@ package main
 
 import "errors"
 
+const developmentBrowserEnrollment = false
+
 func runSelfTest() error {
 	return errors.New("self-test harness is available only in the QEMU development build")
 }

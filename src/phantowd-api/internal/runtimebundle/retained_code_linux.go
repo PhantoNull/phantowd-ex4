@@ -153,19 +153,7 @@ func (c *retainedCode) revalidate(ctx context.Context) error {
 	if _, err := c.plan.Inspect(ctx, c.root); err != nil {
 		return err
 	}
-	if err := c.verifyNodeMetadata(ctx); err != nil {
-		return err
-	}
-	for name, pin := range c.files {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		metadata, err := inspectMetadata(int(pin.Fd()), unix.S_IFREG, c.metadata["."].Mnt_id)
-		if err != nil || metadata != c.metadata[name] {
-			return ErrMismatch
-		}
-	}
-	return ctx.Err()
+	return c.verifyRetainedIdentities(ctx)
 }
 
 // release owns no processes. The containing Owner must establish their absence
@@ -195,4 +183,20 @@ func (c *retainedCode) release() error {
 		c.root = nil
 	}
 	return nil
+}
+
+func (c *retainedCode) verifyRetainedIdentities(ctx context.Context) error {
+	if err := c.verifyNodeMetadata(ctx); err != nil {
+		return err
+	}
+	for name, pin := range c.files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		metadata, err := inspectMetadata(int(pin.Fd()), unix.S_IFREG, c.metadata["."].Mnt_id)
+		if err != nil || metadata != c.metadata[name] {
+			return ErrMismatch
+		}
+	}
+	return ctx.Err()
 }

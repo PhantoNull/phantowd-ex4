@@ -7,6 +7,11 @@ Reviewed: **2026-10-15**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
+The separate QEMU provider boot campaign now tests init-driven provider loss,
+two stable HTTPS refusals, original API lifetime and clean exit without reconnect.
+Its exact-head gates remain required; product provider/state, certificate lifecycle,
+service activation and physical qualification are not closed by this fixture.
+
 The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
@@ -41,7 +46,7 @@ cooling and recovery take priority over feature count or visual polish.
   separate in storage, APIs and UI. Saving a policy must not claim activation.
 - HTTP stays unprivileged. Privileged work uses bounded typed operations,
   independently validated authorization and fixed executable/configuration paths.
-  NAS policy has opt-in API lookup/routing and two actual HTTPS API process lifetimes in QEMU; the dashboard can manually read counts and export coherent SMB/NFS/iSCSI definitions. Root-provider boot/admission and service activation wiring remain open.
+  NAS policy has opt-in API lookup/routing and a separate QEMU init-provider/HTTPS admission campaign; the dashboard can read counts and export coherent definitions. Product provider/state, certificate lifecycle and service activation wiring remain open.
 - No passwords, hashes, tokens or private keys in argv, journals, API errors,
   diagnostics, repository artifacts or public logs.
 - No experimental NAND/flash writes before reviewed format, ECC/OOB, bad-block,
@@ -762,6 +767,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   matching ordered-operation receipt after verified shutdown. Complete
   transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
+  The NAS bootstrap can borrow an already-open policy-directory grant from a
+  future supervisor and retain the same lock and watch through confirmation.
+  The NFS reboot fixture uses this path. Host tests exercise a replaced
+  pathname, caller closure and unsafe grants.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective
@@ -1239,6 +1248,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   sequential bracket is not an atomic/global snapshot, continued freshness,
   retained lease, compatibility qualifier or activation/planner authority.
   No writer, product startup, HTTP, mount/import or new privilege is added.
+  **Explicit claim persistence (partial; locally tested):** the normal Linux
+  registry writer reuses revisionstore's retained-directory/CAS/atomic transaction
+  engine. Existing ID/UUID pairs cannot be removed, renamed or rebound; appends
+  require validated explicit claims. Native real-file/race3 and whole API tagged
+  vet/race, Windows and ARMv5 cross-compilation pass. The existing guest fixture
+  now uses the writer; execution on this changed head remains pending. No product
+  bootstrap, registration UI/CLI, adoption, physical identity or mount authority.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.
@@ -2241,9 +2257,17 @@ milestone before enabling its controls; M1/M6 for deployment.
   without default passwords or unauthenticated remote enrollment takeover.
   Preserve admin/file-service identity separation. No reset may silently erase
   data or ownership.
+  The ordinary API starts only with initialized administrator credentials.
+  A trusted supervisor can provision the first administrator over private
+  stdin and a locked, empty credential directory on FD 3. Browser enrollment
+  is limited to the QEMU development build. A persistent first-use authority,
+  operator interaction and reset recovery remain open.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
-  Transport support is not a certificate provisioning strategy.
+  The Linux API accepts one root-owned certificate/key bundle from its
+  supervisor over read-only FD 4. The standard API fixture exercises this mode
+  with administrator state on FD 3. Initial trust, issuance, durable rotation,
+  supervisor wiring and device time recovery remain open.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

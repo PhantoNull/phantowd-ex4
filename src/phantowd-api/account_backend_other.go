@@ -5,7 +5,11 @@
 
 package main
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"io"
+)
 
 func openInheritedAccountStore() (*accountStore, error) {
 	return nil, errAccountUnavailable
@@ -13,4 +17,8 @@ func openInheritedAccountStore() (*accountStore, error) {
 
 func openAccountBackend(string) (accountBackend, error) {
 	return nil, errors.New("durable administrator state requires Linux")
+}
+
+func provisionInheritedAdministrator(context.Context, io.Reader) error {
+	return errors.New("local administrator provisioning requires Linux")
 }

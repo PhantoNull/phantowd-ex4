@@ -56,6 +56,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 		{nasMainFixture + "/state", 0700, 0, 0},
 		{nasMainFixture + "/private-accounts", 0700, 0, 65534},
 		{nasMainFixture + "/private-accounts/accounts", 0700, 65534, 65534},
+		{nasMainFixture + "/private-tls", 0700, 0, 0},
 	} {
 		if err := errors.Join(os.Mkdir(entry.path, entry.mode), os.Chown(entry.path, entry.uid, entry.gid)); err != nil {
 			return err
@@ -95,6 +96,14 @@ func exerciseQEMUNASPolicyMainProcess() error {
 		return err
 	}
 	defer transport.CloseIdleConnections()
+	public, certErr := os.ReadFile(nasMainFixture + "/cert.pem")
+	private, keyErr := os.ReadFile(nasMainFixture + "/key.pem")
+	if err := errors.Join(certErr, keyErr); err != nil {
+		return err
+	}
+	if err := writeQEMUStateFixture(nasMainFixture+"/private-tls/identity.pem", append(public, private...)); err != nil {
+		return err
+	}
 	password := rand.Text()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -116,6 +125,7 @@ func exerciseQEMUNASPolicyMainProcess() error {
 	}
 	fmt.Println("PHANTOWD_NAS_ORDERED_OWNER_READY standard_main=true https=verified original_owner=true leases=retained ordered_writer=true receipt=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_ADMIN_STATE_GRANT_READY standard_main=true modes=directory-fd,path api_uid=65534 private_parent=denied credentials_retained=true original_directory=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TLS_IDENTITY_GRANT_READY standard_main=true modes=bundle-fd,paths api_uid=65534 private_parent=denied https=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_MAIN_READY standard_main=true api_uid=65534 https=verified setup=true login=true lifetimes=2 credentials_retained=true original_owner=true busy=true commit=true conflict=true shutdown=clean peer_pid=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_SUMMARY_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true counts=verified scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_NAS_POLICY_BACKUP_READY standard_main=true https=verified lifetimes=2 original_owner=true read_only=true full_policy=true scope=disposable-qemu-only")
@@ -127,6 +137,10 @@ func exerciseQEMUNASPolicyMainProcess() error {
 }
 
 func qemuNASMainTLS() (*http.Transport, error) {
+	return qemuNASMainTLSAt(nasMainFixture, 65534, 65534)
+}
+
+func qemuNASMainTLSAt(root string, uid, gid int) (*http.Transport, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -142,9 +156,9 @@ func qemuNASMainTLS() (*http.Transport, error) {
 		return nil, err
 	}
 	public := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	if err := errors.Join(os.WriteFile(nasMainFixture+"/cert.pem", public, 0644),
-		os.WriteFile(nasMainFixture+"/key.pem", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0600),
-		os.Chown(nasMainFixture+"/key.pem", 65534, 65534)); err != nil {
+	if err := errors.Join(os.WriteFile(root+"/cert.pem", public, 0644),
+		os.WriteFile(root+"/key.pem", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0600),
+		os.Chown(root+"/key.pem", uid, gid)); err != nil {
 		return nil, err
 	}
 	pool := x509.NewCertPool()
@@ -219,13 +233,13 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 	h := &qemuNASMainHTTP{client: &http.Client{Transport: transport, Timeout: 5 * time.Second}, origin: "https://" + address}
 	cmd := exec.CommandContext(ctx, "/usr/bin/phantowd-api")
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C",
-		listenAddressEnv + "=" + address, publicOriginEnv + "=" + h.origin, tlsCertFileEnv + "=" + nasMainFixture + "/cert.pem",
-		tlsKeyFileEnv + "=" + nasMainFixture + "/key.pem", "PHANTOWD_NAS_POLICY_SOCKET=" + nasMainFixture + "/channel"}
+		listenAddressEnv + "=" + address, publicOriginEnv + "=" + h.origin,
+		"PHANTOWD_NAS_POLICY_SOCKET=" + nasMainFixture + "/channel"}
 	cmd.Dir, cmd.Stderr, cmd.WaitDelay = "/", os.Stderr, time.Second
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 65534, Gid: 65534, Groups: []uint32{}}, Setpgid: true}
-	var grant *os.File
 	if revision == 1 {
-		probe := exec.CommandContext(ctx, "/bin/sh", "-ec", "test ! -x \"$1\"", "probe", nasMainFixture+"/private-accounts")
+		probe := exec.CommandContext(ctx, "/bin/sh", "-ec", "test ! -x \"$1\" && test ! -x \"$2\"", "probe",
+			nasMainFixture+"/private-accounts", nasMainFixture+"/private-tls")
 		probe.SysProcAttr = cmd.SysProcAttr
 		if err := probe.Run(); err != nil {
 			return errors.New("main fixture private parent is searchable")
@@ -234,21 +248,28 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 		if err != nil {
 			return err
 		}
-		grant = os.NewFile(uintptr(fd), "fixture-admin-directory")
-		cmd.ExtraFiles = []*os.File{grant}
-		cmd.Env = append(cmd.Env, "PHANTOWD_STATE_FD=3")
+		grant := os.NewFile(uintptr(fd), "fixture-admin-directory")
+		identity, err := os.Open(nasMainFixture + "/private-tls/identity.pem")
+		if err != nil {
+			return errors.Join(err, grant.Close())
+		}
+		cmd.ExtraFiles = []*os.File{grant, identity}
+		cmd.Env = append(cmd.Env, "PHANTOWD_STATE_FD=3", tlsIdentityFDEnv+"=4")
 	} else {
 		// Compatibility-only second lifetime reads the first lifetime's bytes.
 		if err := os.Chmod(nasMainFixture+"/private-accounts", 0710); err != nil {
 			return err
 		}
-		cmd.Env = append(cmd.Env, "PHANTOWD_STATE_DIR="+nasMainFixture+"/private-accounts/accounts")
+		cmd.Env = append(cmd.Env, "PHANTOWD_STATE_DIR="+nasMainFixture+"/private-accounts/accounts",
+			tlsCertFileEnv+"="+nasMainFixture+"/cert.pem", tlsKeyFileEnv+"="+nasMainFixture+"/key.pem")
 	}
-	if err := cmd.Start(); err != nil {
-		if grant != nil {
-			err = errors.Join(err, grant.Close())
-		}
-		return err
+	startErr := cmd.Start()
+	var closeErr error
+	for _, file := range cmd.ExtraFiles {
+		closeErr = errors.Join(closeErr, file.Close())
+	}
+	if startErr != nil {
+		return errors.Join(startErr, closeErr)
 	}
 	waited, joined := false, false
 	defer func() {
@@ -257,10 +278,8 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 			cmd.Wait()
 		}
 	}()
-	if grant != nil {
-		if err := grant.Close(); err != nil {
-			return err
-		}
+	if closeErr != nil {
+		return closeErr
 	}
 	deadline, _ := ctx.Deadline()
 	if err := listener.SetDeadline(deadline); err != nil {

@@ -179,7 +179,9 @@ func nativeCoordinatorDisableFixtureQEMU(service *smbexec.NativeIdentityServiceQ
 	}()
 	var journal smbprovision.Journal
 	var pair smbexec.NativeSessionPairQEMU
-	return runNativeCoordinatorPhasesQEMU(context.Background(), func(ctx context.Context) error {
+	// Preserve both phase and nested worker budgets; expose the existing
+	// fixed-label cost telemetry for session preparation and revocation.
+	return runNativeCoordinatorPhasesQEMU(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), func(ctx context.Context) error {
 		var err error
 		journal, err = owner.SMB(target).Load(ctx)
 		if err != nil || journal.Phase != smbprovision.Enabled {

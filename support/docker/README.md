@@ -16,9 +16,14 @@ URLs identifies an object; it never authenticates it.
 
 APT prints its exact package plan with SHA256 forced. The internal installer
 fetches those objects from the official Debian pool, requiring each expected
-SHA-256, then installs with `--no-download`. Two historical objects use fixed
+SHA-256, then installs with `--no-download`. Three historical objects use fixed
 Snapshot locators selected by their expected SHA-256. Missing, malformed or
 incorrect objects refuse; no newer version or automatic retry is substituted.
+
+The retired `ca-certificates 20250419~deb12u1` package uses Snapshot object
+`85be8fcf3d5e2c7a62329c40f4d35762f186a8ab`. Its SHA-256 remains
+`62b08a77d985d4253894b1f69aebda5925034ca4e294add364167fad8cb64a44`, as required
+by the unchanged signed security index. Only the download locator changes.
 
 The slim base lacks HTTPS trust. A dated public Mozilla extract is fetched into
 existing `/usr/share` with mandatory SHA-256, selected explicitly by CAInfo, and

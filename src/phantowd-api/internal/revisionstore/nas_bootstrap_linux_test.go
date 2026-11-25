@@ -18,6 +18,88 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func TestNASBootstrapFromDirectoryRetainsGrant(t *testing.T) {
+	ctx, path := context.Background(), nasEvidenceFixture(t)
+	grant, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grant.Close()
+
+	// The opened object still controls admission after its former name is reused.
+	original := filepath.Join(t.TempDir(), "original-policy")
+	if err := os.Rename(path, original); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	bootstrap, err := OpenNASOwnerBootstrapFromDirectory(ctx, grant, evidenceInstallation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bootstrap.Close()
+	if err := grant.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if probe, err := OpenNASEvidenceAuthority(ctx, original, evidenceInstallation); probe != nil || !errors.Is(err, ErrBusy) {
+		t.Fatal("bootstrap did not retain the original directory lock", err)
+	}
+	observed, err := bootstrap.Observe(ctx)
+	if err != nil || observed.Kind != naspolicyevidence.MatchingLocalRecords {
+		t.Fatal("bootstrap did not observe the granted policy", observed, err)
+	}
+	owner, err := bootstrap.Confirm(ctx, nasWriterPolicy(t, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	lease, err := owner.Acquire(ctx, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("bootstrap used the replacement directory", err)
+	}
+}
+
+func TestNASBootstrapFromDirectoryRefusesInvalidGrants(t *testing.T) {
+	ctx := context.Background()
+	path := t.TempDir()
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
+	public, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer public.Close()
+	file, err := os.CreateTemp(path, "not-a-directory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	closed, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, grant := range []*os.File{nil, public, file, closed} {
+		if bootstrap, err := OpenNASOwnerBootstrapFromDirectory(ctx, grant, evidenceInstallation); bootstrap != nil || !errors.Is(err, ErrUnsafe) {
+			t.Fatal("bootstrap accepted an unsafe grant", err)
+		}
+	}
+}
+
 func TestNASBootstrapTransfersOriginalLifetimeIntoOwner(t *testing.T) {
 	ctx, dir := context.Background(), nasEvidenceFixture(t)
 	b, err := OpenNASOwnerBootstrap(ctx, dir, evidenceInstallation)

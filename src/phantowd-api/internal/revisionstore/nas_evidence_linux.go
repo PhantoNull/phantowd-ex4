@@ -43,11 +43,17 @@ func nasEvidenceCodec() Codec[naspolicy.Config] {
 }
 
 func OpenNASEvidenceAuthority(ctx context.Context, directory, installation string) (*NASEvidenceAuthority, error) {
+	return openNASEvidenceAuthority(installation, func() (*BootstrapAuthority[naspolicy.Config], error) {
+		return OpenBootstrapAuthorityWithCodec(ctx, directory, nasEvidenceCodec())
+	})
+}
+
+func openNASEvidenceAuthority(installation string, open func() (*BootstrapAuthority[naspolicy.Config], error)) (*NASEvidenceAuthority, error) {
 	id, err := hex.DecodeString(installation)
 	if err != nil || len(id) != 16 || hex.EncodeToString(id) != installation || bytes.Equal(id, make([]byte, 16)) {
 		return nil, ErrInvalid
 	}
-	root, err := OpenBootstrapAuthorityWithCodec(ctx, directory, nasEvidenceCodec())
+	root, err := open()
 	if root == nil {
 		return nil, err
 	}

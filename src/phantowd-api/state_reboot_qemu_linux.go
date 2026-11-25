@@ -7,14 +7,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/volumeregistry"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/sharestore"
@@ -111,6 +114,12 @@ func runQEMUStateTest(phase string) (result error) {
 	if err := exerciseQEMUStatePersistence(qemuStateAnchor, phase); err != nil {
 		return fmt.Errorf("state persistence %s: %w", phase, err)
 	}
+	if err := exerciseQEMUVolumeRegistryPersistence(qemuStateAnchor, phase); err != nil {
+		return fmt.Errorf("registry persistence %s: %w", phase, err)
+	}
+	if phase == "verify" {
+		fmt.Println("PHANTOWD_VOLUME_REGISTRY_REBOOT_READY boots=2 operator=normal-cli ids_preserved=true stale_revision_denied=true append_only=true scope=clean-qemu-reboot-only")
+	}
 	if err := exerciseQEMUSMBReboot(phase); err != nil {
 		return fmt.Errorf("SMB persistence %s: %w", phase, err)
 	}
@@ -153,6 +162,86 @@ func exerciseQEMUStatePersistence(root, phase string) error {
 		return err
 	}
 	return exerciseQEMUServiceHTTPPersistence(root, phase)
+}
+
+// This fixture owns the guarded state medium; both commands use the ordinary
+// operator entry point and the same inherited directory across independent boots.
+func exerciseQEMUVolumeRegistryPersistence(root, phase string) (result error) {
+	if phase != "seed" && phase != "verify" {
+		return errors.New("unknown registry persistence phase")
+	}
+	path := root + "/volume-registry"
+	if phase == "seed" {
+		if err := os.Mkdir(path, 0700); err != nil {
+			return err
+		}
+	}
+	directory, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, directory.Close()) }()
+	wanted := volumeregistry.Document{Format: volumeregistry.Format, SchemaVersion: volumeregistry.SchemaVersion,
+		Revision: 1, Volumes: qemuPersistentPolicy(1).Volumes}
+	check := func() (result error) {
+		reader, err := volumeregistry.Open(directory)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, reader.Close()) }()
+		snapshot, err := reader.Read(context.Background())
+		if err != nil {
+			return err
+		}
+		actual, err := snapshot.Claims()
+		if err != nil || !reflect.DeepEqual(actual, wanted) {
+			return errors.New("explicit registry bindings were not preserved")
+		}
+		return nil
+	}
+	commit := func(expected uint64, stale bool) error {
+		payload, err := json.Marshal(wanted)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		command := exec.CommandContext(ctx, "/proc/self/exe", "--commit-volume-registry",
+			fmt.Sprintf("--expected-registry-revision=%d", expected))
+		command.ExtraFiles = []*os.File{directory}
+		command.Stdin = bytes.NewReader(payload)
+		output, err := command.CombinedOutput()
+		if stale {
+			var exit *exec.ExitError
+			if ctx.Err() != nil || !errors.As(err, &exit) || exit.ExitCode() != 1 ||
+				string(output) != "PHANTOWD_REGISTRY_COMMIT_ERROR registry revision conflict\n" {
+				return errors.New("stale registry operator was not refused after boot")
+			}
+			return nil
+		}
+		if err != nil || ctx.Err() != nil || string(output) != fmt.Sprintf("revision=%d claims=%d\n", wanted.Revision, len(wanted.Volumes)) {
+			return fmt.Errorf("registry reboot operator: command=%v context=%v output=%q", err, ctx.Err(), output)
+		}
+		return nil
+	}
+	if phase == "verify" {
+		if err := check(); err != nil {
+			return err // Missing state is never initialized during the second boot.
+		}
+		if err := commit(0, true); err != nil {
+			return err
+		}
+		if err := check(); err != nil {
+			return err
+		}
+		wanted.Revision = 2
+		wanted.Volumes = append(wanted.Volumes, shareconfig.Volume{
+			ID: "fixture-unavailable", FilesystemUUID: "77777777-8888-9999-aaaa-bbbbbbbbbbbb"})
+	}
+	if err := commit(wanted.Revision-1, false); err != nil {
+		return err
+	}
+	return check()
 }
 
 func exerciseQEMUShareStatePersistence(root, phase string) error {

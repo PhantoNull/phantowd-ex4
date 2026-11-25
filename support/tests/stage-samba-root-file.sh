@@ -19,6 +19,11 @@ case "$destination:$mode" in
     /usr/sbin/phantowd-samba-charset-probe:0100755|\
     /usr/sbin/phantowd-runtime-bundle-probe:0100755|\
     /usr/sbin/phantowd-runtime-metadata-tests:0100755|\
+    /usr/sbin/phantowd-code-hash-tests:0100755|\
+    /usr/sbin/phantowd-code-owner-tests:0100755|\
+    /usr/sbin/phantowd-code-hash-tests-init:0100755|\
+    /usr/sbin/phantowd-code-hash-refusal-[1-4]:0100755|\
+    /usr/lib/phantowd/qemu-code-hash.env:0100644|\
     /usr/sbin/phantowd-runtime-owner-init:0100755|\
     /usr/sbin/phantowd-nfs-inputs-init:0100755|\
     /usr/lib/phantowd/qemu-nfs-inputs.json:0100644|\

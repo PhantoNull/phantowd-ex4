@@ -98,6 +98,49 @@ func TestInitializeReopenAndRevision(t *testing.T) {
 	}
 }
 
+func TestCommitPristinePreservesUnrecognizedOrPendingState(t *testing.T) {
+	for _, name := range []string{pendingName, "ownership-evidence"} {
+		t.Run(name, func(t *testing.T) {
+			s, dir := openTest(t)
+			path := filepath.Join(dir, name)
+			if err := os.WriteFile(path, []byte("evidence"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.CommitPristine(policy(1)); !errors.Is(err, ErrReview) {
+				t.Fatalf("nonempty directory admitted: %v", err)
+			}
+			if raw, err := os.ReadFile(path); err != nil || string(raw) != "evidence" {
+				t.Fatalf("existing evidence changed: %v", err)
+			}
+			if _, err := os.Lstat(filepath.Join(dir, currentName)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("current document created: %v", err)
+			}
+		})
+	}
+}
+
+func TestCommitPristineNeverReplacesCurrent(t *testing.T) {
+	s, dir := openTest(t)
+	currentPath := filepath.Join(dir, currentName)
+	stagedPath := filepath.Join(dir, pendingName)
+	originalWrite := s.io.write
+	s.io.write = func(f *os.File, data []byte) (int, error) {
+		if err := os.WriteFile(currentPath, []byte("other authority"), 0600); err != nil {
+			return 0, err
+		}
+		return originalWrite(f, data)
+	}
+	if err := s.CommitPristine(policy(1)); !errors.Is(err, ErrUncertain) {
+		t.Fatalf("unexpected concurrent object did not refuse: %v", err)
+	}
+	if raw, err := os.ReadFile(currentPath); err != nil || string(raw) != "other authority" {
+		t.Fatalf("current object was overwritten: %v", err)
+	}
+	if _, err := os.Stat(stagedPath); err != nil {
+		t.Fatalf("staged evidence was removed: %v", err)
+	}
+}
+
 func TestConcurrentUpdatesAndExclusiveOpen(t *testing.T) {
 	s, dir := openTest(t)
 	if second, err := Open(dir); !errors.Is(err, ErrBusy) {

@@ -22,6 +22,7 @@ import (
 // The initial execution adapter accepts only static ELF/non-root children.
 type Owner struct {
 	*retainedCode
+	hashProgram *retainedHashProgram
 	// Fixed only by the separate disposable Samba constructor. NewOwner's
 	// static/non-root contract and its inputs remain unchanged.
 	configuration *retainedConfiguration
@@ -282,6 +283,11 @@ func (o *Owner) Close(ctx context.Context) error {
 	if stopErr != nil {
 		o.review = true
 	}
+	if err := o.hashProgram.clearScan(); err != nil {
+		o.review = true
+		o.snapshot.State = processowner.StateReviewRequired
+		return errors.Join(ErrReviewRequired, stopErr, err)
+	}
 	if err := o.processes.Close(); err != nil {
 		o.review = true
 		o.snapshot.State = processowner.StateReviewRequired
@@ -310,6 +316,10 @@ func (o *Owner) release() error {
 			return err
 		}
 	}
+	if err := o.hashProgram.release(); err != nil {
+		o.releaseErr = err
+		return err
+	}
 	if err := o.retainedCode.release(); err != nil {
 		o.releaseErr = err
 		return err
@@ -333,7 +343,7 @@ func (o *Owner) release() error {
 }
 
 func (o *Owner) revalidate(ctx context.Context) error {
-	if err := o.retainedCode.revalidate(ctx); err != nil {
+	if err := o.revalidateCode(ctx); err != nil {
 		return err
 	}
 	if o.configuration != nil {

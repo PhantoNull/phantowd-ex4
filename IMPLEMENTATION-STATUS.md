@@ -3,6 +3,92 @@
 
 # Implementation status
 
+## Local first administrator enrollment
+
+The ordinary Linux API requires initialized administrator credentials before
+listening. Its local provisioning command uses the existing credential store,
+bounded stdin and an inherited directory. It preserves staged and unfamiliar
+state and forbids replacing a published credential. The development QEMU
+build retains its browser setup flow. Supervisor and device recovery design
+still define when first-use authority may be granted.
+
+## ARMv5 integration baseline restored
+
+The first QEMU run on `5eb1374` stopped during the SDK download of `gpg-agent`
+before firmware compilation. The second attempt passed on the same commit and
+recorded tree `7e805a3`. The serial log confirms two NFS service lifetimes with
+read, verified write, clean teardown and duplicate live listener refusal.
+[QEMU run and artifacts](https://github.com/PhantoNull/phantowd-ex4/actions/runs/43211735264/attempts/2)
+
+The earlier NFS failure came from a surviving server-side TCP `TIME_WAIT`
+entry after the first shutdown. PR #289 reproduced the second bind refusal,
+fixed rebinding and passed the QEMU, independent build, EX4 B3 compile-only
+and host checks on `9d373cc`. Issue #287 is closed.
+[PR #289](https://github.com/PhantoNull/phantowd-ex4/pull/289) ·
+[Issue #287](https://github.com/PhantoNull/phantowd-ex4/issues/287)
+
+PR #286 passed QEMU, independent build, EX4 B3 compile-only and host checks.
+The QEMU receipt and the `develop` merge `5d6c009` identify the same tree
+`84b8bea`. The independent build job verified byte equality for 11 allowlisted
+artifacts. The guest verified provider stop, authenticated HTTP 503 responses,
+zero reconnects and normal API exit.
+[PR #286](https://github.com/PhantoNull/phantowd-ex4/pull/286) ·
+[Independent build](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45556040130)
+
+## Inherited HTTPS identity
+
+The normal Linux API can acquire a root-owned certificate and key through one
+read-only descriptor. The API validates the bundle, verifies the certificate
+against the configured origin and closes the descriptor before listening. The
+standard API QEMU fixture exercises inherited and path modes in successive
+lifetimes. Product TLS issuance, trust and replacement remain open.
+
+## NAS policy bootstrap from a directory grant
+
+The NAS bootstrap accepts an already-open policy directory and keeps an
+independent descriptor, lock and watch through confirmation and handoff. The
+two-boot NFS fixture uses the descriptor path. Linux host tests cover pathname
+replacement, caller closure, conflicting locks and unsafe directory grants.
+Product state-medium selection and supervisor integration remain open.
+
+## QEMU NAS-policy provider-stop proof
+
+The existing boot campaign pins provider/API generations, verifies init stop and
+removed readiness/socket/pidfile, then requires two authenticated 503 refusals.
+A protected non-accepting listener detects reconnect attempts. The fixture checks
+the original API PID and exit status 0. The hosted QEMU run recorded all three
+stop receipts for the merged tree.
+Product provider/state, certificate lifecycle and service activation remain open.
+
+## QEMU NAS-policy provider boot/admission
+
+A separate read-only-root boot exercises S49 root provider, protected 0710/0660
+channel, S50 non-root HTTPS API, absent-provider refusal and authenticated readback.
+The local and hosted QEMU fixtures verified boot admission and stop. Product
+provider persistence, certificate lifecycle and service activation remain open.
+
+## Explicit volume registration - operator boundary
+
+The normal Linux API binary accepts explicit registry commits through bounded
+stdin JSON and a trusted directory inherited at FD3. Existing ID/UUID pairs are
+preserved by revision CAS. The existing local two-kernel fixture verifies chosen
+IDs, stale-revision refusal and append after clean reboot using that same CLI.
+HTTP registration, product state placement/startup, automatic adoption and
+physical/power-loss qualification remain open. Hosted exact-head acceptance
+must be recorded separately from local fixture evidence.
+
+## M3.2g explicit registry claim persistence - local qualification
+
+The internal normal Linux registry writer now reuses revisionstore through a
+borrowed trusted directory descriptor, fixed volumes.json/pending names and an
+exclusive lock. Explicit revisioned commits may append validated claims; removing,
+renaming or rebinding an existing logical ID is refused before pending cleanup.
+Pinned whole-API tagged vet/race, registry/store race3, Windows API/UI and ARMv5
+cross-compilation pass. Real temporary-file tests verify reopen, preserved refusal
+evidence, concurrent CAS and reader/writer exclusion. The existing ARMv5 fixture
+now uses this writer; changed-head guest execution and hosted CI remain pending.
+No provisioning, HTTP/CLI, production boot, adoption, mount or NAS operation.
+
 ## Retained Samba split-state profile — local research
 
 A separate fixed QEMU profile retains original ext4 `private`/`state` directories

@@ -198,10 +198,14 @@ Trusted parent provisioning and cooperative writers are prerequisites.
 Private reconciliation reuses the complete mounted-ext census validator and
 alias/clone/missing semantics. No selected path, qualification or activation
 token is returned. Protected snapshot provenance is distinct from decoded data
-and desired policy; raw snapshots/reviews reject JSON serialization. This is
-not durable adoption or a production registry: no writer, state location,
-registration API, import/mount, planner/Owner construction or service activation
-is implemented. The UUID-only schema does not prove global uniqueness or legacy
+and desired policy; raw snapshots/reviews reject JSON serialization.
+The normal Linux binary exposes explicit registration through
+`--commit-volume-registry --expected-registry-revision=N`, bounded stdin JSON
+and a pre-provisioned trusted directory inherited at FD3. Existing ID/UUID
+pairs cannot be removed or rebound. Product state placement, registration HTTP,
+import/mount, planner/Owner construction and service activation remain open.
+Registration is not adoption. The UUID-only schema does not prove global
+uniqueness or legacy
 compatibility. Windows preflight, whole pinned Linux tagged vet/race, native
 reader/complete-resolver regressions and actual ARMv5 standard/two-boot overlay
 pass locally. The guest fixture refuses unsafe file modes and a foreign owner,
@@ -721,18 +725,35 @@ and refuses non-Versatile PB machines. See the
   match the origin host. TLS has a minimum version of 1.2. No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
-- `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally
-  requires `PHANTOWD_TLS_CERT_FILE`, `PHANTOWD_TLS_KEY_FILE`, and
-  `PHANTOWD_PUBLIC_ORIGIN` (for example, `https://nas.example:8443`). These are
-  configuration hooks only; the firmware does not provision certificates.
+- `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use also requires
+  `PHANTOWD_PUBLIC_ORIGIN`, such as `https://nas.example:8443`, and a configured
+  TLS identity. In path mode, set `PHANTOWD_TLS_CERT_FILE` and
+  `PHANTOWD_TLS_KEY_FILE` together.
+- A trusted Linux supervisor can set `PHANTOWD_TLS_FD=4` and pass the complete
+  PEM certificate chain and matching private key in one inherited read-only
+  FD. The root-owned regular file must have one link, mode `0400` or `0600`,
+  and a size of at most 128 KiB. Leave both path variables unset in this mode.
+  The API reads from offset zero, checks for file changes, closes its copy of
+  the descriptor and uses the same certificate validity and hostname checks
+  as path mode. Each API start needs a fresh descriptor from the supervisor.
+  Certificate issuance, trusted installation and replacement remain operator
+  and supervisor responsibilities.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
   with the image and its version appears in the CycloneDX SBOM.
-- A first-admin setup/login flow now protects the diagnostic endpoints. It is
-  still a QEMU-only prototype, not a deployable product account system. The
-  initial password must be at least 15 Unicode code points and at most 1024
-  UTF-8 bytes; the username is 1-32 ASCII letters, digits, `.`, `_`, or `-`.
+- The usual Linux API requires a locally provisioned administrator before it
+  opens its listener. A trusted supervisor can run `--provision-administrator`
+  as the non-root API user, passing the private credential-directory grant on
+  FD 3 and a bounded JSON object with `username` and `password` on private
+  stdin. The operator supplies the password through that stream. It must be
+  15 or more Unicode code points and at most 1024 UTF-8 bytes. The username is
+  1–32 ASCII letters, digits, `.`, `_`, or `-`. The account store refuses
+  existing, pending or unfamiliar entries and preserves them for review.
+  Browser enrollment is available to QEMU development builds. The usual API
+  denies browser enrollment and keeps password changes behind authentication.
+  The supervisor must establish first-use authorization and state ownership
+  independently before it supplies the directory.
 - The account verifier is Argon2id PHC at m=19456 KiB, t=2, p=1. Public KDF
   calls share one process-wide slot; a caller waiting for the slot can cancel,
   but a running Argon2 operation cannot be interrupted. These provisional
@@ -1540,6 +1561,16 @@ directory and same-filesystem, single-link `0660` socket. Startup opens without
 symlink traversal, brackets the socket metadata around a descriptor-relative
 connection, checks the root kernel peer and retains that connection/directory.
 It never provisions state/provider, reconnects or selects an HTTP-supplied path.
+
+QEMU smoke additionally boots a read-only root with the fixed
+`--qemu-nas-policy-owner-service`, S49 provider before S50 non-root HTTPS API,
+and disposable `/run` policy/certificate fixtures. It checks absent-provider
+refusal and authenticated readback. Its stop phase pins both original processes,
+stops the provider through init and requires two authenticated 503 reconciliation refusals.
+A protected replacement listener observes zero reconnects without accepting;
+the same API exits with status 0 after init stop. Only this test adopts/reaps the init-created
+API to verify its actual close result. Product startup/state, certificate lifecycle
+and service activation remain separate; exact-head qualification is required.
 
 The standard router exposes authenticated GET/PUT at
 `/api/v1/nas-services/configuration` inside its existing admission bound.

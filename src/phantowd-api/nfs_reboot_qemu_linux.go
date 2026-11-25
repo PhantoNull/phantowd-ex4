@@ -22,6 +22,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"golang.org/x/sys/unix"
 )
 
 const qemuNFSRebootInstallation = "60606060606060606060606060606060"
@@ -92,8 +93,13 @@ func (b *qemuNFSReboot) policy(ctx context.Context, root, phase string) error {
 	if err != nil {
 		return err
 	}
-	b.bootstrap, err = naspolicystore.OpenOwnerBootstrap(ctx, dir, qemuNFSRebootInstallation)
+	fd, err := unix.Open(dir, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
+		return err
+	}
+	grant := os.NewFile(uintptr(fd), "qemu-nfs-reboot-policy-directory")
+	b.bootstrap, err = naspolicystore.OpenOwnerBootstrapFromDirectory(ctx, grant, qemuNFSRebootInstallation)
+	if err := errors.Join(err, grant.Close()); err != nil {
 		return err
 	}
 	if _, err = b.bootstrap.Observe(ctx); err != nil {
