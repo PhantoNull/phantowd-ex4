@@ -73,6 +73,15 @@ HTTPS, and both boots must stop cleanly. Test files enter a copy of the root
 image. The build directory is temporary. The profile remains compile-only,
 `flashable=no` and `installable=no`.
 
+The **RC0 ARMv5 reproducibility** workflow builds the profile on two
+independent hosted runners with fresh Buildroot workspaces. Each runner keeps
+the serial logs and source commit and tree for that attempt. After its QEMU
+checks pass, it exports only the original kernel, Versatile PB DTB and root
+filesystem with their checksums. A separate job verifies the source commit and
+compares both sets byte for byte. For a local container run, pass an empty
+report directory to `build-rc0-profile.sh` to retain its logs and comparison
+images. The workflow keeps the artifacts for one day.
+
 ## Dashboard preview
 
 For a synthetic dashboard preview, run `node support/dashboard-preview.mjs`

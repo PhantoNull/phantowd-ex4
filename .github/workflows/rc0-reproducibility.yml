@@ -1,0 +1,149 @@
+name: RC0 ARMv5 reproducibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/rc0-reproducibility.yml'
+      - 'configs/phantowd_rc0_armv5_defconfig'
+      - 'board/rc0/**'
+      - 'support/container/build-rc0-profile.sh'
+      - 'support/qemu-rc0-*.sh'
+      - 'support/fixtures/rc0-management.go'
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/rc0-reproducibility.yml'
+      - 'versions.env'
+      - 'Config.in'
+      - 'external.*'
+      - '.dockerignore'
+      - 'configs/phantowd_rc0_armv5_defconfig'
+      - 'board/rc0/**'
+      - 'board/qemu/arm-versatile/**'
+      - 'board/qemu/armv5/patches/**'
+      - 'package/phantowd-api/**'
+      - 'src/phantowd-api/**'
+      - 'support/buildroot-patches/**'
+      - 'support/container/**'
+      - 'support/docker/**'
+      - 'support/compare-build-artifacts.sh'
+      - 'support/test-compare-build-artifacts.sh'
+      - 'support/qemu-rc0-*.sh'
+      - 'support/fixtures/rc0-management.go'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Clean RC0 build and boot (${{ matrix.instance }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [one, two]
+    env:
+      BUILD_IMAGE: phantowd/buildroot:rc0-${{ github.run_id }}-${{ github.run_attempt }}
+      BUILD_VOLUME: phantowd-rc0-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.instance }}
+    steps:
+      - name: Check out the workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check version locks and comparison policy
+        run: |
+          sh support/test-firmware-version-locks.sh
+          sh support/test-compare-build-artifacts.sh
+
+      - name: Prepare hosted runner disk budget
+        timeout-minutes: 3
+        run: sh support/container/prepare-repro-runner.sh
+
+      - name: Build pinned environment
+        timeout-minutes: 13
+        run: docker build --file support/docker/Dockerfile --tag "$BUILD_IMAGE" .
+
+      - name: Build RC0 and boot the image in QEMU
+        timeout-minutes: 132
+        run: |
+          reports="$RUNNER_TEMP/phantowd-rc0"
+          mkdir -p "$reports" artifacts
+          printf 'format=phantowd-rc0-research-source-v1\ncommit=%s\ntree=%s\nrun_id=%s\nrun_attempt=%s\nflashable=no\ninstallable=no\n' \
+            "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" \
+            "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > "$reports/source.txt"
+          docker volume create "$BUILD_VOLUME"
+          timeout --signal=TERM --kill-after=10 7800 docker run --rm --name "$BUILD_VOLUME" \
+            --mount type=bind,source="$PWD",target=/external,readonly \
+            --mount type=bind,source="$reports",target=/external/artifacts \
+            --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
+            "$BUILD_IMAGE" /external/support/container/build-rc0-profile.sh /external/artifacts || {
+              status=$?
+              echo "::error::PHANTOWD_RC0_CLEAN_BUILD_FAILED status=$status" >&2
+              exit "$status"
+            }
+          comparison="$RUNNER_TEMP/phantowd-rc0-comparison"
+          mkdir "$comparison"
+          cp -R "$reports/comparison/rc0-armv5" "$comparison/"
+          printf '%s\n' "$(git rev-parse HEAD)" > "$comparison/source-commit.txt"
+
+      - name: Preserve source identity and serial logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-rc0-logs-${{ github.run_attempt }}-${{ matrix.instance }}
+          path: |
+            ${{ runner.temp }}/phantowd-rc0/source.txt
+            ${{ runner.temp }}/phantowd-rc0/rc0-profile-serial.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.seed.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.verify.log
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload the unmodified research images for comparison
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-rc0-images-${{ github.run_attempt }}-${{ matrix.instance }}
+          path: ${{ runner.temp }}/phantowd-rc0-comparison/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove this job's isolated workspace
+        if: always()
+        run: |
+          docker rm -f "$BUILD_VOLUME" 2>/dev/null || true
+          docker volume rm "$BUILD_VOLUME" 2>/dev/null || true
+
+  compare:
+    name: Compare independent RC0 images
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - name: Check out the workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download first clean build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: phantowd-rc0-images-${{ github.run_attempt }}-one
+          path: ${{ runner.temp }}/rc0-one
+
+      - name: Download second clean build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: phantowd-rc0-images-${{ github.run_attempt }}-two
+          path: ${{ runner.temp }}/rc0-two
+
+      - name: Verify source identity, inventories and byte-for-byte equality
+        run: |
+          for instance in one two; do
+            cmp "$RUNNER_TEMP/rc0-$instance/source-commit.txt" <(git rev-parse HEAD)
+          done
+          sh support/compare-build-artifacts.sh --rc0 "$RUNNER_TEMP/rc0-one" "$RUNNER_TEMP/rc0-two"
