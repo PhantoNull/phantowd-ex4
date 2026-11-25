@@ -1820,6 +1820,11 @@ open.
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
   separate protocol/identity/recovery qualification, not an assumed feature.
+  The RC0 ARMv5 profile includes the NFSv3 kernel server and RPC tools for the
+  managed runtime. The image build omits upstream init launchers and static
+  exports. The stock boot fixture checks for zero NFSD threads, no RPC/NFS
+  processes or listeners and an empty export table. Runtime activation
+  requires the admitted kernel and storage owners.
   The combined desired-policy preview flags equal or ancestor/descendant
   SMB/NFS relative paths on the same logical volume for focused review. This is
   consultative only and does not block, mount or activate services. It is

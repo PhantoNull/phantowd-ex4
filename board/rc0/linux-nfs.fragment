@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+CONFIG_NFSD=y
+# CONFIG_NFSD_V2 is not set
+# CONFIG_NFSD_V4 is not set

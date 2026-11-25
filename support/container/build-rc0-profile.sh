@@ -40,9 +40,12 @@ build phantowd_rc0_armv5_defconfig
 grep -Fx 'BR2_PACKAGE_PHANTOWD_API=y' "$output/.config" >/dev/null
 grep -Fx '# BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST is not set' "$output/.config" >/dev/null
 grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_NFS_UTILS_RPC_NFSD=y' "$output/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_RPCBIND=y' "$output/.config" >/dev/null
 build all
 kernel_config="$output/build/linux-$LINUX_VERSION/.config"
-for expected in 'CONFIG_MD=y' 'CONFIG_BLK_DEV_MD=y' 'CONFIG_MD_RAID1=y' '# CONFIG_MD_AUTODETECT is not set'; do
+for expected in 'CONFIG_MD=y' 'CONFIG_BLK_DEV_MD=y' 'CONFIG_MD_RAID1=y' '# CONFIG_MD_AUTODETECT is not set' \
+    'CONFIG_NFSD=y' '# CONFIG_NFSD_V4 is not set'; do
     grep -Fx "$expected" "$kernel_config" >/dev/null
 done
 evidence=${reports:-$output}
@@ -60,7 +63,7 @@ if [ -n "$reports" ]; then
         cp --sparse=always -- "$output/images/$artifact" "$comparison/$artifact"
     done
     install -m 0644 "$output/.config" "$comparison/buildroot.config"
-    install -m 0644 "$output/build/linux-$LINUX_VERSION/.config" "$comparison/linux.config"
+    install -m 0644 "$kernel_config" "$comparison/linux.config"
 
     schema="$workspace/dl/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
     if [ ! -f "$schema" ]; then
