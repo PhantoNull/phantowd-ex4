@@ -29,9 +29,12 @@ legacy QEMU constructor accepts the older mode for baseline overlays only.
 `mountd` uses TCP on port 20048. Before publishing exports the runtime
 matches the kernel listener inodes to the retained process and refuses UDP,
 unexpected owned ports and foreign listeners on the mount port. The same
-port must be free before startup and after shutdown. The platform still
-selects the ingress interface and NFS destination address in the admitted
-namespace. The runtime builds its own nftables input table from the retained
+port must be free before startup and after shutdown. The appliance adapter
+opens the fixed image executables and the NFSD mount in the local namespaces.
+It ties the platform-selected address to one active Ethernet interface and
+rechecks index, name and MAC during the service lifetime. The boot supervisor
+supplies the endpoint selection, NFSD mount and client-quiescence authority.
+The runtime builds its own nftables input table from the retained
 IPv4 export client prefixes. It installs the table before opening ports and
 checks all three ports for conflicts before and after table installation. It
 checks the table, chain and ordered rules before publication and on health
