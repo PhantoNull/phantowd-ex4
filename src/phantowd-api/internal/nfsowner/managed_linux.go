@@ -16,8 +16,8 @@ import (
 )
 
 // LinuxServiceGrants comes from the platform that owns the NFSD mount,
-// namespaces, helper state and network exposure. Quiescent must verify client
-// quiescence in that domain within the supplied context.
+// namespaces and network exposure. Quiescent must verify client quiescence in
+// that domain within the supplied context.
 type LinuxServiceGrants struct {
 	Address                         netip.Addr
 	NFSD, Network, MountNamespace   *os.File
@@ -29,6 +29,7 @@ type managedLinux struct {
 	kernel          *nfskernel.Controller
 	exports         *Exports
 	rpc             *RPC
+	state           *runtimeState
 	quiescent       func(context.Context) error
 	kernelAttempted bool
 }
@@ -86,6 +87,10 @@ func NewManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxSe
 	if err != nil {
 		return nil, fmt.Errorf("open NFSD: %w", err)
 	}
+	m.state, err = prepareRuntimeState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("prepare NFS helper state: %w", err)
+	}
 	m.exports, err = newExports(ctx, inputs, m.kernel, grants.Address, grants.ExportFS)
 	if err != nil {
 		return nil, fmt.Errorf("retain exportfs: %w", err)
@@ -112,6 +117,11 @@ func (m *managedLinux) releaseUnstarted() error {
 			return err
 		}
 	}
+	if m.state != nil {
+		if err := m.state.release(); err != nil {
+			return err
+		}
+	}
 	if m.kernel != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -121,6 +131,9 @@ func (m *managedLinux) releaseUnstarted() error {
 }
 
 func (m *managedLinux) Start(ctx context.Context) error {
+	if err := m.state.check(ctx); err != nil {
+		return err
+	}
 	if err := m.rpc.StartBinder(ctx); err != nil {
 		return fmt.Errorf("start rpcbind: %w", err)
 	}
@@ -128,11 +141,11 @@ func (m *managedLinux) Start(ctx context.Context) error {
 	if err := m.kernel.Start(ctx); err != nil {
 		return fmt.Errorf("start NFSD: %w", err)
 	}
-	return checked(ctx, m.rpc.StartMountd, m.exports.Publish)
+	return checked(ctx, m.state.check, m.rpc.StartMountd, m.exports.Publish)
 }
 
 func (m *managedLinux) VerifyReady(ctx context.Context) error {
-	return checked(ctx, m.kernel.CheckRunning, m.rpc.VerifyReady, m.exports.CheckPublished)
+	return checked(ctx, m.kernel.CheckRunning, m.state.check, m.rpc.VerifyReady, m.exports.CheckPublished)
 }
 
 func (m *managedLinux) Stop(ctx context.Context) error {
@@ -141,7 +154,7 @@ func (m *managedLinux) Stop(ctx context.Context) error {
 			return err
 		}
 	}
-	return checked(ctx, m.exports.Withdraw, m.rpc.Stop)
+	return checked(ctx, m.state.check, m.exports.Withdraw, m.rpc.Stop)
 }
 
 func (m *managedLinux) VerifyStopped(ctx context.Context) error {
@@ -149,9 +162,11 @@ func (m *managedLinux) VerifyStopped(ctx context.Context) error {
 	if m.kernelAttempted {
 		checkKernel = m.kernel.CheckStopped
 	}
-	return checked(ctx, m.quiescent, checkKernel, m.exports.VerifyEmpty, m.rpc.VerifyStopped)
+	return checked(ctx, m.quiescent, checkKernel, m.state.check, m.exports.VerifyEmpty, m.rpc.VerifyStopped)
 }
 
 func (m *managedLinux) Close(ctx context.Context) error {
-	return checked(ctx, m.exports.Close, m.rpc.Close, m.kernel.Close)
+	return checked(ctx, m.state.check, m.exports.Close, m.rpc.Close, func(context.Context) error {
+		return m.state.release()
+	}, m.kernel.Close)
 }

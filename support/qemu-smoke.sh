@@ -566,6 +566,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Managed NFS runtime construction and teardown assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_PRIVATE_STATE_READY etab=private rmtab=private defaults=unchanged stale=refused lifetimes=2 cleanup=verified scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Managed NFS private state assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo 'Original NAS-policy NFS activation assertion missing' >&2
             exit 1

@@ -91,7 +91,15 @@ func runQEMUNFSOwnerActivation() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	err := mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
+	defaultTables, err := qemuNFSDefaultTables()
+	if err != nil {
+		return err
+	}
+	removeStateConfig, err := nfsowner.InstallManagedStateConfigQEMU(ctx)
+	if err != nil {
+		return err
+	}
+	err = mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
 		b := &ownerNFSQEMU{storage: set, phase: "prepare"}
 		var owner *nfsowner.Owner
 		defer func() {
@@ -209,6 +217,9 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil || string(data) != "owner-derived-nfs\n" {
 			return errors.New("NFS owner client read differs")
 		}
+		if err := nfsowner.CheckManagedTablesQEMU(ctx, ownerNFSRoot); err != nil {
+			return err
+		}
 		f, err := os.OpenFile(ownerNFSClient+"/denied", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if f != nil {
 			_ = f.Close()
@@ -319,11 +330,19 @@ func runQEMUNFSOwnerActivation() error {
 	if err != nil {
 		return err
 	}
+	afterTables, err := qemuNFSDefaultTables()
+	if err != nil || afterTables != defaultTables {
+		return errors.Join(errors.New("managed NFS changed the default nfs-utils tables"), err)
+	}
+	if err := removeStateConfig(); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RUNTIME_READY grants=retained rollback=verified lifetimes=2 teardown=verified scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_PRIVATE_STATE_READY etab=private rmtab=private defaults=unchanged stale=refused lifetimes=2 cleanup=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_EXPORTS_READY candidate=retained readback=exact live_close=refused withdrawal=verified lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
@@ -334,6 +353,23 @@ func runQEMUNFSOwnerActivation() error {
 		return err
 	}
 	return exerciseQEMUNASPolicyMainProcess()
+}
+
+type qemuNFSTable struct {
+	found bool
+	data  string
+}
+
+func qemuNFSDefaultTables() ([2]qemuNFSTable, error) {
+	var tables [2]qemuNFSTable
+	for i, path := range []string{"/var/lib/nfs/etab", "/var/lib/nfs/rmtab"} {
+		data, err := os.ReadFile(path)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return tables, err
+		}
+		tables[i] = qemuNFSTable{found: err == nil, data: string(data)}
+	}
+	return tables, nil
 }
 
 // Bootstrap only this synthetic guest document through the existing store.
@@ -415,6 +451,9 @@ func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs
 	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
 		return owner, errors.Join(errors.New("managed NFSD did not cleanly refuse swapped namespace grants"), err)
 	}
+	if err := nfsowner.CheckStaleManagedStateQEMU(ctx, inputs, grants); err != nil {
+		return nil, err
+	}
 	incomplete := grants
 	incomplete.Mountd = nil
 	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
@@ -437,6 +476,9 @@ func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs
 }
 
 func (b *ownerNFSQEMU) releaseBorrowedInputs(ctx context.Context) error {
+	if err := nfsowner.CheckManagedStateReapedQEMU(); err != nil {
+		return err
+	}
 	if err := os.Remove(ownerNFSClient); err != nil {
 		return err
 	}
