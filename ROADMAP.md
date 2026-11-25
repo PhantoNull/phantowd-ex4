@@ -1505,6 +1505,12 @@ open.
   guest lifetimes exercise its start, check and stop, with runtime closure
   preceding storage release. The caller retains the policy and identity claims
   through that closure.
+  The Linux registered NFS supervisor now acquires the exact policy and
+  identity claims for one running service. Health and teardown recheck the
+  protected storage registry through the retained runtime. Shutdown releases
+  service claims only after the kernel and helpers close. Empty export policy
+  leaves no claim or daemon runtime. The ARMv5 peer fixture exercises this
+  composition. The RC0 boot provider still needs platform grants.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

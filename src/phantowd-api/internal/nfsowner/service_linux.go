@@ -22,7 +22,8 @@ type Runtime interface {
 
 type retainedRuntime struct {
 	Runtime
-	inputs *RetainedInputs
+	inputs        *RetainedInputs
+	verifyStorage func(context.Context) error
 }
 
 // NewLinux takes the original input handle and the fixed runtime exclusively.
@@ -51,6 +52,11 @@ func NewLinux(inputs *RetainedInputs, runtime Runtime) (*Owner, error) {
 }
 
 func (b *retainedRuntime) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
+	if b.verifyStorage != nil {
+		if err := b.verifyStorage(ctx); err != nil {
+			return err
+		}
+	}
 	return b.inputs.check(ctx, candidate, true)
 }
 
