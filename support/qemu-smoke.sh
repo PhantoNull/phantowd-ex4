@@ -562,6 +562,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Managed NFS export and withdrawal assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_MANAGED_RUNTIME_READY grants=retained rollback=verified lifetimes=2 teardown=verified scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Managed NFS runtime construction and teardown assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo 'Original NAS-policy NFS activation assertion missing' >&2
             exit 1

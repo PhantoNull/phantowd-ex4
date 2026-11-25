@@ -32,7 +32,6 @@ type RetainedInputs struct {
 	candidate                fileserviceplan.NFSv3Candidate
 	activeRevision           uint64
 	review, closed, attached bool
-	exportsAttached          bool
 }
 
 type inputsConstructionReview struct {

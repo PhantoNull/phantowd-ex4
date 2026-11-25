@@ -1487,7 +1487,7 @@ storage. No production roster provider or activation path exists.
   Linux NFS input preparation now holds the complete roster lease and export
   roots for one exact enabled candidate. It checks the original policy and
   identity leases through both guest lifetimes and releases storage after
-  verified stop. Kernel control remains limited to the guarded QEMU adapter.
+  verified stop. Kernel control has been exercised in the guarded QEMU guest.
   The ordinary Linux service Owner takes those inputs exclusively. Both real
   guest lifetimes exercise its start, check and stop, with runtime closure
   preceding storage release. The caller retains the policy and identity claims
@@ -1496,15 +1496,19 @@ storage. No production roster provider or activation path exists.
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and
   threads at start and stop. A guarded guest uses that path for both real
-  NFS lifetimes. The RC0 service runtime still needs platform admission and
-  export composition. The Linux RPC layer retains qualified `rpcbind`,
+  NFS lifetimes. The RC0 service runtime still needs platform admission.
+  The Linux RPC layer retains qualified `rpcbind`,
   `mountd` and `rpcinfo` executables and checks process and RPC readiness in
   the admitted domain. It owns helper shutdown before releasing executable
   references. Both real guest lifetimes use this layer.
   A retained Linux export component publishes the attached candidate into an
   empty table, checks each rule through pinned `exportfs` and withdraws only
-  its own observed rules after NFSD stop. Both guest lifetimes use the same
-  path. The platform still supplies the private runtime state and storage.
+  its own observed rules after NFSD stop. The Linux managed runtime combines
+  these components behind one Owner, verifies stopped state before releasing
+  them and leaves the original inputs reserved if construction is uncertain.
+  Both guest lifetimes exercise the constructor, including successful retry
+  after checked rollback of an invalid executable grant. The RC0 platform still
+  needs private runtime state, qualified storage and network supervision.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

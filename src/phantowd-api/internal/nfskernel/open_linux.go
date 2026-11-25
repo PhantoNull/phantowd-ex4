@@ -10,10 +10,20 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"golang.org/x/sys/unix"
 )
 
 const kernelLockName = ".phantowd-nfs-kernel.lock"
+
+type kernelConstructionReview struct {
+	constructionreview.Marker
+	controller *Controller
+	cause      error
+}
+
+func (*kernelConstructionReview) Error() string   { return "NFS kernel construction requires review" }
+func (r *kernelConstructionReview) Unwrap() error { return r.cause }
 
 // CheckDomain checks the admitted Linux controller and its explicit endpoint
 // before the surrounding runtime launches a helper in the same namespace.
@@ -52,7 +62,10 @@ func OpenLinux(ctx context.Context, directory, network, mounts *os.File, address
 		}
 		for _, file := range []*os.File{k.directory, k.mounts, k.network, k.lock} {
 			if file != nil {
-				result = errors.Join(result, file.Close())
+				if err := file.Close(); err != nil {
+					result = &kernelConstructionReview{controller: k, cause: errors.Join(result, err)}
+					return
+				}
 			}
 		}
 	}()
@@ -101,7 +114,7 @@ func OpenLinux(ctx context.Context, directory, network, mounts *os.File, address
 	}
 	k.phase = "admitted-profile"
 	if err := k.profile(ctx, false); err != nil {
-		return nil, err
+		return nil, &kernelConstructionReview{controller: k, cause: err}
 	}
 	return k, nil
 }
