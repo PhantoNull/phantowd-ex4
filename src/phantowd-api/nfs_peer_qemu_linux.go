@@ -36,24 +36,59 @@ const (
 func runQEMUNFSPeer(mode string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
+	filter, err := peerNFSFilterMode()
+	if err != nil {
+		return err
+	}
 	if mode == "peer-server" {
-		return serveQEMUManagedNFS(ctx)
+		return serveQEMUManagedNFS(ctx, filter)
 	}
 	if !nfskernel.PeerClientQEMU() {
 		return errors.New("separate NFS client requires fixed QEMU role")
 	}
-	return useQEMUManagedNFS(ctx)
+	return useQEMUManagedNFS(ctx, filter)
 }
 
-func serveQEMUManagedNFS(ctx context.Context) error {
+func peerNFSFilterMode() (string, error) {
+	command, err := os.ReadFile("/proc/cmdline")
+	if err != nil {
+		return "", err
+	}
+	var filter string
+	for _, flag := range strings.Fields(string(command)) {
+		value, found := strings.CutPrefix(flag, "phantowd_nfs_peer_filter=")
+		if !found {
+			continue
+		}
+		if filter != "" || value != "nftables" && value != "export-policy" {
+			return "", errors.New("ambiguous peer NFS filter mode")
+		}
+		filter = value
+	}
+	if filter == "" {
+		return "", errors.New("missing peer NFS filter mode")
+	}
+	return filter, nil
+}
+
+func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if !nfskernel.PeerServerQEMU() {
 		return nfskernel.ErrRefused
 	}
-	if _, err := peerNFSInterface("52:54:00:12:34:01", peerNFSServer); err != nil {
+	device, err := peerNFSInterface("52:54:00:12:34:01", peerNFSServer)
+	if err != nil {
 		return err
 	}
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
+	}
+	var nft *os.File
+	if filter == "nftables" {
+		nft, err = os.Open("/usr/sbin/nft")
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, nft.Close()) }()
 	}
 	removeConfig, err := nfsowner.InstallManagedStateConfigQEMU(ctx)
 	if err != nil {
@@ -86,7 +121,11 @@ func serveQEMUManagedNFS(ctx context.Context) error {
 			if unexpected, err := nfsowner.NewManagedLinux(ctx, b.inputs, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
 				return unexpected, errors.Join(errors.New("production NFS admitted a missing firewall grant"), err)
 			}
-			return nfsowner.NewManagedLinuxQEMU(ctx, b.inputs, grants)
+			if filter == "export-policy" {
+				return nfsowner.NewManagedLinuxQEMU(ctx, b.inputs, grants)
+			}
+			grants.NFTables, grants.IngressIndex = nft, device.Index
+			return nfsowner.NewManagedLinux(ctx, b.inputs, grants)
 		})
 		if err != nil {
 			return err
@@ -118,6 +157,13 @@ func serveQEMUManagedNFS(ctx context.Context) error {
 			return err
 		}
 		defer func() { result = errors.Join(result, conn.Close()) }()
+		if filter == "nftables" {
+			b.phase = "peer-packet-filter"
+			if err := verifyPeerNFSUDPDrop(conn); err != nil {
+				return err
+			}
+		}
+		b.phase = "peer-allowed-mount"
 		if err := readPeerNFSMessage(conn, "mounted\n"); err != nil {
 			return err
 		}
@@ -168,11 +214,11 @@ func serveQEMUManagedNFS(ctx context.Context) error {
 	if err := removeConfig(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private teardown=clean scope=isolated-two-guest-only")
+	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 
-func useQEMUManagedNFS(ctx context.Context) error {
+func useQEMUManagedNFS(ctx context.Context, filter string) error {
 	const mac = "52:54:00:12:34:02"
 	device, err := peerNFSInterface(mac, peerNFSDenied)
 	if err != nil {
@@ -192,15 +238,21 @@ func useQEMUManagedNFS(ctx context.Context) error {
 		return peerNFSCommand(ctx, "/bin/mount", "-t", "nfs", "-o",
 			"vers=3,proto=tcp,mountproto=tcp,nolock,soft,timeo=5,retrans=1", peerNFSSource, peerNFSClientMount)
 	}
-	out, err := mount()
-	message := strings.ToLower(string(out))
-	if err == nil || !strings.Contains(message, "access denied by server") && !strings.Contains(message, "permission denied") {
-		return fmt.Errorf("unlisted peer did not receive an NFS access refusal: %v %s", err, out)
+	if filter == "nftables" {
+		if err := checkPeerNFSTCP(ctx, false); err != nil {
+			return err
+		}
+	} else {
+		out, err := mount()
+		message := strings.ToLower(string(out))
+		if err == nil || !strings.Contains(message, "access denied by server") && !strings.Contains(message, "permission denied") {
+			return fmt.Errorf("unlisted peer did not receive an NFS access refusal: %v %s", err, out)
+		}
 	}
 	if err := checkPeerNFSMount(false); err != nil {
 		return err
 	}
-	if _, err := peerNFSCommand(ctx, "/sbin/ifconfig", device, peerNFSAllowed, "netmask", "255.255.255.248", "up"); err != nil {
+	if _, err := peerNFSCommand(ctx, "/sbin/ifconfig", device.Name, peerNFSAllowed, "netmask", "255.255.255.248", "up"); err != nil {
 		return err
 	}
 	if _, err := peerNFSInterface(mac, peerNFSAllowed); err != nil {
@@ -211,6 +263,14 @@ func useQEMUManagedNFS(ctx context.Context) error {
 		return err
 	}
 	defer conn.Close()
+	if filter == "nftables" {
+		if err := checkPeerNFSTCP(ctx, true); err != nil {
+			return err
+		}
+		if err := probePeerNFSUDP(ctx, conn); err != nil {
+			return err
+		}
+	}
 	if _, err := mount(); err != nil {
 		return err
 	}
@@ -253,14 +313,14 @@ func useQEMUManagedNFS(ctx context.Context) error {
 	if err := readPeerNFSMessage(conn, "verified\n"); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_NFS_PEER_CLIENT_READY protocol=nfs3 transport=tcp denied_source=true read=true write=true fsync=true unmount=clean scope=isolated-two-guest-only")
+	fmt.Printf("PHANTOWD_NFS_PEER_CLIENT_READY protocol=nfs3 transport=tcp denied_source=true filter=%s read=true write=true fsync=true unmount=clean scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 
-func peerNFSInterface(mac, address string) (string, error) {
+func peerNFSInterface(mac, address string) (*net.Interface, error) {
 	devices, err := net.Interfaces()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for _, device := range devices {
 		if device.HardwareAddr.String() != mac {
@@ -268,23 +328,104 @@ func peerNFSInterface(mac, address string) (string, error) {
 		}
 		addrs, err := device.Addrs()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		var ipv4 []string
 		for _, addr := range addrs {
 			prefix, err := netip.ParsePrefix(addr.String())
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			if prefix.Addr().Is4() {
 				ipv4 = append(ipv4, prefix.String())
 			}
 		}
 		if len(ipv4) == 1 && ipv4[0] == address+"/29" {
-			return device.Name, nil
+			return &device, nil
 		}
 	}
-	return "", errors.New("unexpected peer interface address")
+	return nil, errors.New("unexpected peer interface address")
+}
+
+func checkPeerNFSTCP(ctx context.Context, allowed bool) error {
+	dialer := net.Dialer{Timeout: 500 * time.Millisecond}
+	for _, port := range []string{"111", "2049", "20048"} {
+		conn, err := dialer.DialContext(ctx, "tcp4", net.JoinHostPort(peerNFSServer, port))
+		if allowed {
+			if err != nil {
+				return fmt.Errorf("admitted TCP port %s: %w", port, err)
+			}
+			if err := conn.Close(); err != nil {
+				return err
+			}
+			continue
+		}
+		if err == nil {
+			return errors.Join(fmt.Errorf("unlisted peer reached TCP port %s", port), conn.Close())
+		}
+		var timeout net.Error
+		if !errors.As(err, &timeout) || !timeout.Timeout() || ctx.Err() != nil {
+			return fmt.Errorf("TCP port %s did not show packet drop: %w", port, err)
+		}
+	}
+	return nil
+}
+
+func verifyPeerNFSUDPDrop(control net.Conn) (result error) {
+	address := net.ParseIP(peerNFSServer)
+	listener, err := net.ListenUDP("udp4", &net.UDPAddr{IP: address, Port: 2049})
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, listener.Close()) }()
+	witness, err := net.ListenUDP("udp4", &net.UDPAddr{IP: address, Port: 30002})
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, witness.Close()) }()
+	if err := writePeerNFSMessage(control, "udp-ready\n"); err != nil {
+		return err
+	}
+	if err := readPeerNFSMessage(control, "udp-sent\n"); err != nil {
+		return err
+	}
+	if err := witness.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		return err
+	}
+	var b [32]byte
+	size, remote, err := witness.ReadFromUDP(b[:])
+	if err != nil || remote.IP.String() != peerNFSAllowed || string(b[:size]) != "test" {
+		return errors.Join(errors.New("UDP witness did not reach the unrelated port"), err)
+	}
+	if err := listener.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
+		return err
+	}
+	_, _, err = listener.ReadFromUDP(b[:])
+	var timeout net.Error
+	if !errors.As(err, &timeout) || !timeout.Timeout() {
+		return errors.Join(errors.New("UDP reached the filtered NFS port"), err)
+	}
+	return writePeerNFSMessage(control, "udp-blocked\n")
+}
+
+func probePeerNFSUDP(ctx context.Context, control net.Conn) error {
+	if err := readPeerNFSMessage(control, "udp-ready\n"); err != nil {
+		return err
+	}
+	dialer := net.Dialer{Timeout: time.Second}
+	for _, port := range []string{"2049", "30002"} {
+		conn, err := dialer.DialContext(ctx, "udp4", net.JoinHostPort(peerNFSServer, port))
+		if err != nil {
+			return err
+		}
+		if err := errors.Join(writePeerNFSMessage(conn, "test"), conn.Close()); err != nil {
+			return err
+		}
+	}
+	if err := writePeerNFSMessage(control, "udp-sent\n"); err != nil {
+		return err
+	}
+	return readPeerNFSMessage(control, "udp-blocked\n")
 }
 
 func acceptNFSPeer(listener *net.TCPListener, address string, deadline time.Time) (*net.TCPConn, error) {

@@ -53,6 +53,21 @@ case "$(cat /proc/cmdline)" in
     *' phantowd.state=rotated') phase=rotated ;;
     *) exit 1 ;;
 esac
+if [ "$phase" = seed ]; then
+    table=phantowd_rc0_nft_fixture
+    printf '%s\n' \
+        "create table inet $table" \
+        "add chain inet $table input { type filter hook input priority -10; policy accept; }" \
+        "add rule inet $table input tcp dport 2049 drop" |
+        /usr/sbin/nft -f -
+    /usr/sbin/nft -j list table inet "$table" > /run/rc0-nft-present.json
+    grep -Eq '"json_schema_version":[[:space:]]*1' /run/rc0-nft-present.json
+    grep -F "\"$table\"" /run/rc0-nft-present.json >/dev/null
+    /usr/sbin/nft delete table inet "$table"
+    /usr/sbin/nft -j list tables > /run/rc0-nft-after.json
+    if grep -F "\"$table\"" /run/rc0-nft-after.json; then exit 1; fi
+    echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
+fi
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
 umount /mnt
 echo "PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase"
@@ -124,6 +139,8 @@ if [ "$original" != "$reopened" ] || [ "$original" = "$replacement" ] || [ "$rep
 fi
 tr -d '\r' < "$log_prefix.verify.log" |
     grep -Fx 'PHANTOWD_RC0_TLS_ROTATION live=refused wrong_fingerprint=refused stale=refused replacement=published' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu' >/dev/null
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_BOOT_HANDOFF wrong_mount=refused wrong_inode=refused wrong_policy=refused wrong_tls=refused' >/dev/null
 tr -d '\r' < "$log_prefix.rotated.log" |

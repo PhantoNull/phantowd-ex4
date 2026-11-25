@@ -6,6 +6,11 @@ log_file="${2:-$images_dir/qemu-smoke.log}"
 expected_kernel="${3:-}"
 qemu_binary="${QEMU_SYSTEM_ARM:-qemu-system-arm}"
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+legacy_nfs_base=${PHANTOWD_QEMU_NFS_LEGACY_BASE:-0}
+case "$legacy_nfs_base" in
+    0|1) ;;
+    *) echo 'PHANTOWD_QEMU_NFS_LEGACY_BASE must be 0 or 1' >&2; exit 1 ;;
+esac
 smoke_timeout=${PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS:-240}
 case "$smoke_timeout" in
     ''|*[!0-9]*|0*)
@@ -674,7 +679,13 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
         kill "$qemu_pid"
         wait "$qemu_pid" 2>/dev/null || true
         qemu_pid=
-        python3 "$script_dir/qemu-nfs-peer.py" "$images_dir" "$log_file.peer" || {
+        (
+            set --
+            if [ "$legacy_nfs_base" -eq 1 ]; then
+                set -- --legacy-base
+            fi
+            exec python3 "$script_dir/qemu-nfs-peer.py" "$@" "$images_dir" "$log_file.peer"
+        ) || {
             cat "$log_file.peer.server" "$log_file.peer.client" >> "$log_file"
             tail -n 80 "$log_file" >&2
             exit 1

@@ -1449,6 +1449,12 @@ rebuilds/injects the helper and runs both fixtures. This fast mode is local
 feedback only and cannot qualify storage-helper changes, reboot persistence,
 or the complete Buildroot output.
 
+The full smoke campaign requires the managed NFS packet filter. To reuse a
+trusted base that predates nftables, set `PHANTOWD_QEMU_NFS_LEGACY_BASE=1` in
+the Linux overlay runner environment. The peer receipt then records
+`filter=export-policy`; use a fresh common Buildroot image for
+`filter=nftables`. The full-image builder always selects the nftables case.
+
 The normal QEMU smoke driver additionally creates a fresh 16-MiB ext2 data
 image with a fixed **test-only** UUID and synthetic SCSI serial/WWN, plus a
 read-only clone with distinct synthetic device identifiers. All virtual disks
