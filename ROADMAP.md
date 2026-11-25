@@ -1507,8 +1507,12 @@ storage. No production roster provider or activation path exists.
   these components behind one Owner, verifies stopped state before releasing
   them and leaves the original inputs reserved if construction is uncertain.
   Both guest lifetimes exercise the constructor, including successful retry
-  after checked rollback of an invalid executable grant. The RC0 platform still
-  needs private runtime state, qualified storage and network supervision.
+  after checked rollback of an invalid executable grant. The managed runtime
+  reserves fresh root-only `etab` and `rmtab` state on `/run`, rejects stale
+  state and removes its tables after verified shutdown. Both guest lifetimes
+  check the private tables and confirm the default tables were untouched.
+  RC0 still needs network exposure control, RPC socket isolation and qualified
+  storage integration.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

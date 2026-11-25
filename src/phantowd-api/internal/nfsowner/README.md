@@ -19,10 +19,17 @@ helpers and export manager. It retains the explicit NFSD, namespace and
 executable grants before startup, then sequences rpcbind, NFSD, mountd and
 publication. It verifies readiness through all three components and verifies
 client quiescence, an empty export table and stopped helpers before release.
-The platform supplies namespace isolation, private RPC/export state, network
-exposure and the client quiescence check. The guarded guest uses this constructor
-for both lifetimes and proves that rejected partial admission unwinds before a
-fresh admission with the same original inputs.
+The platform supplies namespace isolation, RPC socket isolation, network
+exposure and the client quiescence check. The managed runtime creates fresh
+root-only state on the appliance's original `/run` tmpfs. The shipped
+`nfs.conf` directs nfs-utils 2.8.6 to that state for both exports and client
+records. The runtime requires that exact configuration and refuses vendor
+configuration or drop-ins that could redirect the helpers. Closure removes
+only recognized state files after verified stop and refuses stale state on
+subsequent construction. The guarded guest uses this constructor for both
+lifetimes, checks the actual private tables and confirms the default tables
+are untouched. It also proves that rejected partial admission unwinds before
+a fresh admission with the same original inputs.
 The Linux export component pins `exportfs` and takes the original candidate
 from the attached input handle. It starts from an empty table and checks the
 exact nfs-utils display of each generated client rule. After verified NFSD
