@@ -1,0 +1,9 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+set -eu
+
+case "${1:-}" in
+    start|stop) exec /usr/bin/phantowd-api "--rc0-boot-service=$1" ;;
+    *) echo 'Usage: S51phantowd-management {start|stop}' >&2; exit 2 ;;
+esac
