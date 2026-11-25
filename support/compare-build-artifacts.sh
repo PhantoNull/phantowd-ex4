@@ -19,7 +19,13 @@ if [ "$profile" = rc0 ]; then
     expected_files=$(printf '%s\n' \
         source-commit.txt \
         rc0-armv5/SHA256SUMS \
+        rc0-armv5/buildroot-show-info.json \
+        rc0-armv5/buildroot.config \
+        rc0-armv5/host-license-manifest.csv \
+        rc0-armv5/license-manifest.csv \
+        rc0-armv5/linux.config \
         rc0-armv5/rootfs.ext2 \
+        rc0-armv5/sbom.cdx.json \
         rc0-armv5/versatile-pb.dtb \
         rc0-armv5/zImage | LC_ALL=C sort)
 else
@@ -73,7 +79,9 @@ validate_build_directory() {
     fi
 
     if [ "$profile" = rc0 ]; then
-        validate_manifest "$directory/rc0-armv5" zImage versatile-pb.dtb rootfs.ext2
+        validate_manifest "$directory/rc0-armv5" zImage versatile-pb.dtb rootfs.ext2 \
+            buildroot.config linux.config buildroot-show-info.json sbom.cdx.json \
+            license-manifest.csv host-license-manifest.csv
         return
     fi
 

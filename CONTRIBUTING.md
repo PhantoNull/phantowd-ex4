@@ -76,12 +76,14 @@ image. The build directory is temporary. The profile remains compile-only,
 The **RC0 ARMv5 reproducibility** workflow builds the profile on two
 independent hosted runners with fresh Buildroot workspaces. Each runner keeps
 the serial logs and source commit and tree for that attempt. After its QEMU
-checks pass, it exports only the original kernel, Versatile PB DTB and root
-filesystem with their checksums. A separate job verifies the source commit and
+checks pass, it exports the original kernel, Versatile PB DTB and root
+filesystem along with the resolved Buildroot and Linux configurations,
+Buildroot package information, CycloneDX SBOM, host and target license
+manifests, and checksums. A separate job verifies the source commit and
 compares both sets byte for byte. The HTTPS fixture checks that QEMU provides
 entropy through its virtual RNG. For a local container run, pass an empty
-report directory to `build-rc0-profile.sh` to retain its logs and comparison
-images. The workflow keeps the artifacts for one day.
+report directory to `build-rc0-profile.sh` to retain these files and logs.
+The workflow keeps the artifacts for one day.
 
 ## Dashboard preview
 
