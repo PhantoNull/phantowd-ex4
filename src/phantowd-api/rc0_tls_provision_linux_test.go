@@ -21,17 +21,17 @@ func TestRC0TLSBundleRequiresMatchingCurrentlyValidHTTPSIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	if !validRC0TLSBundle(bundle, origin, now) {
+	if !validRC0TLSFingerprint(rc0TLSBundleFingerprint(bundle, origin, now)) {
 		t.Fatal("matching current identity was refused")
 	}
 	for _, wrong := range []string{"http://nas.example:8443", "https://other.example:8443", origin + "/"} {
-		if validRC0TLSBundle(bundle, wrong, now) {
+		if rc0TLSBundleFingerprint(bundle, wrong, now) != "" {
 			t.Fatal("unsafe origin was accepted")
 		}
 	}
-	if validRC0TLSBundle(bundle, origin, now.Add(48*time.Hour)) ||
-		validRC0TLSBundle(bundle, origin, now.Add(-2*time.Hour)) ||
-		validRC0TLSBundle(append(bundle, make([]byte, maxTLSIdentityBytes)...), origin, now) {
+	if rc0TLSBundleFingerprint(bundle, origin, now.Add(48*time.Hour)) != "" ||
+		rc0TLSBundleFingerprint(bundle, origin, now.Add(-2*time.Hour)) != "" ||
+		rc0TLSBundleFingerprint(append(bundle, make([]byte, maxTLSIdentityBytes)...), origin, now) != "" {
 		t.Fatal("expired, future or oversized identity was accepted")
 	}
 }
@@ -44,7 +44,7 @@ func TestRC0TLSPublicationPreservesStagingAndDoesNotReplace(t *testing.T) {
 	if err := os.WriteFile(stage, []byte("interrupted"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := publishInitialRC0TLS(root, []byte("replacement")); !errors.Is(err, errRC0TLSProvision) {
+	if err := publishRC0TLS(root, []byte("replacement"), false); !errors.Is(err, errRC0TLSProvision) {
 		t.Fatal("installation proceeded with staged evidence")
 	}
 	if data, err := os.ReadFile(stage); err != nil || string(data) != "interrupted" {
@@ -57,10 +57,10 @@ func TestRC0TLSPublicationPreservesStagingAndDoesNotReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := []byte("validated identity fixture")
-	if err := publishInitialRC0TLS(root, data); err != nil {
+	if err := publishRC0TLS(root, data, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := publishInitialRC0TLS(root, []byte("replacement")); !errors.Is(err, errRC0TLSProvision) {
+	if err := publishRC0TLS(root, []byte("replacement"), false); !errors.Is(err, errRC0TLSProvision) {
 		t.Fatal("installation overwrote a published identity")
 	}
 	if info, err := os.Stat(identity); err != nil || info.Mode() != 0600 {
@@ -68,5 +68,21 @@ func TestRC0TLSPublicationPreservesStagingAndDoesNotReplace(t *testing.T) {
 	}
 	if raw, err := os.ReadFile(identity); err != nil || !bytes.Equal(raw, data) {
 		t.Fatal("published identity bytes changed")
+	}
+	if err := os.WriteFile(stage, []byte("interrupted renewal"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	replacement := []byte("replacement")
+	if err := publishRC0TLS(root, replacement, true); !errors.Is(err, errRC0TLSProvision) {
+		t.Fatal("replacement proceeded with staged evidence")
+	}
+	if err := os.Remove(stage); err != nil {
+		t.Fatal(err)
+	}
+	if err := publishRC0TLS(root, replacement, true); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := os.ReadFile(identity); err != nil || !bytes.Equal(raw, replacement) {
+		t.Fatal("replacement identity bytes differ")
 	}
 }

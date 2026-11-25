@@ -102,6 +102,7 @@ jobs:
             ${{ runner.temp }}/phantowd-rc0/rc0-profile-serial.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.seed.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.verify.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.rotated.log
           if-no-files-found: ignore
           retention-days: 1
 

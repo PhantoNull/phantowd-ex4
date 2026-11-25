@@ -15,6 +15,6 @@ func runRC0Management(context.Context, string, string, string) error {
 	return errors.New("RC0 management supervision requires Linux")
 }
 
-func provisionInheritedRC0TLS(io.Reader, string) error {
+func provisionInheritedRC0TLS(io.Reader, string, string) error {
 	return errors.New("RC0 TLS provisioning requires Linux")
 }
