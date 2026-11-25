@@ -72,8 +72,9 @@ state image. It authenticates and reads the same policy over HTTPS, rotates
 the TLS identity while the supervisor is stopped, and verifies both certificate
 fingerprints across their respective boot cycles. Every boot must stop cleanly.
 The stock init hook waits for an admitted state handoff. The fixture stages
-that handoff on the third boot, checks HTTPS and requests a clean stop from
-the same init hook. Test files enter a copy of the root image. The build
+that handoff on the third boot through the launcher command, checks HTTPS,
+requests a clean stop from the same init hook and withdraws the mount clone.
+Test files enter a copy of the root image. The build
 directory is temporary. The profile remains compile-only,
 `flashable=no` and `installable=no`.
 

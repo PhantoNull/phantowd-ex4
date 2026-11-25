@@ -20,6 +20,7 @@ import (
 
 const (
 	rc0BootGrantName      = "phantowd-boot"
+	rc0BootStagingName    = ".phantowd-boot.staging"
 	rc0BootControlDir     = "/run/phantowd-boot-control"
 	rc0BootControlSocket  = rc0BootControlDir + "/stop"
 	rc0BootServiceTimeout = 12 * time.Second
@@ -32,7 +33,7 @@ func manageRC0BootService(ctx context.Context, action string) error {
 	if action == "run" {
 		return runRC0BootService(ctx)
 	}
-	if !safeRC0RunDirectory() || (action != "start" && action != "stop") {
+	if !safeRC0RunDirectory() {
 		return errRC0Review
 	}
 	lock, err := lockRC0BootLifecycle()
@@ -43,8 +44,14 @@ func manageRC0BootService(ctx context.Context, action string) error {
 	switch action {
 	case "start":
 		return startRC0BootService(ctx)
-	default:
+	case "stop":
 		return stopRC0BootService(ctx)
+	case "publish":
+		return publishRC0BootGrant(ctx)
+	case "withdraw":
+		return withdrawRC0BootGrant()
+	default:
+		return errRC0Review
 	}
 }
 
@@ -64,32 +71,26 @@ func lockRC0BootLifecycle() (*os.File, error) {
 }
 
 func openRC0BootGrants() ([]*os.File, error) {
-	if _, err := os.Lstat("/run/" + rc0BootGrantName); errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
 	run, err := os.Open("/run")
 	if err != nil {
 		return nil, err
 	}
 	defer run.Close()
-	grantDir, err := openRC0Role(run, rc0BootGrantName, unix.O_PATH|unix.O_DIRECTORY)
+	if !rc0AbsentRole(run, rc0BootStagingName) {
+		return nil, errRC0Review
+	}
+	grantDir, err := openRC0BootDirectory(run, rc0BootGrantName)
+	if errors.Is(err, unix.ENOENT) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer grantDir.Close()
-	var st unix.Stat_t
-	if unix.Fstat(int(grantDir.Fd()), &st) != nil || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 {
-		return nil, errRC0Review
-	}
-	// Only the preselected state role may cross into the admitted ext mount.
-	fd, err := unix.Openat2(int(grantDir.Fd()), "state", &unix.OpenHow{
-		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
-		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
-	})
+	state, err := openRC0BootState(grantDir)
 	if err != nil {
 		return nil, err
 	}
-	state := os.NewFile(uintptr(fd), "rc0-boot-state")
 	plan, err := openRC0PrivateFile(grantDir, "boot.json", rc0BootMaxBytes)
 	if err != nil {
 		return nil, errors.Join(err, state.Close())
@@ -99,6 +100,30 @@ func openRC0BootGrants() ([]*os.File, error) {
 		return nil, errors.Join(err, state.Close(), plan.Close())
 	}
 	return []*os.File{state, plan, policy}, nil
+}
+
+func openRC0BootDirectory(run *os.File, name string) (*os.File, error) {
+	dir, err := openRC0Role(run, name, unix.O_RDONLY|unix.O_DIRECTORY)
+	if err != nil {
+		return nil, err
+	}
+	var st unix.Stat_t
+	if unix.Fstat(int(dir.Fd()), &st) != nil || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 {
+		return nil, errors.Join(errRC0Review, dir.Close())
+	}
+	return dir, nil
+}
+
+func openRC0BootState(grant *os.File) (*os.File, error) {
+	// Only the fixed state role may cross into the admitted ext mount.
+	fd, err := unix.Openat2(int(grant.Fd()), "state", &unix.OpenHow{
+		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
+		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), "rc0-boot-state"), nil
 }
 
 func startRC0BootService(ctx context.Context) error {

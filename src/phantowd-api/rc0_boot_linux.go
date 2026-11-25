@@ -56,8 +56,7 @@ func runRC0BootManagement(ctx context.Context, started func() error) (result err
 	if err != nil {
 		return err
 	}
-	policyDigest := sha256.Sum256(known)
-	if hex.EncodeToString(policyDigest[:]) != plan.PolicySHA256 {
+	if !plan.matchesPolicy(known) {
 		return errRC0Review
 	}
 	return superviseRC0State(ctx, plan, state, known, proofInfo, started)
@@ -108,4 +107,14 @@ func (plan rc0BootPlan) matchesState(root *os.File) bool {
 	var observed unix.Statx_t
 	return unix.Statx(int(root.Fd()), "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, mask, &observed) == nil &&
 		observed.Mask&mask == mask && observed.Mnt_id == plan.StateMountID && observed.Ino == plan.StateRootInode
+}
+
+func (plan rc0BootPlan) matchesPolicy(known []byte) bool {
+	digest := sha256.Sum256(known)
+	return hex.EncodeToString(digest[:]) == plan.PolicySHA256
+}
+
+func (plan rc0BootPlan) matchesTLS(file *os.File) bool {
+	pair, err := readTLSIdentity(file, 0)
+	return err == nil && tlsLeafFingerprint(pair.Certificate[0]) == plan.TLSLeafSHA256
 }

@@ -128,5 +128,7 @@ tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_BOOT_HANDOFF wrong_mount=refused wrong_inode=refused wrong_policy=refused wrong_tls=refused' >/dev/null
 tr -d '\r' < "$log_prefix.rotated.log" |
     grep -Fx 'PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed' >/dev/null
+tr -d '\r' < "$log_prefix.rotated.log" |
+    grep -Fx 'PHANTOWD_RC0_GRANT interrupted=refused self_confirmation=refused wrong_tls=refused duplicate=refused live_withdraw=refused withdraw=confirmed' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 sha256sum -c "$scratch/base.sha256"
