@@ -2271,8 +2271,11 @@ milestone before enabling its controls; M1/M6 for deployment.
   replacement/renewal, key permissions, time errors and restart behavior.
   The Linux API accepts one root-owned certificate/key bundle from its
   supervisor over read-only FD 4. The standard API fixture exercises this mode
-  with administrator state on FD 3. Initial trust, issuance, durable rotation,
-  supervisor wiring and device time recovery remain open.
+  with administrator state on FD 3. The RC0 supervisor opens that bundle, and
+  the local `--provision-rc0-tls` mode installs the first valid origin-matched
+  identity. Both refuse while staged publication remains. Client trust and
+  issuance stay with the operator. Durable rotation and device time recovery
+  remain open.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

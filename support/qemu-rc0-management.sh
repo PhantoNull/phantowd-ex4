@@ -85,7 +85,7 @@ for phase in seed verify; do
         tail -n 25 "$log" >&2
         exit 1
     fi
-    expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
+    expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
     if ! awk -v ready="$expected" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
         { sub(/\r$/, "") }
         $0 == ready { startup++ }

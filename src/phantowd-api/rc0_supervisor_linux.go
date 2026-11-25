@@ -25,6 +25,8 @@ const (
 	rc0RuntimeDirectory = "/run/phantowd-rc0"
 	rc0PolicyChannel    = rc0RuntimeDirectory + "/channel"
 	rc0Confined         = unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS
+	rc0TLSIdentity      = "management-tls.pem"
+	rc0TLSStage         = ".management-tls.provisioning"
 )
 
 var errRC0Review = errors.New("RC0 management authority requires review")
@@ -148,7 +150,10 @@ func openRC0Role(root *os.File, name string, flags uint64) (*os.File, error) {
 }
 
 func openRC0TLSIdentity(root *os.File) (*os.File, error) {
-	pinned, err := openRC0Role(root, "management-tls.pem", unix.O_PATH)
+	if !rc0AbsentRole(root, rc0TLSStage) {
+		return nil, errRC0Review
+	}
+	pinned, err := openRC0Role(root, rc0TLSIdentity, unix.O_PATH)
 	if err != nil {
 		return nil, err
 	}

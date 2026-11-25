@@ -23,6 +23,7 @@ func main() {
 	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
 	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
+	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
 	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
@@ -43,7 +44,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *superviseRC0, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *superviseRC0, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -76,6 +77,12 @@ func main() {
 	}
 	if *provisionAdmin {
 		if err := provisionInheritedAdministrator(context.Background(), os.Stdin); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	if *provisionTLS {
+		if err := provisionInheritedRC0TLS(os.Stdin, os.Getenv(publicOriginEnv)); err != nil {
 			log.Fatal(err)
 		}
 		return

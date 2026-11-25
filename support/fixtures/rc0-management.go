@@ -43,7 +43,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
+	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
 }
 
 func check() error {
@@ -80,6 +80,21 @@ func check() error {
 	}
 	if err := expectRefusal(ctx, proof+".wrong"); err != nil {
 		return err
+	}
+	if os.Args[1] == "seed" {
+		stage := root + "/.management-tls.provisioning"
+		if err := os.WriteFile(stage, []byte("interrupted TLS fixture"), 0600); err != nil {
+			return err
+		}
+		if err := expectRefusal(ctx, proof); err != nil {
+			return err
+		}
+		if raw, err := os.ReadFile(stage); err != nil || string(raw) != "interrupted TLS fixture" {
+			return errors.New("supervisor failed to preserve staged TLS evidence")
+		}
+		if err := os.Remove(stage); err != nil {
+			return err
+		}
 	}
 	if err := serve(ctx, credentials); err != nil {
 		return err
@@ -124,7 +139,7 @@ func seed(ctx context.Context, credentials []byte) error {
 	if err := provision(ctx, provisionPolicy, root, []byte(policy)); err != nil {
 		return fmt.Errorf("policy preparation: %w", err)
 	}
-	return writeCertificate()
+	return provisionCertificate(ctx)
 }
 
 func provision(ctx context.Context, cmd *exec.Cmd, directory string, input []byte) error {
@@ -138,7 +153,7 @@ func provision(ctx context.Context, cmd *exec.Cmd, directory string, input []byt
 	return errors.Join(cmd.Run(), grant.Close(), ctx.Err())
 }
 
-func writeCertificate() error {
+func provisionCertificate(ctx context.Context) error {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return err
@@ -156,7 +171,32 @@ func writeCertificate() error {
 	}
 	public := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 	pair := append(public, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})...)
-	return os.WriteFile(root+"/management-tls.pem", pair, 0600)
+	defer clear(pair)
+	install := func(publicOrigin string) error {
+		cmd := exec.CommandContext(ctx, api, "--provision-rc0-tls")
+		cmd.Env = []string{"PHANTOWD_PUBLIC_ORIGIN=" + publicOrigin}
+		return provision(ctx, cmd, root, pair)
+	}
+	identity := root + "/management-tls.pem"
+	if err := install("https://localhost:18443"); err == nil || ctx.Err() != nil {
+		return errors.New("TLS provisioning accepted a wrong origin or timed out")
+	}
+	if _, err := os.Stat(identity); !os.IsNotExist(err) {
+		return errors.New("wrong origin left a TLS identity")
+	}
+	if err := install(origin); err != nil {
+		return fmt.Errorf("TLS provisioning: %w", err)
+	}
+	if err := install(origin); err == nil || ctx.Err() != nil {
+		return errors.New("TLS provisioning replaced an existing identity or timed out")
+	}
+	if info, err := os.Stat(identity); err != nil || info.Mode() != 0600 {
+		return errors.New("TLS identity lacks private mode")
+	}
+	if raw, err := os.ReadFile(identity); err != nil || !bytes.Equal(raw, pair) {
+		return errors.New("published TLS identity differs")
+	}
+	return nil
 }
 
 func command(ctx context.Context, confirmation string) (*exec.Cmd, error) {

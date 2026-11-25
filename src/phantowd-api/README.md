@@ -722,9 +722,8 @@ and refuses non-Versatile PB machines. See the
   Optional listener configuration is fail-closed: non-loopback binds require a
   TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular
   non-symlink files not accessible to group/other users; the certificate must be currently valid and
-  match the origin host. TLS has a minimum version of 1.2. No proxy headers or
-  certificate provisioning/renewal are implemented. The QEMU image does not
-  opt into remote listening.
+  match the origin host. TLS has a minimum version of 1.2. The API does not
+  trust proxy headers. The QEMU image uses a loopback listener.
 - `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use also requires
   `PHANTOWD_PUBLIC_ORIGIN`, such as `https://nas.example:8443`, and a configured
   TLS identity. In path mode, set `PHANTOWD_TLS_CERT_FILE` and
@@ -736,8 +735,17 @@ and refuses non-Versatile PB machines. See the
   The API reads from offset zero, checks for file changes, closes its copy of
   the descriptor and uses the same certificate validity and hostname checks
   as path mode. Each API start needs a fresh descriptor from the supervisor.
-  Certificate issuance, trusted installation and replacement remain operator
-  and supervisor responsibilities.
+  Certificate issuance, client trust and replacement remain operator and
+  supervisor responsibilities.
+- Before RC0 management starts, a trusted root launcher can run
+  `--provision-rc0-tls` with the private state root on FD 3 and one bounded
+  PEM certificate chain and private key on private stdin. Set
+  `PHANTOWD_PUBLIC_ORIGIN` to the intended HTTPS origin. The command validates
+  the key pair, certificate format, origin host and current validity before
+  staging and syncing `management-tls.pem` with mode 0600. It refuses an
+  existing identity or staged operation. The supervisor also refuses startup
+  while the staging role is present. Establish client trust in the issuer or
+  the original certificate through a trusted channel before connecting.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
@@ -791,8 +799,8 @@ and refuses non-Versatile PB machines. See the
   via the supervisor; it reaps the child before releasing policy authority.
   Unexpected child or channel loss ends the lifetime and requires review.
   A later start requires a fresh independent policy confirmation if policy
-  changed. The mode relies on the launcher for state-medium admission, first
-  provisioning and key installation. RC0 has no default init binding to this
+  changed. The mode relies on the launcher for state-medium admission and
+  first-use authorization. RC0 has no default init binding to this
   mode. Management reads and desired configuration are available while SMB,
   NFS and iSCSI activation remains outside this supervisor's authority.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
