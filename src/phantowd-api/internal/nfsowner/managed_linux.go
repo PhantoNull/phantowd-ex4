@@ -130,7 +130,8 @@ func newManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxSe
 	if err != nil {
 		return nil, fmt.Errorf("retain exportfs: %w", err)
 	}
-	m.rpc, err = NewRPC(ctx, m.kernel, grants.Address, grants.RPCBind, grants.Mountd, grants.Info)
+	m.rpc, err = newRPC(ctx, m.kernel, grants.Address, grants.RPCBind, grants.Mountd, grants.Info,
+		rpcLocal{state: m.state, legacy: isolatedFixture && !useFirewall})
 	if err != nil {
 		return nil, fmt.Errorf("retain RPC helpers: %w", err)
 	}

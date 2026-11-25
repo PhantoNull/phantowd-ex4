@@ -563,6 +563,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Managed NFS RPC helper assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_RPC_LOCAL_READY peer=owned inode=retained foreign=refused shutdown=absent lifetimes=2 scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Managed NFS local RPC ownership assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_MOUNT_TRANSPORT_READY profile=tcp port=20048 listener=owned occupied_udp=refused teardown=verified lifetimes=2 scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo 'Managed NFS mount transport assertion missing' >&2
             exit 1

@@ -292,6 +292,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_RPC_LOCAL_READY peer=owned inode=retained foreign=refused shutdown=absent lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MOUNT_TRANSPORT_READY profile=tcp port=20048 listener=owned occupied_udp=refused teardown=verified lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RUNTIME_READY grants=retained rollback=verified lifetimes=2 teardown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_PRIVATE_STATE_READY etab=private rmtab=private defaults=unchanged stale=refused lifetimes=2 cleanup=verified scope=qemu-loopback-only")
