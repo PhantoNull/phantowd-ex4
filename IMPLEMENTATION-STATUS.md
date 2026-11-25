@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## ARMv5 integration baseline restored
+
+The first QEMU run on `5eb1374` stopped during the SDK download of `gpg-agent`
+before firmware compilation. The second attempt passed on the same commit and
+recorded tree `7e805a3`. The serial log confirms two NFS service lifetimes with
+read, verified write, clean teardown and duplicate live listener refusal.
+[QEMU run and artifacts](https://github.com/PhantoNull/phantowd-ex4/actions/runs/43211735264/attempts/2)
+
+The earlier NFS failure came from a surviving server-side TCP `TIME_WAIT`
+entry after the first shutdown. PR #289 reproduced the second bind refusal,
+fixed rebinding and passed the QEMU, independent build, EX4 B3 compile-only
+and host checks on `9d373cc`. Issue #287 is closed.
+[PR #289](https://github.com/PhantoNull/phantowd-ex4/pull/289) ·
+[Issue #287](https://github.com/PhantoNull/phantowd-ex4/issues/287)
+
+PR #286 passed QEMU, independent build, EX4 B3 compile-only and host checks.
+The QEMU receipt and the `develop` merge `5d6c009` identify the same tree
+`84b8bea`. The independent build job verified byte equality for 11 allowlisted
+artifacts. The guest verified provider stop, authenticated HTTP 503 responses,
+zero reconnects and normal API exit.
+[PR #286](https://github.com/PhantoNull/phantowd-ex4/pull/286) ·
+[Independent build](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45556040130)
+
 ## Inherited HTTPS identity
 
 The normal Linux API can acquire a root-owned certificate and key through one
@@ -23,16 +46,17 @@ Product state-medium selection and supervisor integration remain open.
 
 The existing boot campaign pins provider/API generations, verifies init stop and
 removed readiness/socket/pidfile, then requires two authenticated 503 refusals.
-A protected non-accepting listener detects reconnect attempts; original API PID
-and exit status 0 are checked. Local host/ARM evidence and exact-head CI are separate.
+A protected non-accepting listener detects reconnect attempts. The fixture checks
+the original API PID and exit status 0. The hosted QEMU run recorded all three
+stop receipts for the merged tree.
 Product provider/state, certificate lifecycle and service activation remain open.
 
 ## QEMU NAS-policy provider boot/admission
 
 A separate read-only-root boot exercises S49 root provider, protected 0710/0660
 channel, S50 non-root HTTPS API, absent-provider refusal and authenticated readback.
-Local proof passes; exact-head CI remains required. Product provider/persistence,
-certificate lifecycle and service activation remain open; stop proof is scoped above.
+The local and hosted QEMU fixtures verified boot admission and stop. Product
+provider persistence, certificate lifecycle and service activation remain open.
 
 ## Explicit volume registration - operator boundary
 
