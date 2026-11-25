@@ -31,11 +31,27 @@ type BootstrapAuthority[T any] struct {
 	review, closed, closeFailed bool
 }
 
-func OpenBootstrapAuthorityWithCodec[T any](ctx context.Context, directory string, codec Codec[T]) (authority *BootstrapAuthority[T], result error) {
+func OpenBootstrapAuthorityWithCodec[T any](ctx context.Context, directory string, codec Codec[T]) (*BootstrapAuthority[T], error) {
 	if ctx == nil {
 		return nil, ErrInvalid
 	}
-	if !codec.valid() || !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+	if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+		return nil, ErrUnsafe
+	}
+	return openBootstrapAuthority(ctx, codec, func() (int, error) {
+		fd, err := unix.Open(directory, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_NOATIME|unix.O_CLOEXEC, 0)
+		if err != nil {
+			return -1, ErrIO
+		}
+		return fd, nil
+	})
+}
+
+func openBootstrapAuthority[T any](ctx context.Context, codec Codec[T], open func() (int, error)) (authority *BootstrapAuthority[T], result error) {
+	if ctx == nil {
+		return nil, ErrInvalid
+	}
+	if !codec.valid() {
 		return nil, ErrUnsafe
 	}
 	if err := ctx.Err(); err != nil {
@@ -52,9 +68,9 @@ func OpenBootstrapAuthorityWithCodec[T any](ctx context.Context, directory strin
 			}
 		}
 	}()
-	fd, err := unix.Open(directory, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_NOATIME|unix.O_CLOEXEC, 0)
+	fd, err := open()
 	if err != nil {
-		return nil, ErrIO
+		return nil, err
 	}
 	a.root = os.NewFile(uintptr(fd), "bootstrap-authority-original-directory")
 	if unix.Fstat(fd, &a.initial) != nil || a.initial.Mode&unix.S_IFMT != unix.S_IFDIR || a.initial.Mode&07777 != 0700 || a.initial.Uid != uint32(os.Geteuid()) {

@@ -767,6 +767,10 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   matching ordered-operation receipt after verified shutdown. Complete
   transition validation, watch accounting and every interrupted boundary remain;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
+  The NAS bootstrap can borrow an already-open policy-directory grant from a
+  future supervisor and retain the same lock and watch through confirmation.
+  The NFS reboot fixture uses this path. Host tests exercise a replaced
+  pathname, caller closure and unsafe grants.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective
@@ -2255,7 +2259,10 @@ milestone before enabling its controls; M1/M6 for deployment.
   data or ownership.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
-  Transport support is not a certificate provisioning strategy.
+  The Linux API accepts one root-owned certificate/key bundle from its
+  supervisor over read-only FD 4. The standard API fixture exercises this mode
+  with administrator state on FD 3. Initial trust, issuance, durable rotation,
+  supervisor wiring and device time recovery remain open.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

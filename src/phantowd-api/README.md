@@ -725,10 +725,19 @@ and refuses non-Versatile PB machines. See the
   match the origin host. TLS has a minimum version of 1.2. No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
-- `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally
-  requires `PHANTOWD_TLS_CERT_FILE`, `PHANTOWD_TLS_KEY_FILE`, and
-  `PHANTOWD_PUBLIC_ORIGIN` (for example, `https://nas.example:8443`). These are
-  configuration hooks only; the firmware does not provision certificates.
+- `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use also requires
+  `PHANTOWD_PUBLIC_ORIGIN`, such as `https://nas.example:8443`, and a configured
+  TLS identity. In path mode, set `PHANTOWD_TLS_CERT_FILE` and
+  `PHANTOWD_TLS_KEY_FILE` together.
+- A trusted Linux supervisor can set `PHANTOWD_TLS_FD=4` and pass the complete
+  PEM certificate chain and matching private key in one inherited read-only
+  FD. The root-owned regular file must have one link, mode `0400` or `0600`,
+  and a size of at most 128 KiB. Leave both path variables unset in this mode.
+  The API reads from offset zero, checks for file changes, closes its copy of
+  the descriptor and uses the same certificate validity and hostname checks
+  as path mode. Each API start needs a fresh descriptor from the supervisor.
+  Certificate issuance, trusted installation and replacement remain operator
+  and supervisor responsibilities.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships

@@ -586,6 +586,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Inherited administrator directory assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_TLS_IDENTITY_GRANT_READY standard_main=true modes=bundle-fd,paths api_uid=65534 private_parent=denied https=verified scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo 'Inherited TLS identity assertion missing' >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NAS_ORDERED_OWNER_READY standard_main=true https=verified original_owner=true leases=retained ordered_writer=true receipt=verified scope=disposable-qemu-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo "QEMU ordered NAS Owner through standard HTTPS API proof missing" >&2
             return 1
