@@ -76,6 +76,11 @@ if [ "$(awk -v marker="$registry_reboot" '{ sub(/\r$/, ""); if ($0 == marker) n+
     echo 'Volume registry two-kernel operator proof missing or repeated' >&2
     exit 1
 fi
+identity_reboot='PHANTOWD_PROVISIONED_IDENTITIES_READY boots=2 original_range=true empty_ledger=true reprovision_refused=true scope=clean-qemu-reboot-only'
+if [ "$(awk -v marker="$identity_reboot" '{ sub(/\r$/, ""); if ($0 == marker) n++ } END { print n+0 }' "$log")" != 1 ]; then
+    echo 'Provisioned service identity proof missing or repeated' >&2
+    exit 1
+fi
 nfs_reboot='PHANTOWD_NFS_REBOOT_READY boots=2 protocol=nfs3 transport=tcp kernel_backend=true activation=true read=true write=sync-verified previous_bytes=true original_policy=true ordered_writer=true bootstrap_handoff=original receipt=verified teardown=clean scope=clean-qemu-reboot-only'
 if [ "$(awk -v marker="$nfs_reboot" '{ sub(/\r$/, ""); if ($0 == marker) n++ } END { print n+0 }' "$log")" != 1 ]; then
     echo 'NFS two-kernel controller/policy proof missing or repeated' >&2

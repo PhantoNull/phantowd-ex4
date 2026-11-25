@@ -17,8 +17,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/volumeregistry"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/sharestore"
 	"golang.org/x/sys/unix"
@@ -120,6 +122,12 @@ func runQEMUStateTest(phase string) (result error) {
 	if phase == "verify" {
 		fmt.Println("PHANTOWD_VOLUME_REGISTRY_REBOOT_READY boots=2 operator=normal-cli ids_preserved=true stale_revision_denied=true append_only=true scope=clean-qemu-reboot-only")
 	}
+	if err := exerciseQEMUProvisionedIdentities(guard, phase); err != nil {
+		return fmt.Errorf("provisioned identity persistence %s: %w", phase, err)
+	}
+	if phase == "verify" {
+		fmt.Println("PHANTOWD_PROVISIONED_IDENTITIES_READY boots=2 original_range=true empty_ledger=true reprovision_refused=true scope=clean-qemu-reboot-only")
+	}
 	if err := exerciseQEMUSMBReboot(phase); err != nil {
 		return fmt.Errorf("SMB persistence %s: %w", phase, err)
 	}
@@ -131,6 +139,45 @@ func runQEMUStateTest(phase string) (result error) {
 		retainNFS = true
 		qemuNFSRebootRetained = append(qemuNFSRebootRetained, nfs)
 		return fmt.Errorf("NFS persistence %s: %w", phase, err)
+	}
+	return nil
+}
+
+func exerciseQEMUProvisionedIdentities(root *mountguard.Root, phase string) (result error) {
+	const role = "test-identity-state-root"
+	if phase == "seed" {
+		parent, err := root.OpenDirectory(".")
+		if err != nil {
+			return err
+		}
+		err = unix.Mkdirat(int(parent.Fd()), role, 0700)
+		if err := errors.Join(err, parent.Close()); err != nil {
+			return err
+		}
+	}
+	state, err := root.OpenDirectory(role)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, state.Close()) }()
+	ctx := context.Background()
+	if phase == "seed" {
+		return identityowner.ProvisionInitial(ctx, state, 23000, 23010)
+	}
+	if err := identityowner.ProvisionInitial(ctx, state, 24000, 24010); !errors.Is(err, identityowner.ErrConflict) {
+		return errors.New("identity provisioning could replace committed range")
+	}
+	owner, err := identityowner.OpenProvisioned(state, func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, owner.Close()) }()
+	ledger, operations, err := owner.Snapshot(ctx)
+	if err != nil || ledger.Revision != 1 || ledger.FirstID != 23000 || ledger.LastID != 23010 ||
+		len(ledger.Accounts) != 0 || len(operations) != 0 {
+		return errors.Join(errors.New("reopened identity ledger differs from committed revision"), err)
 	}
 	return nil
 }

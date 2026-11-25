@@ -1517,8 +1517,11 @@ open.
   creation, endpoint selection and client-quiescence authority.
   The identity owner now borrows a verified startup-state descriptor and
   pins its registry and operations directories on that same mount. The
-  NFS fixture closes the original descriptor before continuing and uses the
-  retained owner for policy and readiness checks.
+  fixed boot-state provisioner forms the empty native identity ledger before
+  publishing the service-identities role. The opener refuses an interrupted
+  stage. The NFS fixture provisions and opens the role through those entry
+  points, closes the original descriptor and uses the retained owner for
+  policy and readiness checks.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

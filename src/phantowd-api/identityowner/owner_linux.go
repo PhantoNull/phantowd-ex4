@@ -84,9 +84,17 @@ func OpenFromDirectory(directory *os.File, inventory Inventory) (*Owner, error) 
 	if directory == nil || inventory == nil || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return nil, ErrInvalid
 	}
+	fd, err := borrowPrivateDirectory(directory)
+	if err != nil {
+		return nil, err
+	}
+	return openOwned(fd, ownerDependencies(inventory))
+}
+
+func borrowPrivateDirectory(directory *os.File) (int, error) {
 	raw, err := directory.SyscallConn()
 	if err != nil {
-		return nil, ErrInvalid
+		return -1, ErrInvalid
 	}
 	fd := -1
 	var openErr error
@@ -97,9 +105,9 @@ func OpenFromDirectory(directory *os.File, inventory Inventory) (*Owner, error) 
 		if fd >= 0 {
 			_ = unix.Close(fd)
 		}
-		return nil, ErrUnavailable
+		return -1, ErrUnavailable
 	}
-	return openOwned(fd, ownerDependencies(inventory))
+	return fd, nil
 }
 
 // OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for

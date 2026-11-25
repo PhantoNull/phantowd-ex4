@@ -6,6 +6,15 @@ its exclusive lock independently of the caller. The registry and operations
 roles must remain on that mount. Replacing either role invalidates the
 authority before it returns another identity snapshot.
 
+`ProvisionInitial` seeds an empty ledger in a fixed staging directory under
+the admitted state root. The caller supplies the allocation range. It syncs
+the ledger and its parent directories before publishing the role with a
+no-replace rename. `OpenProvisioned` refuses an interrupted stage and opens
+only the committed role. The ARMv5 NFS fixture uses both entry points.
+The independent two-kernel state fixture writes a fresh ledger to a
+disposable ext-family disk, checks the original range on reboot and refuses
+reprovisioning.
+
 This is the cooperative owner of one configured native-account reservation
 ledger, native creation journals and optional Samba-enrollment journals. It
 coordinates allocation and typed Unix/Samba operations under one lifetime
