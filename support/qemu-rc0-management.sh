@@ -136,5 +136,9 @@ tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_STATE_PROVISION input_refusal=clean concurrent=refused orphan_stage=retained state=published replay=refused roles=admin,policy,tls' >/dev/null
 tr -d '\r' < "$log_prefix.rotated.log" |
     grep -Fx 'PHANTOWD_RC0_STATE_PUBLICATION absent=refused symlink=refused staging=refused credentials_pending=refused stale_policy=refused independent_tls=verified grant=published' >/dev/null
+tr -d '\r' < "$log_prefix.verify.log" |
+    grep -Fx 'PHANTOWD_RC0_POLICY_SAVE revision=2 definitions=changed applied=false replay=refused https_backup=extracted' >/dev/null
+tr -d '\r' < "$log_prefix.rotated.log" |
+    grep -Fx 'PHANTOWD_RC0_POLICY_REBOOT previous=refused revision=2 definitions=verified independent_backup=accepted https=verified' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 sha256sum -c "$scratch/base.sha256"

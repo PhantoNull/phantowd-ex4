@@ -22,19 +22,9 @@ func RestoreCandidate(data []byte, expected uint64) (Config, error) {
 	if expected == math.MaxUint64 {
 		return Config{}, ErrInvalid
 	}
-	fields, err := configjson.DecodeEnvelope(data, MaxBackupBytes, 12, "format", "schema_version", "configuration")
+	c, _, err := decodeBackup(data)
 	if err != nil {
-		return Config{}, ErrInvalid
-	}
-	var format string
-	var version int
-	if json.Unmarshal(fields["format"], &format) != nil || format != BackupFormat ||
-		json.Unmarshal(fields["schema_version"], &version) != nil || version != 1 {
-		return Config{}, ErrInvalid
-	}
-	c, err := Decode(bytes.NewReader(fields["configuration"]))
-	if err != nil {
-		return Config{}, ErrInvalid
+		return Config{}, err
 	}
 	setRevision(&c, expected+1)
 	encoded, err := json.Marshal(c)
@@ -43,6 +33,42 @@ func RestoreCandidate(data []byte, expected uint64) (Config, error) {
 	}
 	// Revision digit growth must still fit the complete and nested decoder limits.
 	return Decode(bytes.NewReader(encoded))
+}
+
+// SavedConfirmation extracts the exact canonical configuration in a backup
+// captured after a managed save. Preserve revision-one provisioning bytes
+// separately, since their original formatting need not be canonical.
+func SavedConfirmation(data []byte, revision uint64) ([]byte, error) {
+	if revision < 2 {
+		return nil, ErrInvalid
+	}
+	c, policy, err := decodeBackup(data)
+	if err != nil || c.Revision != revision {
+		return nil, ErrInvalid
+	}
+	encoded, err := json.Marshal(c)
+	if err != nil || !bytes.Equal(policy, encoded) {
+		return nil, ErrInvalid
+	}
+	return policy, nil
+}
+
+func decodeBackup(data []byte) (Config, []byte, error) {
+	fields, err := configjson.DecodeEnvelope(data, MaxBackupBytes, 12, "format", "schema_version", "configuration")
+	if err != nil {
+		return Config{}, nil, ErrInvalid
+	}
+	var format string
+	var version int
+	if json.Unmarshal(fields["format"], &format) != nil || format != BackupFormat ||
+		json.Unmarshal(fields["schema_version"], &version) != nil || version != 1 {
+		return Config{}, nil, ErrInvalid
+	}
+	c, err := Decode(bytes.NewReader(fields["configuration"]))
+	if err != nil {
+		return Config{}, nil, ErrInvalid
+	}
+	return c, fields["configuration"], nil
 }
 
 // SameDefinitions ignores only coherent revisions, never uint64 values or array

@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -30,19 +31,21 @@ import (
 )
 
 const (
-	root     = "/mnt/rc0-state"
-	proof    = "/run/rc0-confirmed-policy.json"
-	launch   = "/run/rc0-boot-v1.json"
-	bootDir  = "/run/phantowd-boot"
-	control  = "/run/phantowd-boot-control"
-	initHook = "/etc/init.d/S51phantowd-management"
-	address  = "127.0.0.1:18443"
-	origin   = "https://" + address
-	install  = "c71c2ba76bd04d29816335c13c31a380"
-	api      = "/usr/bin/phantowd-api"
-	tlsRole  = root + "/management-tls.pem"
-	tlsProof = "/mnt/.rc0-fixture-tls-confirmation"
-	policy   = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
+	root        = "/mnt/rc0-state"
+	proof       = "/run/rc0-confirmed-policy.json"
+	launch      = "/run/rc0-boot-v1.json"
+	bootDir     = "/run/phantowd-boot"
+	control     = "/run/phantowd-boot-control"
+	initHook    = "/etc/init.d/S51phantowd-management"
+	address     = "127.0.0.1:18443"
+	origin      = "https://" + address
+	install     = "c71c2ba76bd04d29816335c13c31a380"
+	api         = "/usr/bin/phantowd-api"
+	tlsRole     = root + "/management-tls.pem"
+	tlsProof    = "/mnt/.rc0-fixture-tls-confirmation"
+	policyProof = "/mnt/.rc0-fixture-policy-confirmation"
+	policyPath  = "/api/v1/nas-services/configuration"
+	policy      = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
 
 type bootPlan struct {
@@ -87,17 +90,27 @@ func check() error {
 			return err
 		}
 	}
-	if err := os.WriteFile(proof, []byte(policy), 0600); err != nil {
+	expectedPolicy := []byte(policy)
+	if phase == "rotated" {
+		expectedPolicy, err = readSavedPolicyProof()
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(proof+".prior", []byte(policy), 0600); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(proof, expectedPolicy, 0600); err != nil {
 		return err
 	}
 	current := root + "/nas-policy/nas-services.json"
-	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
+	if raw, err := os.ReadFile(current); err != nil || !bytes.Equal(raw, expectedPolicy) {
 		return errors.New("persistent policy bytes differ before startup")
 	}
 	if err := expectRefusal(ctx, current, nil); err != nil {
 		return err
 	}
-	if err := os.WriteFile(proof+".wrong", []byte(policy+"\n"), 0600); err != nil {
+	if err := os.WriteFile(proof+".wrong", append(bytes.Clone(expectedPolicy), '\n'), 0600); err != nil {
 		return err
 	}
 	if err := expectRefusal(ctx, proof+".wrong", nil); err != nil {
@@ -144,7 +157,13 @@ func check() error {
 	if err != nil {
 		return err
 	}
-	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
+	if phase == "verify" {
+		expectedPolicy, err = readSavedPolicyProof()
+		if err != nil {
+			return err
+		}
+	}
+	if raw, err := os.ReadFile(current); err != nil || !bytes.Equal(raw, expectedPolicy) {
 		return errors.New("persistent policy changed during startup")
 	}
 	if raw, err := os.ReadFile(root + "/accounts/accounts.json"); err != nil || bytes.Contains(raw, bytes.TrimSpace(secret)) {
@@ -289,7 +308,7 @@ func renewCertificate(ctx context.Context, credentials []byte) error {
 		return provision(ctx, cmd, root, pair)
 	}
 	var previous string
-	err = serve(ctx, "verify", credentials, func(current string) error {
+	err = serve(ctx, "verify", credentials, func(current string, _ *http.Client) error {
 		previous = current
 		if err := replace(current); err == nil || ctx.Err() != nil {
 			return errors.New("TLS replacement was not refused while supervision held the state")
@@ -322,7 +341,9 @@ func renewCertificate(ctx context.Context, credentials []byte) error {
 	if err := os.WriteFile(tlsProof, []byte(fingerprint), 0600); err != nil {
 		return err
 	}
-	return serve(ctx, "replacement", credentials, nil)
+	return serve(ctx, "replacement", credentials, func(_ string, client *http.Client) error {
+		return saveAndConfirmPolicy(ctx, client)
+	})
 }
 
 func fixtureCertificateFingerprint(bundle []byte) (string, error) {
@@ -367,9 +388,13 @@ func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.F
 	if err != nil {
 		return nil, err
 	}
+	confirmed, err := os.ReadFile(proof)
+	if err != nil {
+		return nil, err
+	}
 	plan := bootPlan{
 		Format: "phantowd-rc0-boot-v1", Installation: install, Address: address, Origin: origin,
-		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(policy))),
+		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256(confirmed)),
 		TLSLeafSHA256: fingerprint,
 	}
 	if change != nil {
@@ -467,7 +492,7 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := withdrawInitGrant(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("withdrawal was accepted while the managed supervisor was live")
 	}
-	fingerprint, err := observeHTTPS(ctx, credentials)
+	fingerprint, err := observeHTTPS(ctx, credentials, nil)
 	if err != nil {
 		return err
 	}
@@ -495,6 +520,7 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	fmt.Println("PHANTOWD_RC0_GRANT interrupted=refused self_confirmation=refused wrong_tls=refused duplicate=refused live_withdraw=refused withdraw=confirmed")
 	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
+	fmt.Println("PHANTOWD_RC0_POLICY_REBOOT previous=refused revision=2 definitions=verified independent_backup=accepted https=verified")
 	return nil
 }
 
@@ -648,7 +674,7 @@ func proveProvisionedStatePublication(ctx context.Context) error {
 		var exit *exec.ExitError
 		return errors.As(publishProvisionedState(ctx, medium, policyFile, leaf), &exit) && ctx.Err() == nil
 	}
-	if !refused(parent, proof+".wrong", confirmedTLS) || !refused(parent, proof, strings.Repeat("0", 64)) ||
+	if !refused(parent, proof+".prior", confirmedTLS) || !refused(parent, proof+".wrong", confirmedTLS) || !refused(parent, proof, strings.Repeat("0", 64)) ||
 		!refused(parent, root+"/nas-policy/nas-services.json", confirmedTLS) {
 		return errors.New("provisioned publisher accepted stale policy, self-confirmation or wrong TLS")
 	}
@@ -748,7 +774,7 @@ func rejectOccupiedInitListener(ctx context.Context) (result error) {
 	return runtimeAbsent()
 }
 
-func serve(ctx context.Context, phase string, credentials []byte, during func(string) error) error {
+func serve(ctx context.Context, phase string, credentials []byte, during func(string, *http.Client) error) error {
 	cmd, err := command(ctx, "--supervise-rc0-boot", proof, nil)
 	if err != nil {
 		return err
@@ -769,14 +795,9 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if closeErr != nil {
 		return closeErr
 	}
-	fingerprint, err := observeHTTPS(ctx, credentials)
+	fingerprint, err := observeHTTPS(ctx, credentials, during)
 	if err != nil {
 		return err
-	}
-	if during != nil {
-		if err := during(fingerprint); err != nil {
-			return err
-		}
 	}
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return err
@@ -789,7 +810,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	return err
 }
 
-func observeHTTPS(ctx context.Context, credentials []byte) (string, error) {
+func observeHTTPS(ctx context.Context, credentials []byte, during func(string, *http.Client) error) (string, error) {
 	identity, err := os.ReadFile(tlsRole)
 	if err != nil {
 		return "", err
@@ -837,18 +858,117 @@ func observeHTTPS(ctx context.Context, credentials []byte) (string, error) {
 	if response.StatusCode != 200 {
 		return "", fmt.Errorf("secure login reply %d", response.StatusCode)
 	}
-	response, err = client.Get(origin + "/api/v1/nas-services/configuration")
+	expectedPolicy, err := os.ReadFile(proof)
+	if err != nil {
+		return "", err
+	}
+	var expected struct{ Revision uint64 }
+	if err := json.Unmarshal(expectedPolicy, &expected); err != nil {
+		return "", err
+	}
+	response, err = client.Get(origin + policyPath)
 	if err != nil {
 		return "", err
 	}
 	var observed struct {
-		Revision uint64
-		Applied  bool
+		Revision      uint64
+		Applied       bool
+		Configuration json.RawMessage
 	}
 	decodeErr := json.NewDecoder(response.Body).Decode(&observed)
 	response.Body.Close()
-	if response.StatusCode != 200 || decodeErr != nil || observed.Revision != 1 || observed.Applied {
+	if response.StatusCode != 200 || decodeErr != nil || observed.Revision != expected.Revision || observed.Applied ||
+		(expected.Revision > 1 && !bytes.Equal(observed.Configuration, expectedPolicy)) {
 		return "", fmt.Errorf("policy readback refused %d", response.StatusCode)
 	}
+	if during != nil {
+		if err := during(fingerprint, client); err != nil {
+			return "", err
+		}
+	}
 	return fingerprint, nil
+}
+
+func updatedFixturePolicy() []byte {
+	next := strings.ReplaceAll(policy, `"revision":1`, `"revision":2`)
+	next = strings.ReplaceAll(next, `"volume_revision":1`, `"volume_revision":2`)
+	next = strings.Replace(next, `"volumes":[]`, `"volumes":[{"id":"bulk","filesystem_uuid":"11111111-2222-3333-4444-555555555555"}]`, 1)
+	next = strings.Replace(next, `"exports":[]`, `"exports":[{"id":"bbbbbbbb-cccc-dddd-eeee-ffffffffffff","volume_id":"bulk","relative_path":"archive","clients":[{"network":"192.0.2.0/24","access":"ro","squash":"all","anonymous_uid":65534,"anonymous_gid":65534,"security":"sys"}]}]`, 1)
+	return []byte(next)
+}
+
+func saveAndConfirmPolicy(ctx context.Context, client *http.Client) error {
+	response, err := client.Get(origin + "/api/v1/auth/session")
+	if err != nil {
+		return err
+	}
+	var session struct {
+		CSRF string `json:"csrf_token"`
+	}
+	decodeErr := json.NewDecoder(response.Body).Decode(&session)
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK || decodeErr != nil || session.CSRF == "" {
+		return errors.New("RC0 fixture received no valid session token")
+	}
+	want := updatedFixturePolicy()
+	save := func() (*http.Response, error) {
+		request, err := http.NewRequestWithContext(ctx, http.MethodPut, origin+policyPath, bytes.NewReader(want))
+		if err != nil {
+			return nil, err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Origin", origin)
+		request.Header.Set("X-PhantoWD-CSRF", session.CSRF)
+		return client.Do(request)
+	}
+	response, err = save()
+	if err != nil {
+		return err
+	}
+	var saved struct {
+		Revision uint64
+		Saved    bool
+		Applied  bool
+	}
+	decodeErr = json.NewDecoder(response.Body).Decode(&saved)
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK || decodeErr != nil || !saved.Saved || saved.Applied || saved.Revision != 2 {
+		return fmt.Errorf("RC0 managed policy save refused %d", response.StatusCode)
+	}
+	response, err = save()
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusConflict {
+		return errors.New("RC0 managed policy save allowed stale replay")
+	}
+	response, err = client.Get(origin + "/api/v1/nas-services/backup")
+	if err != nil {
+		return err
+	}
+	backup, readErr := io.ReadAll(io.LimitReader(response.Body, 64*1024))
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK || readErr != nil {
+		return errors.New("RC0 fixture could not download the managed policy backup")
+	}
+	cmd := exec.CommandContext(ctx, api, "--extract-rc0-policy-confirmation", "2")
+	cmd.Stdin, cmd.Stderr = bytes.NewReader(backup), os.Stderr
+	confirmation, err := cmd.Output()
+	if err != nil || !bytes.Equal(confirmation, want) {
+		return errors.New("backup did not yield the exact saved revision and definitions")
+	}
+	if err := os.WriteFile(policyProof, confirmation, 0600); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_RC0_POLICY_SAVE revision=2 definitions=changed applied=false replay=refused https_backup=extracted")
+	return nil
+}
+
+func readSavedPolicyProof() ([]byte, error) {
+	data, err := os.ReadFile(policyProof)
+	if err != nil || !bytes.Equal(data, updatedFixturePolicy()) {
+		return nil, errors.New("independent saved-policy confirmation is absent or differs")
+	}
+	return data, nil
 }
