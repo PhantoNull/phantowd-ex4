@@ -793,6 +793,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   The platform launcher can publish the init grant directly from the provisioned
   child of its admitted parent after confirming the policy, TLS and initialized
   administrator state. The grant binds the actual boot-local mount and inode.
+  An authenticated management save can now be followed by an exact policy
+  confirmation extracted from the original HTTPS backup. The launcher can
+  carry that separate copy across a reboot. The fixed ARMv5 fixture changes
+  the desired volume and NFS policy, rejects an older confirmation at boot
+  and reopens the saved revision with the independently captured bytes.
   Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery

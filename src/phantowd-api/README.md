@@ -820,6 +820,17 @@ and refuses non-Versatile PB machines. See the
   the boot grant for the init hook. Provisioning stages and stale policy
   confirmation require review. The launcher selects and admits the physical
   parent separately.
+- After a successful managed policy save, the operator can retain an
+  authenticated HTTPS backup from `/api/v1/nas-services/backup` outside the
+  managed state. `phantowd-api --extract-rc0-policy-confirmation <revision>`
+  reads that original backup from stdin and emits the exact configuration
+  bytes on stdout for FD 4 of `--publish-rc0-state`. Use the revision confirmed
+  by the save response. Capture the backup before another save and preserve
+  its configuration bytes. Extraction checks the coherent expected revision
+  and canonical bytes for managed saves starting at revision 2. Initial
+  revision 1 uses the separate bytes retained during provisioning. The
+  publisher still checks the proof against the selected policy and its local
+  operation evidence during startup.
 - The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
   A trusted root launcher supplies the installation ID as `--nas-installation-id`,
   an open private root-owned local ext directory on FD 3, and a separate

@@ -28,6 +28,7 @@ func main() {
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
 	provisionRC0 := flag.Bool("provision-rc0-state", false, "provision RC0 from an inherited parent, initial policy, TLS bundle and private admin input")
 	publishRC0 := flag.Bool("publish-rc0-state", false, "publish the management boot grant from an inherited provisioned-state parent")
+	extractRC0Policy := flag.String("extract-rc0-policy-confirmation", "", "extract the exact saved revision from a NAS policy backup on stdin")
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
@@ -54,6 +55,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*rc0BootService != "",
+		*extractRC0Policy != "",
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionRC0, *publishRC0, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -79,6 +81,12 @@ func main() {
 		stop()
 		if err != nil {
 			log.Fatal("RC0 boot service requires review")
+		}
+		return
+	}
+	if *extractRC0Policy != "" {
+		if err := extractRC0PolicyConfirmation(os.Stdin, os.Stdout, *extractRC0Policy); err != nil {
+			log.Fatal("RC0 saved policy confirmation could not be extracted")
 		}
 		return
 	}

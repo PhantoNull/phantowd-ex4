@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -30,6 +31,31 @@ func testConfig() Config {
 				Initiators: []iscsipolicy.Initiator{{Name: "iqn.2001-04.com.example:peer",
 					Authentication: iscsipolicy.Authentication{Mode: "chap", InitiatorUser: "peer", InitiatorSecretRef: "inbound"},
 					Grants:         []iscsipolicy.Grant{{LUNID: "lun", Access: "ro"}}}}}}}}
+}
+
+func TestSavedConfirmationRequiresExactCanonicalBackupRevision(t *testing.T) {
+	config := testConfig()
+	setRevision(&config, 2)
+	policy, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrap := func(raw []byte) []byte {
+		return fmt.Appendf(nil, `{"format":"%s","schema_version":1,"configuration":%s}`, BackupFormat, raw)
+	}
+	got, err := SavedConfirmation(wrap(policy), 2)
+	if err != nil || !bytes.Equal(got, policy) {
+		t.Fatal("canonical policy bytes were lost", err)
+	}
+	for _, want := range []uint64{1, 3} {
+		if got, err := SavedConfirmation(wrap(policy), want); err == nil || got != nil {
+			t.Fatal("an unrelated expected revision yielded confirmation", want)
+		}
+	}
+	noncanonical := bytes.Replace(policy, []byte(`"revision":2`), []byte(`"revision": 2`), 1)
+	if got, err := SavedConfirmation(wrap(noncanonical), 2); err == nil || got != nil {
+		t.Fatal("changed policy formatting yielded confirmation")
+	}
 }
 
 func TestCoherentPolicyRoundTripAndIndependentCountersRefused(t *testing.T) {
