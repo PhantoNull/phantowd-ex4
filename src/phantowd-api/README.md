@@ -722,9 +722,8 @@ and refuses non-Versatile PB machines. See the
   Optional listener configuration is fail-closed: non-loopback binds require a
   TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular
   non-symlink files not accessible to group/other users; the certificate must be currently valid and
-  match the origin host. TLS has a minimum version of 1.2. No proxy headers or
-  certificate provisioning/renewal are implemented. The QEMU image does not
-  opt into remote listening.
+  match the origin host. TLS has a minimum version of 1.2. The API does not
+  trust proxy headers. The QEMU image uses a loopback listener.
 - `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use also requires
   `PHANTOWD_PUBLIC_ORIGIN`, such as `https://nas.example:8443`, and a configured
   TLS identity. In path mode, set `PHANTOWD_TLS_CERT_FILE` and
@@ -736,8 +735,29 @@ and refuses non-Versatile PB machines. See the
   The API reads from offset zero, checks for file changes, closes its copy of
   the descriptor and uses the same certificate validity and hostname checks
   as path mode. Each API start needs a fresh descriptor from the supervisor.
-  Certificate issuance, trusted installation and replacement remain operator
-  and supervisor responsibilities.
+  Certificate issuance and client trust remain operator responsibilities.
+- Before RC0 management starts, a trusted root launcher can run
+  `--provision-rc0-tls` with the private state root on FD 3 and one bounded
+  PEM certificate chain and private key on private stdin. Set
+  `PHANTOWD_PUBLIC_ORIGIN` to the intended HTTPS origin. The command validates
+  the key pair, certificate format, origin host and current validity before
+  staging and syncing `management-tls.pem` with mode 0600. It refuses an
+  existing identity or staged operation. The supervisor also refuses startup
+  while the staging role is present. Establish client trust in the issuer or
+  the original certificate through a trusted channel before connecting.
+- With RC0 management stopped, the trusted launcher can use
+  `--replace-rc0-tls --expected-tls-certificate <fingerprint>` with the same
+  FD 3, private stdin and HTTPS origin as initial provisioning. The fingerprint
+  is the 64 lowercase hexadecimal digits of the SHA-256 hash of the current
+  leaf certificate's DER bytes. Use the fingerprint recorded from the trusted
+  certificate. The replacement must have a different leaf certificate and must
+  be currently valid for the origin. The command holds the same state-root lock
+  as the supervisor and publishes the staged identity with an atomic rename
+  and directory sync. Startup opens the new identity at the next launch.
+  Keep any previous identity needed for rollback in protected external storage.
+  Restoring a still-valid identity uses the same replacement command with the
+  current fingerprint. If the command reports an unconfirmed result, review the
+  published identity and any staged file before proceeding.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
@@ -778,6 +798,37 @@ and refuses non-Versatile PB machines. See the
   descriptor; the usual schema/permissions/sync rules remain. The current S50
   path launcher does not implement this descriptor handoff. A trusted parent
   must separately qualify provisioning/admission; this is not complete boot recovery.
+- The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
+  A trusted root launcher supplies the installation ID as `--nas-installation-id`,
+  an open private root-owned local ext directory on FD 3, and a separate
+  root-owned read-only file with the exact confirmed NAS policy bytes on FD 4.
+  Use a distinct file from the current policy. The launcher also supplies
+  `PHANTOWD_LISTEN_ADDR` and `PHANTOWD_PUBLIC_ORIGIN` with an HTTPS origin.
+  The state root contains `accounts/`, `nas-policy/` and `management-tls.pem`.
+  The supervisor opens these roles beneath one locked root, admits the NAS
+  Owner, and starts one `phantowd` child with the retained account and TLS
+  descriptors. The policy stream accepts only the original live child. Stop
+  via the supervisor; it reaps the child before releasing policy authority.
+  Unexpected child or channel loss ends the lifetime and requires review.
+  A later start requires a fresh independent policy confirmation if policy
+  changed. The mode relies on the launcher for state-medium admission and
+  first-use authorization. RC0 has no default init binding to this
+  mode. Management reads and desired configuration are available while SMB,
+  NFS and iSCSI activation remains outside this supervisor's authority.
+- An early Linux launcher can use `--supervise-rc0-boot` to hand off the
+  same admitted state directory on FD 3, a private read-only boot record
+  on FD 4 and the independent confirmed policy bytes on FD 5. FD 4 must
+  reside on tmpfs and hold one JSON object of at most 4096 bytes. The required
+  keys are `format` (`phantowd-rc0-boot-v1`), `installation_id`,
+  `listen_address`, `origin` (HTTPS), `state_mount_id` (the current kernel's
+  `STATX_MNT_ID_UNIQUE` for the admitted descriptor), `state_root_inode`,
+  `policy_sha256` (exact FD 5 bytes) and `tls_leaf_sha256` (the expected
+  certificate's DER leaf). Both hashes use 64 lowercase hexadecimal digits.
+  The launcher supplies the boot-local mount identity and independently
+  confirmed digests. The supervisor checks the retained ext state directory,
+  the policy bytes and the TLS identity before starting the child. Listener
+  settings come from the record. The selected physical medium and default
+  init integration need separate qualification.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

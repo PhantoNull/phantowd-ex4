@@ -65,10 +65,27 @@ lazy unmounts.
 
 In the pinned Buildroot container, run `support/container/build-rc0-profile.sh`
 with the repository mounted at `/external` and the project workspace at
-`/workspace`. The check builds the normal ARMv5 API without the QEMU self-test
-tag, audits the root filesystem, and boots it on the Versatile PB model. The
-build directory is temporary. The profile is compile-only, `flashable=no` and
-`installable=no`.
+`/workspace`. The check builds the normal ARMv5 API, audits the root
+filesystem and boots it on the Versatile PB model. It also tests the explicit
+management supervisor across three isolated boots with a disposable persistent
+state image. It authenticates and reads the same policy over HTTPS, rotates
+the TLS identity while the supervisor is stopped, and verifies both certificate
+fingerprints across their respective boot cycles. Every boot must stop cleanly.
+Test files enter a copy of the root
+image. The build directory is temporary. The profile remains compile-only,
+`flashable=no` and `installable=no`.
+
+The **RC0 ARMv5 reproducibility** workflow builds the profile on two
+independent hosted runners with fresh Buildroot workspaces. Each runner keeps
+the serial logs and source commit and tree for that attempt. After its QEMU
+checks pass, it exports the original kernel, Versatile PB DTB and root
+filesystem along with the resolved Buildroot and Linux configurations,
+Buildroot package information, CycloneDX SBOM, host and target license
+manifests, and checksums. A separate job verifies the source commit and
+compares both sets byte for byte. The HTTPS fixture checks that QEMU provides
+entropy through its virtual RNG. For a local container run, pass an empty
+report directory to `build-rc0-profile.sh` to retain these files and logs.
+The workflow keeps the artifacts for one day.
 
 ## Dashboard preview
 

@@ -771,6 +771,14 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   future supervisor and retain the same lock and watch through confirmation.
   The NFS reboot fixture uses this path. Host tests exercise a replaced
   pathname, caller closure and unsafe grants.
+  An explicit RC0 management supervisor opens the policy, credentials and TLS
+  from one admitted local ext state root. It starts one non-root API for the
+  confirmed policy lifetime and releases authority after the child stops.
+  The early boot handoff binds the selected mount and directory inode, an
+  independent policy confirmation and the expected TLS fingerprint in a
+  protected runtime record. The QEMU launcher exercises the handoff on
+  generated ext4 media. Physical placement, default init integration,
+  complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective
@@ -2266,8 +2274,13 @@ milestone before enabling its controls; M1/M6 for deployment.
   replacement/renewal, key permissions, time errors and restart behavior.
   The Linux API accepts one root-owned certificate/key bundle from its
   supervisor over read-only FD 4. The standard API fixture exercises this mode
-  with administrator state on FD 3. Initial trust, issuance, durable rotation,
-  supervisor wiring and device time recovery remain open.
+  with administrator state on FD 3. The RC0 supervisor opens that bundle, and
+  the local `--provision-rc0-tls` mode installs the first valid origin-matched
+  identity. Both refuse while staged publication remains. Client trust and
+  issuance stay with the operator. Offline replacement requires the current
+  leaf fingerprint and the exclusive state-root lock. The QEMU gate compares
+  both identities actually served before and after separate guest boot cycles.
+  Interrupted-write recovery and device time recovery remain open.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

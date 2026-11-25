@@ -5,6 +5,17 @@
 # shared authenticated source/download cache and a disposable RC0 build.
 set -eu
 
+[ "$#" -le 1 ] || { echo "Usage: $0 [REPORT_DIRECTORY]" >&2; exit 2; }
+reports=${1:-}
+if [ -n "$reports" ]; then
+    mkdir -p -- "$reports"
+    reports=$(CDPATH='' cd -- "$reports" && pwd)
+    if [ -e "$reports/comparison" ] || [ -L "$reports/comparison" ]; then
+        echo "RC0 report directory already contains a comparison set: $reports" >&2
+        exit 2
+    fi
+fi
+
 external=${PHANTOWD_EXTERNAL_DIR:-/external}
 workspace=${PHANTOWD_WORKSPACE_DIR:-/workspace}
 # shellcheck disable=SC1091
@@ -30,5 +41,50 @@ grep -Fx 'BR2_PACKAGE_PHANTOWD_API=y' "$output/.config" >/dev/null
 grep -Fx '# BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST is not set' "$output/.config" >/dev/null
 grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/null
 build all
+evidence=${reports:-$output}
+# Use the e2fsprogs already compiled for generating the root filesystem.
+export PATH="$output/host/sbin:$PATH"
 sh "$external/support/qemu-rc0-profile.sh" "$output/images" "$output/host/bin/go" \
-    "$output/rc0-profile-serial.log"
+    "$evidence/rc0-profile-serial.log"
+sh "$external/support/qemu-rc0-management.sh" "$output/images" "$output/host/bin/go" \
+    "$evidence/rc0-management"
+
+if [ -n "$reports" ]; then
+    comparison="$reports/comparison/rc0-armv5"
+    mkdir -p -- "$comparison"
+    for artifact in zImage versatile-pb.dtb rootfs.ext2; do
+        cp --sparse=always -- "$output/images/$artifact" "$comparison/$artifact"
+    done
+    install -m 0644 "$output/.config" "$comparison/buildroot.config"
+    install -m 0644 "$output/build/linux-$LINUX_VERSION/.config" "$comparison/linux.config"
+
+    schema="$workspace/dl/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
+    if [ ! -f "$schema" ]; then
+        curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$output/spdx.schema.json" \
+            "https://raw.githubusercontent.com/CycloneDX/specification/$CYCLONEDX_SPEC_VERSION/schema/spdx.schema.json"
+        printf '%s  %s\n' "$CYCLONEDX_SPDX_SCHEMA_SHA256" "$output/spdx.schema.json" | sha256sum --check --status
+        mv -- "$output/spdx.schema.json" "$schema"
+    fi
+    printf '%s  %s\n' "$CYCLONEDX_SPDX_SCHEMA_SHA256" "$schema" | sha256sum --check --status
+    grep -Fx "CYCLONEDX_VERSION = \"$CYCLONEDX_SPEC_VERSION\"" "$buildroot/utils/generate-cyclonedx" >/dev/null
+    build --no-print-directory show-info > "$comparison/buildroot-show-info.json"
+    (
+        cd "$buildroot"
+        O="$output" BR2_EXTERNAL="$external" BR2_DL_DIR="$workspace/dl" \
+            ./utils/generate-cyclonedx \
+            --project-name "PhantoWD EX4 RC0 ARMv5" \
+            --project-version "dev-buildroot-$BUILDROOT_VERSION-linux-$LINUX_VERSION" \
+            < "$comparison/buildroot-show-info.json" > "$output/buildroot-sbom.cdx.json"
+    )
+    python3 -B "$external/support/container/augment-cyclonedx.py" \
+        < "$output/buildroot-sbom.cdx.json" > "$comparison/sbom.cdx.json"
+    build legal-info
+    install -m 0644 "$output/legal-info/manifest.csv" "$comparison/license-manifest.csv"
+    install -m 0644 "$output/legal-info/host-manifest.csv" "$comparison/host-license-manifest.csv"
+    (
+        cd "$comparison"
+        sha256sum zImage versatile-pb.dtb rootfs.ext2 buildroot.config linux.config \
+            buildroot-show-info.json sbom.cdx.json license-manifest.csv host-license-manifest.csv > SHA256SUMS
+    )
+fi

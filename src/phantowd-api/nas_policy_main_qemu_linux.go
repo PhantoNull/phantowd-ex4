@@ -509,12 +509,5 @@ func qemuNASMainLifetime(ctx context.Context, owner *naspolicystore.Owner, liste
 }
 
 func qemuNASMainPeer(conn *net.UnixConn, pid int) bool {
-	raw, err := conn.SyscallConn()
-	if err != nil {
-		return false
-	}
-	var peer *unix.Ucred
-	var lookup error
-	err = raw.Control(func(fd uintptr) { peer, lookup = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED) })
-	return err == nil && lookup == nil && peer != nil && int(peer.Pid) == pid && peer.Uid == 65534 && peer.Gid == 65534
+	return managementAPIPeer(conn, pid, 65534, 65534)
 }

@@ -139,16 +139,7 @@ func guardQEMUIdentityOwnerService() error {
 }
 
 func qemuIdentityOwnerAPIIdentity() (uint32, uint32, error) {
-	account, err := user.Lookup("phantowd")
-	if err != nil {
-		return 0, 0, errors.New("QEMU API principal is unavailable")
-	}
-	uid, uidErr := strconv.ParseUint(account.Uid, 10, 32)
-	gid, gidErr := strconv.ParseUint(account.Gid, 10, 32)
-	if uidErr != nil || gidErr != nil || uid == 0 || uid > 65534 || gid == 0 || gid > 65534 {
-		return 0, 0, errors.New("QEMU API principal is invalid")
-	}
-	return uint32(uid), uint32(gid), nil
+	return managementAPIIdentity()
 }
 
 func prepareQEMUIdentityOwnerRuntime(apiGID uint32) error {

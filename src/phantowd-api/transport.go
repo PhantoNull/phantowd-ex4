@@ -106,24 +106,33 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 		if err != nil {
 			return apiTransportConfig{}, errors.New("TLS certificate/key pair could not be loaded")
 		}
-		leaf, err := x509.ParseCertificate(pair.Certificate[0])
-		if err != nil {
-			return apiTransportConfig{}, errors.New("TLS leaf certificate could not be parsed")
+		if err := validateTLSLeaf(&pair, parsedOrigin.Hostname(), time.Now()); err != nil {
+			return apiTransportConfig{}, err
 		}
-		now := time.Now()
-		if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
-			return apiTransportConfig{}, errors.New("TLS leaf certificate is outside its validity period")
-		}
-		if err := leaf.VerifyHostname(parsedOrigin.Hostname()); err != nil {
-			return apiTransportConfig{}, errors.New("TLS certificate does not match the public origin host")
-		}
-		pair.Leaf = leaf
 		config.TLSConfig = &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{pair},
 		}
 	}
 	return config, nil
+}
+
+func validateTLSLeaf(pair *tls.Certificate, host string, now time.Time) error {
+	if len(pair.Certificate) == 0 {
+		return errors.New("TLS leaf certificate is missing")
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil {
+		return errors.New("TLS leaf certificate could not be parsed")
+	}
+	if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
+		return errors.New("TLS leaf certificate is outside its validity period")
+	}
+	if err := leaf.VerifyHostname(host); err != nil {
+		return errors.New("TLS certificate does not match the public origin host")
+	}
+	pair.Leaf = leaf
+	return nil
 }
 
 func parseListenAddress(address string) (host string, port int, wildcard bool, err error) {
