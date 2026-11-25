@@ -32,3 +32,5 @@ grep -Fx '# BR2_TARGET_ENABLE_ROOT_LOGIN is not set' "$output/.config" >/dev/nul
 build all
 sh "$external/support/qemu-rc0-profile.sh" "$output/images" "$output/host/bin/go" \
     "$output/rc0-profile-serial.log"
+sh "$external/support/qemu-rc0-management.sh" "$output/images" "$output/host/bin/go" \
+    "$output/rc0-management"

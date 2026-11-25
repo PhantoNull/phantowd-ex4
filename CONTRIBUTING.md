@@ -65,10 +65,13 @@ lazy unmounts.
 
 In the pinned Buildroot container, run `support/container/build-rc0-profile.sh`
 with the repository mounted at `/external` and the project workspace at
-`/workspace`. The check builds the normal ARMv5 API without the QEMU self-test
-tag, audits the root filesystem, and boots it on the Versatile PB model. The
-build directory is temporary. The profile is compile-only, `flashable=no` and
-`installable=no`.
+`/workspace`. The check builds the normal ARMv5 API, audits the root
+filesystem and boots it on the Versatile PB model. It also tests the explicit
+management supervisor in two isolated boots with a disposable persistent
+state image. The second boot must authenticate and read the same policy over
+HTTPS, and both boots must stop cleanly. Test files enter a copy of the root
+image. The build directory is temporary. The profile remains compile-only,
+`flashable=no` and `installable=no`.
 
 ## Dashboard preview
 
