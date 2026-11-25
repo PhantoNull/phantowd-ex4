@@ -398,6 +398,13 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := runInitHook(ctx, "start"); err != nil {
 		return fmt.Errorf("init could not start admitted management: %w", err)
 	}
+	// Exercise shutdown as soon as startup is acknowledged, before any HTTP I/O.
+	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent()); err != nil {
+		return fmt.Errorf("init could not stop immediately after startup: %w", err)
+	}
+	if err := runInitHook(ctx, "start"); err != nil {
+		return fmt.Errorf("init could not start after a confirmed stop: %w", err)
+	}
 	stopped := false
 	defer func() {
 		if !stopped {
@@ -423,7 +430,7 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 		conn.Close()
 		return errors.New("management listener remains open after init stop")
 	}
-	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused https=verified shutdown=confirmed")
+	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
 	return nil
 }

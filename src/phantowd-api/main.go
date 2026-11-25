@@ -245,6 +245,8 @@ func main() {
 	if os.Geteuid() == 0 {
 		log.Fatal("refusing to serve as root")
 	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 	accounts, err := openConfiguredAccountStore(os.Getenv("PHANTOWD_STATE_DIR"), os.Getenv("PHANTOWD_STATE_FD"))
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
@@ -305,8 +307,6 @@ func main() {
 	}, auth, readPolicy, serviceState, func(ctx context.Context) (storageGPTObservationSummary, error) {
 		return observeGPTPartitionIdentityFromBroker(ctx)
 	}, nas), transport)
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
 	shutdownDone := make(chan struct{})
 	go func() {
 		defer close(shutdownDone)
