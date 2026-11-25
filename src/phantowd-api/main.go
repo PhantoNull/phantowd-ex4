@@ -22,6 +22,7 @@ func main() {
 	registryCommit := flag.Bool("commit-volume-registry", false, "persist explicit claims using inherited directory 3; no storage adoption")
 	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
 	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
+	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
 	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
@@ -41,7 +42,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -59,6 +60,12 @@ func main() {
 	}
 	if *provisionNAS {
 		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	if *provisionAdmin {
+		if err := provisionInheritedAdministrator(context.Background(), os.Stdin); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -201,6 +208,11 @@ func main() {
 		log.Fatal("account state is unavailable or insecure")
 	}
 	defer accounts.Close()
+	if !developmentBrowserEnrollment {
+		if configured, err := accounts.configured(); err != nil || !configured {
+			log.Fatal("administrator must be provisioned locally before API startup")
+		}
+	}
 	transport, err := loadAPITransportConfig()
 	if err != nil {
 		log.Fatal("API transport configuration is invalid")
@@ -210,6 +222,7 @@ func main() {
 		log.Fatal("service configuration options are invalid")
 	}
 	auth := newAuthController(accounts, transport.AllowedOrigin)
+	auth.setupDisabled = !developmentBrowserEnrollment
 	nas, closeNAS, err := openNASPolicyHTTP(auth, os.Getenv("PHANTOWD_NAS_POLICY_SOCKET"), shareDirectory != "" || serviceDirectory != "", transport.TLSConfig != nil)
 	if err != nil {
 		log.Fatal("NAS policy channel configuration is unavailable")

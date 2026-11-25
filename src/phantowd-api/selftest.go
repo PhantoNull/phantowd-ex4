@@ -22,6 +22,8 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/passwordhash"
 )
 
+const developmentBrowserEnrollment = true
+
 const (
 	qemuTestSerial  = "PHANTOWD-QEMU-SERIAL-01"
 	qemuTestWWN     = "500f000000000001"

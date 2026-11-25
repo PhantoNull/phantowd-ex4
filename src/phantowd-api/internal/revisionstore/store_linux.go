@@ -230,6 +230,19 @@ func (s *Store[T]) Load() (T, error) {
 func (s *Store[T]) Commit(expected uint64, next T) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.commitLocked(expected, next, false)
+}
+
+// CommitPristine publishes revision 1 only in an empty, exclusively locked
+// directory. Any preexisting entry requires review. The caller independently
+// authorizes first provisioning on the intended medium.
+func (s *Store[T]) CommitPristine(next T) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.commitLocked(0, next, true)
+}
+
+func (s *Store[T]) commitLocked(expected uint64, next T, pristine bool) error {
 	if err := s.check(); err != nil {
 		return err
 	}
@@ -265,21 +278,14 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 		s.codec.ValidateTransition(current, persisted) != nil {
 		return ErrInvalid
 	}
-	// Only the single reserved pending file is disposable. It is never a
-	// recovery candidate; refusal of suspicious entries preserves evidence.
 	currentName, pendingName := s.codec.CurrentName, s.codec.PendingName
-	var st unix.Stat_t
-	err = unix.Fstatat(s.dir, pendingName, &st, unix.AT_SYMLINK_NOFOLLOW)
-	if err == nil {
-		if st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 ||
-			st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 {
-			return ErrUnsafe
-		}
-		if unix.Unlinkat(s.dir, pendingName, 0) != nil {
-			return ErrIO
-		}
-	} else if !errors.Is(err, unix.ENOENT) {
-		return ErrIO
+	if pristine {
+		err = s.requireEmptyDirectory()
+	} else {
+		err = s.discardPending()
+	}
+	if err != nil {
+		return err
 	}
 	fd, err := unix.Openat(s.dir, pendingName, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if err != nil {
@@ -292,17 +298,65 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 		syncErr = s.io.sync(f)
 	}
 	closeErr := s.io.close(f)
-	// Keep the bounded pending entry on failure for the next commit to discard.
+	// Retain an unsuccessful stage. Pristine enrollment never discards it.
 	if writeErr != nil || n != len(data) || syncErr != nil || closeErr != nil {
 		return ErrIO
 	}
-	if s.io.rename(s.dir, pendingName, s.dir, currentName) != nil {
+	if pristine {
+		err = unix.Renameat2(s.dir, pendingName, s.dir, currentName, unix.RENAME_NOREPLACE)
+	} else {
+		err = s.io.rename(s.dir, pendingName, s.dir, currentName)
+	}
+	if err != nil {
 		s.uncertain = true
 		return ErrUncertain
 	}
 	if s.io.syncDir(s.dir) != nil {
 		s.uncertain = true
 		return ErrUncertain
+	}
+	return nil
+}
+
+func (s *Store[T]) requireEmptyDirectory() error {
+	fd, err := unix.Openat2(s.dir, ".", &unix.OpenHow{
+		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC | unix.O_NOATIME,
+		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	if err != nil {
+		return ErrIO
+	}
+	dir := os.NewFile(uintptr(fd), "pristine-state-directory")
+	names, err := dir.Readdirnames(1)
+	if closeErr := dir.Close(); closeErr != nil {
+		return ErrIO
+	}
+	if len(names) != 0 {
+		return ErrReview
+	}
+	if !errors.Is(err, io.EOF) {
+		return ErrIO
+	}
+	return nil
+}
+
+// Only the reserved, validated pending file is disposable in a normal commit.
+func (s *Store[T]) discardPending() error {
+	pending := s.codec.PendingName
+	var st unix.Stat_t
+	err := unix.Fstatat(s.dir, pending, &st, unix.AT_SYMLINK_NOFOLLOW)
+	if errors.Is(err, unix.ENOENT) {
+		return nil
+	}
+	if err != nil {
+		return ErrIO
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 ||
+		st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 {
+		return ErrUnsafe
+	}
+	if unix.Unlinkat(s.dir, pending, 0) != nil {
+		return ErrIO
 	}
 	return nil
 }

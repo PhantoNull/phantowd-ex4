@@ -742,10 +742,18 @@ and refuses non-Versatile PB machines. See the
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
   with the image and its version appears in the CycloneDX SBOM.
-- A first-admin setup/login flow now protects the diagnostic endpoints. It is
-  still a QEMU-only prototype, not a deployable product account system. The
-  initial password must be at least 15 Unicode code points and at most 1024
-  UTF-8 bytes; the username is 1-32 ASCII letters, digits, `.`, `_`, or `-`.
+- The usual Linux API requires a locally provisioned administrator before it
+  opens its listener. A trusted supervisor can run `--provision-administrator`
+  as the non-root API user, passing the private credential-directory grant on
+  FD 3 and a bounded JSON object with `username` and `password` on private
+  stdin. The operator supplies the password through that stream. It must be
+  15 or more Unicode code points and at most 1024 UTF-8 bytes. The username is
+  1–32 ASCII letters, digits, `.`, `_`, or `-`. The account store refuses
+  existing, pending or unfamiliar entries and preserves them for review.
+  Browser enrollment is available to QEMU development builds. The usual API
+  denies browser enrollment and keeps password changes behind authentication.
+  The supervisor must establish first-use authorization and state ownership
+  independently before it supplies the directory.
 - The account verifier is Argon2id PHC at m=19456 KiB, t=2, p=1. Public KDF
   calls share one process-wide slot; a caller waiting for the slot can cancel,
   but a running Argon2 operation cannot be interrupted. These provisional
