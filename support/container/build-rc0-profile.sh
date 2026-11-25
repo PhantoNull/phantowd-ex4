@@ -64,6 +64,8 @@ evidence=${reports:-$output}
 export PATH="$output/host/sbin:$PATH"
 sh "$external/support/qemu-rc0-profile.sh" "$output/images" "$output/host/bin/go" \
     "$evidence/rc0-profile-serial.log"
+sh "$external/support/qemu-rc0-samba-child.sh" "$output/images" "$output/host/bin/go" \
+    "$evidence/rc0-samba-child.log"
 sh "$external/support/qemu-rc0-management.sh" "$output/images" "$output/host/bin/go" \
     "$evidence/rc0-management"
 

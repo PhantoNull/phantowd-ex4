@@ -14,6 +14,9 @@ on:
       - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
       - 'support/fixtures/rc0-management-nfs.go'
+      - 'support/fixtures/rc0-samba-child.go'
+      - 'src/phantowd-api/rc0_samba_child_linux.go'
+      - 'src/phantowd-api/rc0_samba_code_linux.go'
       - 'tools/phantowd-lab/**'
   push:
     branches: [develop]
@@ -39,6 +42,7 @@ on:
       - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
       - 'support/fixtures/rc0-management-nfs.go'
+      - 'support/fixtures/rc0-samba-child.go'
       - 'tools/phantowd-lab/**'
   workflow_dispatch:
 
@@ -108,6 +112,7 @@ jobs:
           path: |
             ${{ runner.temp }}/phantowd-rc0/source.txt
             ${{ runner.temp }}/phantowd-rc0/rc0-profile-serial.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-samba-child.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.seed.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.verify.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.rotated.log

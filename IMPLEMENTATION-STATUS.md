@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## RC0 isolated Samba child
+
+The Linux API can start the packaged Samba daemon from a sealed share roster
+and inherited configuration, ext4 state and share descriptors. The child
+revalidates the image's read-only Samba code, creates a private mount namespace
+and chroot, and limits Samba's capabilities before exec.
+
+A disposable ARMv5 guest verified real SMB3 authentication, reads and writes
+under the test account, read-only write refusal, anonymous share refusal,
+retained databases, and process-group shutdown. The fixture checks the original
+mount inodes and the exact kernel capability sets. It also rejects an unsealed
+roster, duplicate state directories, a pre-unshared child and swapped share
+modes. The clean RC0 build runs this fixture with the kernel and userspace it
+just produced. Boot policy, the production identity backend, and authenticated
+SMB service supervision remain open.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,
