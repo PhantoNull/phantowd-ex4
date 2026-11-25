@@ -3,6 +3,14 @@
 
 # Implementation status
 
+## Inherited HTTPS identity
+
+The normal Linux API can acquire a root-owned certificate and key through one
+read-only descriptor. The API validates the bundle, verifies the certificate
+against the configured origin and closes the descriptor before listening. The
+standard API QEMU fixture exercises inherited and path modes in successive
+lifetimes. Product TLS issuance, trust and replacement remain open.
+
 ## NAS policy bootstrap from a directory grant
 
 The NAS bootstrap accepts an already-open policy directory and keeps an

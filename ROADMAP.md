@@ -2259,7 +2259,10 @@ milestone before enabling its controls; M1/M6 for deployment.
   data or ownership.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
-  Transport support is not a certificate provisioning strategy.
+  The Linux API accepts one root-owned certificate/key bundle from its
+  supervisor over read-only FD 4. The standard API fixture exercises this mode
+  with administrator state on FD 3. Initial trust, issuance, durable rotation,
+  supervisor wiring and device time recovery remain open.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

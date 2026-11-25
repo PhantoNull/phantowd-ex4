@@ -116,6 +116,25 @@ func TestAPITransportRejectsUnsafeOrIncompleteConfiguration(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid inherited TLS slot",
+			values: map[string]string{
+				tlsIdentityFDEnv: "3",
+			},
+		},
+		{
+			name: "empty inherited TLS slot",
+			values: map[string]string{
+				tlsIdentityFDEnv: "",
+			},
+		},
+		{
+			name: "inherited TLS with certificate path",
+			values: map[string]string{
+				tlsIdentityFDEnv: "4",
+				tlsCertFileEnv:   "unused.crt",
+			},
+		},
+		{
 			name: "invalid listen port",
 			values: map[string]string{
 				listenAddressEnv: "127.0.0.1:70000",
