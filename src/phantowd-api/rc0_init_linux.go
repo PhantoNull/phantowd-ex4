@@ -99,7 +99,23 @@ func openRC0BootGrants() ([]*os.File, error) {
 	if err != nil {
 		return nil, errors.Join(err, state.Close(), plan.Close())
 	}
-	return []*os.File{state, plan, policy}, nil
+	data, _, err := readPrivateStartupFile(plan, 0, rc0BootMaxBytes)
+	if err != nil {
+		return nil, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+	}
+	boot, err := decodeRC0BootPlan(data)
+	if err != nil || !fixedRC0BootInventory(grantDir, boot.StorageSHA256 != "") {
+		return nil, errors.Join(errRC0Review, state.Close(), plan.Close(), policy.Close())
+	}
+	grants := []*os.File{state, plan, policy}
+	if boot.StorageSHA256 != "" {
+		storage, err := openRC0PrivateFile(grantDir, rc0StorageRole, rc0StorageApprovalLimit)
+		if err != nil {
+			return nil, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+		}
+		grants = append(grants, storage)
+	}
+	return grants, nil
 }
 
 func openRC0BootDirectory(run *os.File, name string) (*os.File, error) {
@@ -147,7 +163,8 @@ func startRC0BootService(ctx context.Context) error {
 	defer ack.Close()
 	defer childAck.Close()
 	cmd := exec.Command("/proc/self/exe", "--rc0-boot-service=run")
-	cmd.ExtraFiles = append(grants, childAck)
+	cmd.ExtraFiles = append(grants[:3:3], childAck)
+	cmd.ExtraFiles = append(cmd.ExtraFiles, grants[3:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := ctx.Err(); err != nil {

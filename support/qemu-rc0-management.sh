@@ -22,9 +22,12 @@ case "$scratch" in *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exi
 sha256sum -- "$images/rootfs.ext2" "$images/zImage" "$images/versatile-pb.dtb" > "$scratch/base.sha256"
 image="$scratch/rootfs.ext2"
 data="$scratch/virtual-state.ext4"
+volume="$scratch/virtual-volume.ext2"
 cp --sparse=always -- "$images/rootfs.ext2" "$image"
 truncate -s 32M "$data"
 mkfs.ext4 -F -q "$data"
+truncate -s 16M "$volume"
+mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$volume"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
@@ -38,14 +41,24 @@ set -eu
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+if [ ! -r /proc/mdstat ]; then
+    echo 'RC0 storage fixture requires the kernel MD census' >&2
+    exit 1
+fi
 test "$(tr -d '\000' < /sys/firmware/devicetree/base/model)" = 'ARM Versatile PB'
 test "$(cat /sys/class/block/sdb/size)" = 65536
+test "$(cat /sys/class/block/sdc/size)" = 32768
 case "$(cat /sys/class/misc/hw_random/rng_current)" in
     virtio_rng.*) ;;
     *) echo 'RC0 fixture requires the virtual entropy source' >&2; exit 1 ;;
 esac
 mount -t tmpfs -o mode=0755,size=64m tmpfs /run
 mount -t ext4 /dev/sdb /mnt
+mount -t tmpfs -o mode=0755,size=1m tmpfs /srv
+mkdir -m 0700 /run/phantowd-data-sources
+mkdir -m 0700 /run/phantowd-data-sources/boot-data
+mkdir -p /srv/phantowd/volumes/boot-data
+mount -t ext4 /dev/sdc /run/phantowd-data-sources/boot-data
 ifconfig lo 127.0.0.1 up
 case "$(cat /proc/cmdline)" in
     *' phantowd.state=seed') phase=seed ;;
@@ -69,12 +82,17 @@ if [ "$phase" = seed ]; then
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+umount /srv
+umount /run/phantowd-data-sources/boot-data
 umount /mnt
 echo "PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase"
 reboot -f
 SH
 
 debugfs -w -R 'mkdir /rc0-fixture' "$image"
+if ! debugfs -R 'stat /srv' "$image" 2>/dev/null | grep -F 'Type: directory' >/dev/null; then
+    debugfs -w -R 'mkdir /srv' "$image"
+fi
 install_fixture() {
     target="/rc0-fixture/$1"
     debugfs -w -R "write $scratch/$1 $target" "$image"
@@ -98,6 +116,8 @@ for phase in seed verify rotated; do
         -device lsi53c895a,id=scsi0 -device scsi-hd,bus=scsi0.0,drive=rootdisk,serial=RC0-ROOT \
         -drive "file=$data,if=none,id=statedisk,format=raw,cache=writethrough" \
         -device scsi-hd,bus=scsi0.0,drive=statedisk,serial=RC0-STATE \
+        -drive "file=$volume,if=none,id=datadisk,format=raw,cache=writethrough" \
+        -device scsi-hd,bus=scsi0.0,drive=datadisk,serial=PHANTOWD-RC0-FIXTURE-DATA,wwn=0x500f000000000003,device_id=PHANTOWD-RC0-DATA \
         -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0 \
         -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 init=/rc0-fixture/init phantowd.state=$phase" \
         > "$log" 2>&1; then
@@ -106,12 +126,14 @@ for phase in seed verify rotated; do
     fi
     expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
     identities="PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=$phase original=true runtime_lock=verified release=verified"
-    if ! awk -v ready="$expected" -v identities="$identities" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
+    storage="PHANTOWD_RC0_BOOT_STORAGE_READY phase=$phase exact_bind=true registry_lock=verified release=verified"
+    if ! awk -v ready="$expected" -v identities="$identities" -v storage="$storage" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
         { sub(/\r$/, "") }
         $0 == ready { startup++ }
         $0 == identities { identity++ }
+        $0 == storage { roster++ }
         $0 == stopped { unmount++ }
-        END { exit !(startup == 1 && identity == 1 && unmount == 1) }
+        END { exit !(startup == 1 && identity == 1 && roster == 1 && unmount == 1) }
     ' "$log" || ! grep -F 'reboot: Restarting system' "$log" >/dev/null ||
         grep -Eq 'PHANTOWD_RC0_SUPERVISOR_FAILED|Kernel panic' "$log"; then
         tail -n 25 "$log" >&2

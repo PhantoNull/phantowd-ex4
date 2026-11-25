@@ -32,18 +32,22 @@ import (
 )
 
 const (
-	root         = "/mnt/rc0-state"
-	proof        = "/run/rc0-confirmed-policy.json"
-	launch       = "/run/rc0-boot-v1.json"
-	bootDir      = "/run/phantowd-boot"
-	initHook     = "/etc/init.d/S51phantowd-management"
-	address      = "127.0.0.1:18443"
-	origin       = "https://" + address
-	install      = "c71c2ba76bd04d29816335c13c31a380"
-	api          = "/usr/bin/phantowd-api"
-	tlsRole      = root + "/management-tls.pem"
-	identityRole = root + "/service-identities"
-	policy       = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
+	root          = "/mnt/rc0-state"
+	proof         = "/run/rc0-confirmed-policy.json"
+	launch        = "/run/rc0-boot-v1.json"
+	bootDir       = "/run/phantowd-boot"
+	initHook      = "/etc/init.d/S51phantowd-management"
+	address       = "127.0.0.1:18443"
+	origin        = "https://" + address
+	install       = "c71c2ba76bd04d29816335c13c31a380"
+	api           = "/usr/bin/phantowd-api"
+	tlsRole       = root + "/management-tls.pem"
+	identityRole  = root + "/service-identities"
+	storageProof  = "/run/rc0-fixture-storage.json"
+	storageSource = "/run/phantowd-data-sources/boot-data"
+	storageTarget = "/srv/phantowd/volumes/boot-data"
+	storageUUID   = "11111111-2222-3333-4444-555555555555"
+	policy        = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
 
 type bootPlan struct {
@@ -55,6 +59,7 @@ type bootPlan struct {
 	StateRootInode uint64 `json:"state_root_inode"`
 	PolicySHA256   string `json:"policy_sha256"`
 	TLSLeafSHA256  string `json:"tls_leaf_sha256"`
+	StorageSHA256  string `json:"storage_sha256"`
 }
 
 func main() {
@@ -64,6 +69,7 @@ func main() {
 	}
 	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
 	fmt.Printf("PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=%s original=true runtime_lock=verified release=verified\n", os.Args[1])
+	fmt.Printf("PHANTOWD_RC0_BOOT_STORAGE_READY phase=%s exact_bind=true registry_lock=verified release=verified\n", os.Args[1])
 }
 
 func check() error {
@@ -92,6 +98,9 @@ func check() error {
 	if err := os.WriteFile(proof, []byte(policy), 0600); err != nil {
 		return err
 	}
+	if err := prepareStorageApproval(); err != nil {
+		return err
+	}
 	current := root + "/nas-policy/nas-services.json"
 	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
 		return errors.New("persistent policy bytes differ before startup")
@@ -107,6 +116,9 @@ func check() error {
 	}
 	if phase == "seed" {
 		if err := proveIdentityStartupRefusal(ctx); err != nil {
+			return err
+		}
+		if err := proveStorageStartupRefusal(ctx); err != nil {
 			return err
 		}
 		stage := root + "/.management-tls.provisioning"
@@ -127,6 +139,7 @@ func check() error {
 			func(p *bootPlan) { p.StateRootInode++ },
 			func(p *bootPlan) { p.PolicySHA256 = strings.Repeat("0", 64) },
 			func(p *bootPlan) { p.TLSLeafSHA256 = strings.Repeat("0", 64) },
+			func(p *bootPlan) { p.StorageSHA256 = strings.Repeat("0", 64) },
 		} {
 			if err := expectRefusal(ctx, proof, change); err != nil {
 				return err
@@ -206,7 +219,72 @@ func seed(ctx context.Context, credentials []byte) error {
 	if err := provisionServiceIdentityRange(ctx, `{"first_id":23000,"last_id":23010}`); err != nil {
 		return fmt.Errorf("service identity preparation: %w", err)
 	}
+	registry := root + "/volume-registry"
+	if err := os.Mkdir(registry, 0700); err != nil {
+		return err
+	}
+	commit := exec.CommandContext(ctx, api, "--commit-volume-registry", "--expected-registry-revision=0")
+	data := fmt.Appendf(nil, `{"format":"phantowd-volume-registry","schema_version":1,"revision":1,"volumes":[{"id":"boot-data","filesystem_uuid":%q}]}`, storageUUID)
+	if err := provision(ctx, commit, registry, data); err != nil {
+		return err
+	}
 	return provisionCertificate(ctx)
+}
+
+func prepareStorageApproval() error {
+	observed, err := storageMount(storageSource)
+	if err != nil || observed.Attributes&unix.STATX_ATTR_MOUNT_ROOT == 0 {
+		return errors.Join(errors.New("fixture storage source is not mounted"), err)
+	}
+	// This is independently fixed by the host fixture disk declaration.
+	wwn := sha256.Sum256([]byte("phantowd-vpd-observation-v1\x00wwn\x00naa.500f000000000003"))
+	data := fmt.Appendf(nil, `{"format":"phantowd-rc0-storage-v1","registry_revision":1,"volumes":[{"id":"boot-data","filesystem_uuid":%q,"mount_id":%d,"root_inode":%d,"device_major":%d,"device_minor":%d,"read_only":false,"disks":[{"wwn_sha256":"%x"}],"arrays":[]}]}`,
+		storageUUID, observed.Mnt_id, observed.Ino, observed.Dev_major, observed.Dev_minor, wwn)
+	return os.WriteFile(storageProof, data, 0600)
+}
+
+func storageMount(path string) (unix.Statx_t, error) {
+	const mask = unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
+	var stat unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, path, unix.AT_SYMLINK_NOFOLLOW, mask, &stat); err != nil {
+		return stat, err
+	}
+	if stat.Mask&mask != mask || stat.Attributes_mask&unix.STATX_ATTR_MOUNT_ROOT == 0 {
+		return stat, errors.New("fixture storage mount identity unavailable")
+	}
+	return stat, nil
+}
+
+func checkBootStorage(live bool) error {
+	source, sourceErr := storageMount(storageSource)
+	target, targetErr := storageMount(storageTarget)
+	if err := errors.Join(sourceErr, targetErr); err != nil {
+		return err
+	}
+	if mounted := target.Attributes&unix.STATX_ATTR_MOUNT_ROOT != 0; mounted != live {
+		return errors.New("storage target did not match boot lifetime")
+	}
+	if live && (source.Mnt_id == target.Mnt_id || source.Ino != target.Ino ||
+		source.Dev_major != target.Dev_major || source.Dev_minor != target.Dev_minor) {
+		return errors.New("service storage did not bind the exact approved volume")
+	}
+	return checkBootRoleLock(root+"/volume-registry", live)
+}
+
+func proveStorageStartupRefusal(ctx context.Context) error {
+	original, err := os.ReadFile(storageProof)
+	if err != nil {
+		return err
+	}
+	stale := bytes.Replace(original, []byte(`"registry_revision":1`), []byte(`"registry_revision":2`), 1)
+	if bytes.Equal(original, stale) {
+		return errors.New("fixture storage revision was not present")
+	}
+	if err := os.WriteFile(storageProof, stale, 0600); err != nil {
+		return err
+	}
+	refusal := expectRefusal(ctx, proof, nil)
+	return errors.Join(refusal, checkBootStorage(false), os.WriteFile(storageProof, original, 0600))
 }
 
 func provisionServiceIdentityRange(ctx context.Context, configuration string) error {
@@ -239,14 +317,18 @@ func proveIdentityStartupRefusal(ctx context.Context) error {
 }
 
 func checkServiceIdentityLock(held bool) error {
-	file, err := os.Open(identityRole)
+	return checkBootRoleLock(identityRole, held)
+}
+
+func checkBootRoleLock(path string, held bool) error {
+	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	lockErr := unix.Flock(int(file.Fd()), unix.LOCK_EX|unix.LOCK_NB)
 	closeErr := file.Close()
 	if held && !errors.Is(lockErr, unix.EWOULDBLOCK) || !held && lockErr != nil {
-		return errors.Join(errors.New("service identity role lock did not match supervisor lifetime"), lockErr, closeErr)
+		return errors.Join(errors.New("state role lock did not match supervisor lifetime"), lockErr, closeErr)
 	}
 	return closeErr
 }
@@ -369,9 +451,13 @@ func command(ctx context.Context, mode, confirmation string, change func(*bootPl
 	if err != nil {
 		return nil, errors.Join(err, state.Close(), plan.Close())
 	}
+	storage, err := os.Open(storageProof)
+	if err != nil {
+		return nil, errors.Join(err, state.Close(), plan.Close(), grant.Close())
+	}
 	cmd := exec.CommandContext(ctx, api, mode)
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "PHANTOWD_LISTEN_ADDR=127.0.0.1:1", "PHANTOWD_PUBLIC_ORIGIN=http://127.0.0.1:1"}
-	cmd.ExtraFiles = []*os.File{state, plan, grant}
+	cmd.ExtraFiles = []*os.File{state, plan, grant, storage}
 	return cmd, nil
 }
 
@@ -390,10 +476,15 @@ func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.F
 	if public == nil {
 		return nil, errors.New("fixture certificate unavailable")
 	}
+	storage, err := os.ReadFile(storageProof)
+	if err != nil {
+		return nil, err
+	}
 	plan := bootPlan{
 		Format: "phantowd-rc0-boot-v1", Installation: install, Address: address, Origin: origin,
 		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(policy))),
 		TLSLeafSHA256: fmt.Sprintf("%x", sha256.Sum256(public.Bytes)),
+		StorageSHA256: fmt.Sprintf("%x", sha256.Sum256(storage)),
 	}
 	if change != nil {
 		change(&plan)
@@ -409,7 +500,11 @@ func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.F
 }
 
 func closeBootGrants(cmd *exec.Cmd) error {
-	return errors.Join(cmd.ExtraFiles[0].Close(), cmd.ExtraFiles[1].Close(), cmd.ExtraFiles[2].Close())
+	var err error
+	for _, file := range cmd.ExtraFiles {
+		err = errors.Join(err, file.Close())
+	}
+	return err
 }
 
 func expectRefusal(ctx context.Context, confirmation string, change func(*bootPlan)) error {
@@ -470,11 +565,11 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := runInitHook(ctx, "start"); err != nil {
 		return fmt.Errorf("init could not start admitted management: %w", err)
 	}
-	if err := checkServiceIdentityLock(true); err != nil {
+	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	// Exercise shutdown as soon as startup is acknowledged, before any HTTP I/O.
-	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent(), checkServiceIdentityLock(false)); err != nil {
+	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent(), checkServiceIdentityLock(false), checkBootStorage(false)); err != nil {
 		return fmt.Errorf("init could not stop immediately after startup: %w", err)
 	}
 	if err := runInitHook(ctx, "start"); err != nil {
@@ -497,14 +592,14 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err != nil {
 		return err
 	}
-	if err := checkServiceIdentityLock(true); err != nil {
+	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	if err := runInitHook(ctx, "stop"); err != nil {
 		return fmt.Errorf("init could not confirm management shutdown: %w", err)
 	}
 	stopped = true
-	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop"), checkServiceIdentityLock(false)); err != nil {
+	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop"), checkServiceIdentityLock(false), checkBootStorage(false)); err != nil {
 		return err
 	}
 	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
@@ -566,11 +661,32 @@ func proveInitPublication(ctx context.Context) error {
 	}); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("publisher accepted the wrong TLS identity")
 	}
+	unavailable := storageTarget + ".unavailable"
+	if err := os.Rename(storageTarget, unavailable); err != nil {
+		return err
+	}
+	refused := publishInitGrant(ctx, proof, nil)
+	if err := os.Rename(unavailable, storageTarget); err != nil {
+		return err
+	}
+	if !errors.As(refused, &exit) || ctx.Err() != nil {
+		return errors.New("publisher accepted a missing service target")
+	}
 	if err := publishInitGrant(ctx, proof, nil); err != nil {
 		return fmt.Errorf("publish the admitted state: %w", err)
 	}
 	if err := publishInitGrant(ctx, proof, nil); !errors.As(err, &exit) || ctx.Err() != nil {
 		return errors.New("publisher accepted a second grant")
+	}
+	if err := unix.Mount(storageSource, storageTarget, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	refused = withdrawInitGrant(ctx)
+	if err := unix.Unmount(storageTarget, 0); err != nil {
+		return err
+	}
+	if !errors.As(refused, &exit) || ctx.Err() != nil {
+		return errors.New("publisher withdrew a storage grant while a service mount remained")
 	}
 	return nil
 }
@@ -648,7 +764,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err != nil {
 		return err
 	}
-	if err := checkServiceIdentityLock(true); err != nil {
+	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	if during != nil {
@@ -659,7 +775,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return err
 	}
-	err = errors.Join(cmd.Wait(), runtimeAbsent(), checkServiceIdentityLock(false))
+	err = errors.Join(cmd.Wait(), runtimeAbsent(), checkServiceIdentityLock(false), checkBootStorage(false))
 	joined = true
 	if err == nil {
 		fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=%s sha256=%s\n", phase, fingerprint)

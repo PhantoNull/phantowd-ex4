@@ -50,7 +50,7 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	if err != nil {
 		return err
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo, nil)
+	return superviseRC0State(ctx, plan, state, known, proofInfo, nil, nil)
 }
 
 func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
@@ -62,7 +62,7 @@ func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
 	return known, proofInfo, errors.Join(readErr, proof.Close())
 }
 
-func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, started func() error) (result error) {
+func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, approval *rc0StorageApproval, started func() error) (result error) {
 	uid, gid, err := managementAPIIdentity()
 	if err != nil {
 		return err
@@ -107,6 +107,13 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	identities, err := openRC0ServiceIdentities(stateRoot)
 	if identities != nil {
 		defer func() { result = errors.Join(result, identities.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
+	storage, err := admitRC0BootStorage(ctx, stateRoot, approval)
+	if storage != nil {
+		defer func() { result = errors.Join(result, storage.Close(context.WithoutCancel(ctx))) }()
 	}
 	if err != nil {
 		return err

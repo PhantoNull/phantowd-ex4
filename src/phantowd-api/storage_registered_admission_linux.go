@@ -45,8 +45,8 @@ type registeredStorage struct {
 // admitRegisteredStorage reconciles an independently approved complete roster
 // with the registry and the fixed current kernel namespace. It mounts only
 // already-mounted roots; the supervisor serializes changes to the namespace.
-func admitRegisteredStorage(ctx context.Context, directory *os.File, approved []registeredStorageGrant) (*registeredStorage, error) {
-	if ctx == nil || ctx.Err() != nil {
+func admitRegisteredStorage(ctx context.Context, directory *os.File, revision uint64, approved []registeredStorageGrant) (*registeredStorage, error) {
+	if ctx == nil || ctx.Err() != nil || revision == 0 {
 		return nil, volumeregistry.ErrObservation
 	}
 	reader, err := volumeregistry.Open(directory)
@@ -64,6 +64,10 @@ func admitRegisteredStorage(ctx context.Context, directory *os.File, approved []
 	lifetime.snapshot, err = reader.Read(ctx)
 	if err != nil {
 		return fail(err)
+	}
+	claims, err := lifetime.snapshot.Claims()
+	if err != nil || claims.Revision != revision {
+		return fail(volumeregistry.ErrObservation)
 	}
 	sysfs, proc := os.DirFS("/sys"), os.DirFS("/proc")
 	before, err := collectTrustedMountedExtCensus(ctx, sysfs, proc)

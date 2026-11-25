@@ -853,6 +853,18 @@ and refuses non-Versatile PB machines. See the
   clone and removes the fixed runtime roles. The platform keeps its original
   mount. An interrupted publication or withdrawal retains staging for review
   and inhibits the next start. A new boot clears the volatile publication.
+- The boot record can also carry `storage_sha256` for a separate root-private
+  tmpfs document on FD 6. Publication stores these exact bytes as
+  `storage.json` in the runtime grant. Its format is
+  `phantowd-rc0-storage-v1`, with a confirmed `registry_revision` and a
+  `volumes` array. Each volume records its ID, filesystem UUID, current
+  mount ID, root inode, device numbers, read-only flag and independently
+  approved disk and MD identities. The platform prepares the original
+  mounts under `/run/phantowd-data-sources/<id>` and empty targets under
+  `/srv/phantowd/volumes/<id>`. Startup checks the complete registry in the
+  admitted state and binds only its approved roster. It releases those binds
+  before confirming stop, and withdrawal refuses a target that remains
+  mounted. This storage handoff precedes protocol activation.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

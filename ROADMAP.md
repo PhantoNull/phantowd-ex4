@@ -1527,6 +1527,15 @@ open.
   init startup and shutdown. A protected installer command uses the same
   state lock and an explicit allocation range. Existing management-only
   state can still boot without an identity role.
+  An optional per-boot storage approval ties the fixed source mount and its
+  independently supplied disk and array evidence to one confirmed volume
+  registry revision. The protected BusyBox handoff carries the same bytes to
+  the supervisor. Boot retains the verified service binds and registry before
+  acknowledging readiness. Clean shutdown restores the target directory and
+  releases the registry. The synthetic state and data media are distinct in
+  the ARMv5 fixture. The RC0 research kernel supplies the MD census with
+  automatic assembly disabled. This opens no raw storage and starts no data service until
+  a protocol owner is joined to the admitted roster.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

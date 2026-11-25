@@ -48,7 +48,7 @@ func withQEMUPeerRegisteredStorage(ctx context.Context, inspect func(*registered
 		wrongBacking := approved
 		wrongBacking.disks = []registeredDiskProof{{wwn: vpdObservationEvidence("wwn", "naa.500f000000000001")}}
 		for _, invalid := range [][]registeredStorageGrant{nil, {wrongBacking}} {
-			unexpected, err := admitRegisteredStorage(ctx, dir, invalid)
+			unexpected, err := admitRegisteredStorage(ctx, dir, 2, invalid)
 			if unexpected != nil {
 				return errors.Join(errors.New("unapproved registered storage admitted"), unexpected.Close(context.WithoutCancel(ctx)))
 			}
@@ -56,7 +56,7 @@ func withQEMUPeerRegisteredStorage(ctx context.Context, inspect func(*registered
 				return errors.Join(errors.New("unapproved registered storage was not cleanly refused"), err)
 			}
 		}
-		storage, err := admitRegisteredStorage(ctx, dir, []registeredStorageGrant{approved})
+		storage, err := admitRegisteredStorage(ctx, dir, 2, []registeredStorageGrant{approved})
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func seedQEMUPeerRegistry(ctx context.Context, dir *os.File, grant mountowner.Li
 	if err := errors.Join(writer.CommitPristine(doc), writer.Close()); err != nil {
 		return err
 	}
-	idle, err := admitRegisteredStorage(ctx, dir, nil)
+	idle, err := admitRegisteredStorage(ctx, dir, 1, nil)
 	if err != nil {
 		return err
 	}
