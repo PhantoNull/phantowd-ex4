@@ -32,15 +32,17 @@ import (
 )
 
 const (
-	root    = "/mnt/rc0-state"
-	proof   = "/run/rc0-confirmed-policy.json"
-	launch  = "/run/rc0-boot-v1.json"
-	address = "127.0.0.1:18443"
-	origin  = "https://" + address
-	install = "c71c2ba76bd04d29816335c13c31a380"
-	api     = "/usr/bin/phantowd-api"
-	tlsRole = root + "/management-tls.pem"
-	policy  = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
+	root     = "/mnt/rc0-state"
+	proof    = "/run/rc0-confirmed-policy.json"
+	launch   = "/run/rc0-boot-v1.json"
+	bootDir  = "/run/phantowd-boot"
+	initHook = "/etc/init.d/S51phantowd-management"
+	address  = "127.0.0.1:18443"
+	origin   = "https://" + address
+	install  = "c71c2ba76bd04d29816335c13c31a380"
+	api      = "/usr/bin/phantowd-api"
+	tlsRole  = root + "/management-tls.pem"
+	policy   = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
 
 type bootPlan struct {
@@ -78,6 +80,9 @@ func check() error {
 		return err
 	}
 	if phase == "seed" {
+		if err := errors.Join(runInitHook(ctx, "start"), runtimeAbsent()); err != nil {
+			return err
+		}
 		if err := seed(ctx, credentials); err != nil {
 			return err
 		}
@@ -124,9 +129,12 @@ func check() error {
 		}
 		fmt.Println("PHANTOWD_RC0_BOOT_HANDOFF wrong_mount=refused wrong_inode=refused wrong_policy=refused wrong_tls=refused")
 	}
-	if phase == "verify" {
+	switch phase {
+	case "verify":
 		err = renewCertificate(ctx, credentials)
-	} else {
+	case "rotated":
+		err = serveFromInit(ctx, credentials)
+	default:
 		err = serve(ctx, phase, credentials, nil)
 	}
 	if err != nil {
@@ -285,7 +293,7 @@ func command(ctx context.Context, confirmation string, change func(*bootPlan)) (
 	if err != nil {
 		return nil, err
 	}
-	plan, err := prepareBootPlan(state, change)
+	plan, err := prepareBootPlan(state, launch, change)
 	if err != nil {
 		return nil, errors.Join(err, state.Close())
 	}
@@ -299,7 +307,7 @@ func command(ctx context.Context, confirmation string, change func(*bootPlan)) (
 	return cmd, nil
 }
 
-func prepareBootPlan(state *os.File, change func(*bootPlan)) (*os.File, error) {
+func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.File, error) {
 	const mask = unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
 	var st unix.Statx_t
 	if err := unix.Statx(int(state.Fd()), "", unix.AT_EMPTY_PATH, mask, &st); err != nil || st.Mask&mask != mask {
@@ -326,10 +334,10 @@ func prepareBootPlan(state *os.File, change func(*bootPlan)) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(launch, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return nil, err
 	}
-	return os.Open(launch)
+	return os.Open(path)
 }
 
 func closeBootGrants(cmd *exec.Cmd) error {
@@ -349,22 +357,126 @@ func expectRefusal(ctx context.Context, confirmation string, change func(*bootPl
 }
 
 func runtimeAbsent() error {
-	if _, err := os.Lstat("/run/phantowd-rc0"); !os.IsNotExist(err) {
-		return errors.New("RC0 runtime authority was retained")
+	for _, path := range []string{"/run/phantowd-rc0", "/run/phantowd-boot-control"} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			return errors.New("RC0 runtime authority was retained")
+		}
 	}
 	return nil
 }
 
-func serve(ctx context.Context, phase string, credentials []byte, during func(string) error) error {
-	identity, err := os.ReadFile(tlsRole)
+func runInitHook(ctx context.Context, action string) error {
+	cmd := exec.CommandContext(ctx, initHook, action)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
+func serveFromInit(ctx context.Context, credentials []byte) (result error) {
+	if err := os.Mkdir(bootDir, 0700); err != nil {
+		return err
+	}
+	slot := bootDir + "/state"
+	if err := os.WriteFile(bootDir+"/policy.json", []byte(policy), 0600); err != nil {
+		return err
+	}
+	if err := rejectSymlinkedInitState(ctx, slot); err != nil {
+		return err
+	}
+	if err := os.Mkdir(slot, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount(root, slot, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, unix.Unmount(slot, 0)) }()
+	if err := stageInitBootRecord(slot); err != nil {
+		return err
+	}
+	if err := rejectOccupiedInitListener(ctx); err != nil {
+		return err
+	}
+	if err := runInitHook(ctx, "start"); err != nil {
+		return fmt.Errorf("init could not start admitted management: %w", err)
+	}
+	stopped := false
+	defer func() {
+		if !stopped {
+			result = errors.Join(result, runInitHook(ctx, "stop"))
+		}
+	}()
+	var exit *exec.ExitError
+	if err := runInitHook(ctx, "start"); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("init accepted a duplicate supervisor")
+	}
+	fingerprint, err := observeHTTPS(ctx, credentials)
 	if err != nil {
 		return err
 	}
-	public, _ := pem.Decode(identity)
-	roots := x509.NewCertPool()
-	if public == nil || !roots.AppendCertsFromPEM(pem.EncodeToMemory(public)) {
-		return errors.New("persistent certificate refused")
+	if err := runInitHook(ctx, "stop"); err != nil {
+		return fmt.Errorf("init could not confirm management shutdown: %w", err)
 	}
+	stopped = true
+	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop")); err != nil {
+		return err
+	}
+	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
+		conn.Close()
+		return errors.New("management listener remains open after init stop")
+	}
+	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused https=verified shutdown=confirmed")
+	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
+	return nil
+}
+
+func stageInitBootRecord(slot string) error {
+	state, err := os.Open(slot)
+	if err != nil {
+		return err
+	}
+	plan, err := prepareBootPlan(state, bootDir+"/boot.json", nil)
+	if err != nil {
+		return errors.Join(err, state.Close())
+	}
+	return errors.Join(state.Close(), plan.Close())
+}
+
+func rejectSymlinkedInitState(ctx context.Context, slot string) (result error) {
+	target := bootDir + "/admitted"
+	if err := os.Mkdir(target, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount(root, target, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, unix.Unmount(target, 0), os.Remove(target)) }()
+	if err := stageInitBootRecord(target); err != nil {
+		return err
+	}
+	if err := os.Symlink("admitted", slot); err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, os.Remove(slot)) }()
+	var exit *exec.ExitError
+	if err := runInitHook(ctx, "start"); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.Join(errors.New("init accepted a symlinked state role"), runInitHook(ctx, "stop"))
+	}
+	return runtimeAbsent()
+}
+
+func rejectOccupiedInitListener(ctx context.Context) (result error) {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, listener.Close()) }()
+	var exit *exec.ExitError
+	if err := runInitHook(ctx, "start"); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.Join(errors.New("init accepted an occupied HTTPS listener"), runInitHook(ctx, "stop"))
+	}
+	return runtimeAbsent()
+}
+
+func serve(ctx context.Context, phase string, credentials []byte, during func(string) error) error {
 	cmd, err := command(ctx, proof, nil)
 	if err != nil {
 		return err
@@ -385,11 +497,42 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if closeErr != nil {
 		return closeErr
 	}
+	fingerprint, err := observeHTTPS(ctx, credentials)
+	if err != nil {
+		return err
+	}
+	if during != nil {
+		if err := during(fingerprint); err != nil {
+			return err
+		}
+	}
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		return err
+	}
+	err = errors.Join(cmd.Wait(), runtimeAbsent())
+	joined = true
+	if err == nil {
+		fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=%s sha256=%s\n", phase, fingerprint)
+	}
+	return err
+}
+
+func observeHTTPS(ctx context.Context, credentials []byte) (string, error) {
+	identity, err := os.ReadFile(tlsRole)
+	if err != nil {
+		return "", err
+	}
+	defer clear(identity)
+	public, _ := pem.Decode(identity)
+	roots := x509.NewCertPool()
+	if public == nil || !roots.AppendCertsFromPEM(pem.EncodeToMemory(public)) {
+		return "", errors.New("persistent certificate refused")
+	}
 	transport := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}}
 	defer transport.CloseIdleConnections()
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second, Jar: jar}
 	fingerprint := ""
@@ -406,25 +549,25 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 		time.Sleep(100 * time.Millisecond)
 	}
 	if fingerprint == "" {
-		return errors.New("supervised HTTPS did not become ready")
+		return "", errors.New("supervised HTTPS did not become ready")
 	}
-	request, err := http.NewRequest(http.MethodPost, origin+"/api/v1/auth/login", bytes.NewReader(credentials))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, origin+"/api/v1/auth/login", bytes.NewReader(credentials))
 	if err != nil {
-		return err
+		return "", err
 	}
 	request.Header.Set("Origin", origin)
 	request.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(request)
 	if err != nil {
-		return err
+		return "", err
 	}
 	response.Body.Close()
 	if response.StatusCode != 200 {
-		return fmt.Errorf("secure login reply %d", response.StatusCode)
+		return "", fmt.Errorf("secure login reply %d", response.StatusCode)
 	}
 	response, err = client.Get(origin + "/api/v1/nas-services/configuration")
 	if err != nil {
-		return err
+		return "", err
 	}
 	var observed struct {
 		Revision uint64
@@ -433,20 +576,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	decodeErr := json.NewDecoder(response.Body).Decode(&observed)
 	response.Body.Close()
 	if response.StatusCode != 200 || decodeErr != nil || observed.Revision != 1 || observed.Applied {
-		return fmt.Errorf("policy readback refused %d", response.StatusCode)
+		return "", fmt.Errorf("policy readback refused %d", response.StatusCode)
 	}
-	if during != nil {
-		if err := during(fingerprint); err != nil {
-			return err
-		}
-	}
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-		return err
-	}
-	err = errors.Join(cmd.Wait(), runtimeAbsent())
-	joined = true
-	if err == nil {
-		fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=%s sha256=%s\n", phase, fingerprint)
-	}
-	return err
+	return fingerprint, nil
 }

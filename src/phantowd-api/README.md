@@ -812,8 +812,7 @@ and refuses non-Versatile PB machines. See the
   Unexpected child or channel loss ends the lifetime and requires review.
   A later start requires a fresh independent policy confirmation if policy
   changed. The mode relies on the launcher for state-medium admission and
-  first-use authorization. RC0 has no default init binding to this
-  mode. Management reads and desired configuration are available while SMB,
+  first-use authorization. Management reads and desired configuration are available while SMB,
   NFS and iSCSI activation remains outside this supervisor's authority.
 - An early Linux launcher can use `--supervise-rc0-boot` to hand off the
   same admitted state directory on FD 3, a private read-only boot record
@@ -827,8 +826,21 @@ and refuses non-Versatile PB machines. See the
   The launcher supplies the boot-local mount identity and independently
   confirmed digests. The supervisor checks the retained ext state directory,
   the policy bytes and the TLS identity before starting the child. Listener
-  settings come from the record. The selected physical medium and default
-  init integration need separate qualification.
+  settings come from the record.
+- The RC0 BusyBox init hook `/etc/init.d/S51phantowd-management` starts and
+  stops the same supervisor. Before starting, a trusted platform launcher
+  stages `/run/phantowd-boot` as a root-owned mode-0700 directory. Its fixed
+  roles are `state` (the already admitted ext directory mounted there),
+  `boot.json` (the record above) and `policy.json` (the confirmed bytes).
+  The two files are root-owned, single-link and mode 0400 or 0600. Use the
+  mount ID observed at the prepared `state` role in the current boot.
+  With the grant directory absent, init reports that management is waiting.
+  An incomplete or inconsistent handoff requires review. Start returns
+  after the original API child binds its HTTPS address and the supervisor
+  admits that child to its policy channel.
+  Stop waits for verified supervisor teardown through a private control
+  socket. The physical EX4 launcher that admits and mounts the medium
+  needs separate qualification.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

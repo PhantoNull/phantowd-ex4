@@ -32,6 +32,7 @@ stat_path() {
     debugfs -R "stat $1" "$images/rootfs.ext2" 2>/dev/null
 }
 [ -n "$(stat_path /usr/bin/phantowd-api)" ]
+[ -n "$(stat_path /etc/init.d/S51phantowd-management)" ]
 for path in /usr/lib/phantowd /etc/default/phantowd-api /etc/exports /etc/samba/smb.conf \
     /etc/init.d/S02phantowd-mdev /etc/init.d/S40phantowd-storage-broker \
     /etc/init.d/S49phantowd-dev-state /etc/init.d/S49phantowd-identity-owner \
@@ -69,7 +70,8 @@ while [ "$attempt" -lt 60 ]; do
         break
     fi
     if grep -F 'phantowd-rc0 login:' "$log" >/dev/null &&
-        grep -F 'PhantoWD RC0 research image' "$log" >/dev/null; then
+        grep -F 'PhantoWD RC0 research image' "$log" >/dev/null &&
+        grep -F 'PhantoWD management waiting for admitted boot state' "$log" >/dev/null; then
         echo 'PHANTOWD_RC0_PROFILE_READY boot=busybox fixtures=absent flashable=no installable=no'
         exit 0
     fi

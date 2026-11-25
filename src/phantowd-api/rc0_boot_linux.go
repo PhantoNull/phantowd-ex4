@@ -39,7 +39,7 @@ type rc0BootPlan struct {
 
 // The early launcher admits a local state root and independently selects its
 // policy and TLS generations. Only its descriptors enter this process.
-func runRC0BootManagement(ctx context.Context) (result error) {
+func runRC0BootManagement(ctx context.Context, started func() error) (result error) {
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0Review
 	}
@@ -60,7 +60,7 @@ func runRC0BootManagement(ctx context.Context) (result error) {
 	if hex.EncodeToString(policyDigest[:]) != plan.PolicySHA256 {
 		return errRC0Review
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo)
+	return superviseRC0State(ctx, plan, state, known, proofInfo, started)
 }
 
 func readRC0BootGrant(descriptor int) (rc0BootPlan, error) {
