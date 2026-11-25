@@ -1371,10 +1371,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   sources from a trusted supervisor. It revalidates the supplied descriptor
   and authorized UUID, rejects aliases and unsafe target mount propagation,
   and publishes the roster only after verifying every restricted bind. The
-  ARMv5 two-guest NFS test passes a synthetic volume through this same adapter
-  and checks wrong-descriptor and wrong-UUID refusal, busy-lease preservation
-  and exact restoration of the service mountpoint. A trusted EX4 storage
-  discovery, compatibility and startup provider is still pending. A
+  Linux registry admission joins all protected claims to independent
+  supervisor grants, including exact mounted identity and physical-disk and
+  MD evidence. Complete census checks before and after the bind allow only
+  the verified service mounts to appear. It retains the registry read lock
+  through service shutdown. An explicitly empty committed registry remains
+  dormant. The two-guest ARMv5 NFS test uses this path with synthetic media.
+  A trusted EX4 storage discovery, compatibility and startup provider is
+  still pending. A
   `MountedVolumeSet.Acquire` operation now retains leases for every member
   under the same canonical lock set and returns no partial authority: failed
   member revalidation rolls earlier leases back, and uncertain cleanup moves
