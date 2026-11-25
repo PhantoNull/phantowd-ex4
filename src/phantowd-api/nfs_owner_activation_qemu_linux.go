@@ -347,10 +347,14 @@ func (b *ownerNFSQEMU) prepareFixtureSources(ctx context.Context, network, acces
 	}
 	// No imported identities exist in this guarded synthetic guest. The
 	// Owner independently reads the actual /etc Unix census on each check.
-	b.identity, err = identityowner.Open(authority, func(context.Context) (serviceaccounts.Reservations, error) {
+	state, err := os.Open(authority)
+	if err != nil {
+		return err
+	}
+	b.identity, err = identityowner.OpenFromDirectory(state, func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
 	})
-	if err != nil {
+	if err := errors.Join(err, state.Close()); err != nil {
 		return err
 	}
 	config := emptyQEMUFileServiceConfig()

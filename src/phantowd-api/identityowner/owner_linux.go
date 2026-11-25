@@ -56,6 +56,8 @@ type Owner struct {
 	mu                    sync.Mutex
 	root, operations      int
 	device                uint64
+	registryInode         uint64
+	operationsInode       uint64
 	registry              *serviceaccountstore.Store
 	journals              map[string]*identityprovision.Store
 	smbJournals           map[string]*smbprovision.Store
@@ -73,6 +75,31 @@ type Owner struct {
 // previously owner-managed registry. It never bootstraps, imports or repairs.
 func Open(directory string, inventory Inventory) (*Owner, error) {
 	return open(directory, ownerDependencies(inventory))
+}
+
+// OpenFromDirectory borrows an already admitted identity-state directory.
+// The Owner retains an independent directory description and enters the same
+// identity ledger and journal lifecycle as Open.
+func OpenFromDirectory(directory *os.File, inventory Inventory) (*Owner, error) {
+	if directory == nil || inventory == nil || os.Getuid() != 0 || os.Geteuid() != 0 {
+		return nil, ErrInvalid
+	}
+	raw, err := directory.SyscallConn()
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	fd := -1
+	var openErr error
+	err = raw.Control(func(original uintptr) {
+		fd, _, openErr = openPrivateDirectoryAt(int(original), ".")
+	})
+	if err != nil || openErr != nil {
+		if fd >= 0 {
+			_ = unix.Close(fd)
+		}
+		return nil, ErrUnavailable
+	}
+	return openOwned(fd, ownerDependencies(inventory))
 }
 
 // OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for
@@ -117,6 +144,11 @@ func open(directory string, deps dependencies) (*Owner, error) {
 		closeSMBBackend(deps.smbBackend)
 		return nil, ErrUnavailable
 	}
+	return openOwned(fd, deps)
+}
+
+// The caller transfers the exact directory description and any SMB backend.
+func openOwned(fd int, deps dependencies) (*Owner, error) {
 	o := &Owner{root: fd, operations: -1, deps: deps, smbBackend: deps.smbBackend,
 		journals: make(map[string]*identityprovision.Store), smbJournals: make(map[string]*smbprovision.Store),
 		inodes: make(map[string]uint64), smbInodes: make(map[string]uint64), ready: true}
@@ -137,17 +169,19 @@ func open(directory string, deps dependencies) (*Owner, error) {
 		}
 		return nil, ErrUnavailable
 	}
-	for _, name := range []string{"registry", "operations"} {
-		if unix.Fstatat(fd, name, &st, unix.AT_SYMLINK_NOFOLLOW) != nil || !privateDirectory(st) || uint64(st.Dev) != o.device {
-			return nil, ErrUnavailable
-		}
-	}
-	o.operations, err = unix.Openat(fd, "operations", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	operations, operationsInfo, err := openPrivateDirectoryAt(fd, "operations")
 	if err != nil {
 		return nil, ErrUnavailable
 	}
-	o.registry, err = serviceaccountstore.Open(o.path("registry"))
+	o.operations, o.operationsInode = operations, operationsInfo.Ino
+	registry, registryInfo, err := openPrivateDirectoryAt(fd, "registry")
 	if err != nil {
+		return nil, ErrUnavailable
+	}
+	o.registryInode = registryInfo.Ino
+	registryDir := os.NewFile(uintptr(registry), "identity-registry-directory")
+	o.registry, err = serviceaccountstore.OpenFromDirectory(registryDir)
+	if closeErr := registryDir.Close(); err != nil || closeErr != nil {
 		return nil, ErrUnavailable
 	}
 	if _, _, err := o.snapshot(); err != nil {
@@ -166,7 +200,43 @@ func closeSMBBackend(smbBackend smbprovision.Backend) {
 func privateDirectory(st unix.Stat_t) bool {
 	return st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0700 && st.Uid == 0
 }
-func (o *Owner) path(name string) string { return fmt.Sprintf("/proc/self/fd/%d/%s", o.root, name) }
+
+func openPrivateDirectoryAt(parent int, name string) (int, unix.Stat_t, error) {
+	fd, err := unix.Openat2(parent, name, &unix.OpenHow{
+		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC,
+		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	var stat unix.Stat_t
+	if err != nil {
+		return -1, stat, err
+	}
+	if unix.Fstat(fd, &stat) != nil || !privateDirectory(stat) {
+		unix.Close(fd)
+		return -1, stat, ErrUnavailable
+	}
+	return fd, stat, nil
+}
+
+func (o *Owner) checkDirectoryBindings() error {
+	var root unix.Stat_t
+	if unix.Fstat(o.root, &root) != nil || !privateDirectory(root) || uint64(root.Dev) != o.device {
+		return ErrUnavailable
+	}
+	for _, role := range []struct {
+		name  string
+		inode uint64
+	}{{"operations", o.operationsInode}, {"registry", o.registryInode}} {
+		fd, stat, err := openPrivateDirectoryAt(o.root, role.name)
+		if err != nil {
+			return ErrUnavailable
+		}
+		if unix.Close(fd) != nil || uint64(stat.Dev) != o.device || stat.Ino != role.inode {
+			return ErrUnavailable
+		}
+	}
+	return nil
+}
+
 func (o *Owner) operationPath(id string) string {
 	return fmt.Sprintf("/proc/self/fd/%d/%s", o.operations, id)
 }
@@ -331,6 +401,9 @@ func (o *Owner) scanSnapshot(recoverSMB bool) (serviceaccounts.Registry, []ident
 		o.failed = true
 		return serviceaccounts.Registry{}, nil, nil, ErrUnavailable
 	}
+	if err := o.checkDirectoryBindings(); err != nil {
+		return fail()
+	}
 	r, err := o.registry.Load()
 	if err != nil {
 		return fail()
@@ -398,6 +471,9 @@ func (o *Owner) scanSnapshot(recoverSMB bool) (serviceaccounts.Registry, []ident
 			}
 		}
 		result = append(result, j)
+	}
+	if err := o.checkDirectoryBindings(); err != nil {
+		return fail()
 	}
 	return r, result, smbResult, nil
 }

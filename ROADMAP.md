@@ -1515,6 +1515,10 @@ open.
   address is unique and assigned to the named kernel interface, then rechecks
   the original link identity. The RC0 boot provider still owns NFSD mount
   creation, endpoint selection and client-quiescence authority.
+  The identity owner now borrows a verified startup-state descriptor and
+  pins its registry and operations directories on that same mount. The
+  NFS fixture closes the original descriptor before continuing and uses the
+  retained owner for policy and readiness checks.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

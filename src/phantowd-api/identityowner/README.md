@@ -1,5 +1,11 @@
 # Native identity authority owner (Linux)
 
+The startup supervisor can pass an already admitted directory descriptor to
+`OpenFromDirectory`. The owner opens its own directory description and holds
+its exclusive lock independently of the caller. The registry and operations
+roles must remain on that mount. Replacing either role invalidates the
+authority before it returns another identity snapshot.
+
 This is the cooperative owner of one configured native-account reservation
 ledger, native creation journals and optional Samba-enrollment journals. It
 coordinates allocation and typed Unix/Samba operations under one lifetime
