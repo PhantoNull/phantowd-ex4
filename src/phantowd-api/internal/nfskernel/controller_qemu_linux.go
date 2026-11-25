@@ -29,9 +29,6 @@ func openQEMU(ctx context.Context, role string) (*ControllerQEMU, error) {
 	defer runtime.UnlockOSThread()
 	k := &ControllerQEMU{gate: make(chan struct{}, 1), socket: -1, phase: "open"}
 	k.address = [4]byte{127, 0, 0, 1}
-	if role == "peer" {
-		k.address = [4]byte{} // Fixed isolated two-guest fixture; never a caller-selected address.
-	}
 	k.original = k
 	fail := func() (*ControllerQEMU, error) { return nil, k.retain() }
 	// After a failed construction/transaction no new controller can erase review.
@@ -97,8 +94,8 @@ func OpenSmokeQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQE
 
 func SmokeFixtureQEMU() bool { return fixtureGuardQEMU("smoke") }
 
-func OpenPeerQEMU(ctx context.Context) (*ControllerQEMU, error) { return openQEMU(ctx, "peer") }
-func PeerClientQEMU() bool                                      { return fixtureGuardQEMU("peer-client") }
+func PeerServerQEMU() bool { return fixtureGuardQEMU("peer") }
+func PeerClientQEMU() bool { return fixtureGuardQEMU("peer-client") }
 
 func fixtureGuardQEMU(role string) bool {
 	if runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 {

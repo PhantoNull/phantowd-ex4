@@ -22,11 +22,11 @@ lifetimes.
 `OpenSmokeQEMU` admits only `phantowd_nfs_kernel_smoke=1`. No constructor
 accepts a caller-selected path, command, privilege or replacement backend.
 
-`OpenPeerQEMU` additionally admits only `phantowd_nfs_peer=server`, with a fixed
-wildcard listener inside two isolated guests. The mutually exclusive client role
-cannot open the controller. A private inherited Unix socketpair connects their
-NICs; no host listener, user networking or LAN forwarding is used. The real
-client verifies NFSv3/TCP bytes, fsync and unmount before clean controller stop.
+The isolated peer fixture uses the ordinary managed owner and explicitly
+binds NFSD to the fixed address of its server guest. A private inherited Unix
+socketpair connects the NICs. The fixture uses separate kernel-command-line
+roles and a verified synthetic storage disk on the server. The real client
+verifies NFSv3/TCP access refusal, bytes, fsync and unmount before clean stop.
 
 The controller retains original NSFS network/mount references and the NFSD
 control directory's filesystem/device/inode/unique-mount identity. Operations

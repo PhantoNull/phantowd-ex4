@@ -27,6 +27,13 @@ def run(images, log):
                         "set_inode_field /nfs-peer-init mode 0100755"):
             subprocess.run(["debugfs", "-w", "-R", request, str(root)],
                            check=True, timeout=10, capture_output=True)
+        data = Path(scratch) / "data.ext2"
+        with data.open("xb") as disk:
+            disk.truncate(16 * 1024 * 1024)
+        subprocess.run(["mkfs.ext2", "-q", "-F", "-U",
+                        "11111111-2222-3333-4444-555555555555",
+                        "-L", "PHANTOWD-TEST", str(data)],
+                       check=True, timeout=10, capture_output=True)
         endpoints = socket.socketpair()
         try:
             for index, role in enumerate(("server", "client")):
@@ -38,7 +45,10 @@ def run(images, log):
                         "-kernel", str(files[1]), "-dtb", str(files[2]),
                         "-drive", f"file={root},if=none,id=root,format=raw",
                         "-device", "lsi53c895a,id=scsi0", "-device",
-                        "scsi-hd,bus=scsi0.0,drive=root", "-snapshot",
+                        "scsi-hd,bus=scsi0.0,drive=root,"
+                        "serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001,"
+                        "device_id=PHANTOWD-ROOT",
+                        "-snapshot",
                         "-object", "rng-random,id=rng,filename=/dev/urandom",
                         "-device", "virtio-rng-pci,rng=rng",
                         "-append", "rootwait root=/dev/sda rw console=ttyAMA0 "
@@ -48,6 +58,13 @@ def run(images, log):
                         f"socket,id=peer,fd={fd}", "-device",
                         "rtl8139,netdev=peer,"
                         f"mac=52:54:00:12:34:0{index+1},romfile="]
+                if role == "server":
+                    args.extend([
+                        "-drive", f"file={data},if=none,id=data,format=raw",
+                        "-device", "scsi-hd,bus=scsi0.0,drive=data,"
+                        "serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002,"
+                        "device_id=PHANTOWD-DATA",
+                    ])
                 processes.append(subprocess.Popen(
                     args, stdin=subprocess.DEVNULL, stdout=output,
                     stderr=subprocess.STDOUT, pass_fds=(fd,)))
@@ -60,10 +77,11 @@ def run(images, log):
                 text = Path(f"{log}.{role}").read_text(errors="replace")
                 marker = (
                     "PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true "
-                    "activation=true remote_bytes=true teardown=clean "
+                    "activation=true managed=true remote_bytes=true "
+                    "mapped_identity=true tables=private teardown=clean "
                     "scope=isolated-two-guest-only" if role == "server" else
                     "PHANTOWD_NFS_PEER_CLIENT_READY protocol=nfs3 "
-                    "transport=tcp "
+                    "transport=tcp denied_source=true "
                     "read=true write=true fsync=true unmount=clean "
                     "scope=isolated-two-guest-only")
                 if text.count(marker) != 1 or any(word in text for word in (
@@ -73,7 +91,8 @@ def run(images, log):
             if hashlib.sha256(files[0].read_bytes()).digest() != original:
                 raise RuntimeError("NFS peer fixture changed base root")
             print("PHANTOWD_NFS_PEER_READY guests=2 kernel_backend=true "
-                  "activation=true protocol=nfs3 transport=tcp read=true "
+                  "activation=true managed=true protocol=nfs3 transport=tcp "
+                  "denied_source=true read=true "
                   "write=true fsync=true teardown=clean host_network=none "
                   "scope=isolated-two-guest-only")
         finally:

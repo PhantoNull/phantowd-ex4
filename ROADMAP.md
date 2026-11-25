@@ -1515,6 +1515,11 @@ storage. No production roster provider or activation path exists.
   match kernel listener inodes to the original helper; pre-start and
   teardown require a free port. The loopback guest attempts a conflicting
   UDP bind before each lifetime and verifies refusal before normal startup.
+  The managed runtime also serves a real NFSv3/TCP client on a private
+  two-guest network. The retained policy denies an unlisted source and
+  admits the configured source. The server verifies the fsynced write,
+  anonymous UID/GID and private tables on disposable mounted storage.
+  The client confirms unmount before the managed runtime drains and closes.
   RC0 still needs network exposure control, RPC socket isolation and qualified
   storage integration.
   Actual root capture and existing process-constructor

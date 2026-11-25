@@ -20,7 +20,7 @@ import (
 // disposable guest after stock NFS shutdown. The returned cleanup is for
 // verified teardown only.
 func InstallManagedStateConfigQEMU(ctx context.Context) (func() error, error) {
-	if !nfskernel.SmokeFixtureQEMU() {
+	if !nfskernel.SmokeFixtureQEMU() && !nfskernel.PeerServerQEMU() {
 		return nil, ErrInvalid
 	}
 	file, err := os.OpenFile(nfsConfigPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
@@ -70,8 +70,8 @@ func CheckStaleManagedStateQEMU(ctx context.Context, inputs *RetainedInputs, gra
 	return os.Remove(nfsStatePath)
 }
 
-func CheckManagedTablesQEMU(ctx context.Context, exportPath string) error {
-	if !nfskernel.SmokeFixtureQEMU() {
+func CheckManagedTablesQEMU(ctx context.Context, exportPath, client string) error {
+	if !nfskernel.SmokeFixtureQEMU() && !nfskernel.PeerServerQEMU() {
 		return ErrInvalid
 	}
 	if err := verifyNFSConfig(ctx); err != nil {
@@ -79,7 +79,7 @@ func CheckManagedTablesQEMU(ctx context.Context, exportPath string) error {
 	}
 	for _, table := range []struct{ name, entry string }{
 		{"etab", exportPath + "\t"},
-		{"rmtab", "127.0.0.1:" + exportPath + ":"},
+		{"rmtab", client + ":" + exportPath + ":"},
 	} {
 		data, err := os.ReadFile(filepath.Join(nfsStatePath, table.name))
 		if err != nil || !strings.Contains(string(data), table.entry) {
