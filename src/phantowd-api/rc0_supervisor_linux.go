@@ -104,6 +104,13 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if plan.TLSLeafSHA256 != "" && !plan.matchesTLS(identity) {
 		return errRC0Review
 	}
+	samba, err := openRC0SambaState(stateRoot)
+	if samba != nil {
+		defer func() { result = errors.Join(result, samba.check(stateRoot, rc0SambaStateRole), samba.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
 	identities, err := openRC0ServiceIdentities(stateRoot)
 	if identities != nil {
 		defer func() { result = errors.Join(result, identities.Close()) }()

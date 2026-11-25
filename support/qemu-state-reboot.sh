@@ -71,6 +71,8 @@ grep -F 'PHANTOWD_ADMIN_CREDENTIALS_READY after_reboot=true legacy_preserved=tru
 grep -F 'PHANTOWD_ADMIN_BACKEND_READY after_reboot=true backend=transactional-store login_verified=true scope=qemu-handler-dispatch-only' "$log" >/dev/null
 grep -F 'PHANTOWD_PASSWORD_REBOOT_READY changed_via=authenticated-handler legacy_and_native=true old_password_denied=true scope=clean-qemu-reboot-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only' "$log" >/dev/null
+grep -F 'PHANTOWD_RC0_SAMBA_STATE_REBOOT phase=seed provisioned_roles=original passdb=used' "$log" >/dev/null
+grep -F 'PHANTOWD_RC0_SAMBA_STATE_REBOOT phase=verify provisioned_roles=original passdb=used' "$log" >/dev/null
 registry_reboot='PHANTOWD_VOLUME_REGISTRY_REBOOT_READY boots=2 operator=normal-cli ids_preserved=true stale_revision_denied=true append_only=true scope=clean-qemu-reboot-only'
 if [ "$(awk -v marker="$registry_reboot" '{ sub(/\r$/, ""); if ($0 == marker) n++ } END { print n+0 }' "$log")" != 1 ]; then
     echo 'Volume registry two-kernel operator proof missing or repeated' >&2

@@ -44,6 +44,7 @@ const (
 	api           = "/usr/bin/phantowd-api"
 	tlsRole       = root + "/management-tls.pem"
 	identityRole  = root + "/service-identities"
+	sambaRole     = root + "/samba-state"
 	storageProof  = "/run/rc0-fixture-storage.json"
 	storageSource = "/run/phantowd-data-sources/boot-data"
 	storageTarget = "/srv/phantowd/volumes/boot-data"
@@ -74,6 +75,7 @@ func main() {
 	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
 	fmt.Printf("PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=%s original=true runtime_lock=verified release=verified\n", os.Args[1])
 	fmt.Printf("PHANTOWD_RC0_BOOT_STORAGE_READY phase=%s exact_bind=true registry_lock=verified release=verified\n", os.Args[1])
+	fmt.Printf("PHANTOWD_RC0_SAMBA_STATE_READY phase=%s original=true runtime_lock=verified release=verified\n", os.Args[1])
 }
 
 func check() error {
@@ -130,6 +132,9 @@ func check() error {
 	}
 	if phase == "seed" {
 		if err := proveIdentityStartupRefusal(ctx); err != nil {
+			return err
+		}
+		if err := proveSambaStateRefusal(ctx); err != nil {
 			return err
 		}
 		if err := proveStorageStartupRefusal(ctx); err != nil {
@@ -237,6 +242,9 @@ func seed(ctx context.Context, credentials []byte, confirmedPolicy string) error
 	if err := provisionServiceIdentityRange(ctx, `{"first_id":23000,"last_id":23010}`); err != nil {
 		return fmt.Errorf("service identity preparation: %w", err)
 	}
+	if err := provisionSambaState(ctx); err != nil {
+		return fmt.Errorf("Samba state preparation: %w", err)
+	}
 	registry := root + "/volume-registry"
 	if err := os.Mkdir(registry, 0700); err != nil {
 		return err
@@ -337,8 +345,43 @@ func proveIdentityStartupRefusal(ctx context.Context) error {
 	return errors.Join(expectRefusal(ctx, proof, nil), file.Close())
 }
 
-func checkServiceIdentityLock(held bool) error {
-	return checkBootRoleLock(identityRole, held)
+func checkPersistentServiceLocks(held bool) error {
+	return errors.Join(checkBootRoleLock(identityRole, held), checkBootRoleLock(sambaRole, held))
+}
+
+func provisionSambaState(ctx context.Context) error {
+	return provision(ctx, exec.CommandContext(ctx, api, "--provision-rc0-samba-state"), root, nil)
+}
+
+func proveSambaStateRefusal(ctx context.Context) error {
+	var exit *exec.ExitError
+	if err := provisionSambaState(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
+		return fmt.Errorf("Samba state accepted a second initialization: %w", err)
+	}
+	stage := root + "/.samba-state.provisioning"
+	if err := os.Mkdir(stage, 0700); err != nil {
+		return err
+	}
+	if err := expectRefusal(ctx, proof, nil); err != nil {
+		return err
+	}
+	if info, err := os.Stat(stage); err != nil || info.Mode() != os.ModeDir|0700 {
+		return errors.New("startup lost interrupted Samba state evidence")
+	}
+	if err := os.Remove(stage); err != nil {
+		return err
+	}
+	private := sambaRole + "/private"
+	if err := unix.Mount(private, private, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	refused := expectRefusal(ctx, proof, nil)
+	unmounted := unix.Unmount(private, 0)
+	if err := errors.Join(refused, unmounted); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_RC0_SAMBA_STATE_REFUSAL duplicate=refused interrupted=refused mount_alias=refused")
+	return nil
 }
 
 func checkBootRoleLock(path string, held bool) error {
@@ -586,11 +629,11 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := runInitHook(ctx, "start"); err != nil {
 		return fmt.Errorf("init could not start admitted management: %w", err)
 	}
-	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
+	if err := errors.Join(checkPersistentServiceLocks(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	// Exercise shutdown as soon as startup is acknowledged, before any HTTP I/O.
-	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent(), checkServiceIdentityLock(false), checkBootStorage(false)); err != nil {
+	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent(), checkPersistentServiceLocks(false), checkBootStorage(false)); err != nil {
 		return fmt.Errorf("init could not stop immediately after startup: %w", err)
 	}
 	if err := runInitHook(ctx, "start"); err != nil {
@@ -616,14 +659,14 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err != nil {
 		return err
 	}
-	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
+	if err := errors.Join(checkPersistentServiceLocks(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	if err := runInitHook(ctx, "stop"); err != nil {
 		return fmt.Errorf("init could not confirm management shutdown: %w", err)
 	}
 	stopped = true
-	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop"), checkServiceIdentityLock(false), checkBootStorage(false)); err != nil {
+	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop"), checkPersistentServiceLocks(false), checkBootStorage(false)); err != nil {
 		return err
 	}
 	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
@@ -867,7 +910,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err != nil {
 		return err
 	}
-	if err := errors.Join(checkServiceIdentityLock(true), checkBootStorage(true)); err != nil {
+	if err := errors.Join(checkPersistentServiceLocks(true), checkBootStorage(true)); err != nil {
 		return err
 	}
 	if during != nil {
@@ -878,7 +921,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return err
 	}
-	err = errors.Join(cmd.Wait(), runtimeAbsent(), checkServiceIdentityLock(false), checkBootStorage(false))
+	err = errors.Join(cmd.Wait(), runtimeAbsent(), checkPersistentServiceLocks(false), checkBootStorage(false))
 	joined = true
 	if err == nil {
 		fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=%s sha256=%s\n", phase, fingerprint)

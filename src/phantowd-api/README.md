@@ -881,6 +881,13 @@ and refuses non-Versatile PB machines. See the
   applies to the running supervisor and waits for verified service teardown.
   Plain init stop refuses while the NFS lifetime needs this confirmation.
   An interrupted active lifetime retains the boot grant for review.
+- With RC0 stopped, a trusted root installer can run
+  --provision-rc0-samba-state with the admitted state directory on FD 3.
+  It publishes the root-private samba-state directory and the private
+  and state roles used for persistent Samba databases. A second initialization
+  or an interrupted stage requires review. RC0 holds the committed directory
+  and its two roles until shutdown. The stock Samba tools stay dormant while
+  the isolated daemon and credential lifecycle are integrated.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

@@ -1550,6 +1550,14 @@ open.
   synced write, refusal of ordinary stop while mounted, and release after
   confirmed drain. Successful combined-image evidence and a physical EX4
   platform provider are release prerequisites.
+  RC0 includes dormant Samba tools and admits a separately provisioned
+  persistent Samba state directory. The installer publishes private
+  and shared database directories under the admitted local state mount.
+  Startup holds their original descriptors and excludes a second owner.
+  The ARMv5 Samba reboot fixture uses these same directories for its
+  actual passdb and requires their original inodes after reboot.
+  The isolated Samba daemon, policy attachment and controlled client
+  shutdown still need the RC0 production supervisor.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

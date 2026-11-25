@@ -141,13 +141,15 @@ for phase in seed verify rotated; do
     expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
     identities="PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=$phase original=true runtime_lock=verified release=verified"
     storage="PHANTOWD_RC0_BOOT_STORAGE_READY phase=$phase exact_bind=true registry_lock=verified release=verified"
-    if ! awk -v ready="$expected" -v identities="$identities" -v storage="$storage" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
+    samba="PHANTOWD_RC0_SAMBA_STATE_READY phase=$phase original=true runtime_lock=verified release=verified"
+    if ! awk -v ready="$expected" -v identities="$identities" -v storage="$storage" -v samba="$samba" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
         { sub(/\r$/, "") }
         $0 == ready { startup++ }
         $0 == identities { identity++ }
         $0 == storage { roster++ }
+        $0 == samba { samba_state++ }
         $0 == stopped { unmount++ }
-        END { exit !(startup == 1 && identity == 1 && roster == 1 && unmount == 1) }
+        END { exit !(startup == 1 && identity == 1 && roster == 1 && samba_state == 1 && unmount == 1) }
     ' "$log" || ! grep -F 'reboot: Restarting system' "$log" >/dev/null ||
         grep -Eq 'PHANTOWD_RC0_SUPERVISOR_FAILED|Kernel panic' "$log"; then
         tail -n 25 "$log" >&2
@@ -189,6 +191,8 @@ tr -d '\r' < "$log_prefix.rotated.log" |
     grep -Fx 'PHANTOWD_RC0_NFS_DRAIN management_only=refused https=preserved' >/dev/null
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_SAMBA_STATE_REFUSAL duplicate=refused interrupted=refused mount_alias=refused' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 state="$scratch/nfs-state.ext4"
 data="$scratch/nfs-data.ext2"

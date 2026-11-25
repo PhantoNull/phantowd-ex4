@@ -28,6 +28,7 @@ func main() {
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	provisionIdentities := flag.Bool("provision-rc0-service-identities", false, "initialize the service identity allocation range in inherited RC0 state directory 3")
+	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
@@ -53,7 +54,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*rc0BootService != "",
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *provisionIdentities, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -98,6 +99,15 @@ func main() {
 	if *provisionNAS {
 		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {
 			log.Fatal(err)
+		}
+		return
+	}
+	if *provisionSamba {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0SambaState(ctx)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 Samba state requires review")
 		}
 		return
 	}

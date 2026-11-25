@@ -89,7 +89,7 @@ func nfsServer(ctx context.Context, credentials []byte) error {
 	if err := nfsCommand(ctx, "/usr/sbin/nft", "-j", "list", "table", "inet", "phantowd_nfs"); err != nil {
 		return err
 	}
-	if err := errors.Join(checkBootStorage(true), checkServiceIdentityLock(true)); err != nil {
+	if err := errors.Join(checkBootStorage(true), checkPersistentServiceLocks(true)); err != nil {
 		return err
 	}
 	if err := announceNFSPeer(listener, rc0NFSDenied, deadline); err != nil {
@@ -110,7 +110,7 @@ func nfsServer(ctx context.Context, credentials []byte) error {
 	if _, err := observeHTTPS(ctx, credentials); err != nil {
 		return fmt.Errorf("management unavailable after refused stop: %w", err)
 	}
-	if err := errors.Join(checkBootStorage(true), checkServiceIdentityLock(true)); err != nil {
+	if err := errors.Join(checkBootStorage(true), checkPersistentServiceLocks(true)); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(client, "write\n"); err != nil {
@@ -125,7 +125,7 @@ func nfsServer(ctx context.Context, credentials []byte) error {
 	if err := nfsCommand(ctx, api, "--rc0-boot-service=stop-nfs-drained"); err != nil {
 		return err
 	}
-	if err := errors.Join(verifyNFSRelease(ctx), checkBootStorage(false), checkServiceIdentityLock(false)); err != nil {
+	if err := errors.Join(verifyNFSRelease(ctx), checkBootStorage(false), checkPersistentServiceLocks(false)); err != nil {
 		return err
 	}
 	if err := withdrawInitGrant(ctx); err != nil {

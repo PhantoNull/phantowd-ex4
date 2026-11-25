@@ -38,6 +38,9 @@ stat_path() {
 for helper in /usr/sbin/rpcbind /usr/sbin/rpc.mountd /usr/sbin/rpc.nfsd /usr/sbin/exportfs /usr/bin/rpcinfo /sbin/mount.nfs; do
     [ -n "$(stat_path "$helper")" ] || { echo "Missing RC0 NFS helper: $helper" >&2; exit 1; }
 done
+for helper in /usr/sbin/smbd /usr/bin/testparm /usr/bin/pdbedit /usr/bin/smbpasswd /usr/bin/smbstatus /usr/bin/smbcontrol; do
+    [ -n "$(stat_path "$helper")" ] || { echo "Missing RC0 Samba helper: $helper" >&2; exit 1; }
+done
 config=$(CDPATH='' cd -- "$(dirname -- "$0")/../src/phantowd-api/internal/nfsowner" && pwd)/nfs.conf
 debugfs -R "dump /etc/nfs.conf $scratch/nfs.conf" "$images/rootfs.ext2" >/dev/null 2>&1
 cmp -- "$config" "$scratch/nfs.conf"
@@ -94,6 +97,18 @@ else
     echo 'PHANTOWD_RC0_NFS_ERROR dormant NFSD/RPC verification failed'
     exit 1
 fi
+if pidof smbd nmbd winbindd >/dev/null 2>&1; then
+    echo 'PHANTOWD_RC0_SMB_ERROR unmanaged Samba process present'
+    exit 1
+fi
+for table in /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6; do
+    [ -e "$table" ] || continue
+    if ! awk 'NR > 1 && $2 ~ /:(0089|008A|008B|01BD)$/ { active=1 } END { exit active }' "$table"; then
+        echo 'PHANTOWD_RC0_SMB_ERROR unmanaged Samba port present'
+        exit 1
+    fi
+done
+echo 'PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent'
 SH
 debugfs -w -R "write $scratch/check-nfs /etc/init.d/S99rc0-nfs-check" "$image" >/dev/null
 debugfs -w -R 'set_inode_field /etc/init.d/S99rc0-nfs-check mode 0100755' "$image" >/dev/null
@@ -108,13 +123,13 @@ debugfs -w -R 'set_inode_field /etc/init.d/S99rc0-nfs-check mode 0100755' "$imag
 pid=$!
 attempt=0
 while [ "$attempt" -lt 60 ]; do
-    if grep -E 'Kernel panic|PHANTOWD_QEMU_(READY|ERROR)|PHANTOWD_API_READY|PHANTOWD_RC0_NFS_ERROR' "$log" >/dev/null; then
+    if grep -E 'Kernel panic|PHANTOWD_QEMU_(READY|ERROR)|PHANTOWD_API_READY|PHANTOWD_RC0_(NFS|SMB)_ERROR' "$log" >/dev/null; then
         break
     fi
     if grep -F 'phantowd-rc0 login:' "$log" >/dev/null &&
         grep -F 'PhantoWD RC0 research image' "$log" >/dev/null &&
         grep -F 'PhantoWD management waiting for admitted boot state' "$log" >/dev/null &&
-        awk '{ sub(/\r$/, "") } $0=="PHANTOWD_RC0_NFS_DORMANT version=3 threads=0 rpc=absent listeners=absent exports=empty" { n++ } END { exit(n!=1) }' "$log"; then
+        awk '{ sub(/\r$/, "") } $0=="PHANTOWD_RC0_NFS_DORMANT version=3 threads=0 rpc=absent listeners=absent exports=empty" { n++ } $0=="PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent" { s++ } END { exit(n!=1 || s!=1) }' "$log"; then
         echo 'PHANTOWD_RC0_PROFILE_READY boot=busybox fixtures=absent flashable=no installable=no'
         exit 0
     fi

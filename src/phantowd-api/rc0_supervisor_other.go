@@ -32,3 +32,7 @@ func provisionInheritedRC0TLS(io.Reader, string, string) error {
 func provisionInheritedRC0ServiceIdentities(context.Context, io.Reader) error {
 	return errors.New("RC0 service identity provisioning requires Linux")
 }
+
+func provisionInheritedRC0SambaState(context.Context) error {
+	return errors.New("RC0 Samba state provisioning requires Linux")
+}
