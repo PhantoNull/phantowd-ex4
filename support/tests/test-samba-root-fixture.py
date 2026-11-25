@@ -91,22 +91,44 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_persistent_credentials_only_cannot_qualify_data_service(self):
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        credentials_only = "\n".join((
+            *fixture.MARKERS[:3], CENSUS, enrollment,
+            fixture.PERSISTENT_MARKER,
+            "PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE", SCAN_COST))
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(credentials_only, "persistent")
+
     def test_persistent_state_profile_is_focused_and_keeps_old_union(self):
         self.assertEqual(fixture.select_campaigns("persistent"),
                          ("persistent",))
         self.assertNotIn("persistent", fixture.select_campaigns("all"))
-        self.assertEqual(fixture.guest_timeout("persistent"), 180)
+        self.assertEqual(fixture.guest_timeout("persistent"), 360)
 
     def test_persistent_state_receipt_is_exact_complete_and_scoped(self):
         enrollment = next(row for row in fixture.MARKERS if row.startswith(
             "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
         rows = (*fixture.MARKERS[:3], CENSUS, enrollment,
                 fixture.PERSISTENT_MARKER,
+                *(row for row in fixture.MARKERS if row.startswith((
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY"))),
+                fixture.PERSISTENT_DATA_MARKER,
                 "PHANTOWD_SAMBA_ROOT_PERSISTENT_DONE", SCAN_COST)
         log = "\n".join(rows)
         fixture.check_campaign(log, "persistent")
         fixture.check_campaign(log.replace("\n", "\r\n"), "persistent")
         for bad in (log.replace(fixture.PERSISTENT_MARKER, ""),
+                    log.replace(fixture.PERSISTENT_DATA_MARKER, ""),
+                    log + "\n" + fixture.PERSISTENT_DATA_MARKER,
+                    log.replace("existing_enrollment=true",
+                                "existing_enrollment=false"),
+                    log.replace("actual_controller=true",
+                                "actual_controller=false"),
                     log + "\n" + fixture.PERSISTENT_MARKER,
                     log.replace("ext4_private_state=true",
                                 "ext4_private_state=false"),
@@ -146,7 +168,7 @@ class SambaRootFixture(unittest.TestCase):
         helper = Path(fixture.__file__)
         for phase in phases:
             extended = ("native", "lifecycle", "fault", "data", "exit",
-                        "held", "file", "file-source")
+                        "held", "file", "file-source", "persistent")
             expected = 360 if phase in extended else 180
             self.assertEqual(fixture.guest_timeout(phase), expected)
             result = subprocess.run(

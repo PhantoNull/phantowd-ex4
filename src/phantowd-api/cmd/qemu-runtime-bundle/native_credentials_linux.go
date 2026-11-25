@@ -273,6 +273,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if err := runtime.Close(context.Background()); err != nil {
 			return err
 		}
+		// New admission uses the existing ext4 enrollment; no user/password
+		// recreation. Exercise the actual planned service and all data guards.
+		if err := nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, "persistent"); err != nil {
+			return fmt.Errorf("native persistent service data: %w", err)
+		}
 		var stateFS unix.Statfs_t
 		info, err := os.Lstat("/run/phantowd-samba-source/native-state/private/passdb.tdb")
 		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 ||
@@ -288,6 +293,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		}
 		nativeCredentialEnrollmentMarkerQEMU()
 		fmt.Println("PHANTOWD_SAMBA_OWNER_PERSISTENT_STATE_READY ext4_private_state=true tmpfs_runtime=true original_inputs=true authenticated=true wrong_password_denied=true stopped_reaped=true no_fd_leak=true reboot=false scope=qemu-only")
+		fmt.Println(plannedStartupMarkerQEMU)
+		fmt.Println(plannedDataMarkerQEMU)
+		fmt.Println(plannedSupervisionMarkerQEMU)
+		fmt.Println(plannedStopMarkerQEMU)
+		fmt.Println(plannedPersistentDataMarkerQEMU)
 		return nil
 	}
 	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU || campaign == nativePendingHandleCampaignQEMU {

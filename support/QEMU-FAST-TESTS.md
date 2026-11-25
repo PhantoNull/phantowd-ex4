@@ -10,6 +10,7 @@ rosters, ten fresh guests, sticky review, verified stop and no-retry remain.
 | --- | --- | --- | --- |
 | Dedicated `native` |8 /8 /40 s|60 /90 /15 s|360 s|
 | Planned `fault`, `data`, `exit`, `held`, `file`, `file-source` |4 /4 /20 s|Existing campaign-specific phases|360 s|
+| Focused `persistent` service/data |4 /4 /20 s|Existing credential and planned phases|360 s|
 | Retained-identity `lifecycle` |4 /4 /20 s|Existing startup/coordinator/supervision phases|360 s|
 | Other Samba QEMU campaigns |4 /4 /20 s|Existing campaign-specific phases|180 s|
 | Ordinary commands |2 /at most5 /5 s|Not this fixture|Not applicable|
@@ -21,8 +22,21 @@ are unchanged. Independent phase caps are not reserved whole-guest runtime.
 The existing backend constructor keeps its old profile; only the dedicated
 credentials campaign selects `NewNativeQualificationBackendQEMU`. No request
 or operation accepts a duration or replacement backend. The Python helper's
-fixed mapping gives `native`, `lifecycle` and the six planned-service campaigns360s;
+fixed mapping gives `native`, `lifecycle`, the six planned-service campaigns and
+the focused `persistent` campaign360s;
 unknown names/duration arguments refuse. Other profiles remain180s.
+
+## Persistent service/data qualification
+
+The focused `persistent` campaign now re-admits its existing ext4 enrollment
+through the actual retained planned service, then runs its complete read/write,
+denial, supervision and closure trace. The fixed fourteen-input daemon ABI
+combines original share roots with ext4 private/state roles and tmpfs runtime
+roles; the generic launcher and privilege set are unchanged. Credential-only
+receipts refuse. Added service work gives this guest360s instead of180s;
+the original40s startup/data/supervision contexts and worker limits stay fixed.
+The ten original guests keep their inner profiles. This is same-kernel qualification,
+not clean-reboot recovery, product startup or physical EX4 evidence.
 
 ## Retained-identity lifecycle guest bound
 
@@ -2251,8 +2265,8 @@ as the same timeout:
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
 | Native enrollment, 75 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
-| Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, native360 s; others180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Lifecycle revocation, 90 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification; fixed qualification status/control8 and total revocation40 | Every individual worker exceeded its own deadline |
+| Guest, lifecycle360 s | The complete disposable boot and selected lifecycle campaign; other campaign mappings unchanged | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2301,24 +2315,32 @@ revocation. Local native success and a slower-emulation negative do not establis
 that the integration PR's own hosted failure is fixed; full current-source and
 own-head hosted qualification remain separate gates.
 
-The current QEMU-only lifecycle driver replaces its former cumulative45 context
-with serial preparation20 and revocation45 contexts. This deliberately raises
-the combined contextual allowance to65 seconds; it is not a performance gain
+The current QEMU-only lifecycle driver uses serial preparation20 and
+revocation90 contexts, and the existing native qualification backend8/8/40.
+This raises the former20+45 allowance65 to110 seconds; it is not a performance gain
 or product request policy. The SAME service, Owner, startup-fixed backend,
 journal and opaque original session pair cross the handoff. Uncertain/expired
 preparation refuses the second phase, shorter parent deadlines still bound both,
 and a late nil return cannot report success. Contexts are cooperative, not a
-guarantee to preempt an uninterruptible callback. Worker/readiness/stop and the
-external guest180 guard are unchanged. Fake-clock regression tests exercise the
-actual internal phase runner without inventing runtime/session authority.
+guarantee to preempt an uninterruptible callback. Other backend profiles,
+readiness/stop and the lifecycle guest360 guard are unchanged. Fake-clock tests
+exercise the actual internal phase runner without inventing runtime/session authority.
 
-A focused local ARMv5 lifecycle replay passes all original proofs after this
-change. An unchanged-source fresh guest also passed, while another failed on an
-independent post-admission worker deadline during client preparation. Therefore
-one candidate pass does not establish that historical hosted outer deadlines
-or independent child expiries are fixed. Full current-source integration and
-own-head hosted qualification remain required; do not rerun heavy CI merely to
-substitute a lucky green for a diagnosed failure.
+A focused cached ARMv5 lifecycle replay with CPU quota0.65 passes all original
+proofs in266.79 seconds with the approved90 phase and qualification backend.
+The earlier45-phase control at the same quota failed peer continuity; neither
+result is an EX4 performance measure. The successful log also passes the
+unchanged qualified-develop validator. Full current-source integration and
+own-head hosted qualification remain required before integration; do not rerun
+heavy CI merely to substitute a lucky green for a diagnosed failure.
+
+The planned service keeps startup40 and observation/data40 (combined80).
+`Start` verifies the original authorities before/after daemon startup. Manual
+`Observe` then shares the data action, before transfers. A live bounded startup
+is required; handoff cancels its context and cannot be repeated after expiry.
+The no-overlay CPU0.70 data replay passes224.03s. All ten original guests pass
+in1218.23s with unchanged-develop proof replay; focused persistent passes147.01s.
+These are cached local results; exact-head hosted qualification remains required.
 
 Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
 not authorization. `reason=other` is not proof that no deadline occurred:

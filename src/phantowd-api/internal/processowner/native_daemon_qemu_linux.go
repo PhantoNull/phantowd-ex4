@@ -36,16 +36,21 @@ func NewNativeSambaDataPinnedSetQEMU(spec MemberSpec, executable *os.File, confi
 	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, &roots, false)
 }
 
+// Same fixed data ABI; only private/state use the retained synthetic ext4 root.
+func NewPersistentNativeSambaDataPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File, roots [2]*os.File) (*PinnedSet, error) {
+	return newNativeSambaPinnedSetQEMU(spec, executable, config, state, &roots, true)
+}
+
 func newNativeSambaPinnedSetQEMU(spec MemberSpec, executable *os.File, config [5]*os.File, state [7]*os.File, roots *[2]*os.File, persistent bool) (_ *PinnedSet, result error) {
-	if roots != nil && persistent {
-		return nil, ErrInvalid
-	}
 	name, argument := "native-samba", "native-server"
 	if persistent {
 		name, argument = "native-samba-persistent", "native-persistent-server"
 	}
 	if roots != nil {
 		name, argument = "native-samba-data", "native-data-server"
+		if persistent {
+			argument = "native-persistent-data-server"
+		}
 	}
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	c := spec.Process.RunAs

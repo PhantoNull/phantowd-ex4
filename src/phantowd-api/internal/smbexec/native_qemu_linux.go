@@ -36,7 +36,7 @@ func NewNativeBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSamb
 	return newNativeBackendQEMU(ctx, runtime, false)
 }
 
-// NewNativeQualificationBackendQEMU is only for the dedicated native campaign.
+// NewNativeQualificationBackendQEMU is only for native/lifecycle qualification.
 // Its fixed8/8/40 profile is retained before identity Owner admission; there
 // is no duration argument, per-operation selector or product entry point.
 func NewNativeQualificationBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU) (*NativeBackendQEMU, error) {

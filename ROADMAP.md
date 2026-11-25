@@ -777,8 +777,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   The early boot handoff binds the selected mount and directory inode, an
   independent policy confirmation and the expected TLS fingerprint in a
   protected runtime record. The QEMU launcher exercises the handoff on
-  generated ext4 media. Physical placement, default init integration,
-  complete state-bundle admission and recovery remain open.
+  generated ext4 media. The RC0 BusyBox init hook consumes a fixed protected
+  handoff directory, starts the supervisor after admission and waits for
+  verified stop. The default console boot remains available when no handoff
+  is staged. Physical placement, complete state-bundle admission and recovery
+  remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective

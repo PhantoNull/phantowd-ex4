@@ -9,12 +9,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
+
+const rc0PrebindEnv = "PHANTOWD_RC0_PREBIND"
 
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
@@ -28,6 +31,7 @@ func main() {
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
 	superviseRC0Boot := flag.Bool("supervise-rc0-boot", false, "launch RC0 management from the trusted boot handoff")
+	rc0BootService := flag.String("rc0-boot-service", "", "manage startup and shutdown of the RC0 boot service")
 	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
@@ -47,6 +51,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
+		*rc0BootService != "",
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -66,11 +71,20 @@ func main() {
 	if !*provisionNAS && !*superviseRC0 && *nasInstallation != "" {
 		log.Fatal("NAS installation ID requires provisioning or supervision mode")
 	}
+	if *rc0BootService != "" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := manageRC0BootService(ctx, *rc0BootService)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 boot service requires review")
+		}
+		return
+	}
 	if *superviseRC0 || *superviseRC0Boot {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		var err error
 		if *superviseRC0Boot {
-			err = runRC0BootManagement(ctx)
+			err = runRC0BootManagement(ctx, nil)
 		} else {
 			err = runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
 		}
@@ -231,6 +245,8 @@ func main() {
 	if os.Geteuid() == 0 {
 		log.Fatal("refusing to serve as root")
 	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 	accounts, err := openConfiguredAccountStore(os.Getenv("PHANTOWD_STATE_DIR"), os.Getenv("PHANTOWD_STATE_FD"))
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
@@ -249,9 +265,23 @@ func main() {
 	if validateServiceStateOptions(serviceDirectory, shareDirectory, transport) != nil {
 		log.Fatal("service configuration options are invalid")
 	}
+	nasChannel := os.Getenv("PHANTOWD_NAS_POLICY_SOCKET")
+	var boundListener net.Listener
+	if prebind := os.Getenv(rc0PrebindEnv); prebind != "" {
+		if prebind != "1" || developmentBrowserEnrollment || transport.TLSConfig == nil || nasChannel == "" {
+			log.Fatal("invalid RC0 supervised listener configuration")
+		}
+		// The managed supervisor acknowledges the original policy peer. Bind
+		// first so an occupied or unavailable address cannot race that receipt.
+		boundListener, err = net.Listen("tcp", transport.Address)
+		if err != nil {
+			log.Fatal("RC0 HTTPS listener could not be bound")
+		}
+		defer boundListener.Close()
+	}
 	auth := newAuthController(accounts, transport.AllowedOrigin)
 	auth.setupDisabled = !developmentBrowserEnrollment
-	nas, closeNAS, err := openNASPolicyHTTP(auth, os.Getenv("PHANTOWD_NAS_POLICY_SOCKET"), shareDirectory != "" || serviceDirectory != "", transport.TLSConfig != nil)
+	nas, closeNAS, err := openNASPolicyHTTP(auth, nasChannel, shareDirectory != "" || serviceDirectory != "", transport.TLSConfig != nil)
 	if err != nil {
 		log.Fatal("NAS policy channel configuration is unavailable")
 	}
@@ -277,8 +307,6 @@ func main() {
 	}, auth, readPolicy, serviceState, func(ctx context.Context) (storageGPTObservationSummary, error) {
 		return observeGPTPartitionIdentityFromBroker(ctx)
 	}, nas), transport)
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
 	shutdownDone := make(chan struct{})
 	go func() {
 		defer close(shutdownDone)
@@ -289,7 +317,9 @@ func main() {
 	}()
 	log.Printf("PhantoWD development diagnostics listening on %s", server.Addr)
 	serve := server.ListenAndServe
-	if transport.TLSConfig != nil {
+	if boundListener != nil {
+		serve = func() error { return server.ServeTLS(boundListener, "", "") }
+	} else if transport.TLSConfig != nil {
 		serve = func() error { return server.ListenAndServeTLS("", "") }
 	}
 	if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {

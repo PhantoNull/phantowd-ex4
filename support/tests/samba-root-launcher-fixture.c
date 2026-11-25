@@ -1136,6 +1136,8 @@ int main(int argc, char **argv)
         return native_credential_fixture("server", "", 1);
     if (argc == 2 && !strcmp(argv[1], "native-data-server"))
         return native_credential_fixture("data-server", "", 0);
+    if (argc == 2 && !strcmp(argv[1], "native-persistent-data-server"))
+        return native_credential_fixture("data-server", "", 1);
     if (argc == 4 && !strcmp(argv[1], "native-client"))
         return native_client(argv[2], argv[3], 0);
     if (argc == 3 && !strcmp(argv[1], "native-data-client"))

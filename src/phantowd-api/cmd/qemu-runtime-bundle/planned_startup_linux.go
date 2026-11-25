@@ -32,6 +32,8 @@ const plannedDataMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY same_auth
 
 const plannedStopMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY same_daemon=true private_inputs=15 runtime_inputs_retained=true live_not_stopped=true stopped_reaped=true legacy_clients_guard=true repeated_readonly=true closed_refused=true no_fd_leak=true activation=false scope=qemu-only"
 
+const plannedPersistentDataMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PERSISTENT_DATA_READY ext4_private_state=true tmpfs_runtime=true existing_enrollment=true actual_controller=true smb_read=true smb_write=true readonly_denied=true ungranted_denied=true stopped_reaped=true reboot=false scope=qemu-only"
+
 // A NEW disposable service in a fresh, independently enrolled data guest.
 // It retains the SAME identity Owner, startup-fixed backend, complete mounted
 // roster and original share pins from planning through startup and full Close.
@@ -44,6 +46,32 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 // Fixed fixture allowance: callers cannot select or renew the data deadline.
 func plannedDataContextQEMU() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 40*time.Second)
+}
+
+// Separate manual observation/data action after a completed bounded startup.
+// Canceling the original context makes this serialized fixture handoff single-use.
+// No failed/late startup obtains an allowance; the fixed caller stays40+40.
+func plannedDataAfterStartupQEMU(startup context.Context, cancel context.CancelFunc) (context.Context, context.CancelFunc, error) {
+	if startup == nil || cancel == nil {
+		return nil, nil, errors.New("planned data requires bounded startup")
+	}
+	if err := startup.Err(); err != nil {
+		return nil, nil, err
+	}
+	deadline, bounded := startup.Deadline()
+	if !bounded {
+		return nil, nil, errors.New("planned startup allowance invalid")
+	}
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return nil, nil, context.DeadlineExceeded
+	}
+	if remaining > 40*time.Second {
+		return nil, nil, errors.New("planned startup allowance invalid")
+	}
+	cancel()
+	ctx, stop := plannedDataContextQEMU()
+	return ctx, stop, nil
 }
 
 // This fixed QEMU scope includes holder preparation and complete observations.
@@ -68,7 +96,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			fmt.Fprint(os.Stderr, plannedPhaseCostDiagnosticQEMU(dataStarted.Sub(started).Milliseconds(), ended.Sub(dataStarted).Milliseconds(), ended.Sub(started).Milliseconds()))
 		}
 	}()
-	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" {
+	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" && fault != "persistent" {
 		return errors.New("invalid fixed planned fault")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -81,7 +109,21 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		}
 		callers[index] = os.NewFile(uintptr(fd), "planned-startup-original-caller")
 	}
-	runtime, err := plan.NewNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], lookup)
+	var runtime *runtimebundle.NativeSambaRuntimeQEMU
+	var err error
+	if fault == "persistent" {
+		// Re-admit the existing enrollment after its original runtime stopped.
+		// Never create/reset state or silently fall back to the tmpfs profile.
+		fd, openErr := unix.Open("/run/phantowd-samba-source/native-state", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+		err = openErr
+		if openErr == nil {
+			grant := os.NewFile(uintptr(fd), "planned-persistent-state-caller")
+			runtime, err = plan.NewPersistentNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], grant, lookup)
+			err = errors.Join(err, grant.Close())
+		}
+	} else {
+		runtime, err = plan.NewNativeSambaRuntimeQEMU(ctx, callers[0], callers[1], callers[2], lookup)
+	}
 	for _, caller := range callers {
 		err = errors.Join(err, caller.Close())
 	}
@@ -279,6 +321,16 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 			return errors.New("planned live service retried or released authority")
 		}
+		// Start already verifies the original authorities before and after the
+		// daemon starts. Manual re-observation belongs to the next action, with
+		// its data probe, not the last milliseconds of startup's40 seconds.
+		dataCtx, cancelData, err := plannedDataAfterStartupQEMU(ctx, cancel)
+		if err != nil {
+			return err
+		}
+		defer cancelData()
+		ctx = dataCtx
+		dataStarted = time.Now()
 		phase = "startup-recheck"
 		if err := service.Observe(ctx); err != nil {
 			return err
@@ -287,14 +339,8 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err != nil || status.State != "ready" || status.Checks != 1 || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed {
 			return errors.New("planned startup incomplete live observation")
 		}
-		// The original startup/preparation remains bounded40. Data access is a
-		// NEW action with its OWN fixed40-second QEMU allowance, not leftovers
-		// from startup. Worker/readiness/stop and all authority checks stay fixed.
-		cancel()
-		dataStarted = time.Now()
-		dataCtx, cancelData := plannedDataContextQEMU()
-		defer cancelData()
-		ctx = dataCtx
+		// Re-observation and access share ONE40-second allowance. All original
+		// admission checks remain before transfers; no further timer refresh.
 		canceledData, cancelProbe := context.WithCancel(ctx)
 		cancelProbe()
 		if err := service.VerifyDataAccess(canceledData); !errors.Is(err, context.Canceled) {

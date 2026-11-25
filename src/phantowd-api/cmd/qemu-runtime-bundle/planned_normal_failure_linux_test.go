@@ -40,3 +40,19 @@ func TestOrdinaryPlannedConstructionFailureIsLabeled(t *testing.T) {
 		t.Fatalf("ordinary refusal lost its fixed phase or leaked inputs: %s", output)
 	}
 }
+
+func TestPlannedPersistentProfileRefusesMissingInputs(t *testing.T) {
+	if _, err := os.Lstat("/run/phantowd-samba-code"); !errors.Is(err, os.ErrNotExist) {
+		t.Skip("requires absent disposable fixture; never touch existing inputs")
+	}
+	for _, scenario := range []string{"persistent", "persistent ", "../persistent", "other"} {
+		err := nativePlannedServiceFixtureQEMU(nil, fileserviceplan.SambaEnrollmentLookup{}, "", nil, scenario)
+		if scenario == "persistent" {
+			if !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("fixed persistent profile did not reach missing-input refusal: %v", err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "invalid fixed planned fault") {
+			t.Fatalf("unknown profile reached fixture inputs: %v", err)
+		}
+	}
+}
