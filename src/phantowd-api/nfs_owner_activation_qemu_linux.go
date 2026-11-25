@@ -180,13 +180,19 @@ func runQEMUNFSOwnerActivation() error {
 		}
 		peer := strings.Fields(lines[1])[1]
 		b.options = strings.TrimSuffix(strings.TrimPrefix(peer, "127.0.0.1/32("), ")")
-		owner, err = nfsowner.NewQEMU(candidate, b)
+		owner, err = nfsowner.NewLinux(b.inputs, b)
 		if err != nil {
 			return err
+		}
+		if duplicate, err := nfsowner.NewLinux(b.inputs, b); duplicate != nil || !errors.Is(err, nfsowner.ErrState) {
+			return errors.New("NFS runtime took the same retained inputs twice")
 		}
 		b.phase = "start"
 		if err := owner.Start(ctx); err != nil {
 			return fmt.Errorf("owner-start: %w", err)
+		}
+		if !errors.Is(b.inputs.Close(), nfsowner.ErrState) || !errors.Is(b.inputs.Check(ctx, candidate), nfsowner.ErrState) {
+			return errors.New("running NFS input ownership could be bypassed")
 		}
 		b.phase = "client"
 		if err := os.Mkdir(ownerNFSClient, 0700); err != nil {
@@ -252,6 +258,9 @@ func runQEMUNFSOwnerActivation() error {
 		if !errors.Is(b.inputs.Check(ctx, candidate), nfsowner.ErrState) {
 			return errors.New("closed NFS input preparation admitted its old candidate")
 		}
+		if err := b.releaseBorrowedInputs(ctx); err != nil {
+			return err
+		}
 		if !errors.Is(b.policyLease.Verify(ctx), naspolicystore.ErrClosed) {
 			return errors.New("closed NFS retained a live desired-policy claim")
 		}
@@ -313,6 +322,7 @@ func runQEMUNFSOwnerActivation() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only")
@@ -360,10 +370,6 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 	}
 	b.policyLease, err = b.policyOwner.Acquire(ctx, document.Revision)
 	return err
-}
-
-func (b *ownerNFSQEMU) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
-	return b.inputs.Check(ctx, candidate)
 }
 
 func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
@@ -477,22 +483,24 @@ func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (b *ownerNFSQEMU) Release(ctx context.Context) error {
+func (b *ownerNFSQEMU) Close(ctx context.Context) error {
 	if b.kernel != nil {
 		if err := b.kernel.Close(ctx); err != nil {
 			return err
 		}
 	}
-	// Dataset and shared identity/policy Owners belong to the parent fixture.
-	if err := os.Remove(ownerNFSClient); err != nil {
+	return os.Remove(ownerNFSClient)
+}
+
+func (b *ownerNFSQEMU) releaseBorrowedInputs(ctx context.Context) error {
+	// The parent owns both claims through verified service and storage close.
+	if err := errors.Join(b.identityLease.Verify(ctx), b.policyLease.Verify(ctx)); err != nil {
 		return err
 	}
-	for _, close := range []func() error{b.inputs.Close, b.identityLease.Release, b.policyLease.Release} {
-		if err := close(); err != nil {
-			return err
-		}
+	if err := b.identityLease.Release(); err != nil {
+		return err
 	}
-	return nil
+	return b.policyLease.Release()
 }
 
 func (b *ownerNFSQEMU) command(ctx context.Context, path string, args ...string) error {

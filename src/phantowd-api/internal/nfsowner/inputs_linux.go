@@ -22,16 +22,16 @@ import (
 // and mounted roster. It borrows policy and identity leases and owns the
 // storage lease and export pins. No paths are granted to an execution backend.
 type RetainedInputs struct {
-	gate           chan struct{}
-	original       *RetainedInputs
-	policy         *naspolicystore.Lease
-	identity       *identityowner.FileServiceLease
-	storage        *mountowner.MountedVolumeSet
-	lease          *mountowner.MountedVolumeSetLease
-	roots          *ExportRoots
-	candidate      fileserviceplan.NFSv3Candidate
-	activeRevision uint64
-	review, closed bool
+	gate                     chan struct{}
+	original                 *RetainedInputs
+	policy                   *naspolicystore.Lease
+	identity                 *identityowner.FileServiceLease
+	storage                  *mountowner.MountedVolumeSet
+	lease                    *mountowner.MountedVolumeSetLease
+	roots                    *ExportRoots
+	candidate                fileserviceplan.NFSv3Candidate
+	activeRevision           uint64
+	review, closed, attached bool
 }
 
 type inputsConstructionReview struct {
@@ -45,9 +45,8 @@ func (e *inputsConstructionReview) Unwrap() error      { return e.cause }
 func (*inputsConstructionReview) Is(target error) bool { return target == ErrReviewRequired }
 
 // PrepareInputs prepares an enabled NFS candidate from original, admitted
-// in-process authorities. The caller retains policy and identity through Close
-// and retains
-// an original construction review error if preparation cannot be rolled back.
+// in-process authorities. The caller retains policy and identity through
+// Close and keeps any original error from uncertain construction rollback.
 func PrepareInputs(ctx context.Context, policy *naspolicystore.Lease, identity *identityowner.FileServiceLease, storage *mountowner.MountedVolumeSet, activeRevision uint64) (_ *RetainedInputs, _ fileserviceplan.NFSv3Candidate, result error) {
 	if ctx == nil || policy == nil || identity == nil || storage == nil {
 		return nil, fileserviceplan.NFSv3Candidate{}, ErrInvalid
@@ -93,6 +92,10 @@ func PrepareInputs(ctx context.Context, policy *naspolicystore.Lease, identity *
 // Check requires the prepared candidate and verifies the same original
 // authorities. A failed live observation permanently requires review.
 func (i *RetainedInputs) Check(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
+	return i.check(ctx, candidate, false)
+}
+
+func (i *RetainedInputs) check(ctx context.Context, candidate fileserviceplan.NFSv3Candidate, attached bool) error {
 	if ctx == nil {
 		return ErrInvalid
 	}
@@ -106,7 +109,7 @@ func (i *RetainedInputs) Check(ctx context.Context, candidate fileserviceplan.NF
 	if i.review {
 		return ErrReviewRequired
 	}
-	if i.closed {
+	if i.closed || i.attached != attached {
 		return ErrState
 	}
 	if !i.candidate.SameAs(candidate) {
@@ -129,16 +132,23 @@ func (i *RetainedInputs) Check(ctx context.Context, candidate fileserviceplan.NF
 	return nil
 }
 
-// Close releases the owned storage only after the caller has verified that
-// consumers and their copied references stopped. It never closes the
-// borrowed policy or identity lease, and never retries uncertain closure.
+// Close releases storage before any transfer to a service Owner. After
+// transfer, the Owner verifies stop and closes the inputs. The borrower
+// retains policy and identity leases through closure.
 func (i *RetainedInputs) Close() error {
+	return i.close(false)
+}
+
+func (i *RetainedInputs) close(attached bool) error {
 	if err := i.enter(); err != nil {
 		return err
 	}
 	defer i.leave()
 	if i.review {
 		return ErrReviewRequired
+	}
+	if i.attached != attached {
+		return ErrState
 	}
 	if err := i.release(); err != nil {
 		i.review = true
