@@ -55,11 +55,9 @@ type ownerNFSQEMU struct {
 	management      *qemuNASPolicyHTTP
 	kernel          *nfskernel.Controller
 	rpc             *nfsowner.RPC
-	options         string
-	access          string
+	exports         *nfsowner.Exports
 	phase           string
 	uid, gid        uint32
-	exported        bool
 	kernelAttempted bool
 }
 
@@ -98,7 +96,7 @@ func runQEMUNFSOwnerActivation() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) (result error) {
-		b := &ownerNFSQEMU{storage: set, phase: "prepare", access: "ro"}
+		b := &ownerNFSQEMU{storage: set, phase: "prepare"}
 		var owner *nfsowner.Owner
 		defer func() {
 			// No release or retry after uncertainty. The returned review object
@@ -181,8 +179,6 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil || !enabled || len(roots) != 1 || len(lines) != 2 || !matchesQEMUOwnerMountedExport(lines[1], ownerNFSRoot, b.uid, b.gid) {
 			return errors.New("NFS generated policy differs from the fixed owner fixture")
 		}
-		peer := strings.Fields(lines[1])[1]
-		b.options = strings.TrimSuffix(strings.TrimPrefix(peer, "127.0.0.1/32("), ")")
 		owner, err = nfsowner.NewLinux(b.inputs, b)
 		if err != nil {
 			return err
@@ -328,6 +324,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_MANAGED_EXPORTS_READY candidate=retained readback=exact live_close=refused withdrawal=verified lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only")
@@ -378,8 +375,10 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 }
 
 func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
-	if b.exported {
-		return errors.New("NFS consumers remain")
+	if b.exports != nil {
+		if err := b.exports.VerifyEmpty(ctx); err != nil {
+			return err
+		}
 	}
 	if b.rpc != nil {
 		if err := b.rpc.VerifyStopped(ctx); err != nil {
@@ -404,14 +403,18 @@ func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
 
 func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 	phase := b.phase
-	b.phase = phase + "-export-table"
-	before, err := runQEMUExportfsContext(ctx, "-s")
-	if err != nil || len(normalizedQEMUExportLines(before)) != 0 {
-		return errors.New("NFS fixture requires empty export table")
-	}
 	b.phase = phase + "-kernel-open"
+	var err error
 	b.kernel, err = openOwnerNFSKernel(ctx)
 	if err != nil {
+		return err
+	}
+	b.phase = phase + "-export-admission"
+	b.exports, err = openOwnerNFSExports(ctx, b)
+	if err != nil {
+		return err
+	}
+	if err := b.exports.VerifyEmpty(ctx); err != nil {
 		return err
 	}
 	b.phase = phase + "-rpc-admission"
@@ -440,12 +443,23 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 		return errors.New("managed RPC pins were released while the helpers ran")
 	}
 	b.phase = phase + "-export"
-	b.exported = true // Retain ownership even if exportfs completion is uncertain.
-	_, err = runQEMUExportfsContext(ctx, "-i", "-o", b.options, "127.0.0.1/32:"+ownerNFSRoot)
-	if err == nil {
-		b.phase = phase + "-verify-ready"
+	if err := b.exports.Publish(ctx); err != nil {
+		return err
 	}
-	return err
+	if !errors.Is(b.exports.Close(ctx), nfsowner.ErrState) {
+		return errors.New("managed export grants were released while published")
+	}
+	b.phase = phase + "-verify-ready"
+	return nil
+}
+
+func openOwnerNFSExports(ctx context.Context, b *ownerNFSQEMU) (_ *nfsowner.Exports, result error) {
+	file, err := os.Open("/usr/sbin/exportfs")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { result = errors.Join(result, file.Close()) }()
+	return nfsowner.NewExports(ctx, b.inputs, b.kernel, netip.AddrFrom4([4]byte{127, 0, 0, 1}), file)
 }
 
 func openOwnerNFSRPC(ctx context.Context, kernel *nfskernel.Controller) (_ *nfsowner.RPC, result error) {
@@ -501,12 +515,7 @@ func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
 	if err := b.rpc.VerifyReady(ctx); err != nil {
 		return err
 	}
-	current, err := runQEMUExportfsContext(ctx, "-s")
-	lines := normalizedQEMUExportLines(current)
-	if err != nil || len(lines) != 1 || !matchesQEMUOwnerMountedExportAccess(lines[0], ownerNFSRoot, b.uid, b.gid, b.access) {
-		return errors.New("NFS live export differs from generated policy")
-	}
-	return nil
+	return b.exports.CheckPublished(ctx)
 }
 
 func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
@@ -515,15 +524,10 @@ func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
 			return err
 		}
 	}
-	if b.exported {
-		if _, err := runQEMUExportfsContext(ctx, "-u", "127.0.0.1/32:"+ownerNFSRoot); err != nil {
+	if b.exports != nil {
+		if err := b.exports.Withdraw(ctx); err != nil {
 			return err
 		}
-		out, err := runQEMUExportfsContext(ctx, "-s")
-		if err != nil || len(normalizedQEMUExportLines(out)) != 0 {
-			return errors.New("NFS export removal uncertain")
-		}
-		b.exported = false
 	}
 	if b.rpc != nil {
 		return b.rpc.Stop(ctx)
@@ -532,6 +536,11 @@ func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
 }
 
 func (b *ownerNFSQEMU) Close(ctx context.Context) error {
+	if b.exports != nil {
+		if err := b.exports.Close(ctx); err != nil {
+			return err
+		}
+	}
 	if b.rpc != nil {
 		if err := b.rpc.Close(ctx); err != nil {
 			return err
