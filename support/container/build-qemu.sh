@@ -588,7 +588,8 @@ save_qemu_failure_log() {
         "$artifact_dir/$1" "$2"
 }
 
-if ! PHANTOWD_QEMU_NFS_LEGACY_BASE=0 "$external_dir/support/qemu-smoke.sh" \
+export PHANTOWD_QEMU_NFS_LEGACY_BASE=0
+if ! "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"; then
     save_qemu_failure_log qemu-smoke-failure.log "$output_dir/qemu-smoke.log"
     echo "Preserved failed QEMU smoke diagnostics at $artifact_dir/qemu-smoke-failure.log" >&2
