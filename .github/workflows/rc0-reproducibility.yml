@@ -11,7 +11,9 @@ on:
       - 'support/container/augment-cyclonedx.py'
       - 'support/compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
+      - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
+      - 'support/fixtures/rc0-management-nfs.go'
   push:
     branches: [develop]
     paths:
@@ -33,7 +35,9 @@ on:
       - 'support/compare-build-artifacts.sh'
       - 'support/test-compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
+      - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
+      - 'support/fixtures/rc0-management-nfs.go'
   workflow_dispatch:
 
 permissions:
@@ -105,6 +109,8 @@ jobs:
             ${{ runner.temp }}/phantowd-rc0/rc0-management.seed.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.verify.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.rotated.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-client.log
           if-no-files-found: ignore
           retention-days: 1
 

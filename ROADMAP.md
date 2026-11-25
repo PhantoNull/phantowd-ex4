@@ -1544,8 +1544,12 @@ open.
   A private root control request authorizes teardown once clients have drained.
   The kernel stop checks that confirmation before modifying listeners or
   exports. Ordinary stop refuses an active NFS lifetime. An uncertain exit
-  preserves the boot grant for review. Positive coverage of this complete
-  handoff and a physical EX4 platform provider are release prerequisites.
+  preserves the boot grant for review. The independent RC0 build fixture now
+  runs this full startup and shutdown in two isolated ARMv5 guests. It requires
+  a packet-filter drop for an unlisted address, a permitted NFSv3 mount and
+  synced write, refusal of ordinary stop while mounted, and release after
+  confirmed drain. Successful combined-image evidence and a physical EX4
+  platform provider are release prerequisites.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

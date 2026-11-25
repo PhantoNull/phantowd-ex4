@@ -23,7 +23,7 @@ cleanup() {
         kill "$pid" 2>/dev/null || true
         wait "$pid" 2>/dev/null || true
     fi
-    rm -f "$scratch/api" "$scratch/buildinfo" "$scratch/rootfs.ext2" "$scratch/check-nfs"
+    rm -f "$scratch/api" "$scratch/buildinfo" "$scratch/rootfs.ext2" "$scratch/check-nfs" "$scratch/nfs.conf"
     rmdir "$scratch"
 }
 trap cleanup EXIT
@@ -35,9 +35,12 @@ stat_path() {
 [ -n "$(stat_path /usr/sbin/nft)" ] || { echo 'Missing RC0 nftables executable' >&2; exit 1; }
 [ -n "$(stat_path /usr/bin/phantowd-api)" ]
 [ -n "$(stat_path /etc/init.d/S51phantowd-management)" ]
-for helper in /usr/sbin/rpcbind /usr/sbin/rpc.mountd /usr/sbin/rpc.nfsd /usr/sbin/exportfs /usr/bin/rpcinfo; do
+for helper in /usr/sbin/rpcbind /usr/sbin/rpc.mountd /usr/sbin/rpc.nfsd /usr/sbin/exportfs /usr/bin/rpcinfo /sbin/mount.nfs; do
     [ -n "$(stat_path "$helper")" ] || { echo "Missing RC0 NFS helper: $helper" >&2; exit 1; }
 done
+config=$(CDPATH='' cd -- "$(dirname -- "$0")/../src/phantowd-api/internal/nfsowner" && pwd)/nfs.conf
+debugfs -R "dump /etc/nfs.conf $scratch/nfs.conf" "$images/rootfs.ext2" >/dev/null 2>&1
+cmp -- "$config" "$scratch/nfs.conf"
 for path in /usr/lib/phantowd /etc/default/phantowd-api /etc/exports /etc/samba/smb.conf \
     /etc/init.d/S02phantowd-mdev /etc/init.d/S40phantowd-storage-broker \
     /etc/init.d/S30rpcbind /etc/init.d/S60nfs /etc/init.d/S99rc0-nfs-check \

@@ -31,7 +31,8 @@ mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$volume"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" "$support/fixtures/rc0-management.go"
+        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" \
+        "$support/fixtures/rc0-management.go" "$support/fixtures/rc0-management-nfs.go"
 )
 od -An -N24 -tx1 /dev/urandom | tr -d ' \n' > "$scratch/password"
 [ "$(wc -c < "$scratch/password")" -eq 48 ]
@@ -41,6 +42,20 @@ set -eu
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+case " $(cat /proc/cmdline) " in
+    *' phantowd.state=seed '*) phase=seed ;;
+    *' phantowd.state=verify '*) phase=verify ;;
+    *' phantowd.state=rotated '*) phase=rotated ;;
+    *' phantowd.state=nfs-server '*) phase=nfs-server ;;
+    *' phantowd.state=nfs-client '*) phase=nfs-client ;;
+    *) exit 1 ;;
+esac
+mount -t tmpfs -o mode=0755,size=64m tmpfs /run
+ifconfig lo 127.0.0.1 up
+if [ "$phase" = nfs-client ]; then
+    /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+    exec reboot -f
+fi
 if [ ! -r /proc/mdstat ]; then
     echo 'RC0 storage fixture requires the kernel MD census' >&2
     exit 1
@@ -52,20 +67,16 @@ case "$(cat /sys/class/misc/hw_random/rng_current)" in
     virtio_rng.*) ;;
     *) echo 'RC0 fixture requires the virtual entropy source' >&2; exit 1 ;;
 esac
-mount -t tmpfs -o mode=0755,size=64m tmpfs /run
 mount -t ext4 /dev/sdb /mnt
 mount -t tmpfs -o mode=0755,size=1m tmpfs /srv
 mkdir -m 0700 /run/phantowd-data-sources
 mkdir -m 0700 /run/phantowd-data-sources/boot-data
 mkdir -p /srv/phantowd/volumes/boot-data
 mount -t ext4 /dev/sdc /run/phantowd-data-sources/boot-data
-ifconfig lo 127.0.0.1 up
-case "$(cat /proc/cmdline)" in
-    *' phantowd.state=seed') phase=seed ;;
-    *' phantowd.state=verify') phase=verify ;;
-    *' phantowd.state=rotated') phase=rotated ;;
-    *) exit 1 ;;
-esac
+if [ "$phase" = nfs-server ]; then
+    mkdir /run/rpcbind
+    mount -t nfsd nfsd /proc/fs/nfsd
+fi
 if [ "$phase" = seed ]; then
     table=phantowd_rc0_nft_fixture
     printf '%s\n' \
@@ -82,6 +93,9 @@ if [ "$phase" = seed ]; then
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+if [ "$phase" = nfs-server ]; then
+    umount /proc/fs/nfsd
+fi
 umount /srv
 umount /run/phantowd-data-sources/boot-data
 umount /mnt
@@ -176,4 +190,12 @@ tr -d '\r' < "$log_prefix.rotated.log" |
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
+state="$scratch/nfs-state.ext4"
+data="$scratch/nfs-data.ext2"
+truncate -s 32M "$state"
+mkfs.ext4 -F -q "$state"
+truncate -s 16M "$data"
+mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$data"
+(umask 022; : > "$log_prefix.nfs-server.log"; : > "$log_prefix.nfs-client.log")
+python3 -B "$support/qemu-rc0-pair.py" "$qemu" "$images" "$image" "$state" "$data" "$log_prefix"
 sha256sum -c "$scratch/base.sha256"

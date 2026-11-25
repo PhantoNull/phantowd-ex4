@@ -4,3 +4,9 @@
 CONFIG_NFSD=y
 # CONFIG_NFSD_V2 is not set
 # CONFIG_NFSD_V4 is not set
+# The ARMv5 research profile also boots the isolated NFS client guest.
+CONFIG_NFS_FS=y
+# CONFIG_NFS_V2 is not set
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V4 is not set
+CONFIG_8139TOO=y

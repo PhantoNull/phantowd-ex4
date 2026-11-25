@@ -68,18 +68,28 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if os.Args[1] == "nfs-server" || os.Args[1] == "nfs-client" {
+		return
+	}
 	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
 	fmt.Printf("PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=%s original=true runtime_lock=verified release=verified\n", os.Args[1])
 	fmt.Printf("PHANTOWD_RC0_BOOT_STORAGE_READY phase=%s exact_bind=true registry_lock=verified release=verified\n", os.Args[1])
 }
 
 func check() error {
-	if len(os.Args) != 2 || (os.Args[1] != "seed" && os.Args[1] != "verify" && os.Args[1] != "rotated") {
+	if len(os.Args) != 2 {
 		return errors.New("guest phase required")
 	}
 	phase := os.Args[1]
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
+	switch phase {
+	case "nfs-client":
+		return nfsClient(ctx)
+	case "seed", "verify", "rotated", "nfs-server":
+	default:
+		return errors.New("unknown guest phase")
+	}
 	secret, err := os.ReadFile("/rc0-fixture/password")
 	if err != nil {
 		return err
@@ -88,18 +98,21 @@ func check() error {
 	if err != nil {
 		return err
 	}
+	if phase == "nfs-server" {
+		return nfsServer(ctx, credentials)
+	}
 	if phase == "seed" {
 		if err := errors.Join(runInitHook(ctx, "start"), runtimeAbsent()); err != nil {
 			return err
 		}
-		if err := seed(ctx, credentials); err != nil {
+		if err := seed(ctx, credentials, policy); err != nil {
 			return err
 		}
 	}
 	if err := os.WriteFile(proof, []byte(policy), 0600); err != nil {
 		return err
 	}
-	if err := prepareStorageApproval(); err != nil {
+	if err := prepareStorageApproval(0); err != nil {
 		return err
 	}
 	current := root + "/nas-policy/nas-services.json"
@@ -184,7 +197,7 @@ func check() error {
 	return nil
 }
 
-func seed(ctx context.Context, credentials []byte) error {
+func seed(ctx context.Context, credentials []byte, confirmedPolicy string) error {
 	if err := os.Mkdir(root, 0700); err != nil {
 		return err
 	}
@@ -212,7 +225,7 @@ func seed(ctx context.Context, credentials []byte) error {
 		return fmt.Errorf("admin preparation: %w", err)
 	}
 	provisionPolicy := exec.CommandContext(ctx, api, "--provision-nas-policy", "--nas-installation-id", install)
-	if err := provision(ctx, provisionPolicy, root, []byte(policy)); err != nil {
+	if err := provision(ctx, provisionPolicy, root, []byte(confirmedPolicy)); err != nil {
 		return fmt.Errorf("policy preparation: %w", err)
 	}
 	if err := provisionServiceIdentityRange(ctx, `{"first_id":23010,"last_id":23000}`); err == nil || ctx.Err() != nil {
@@ -236,16 +249,19 @@ func seed(ctx context.Context, credentials []byte) error {
 	return provisionCertificate(ctx)
 }
 
-func prepareStorageApproval() error {
+func prepareStorageApproval(ingressIndex int) error {
 	observed, err := storageMount(storageSource)
 	if err != nil || observed.Attributes&unix.STATX_ATTR_MOUNT_ROOT == 0 {
 		return errors.Join(errors.New("fixture storage source is not mounted"), err)
 	}
 	// This is independently fixed by the host fixture disk declaration.
 	wwn := sha256.Sum256([]byte("phantowd-vpd-observation-v1\x00wwn\x00naa.500f000000000003"))
-	data := fmt.Appendf(nil, `{"format":"phantowd-rc0-storage-v1","registry_revision":1,"volumes":[{"id":"boot-data","filesystem_uuid":%q,"mount_id":%d,"root_inode":%d,"device_major":%d,"device_minor":%d,"read_only":false,"disks":[{"wwn_sha256":"%x"}],"arrays":[]}]}`,
+	data := fmt.Appendf(nil, `{"format":"phantowd-rc0-storage-v1","registry_revision":1,"volumes":[{"id":"boot-data","filesystem_uuid":%q,"mount_id":%d,"root_inode":%d,"device_major":%d,"device_minor":%d,"read_only":false,"disks":[{"wwn_sha256":"%x"}],"arrays":[]}]`,
 		storageUUID, observed.Mnt_id, observed.Ino, observed.Dev_major, observed.Dev_minor, wwn)
-	return os.WriteFile(storageProof, data, 0600)
+	if ingressIndex > 0 {
+		data = fmt.Appendf(data, `,"nfs":{"address":%q,"ingress_index":%d}`, rc0NFSServer, ingressIndex)
+	}
+	return os.WriteFile(storageProof, append(data, '}'), 0600)
 }
 
 func storageMount(path string) (unix.Statx_t, error) {
