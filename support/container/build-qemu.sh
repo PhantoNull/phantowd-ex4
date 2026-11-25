@@ -446,7 +446,7 @@ fi
 
 rpcbind_source="$output_dir/build/rpcbind-1.2.7"
 if [ -f "$rpcbind_source/.stamp_patched" ] &&
-    ! grep -F 'Only the managed root RPC helpers need the local transport.' "$rpcbind_source/src/rpcbind.c" >/dev/null; then
+    ! grep -F 'current.st_ino == lock.st_ino' "$rpcbind_source/src/rpcbind.c" >/dev/null; then
     make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" BR2_DL_DIR="$download_dir" \
         O="$output_dir" PARALLEL_JOBS="$build_jobs" rpcbind-dirclean
 fi
@@ -519,7 +519,7 @@ make -C "$buildroot_source" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     PARALLEL_JOBS="$build_jobs" -j"$build_jobs"
-grep -F 'Only the managed root RPC helpers need the local transport.' "$rpcbind_source/src/rpcbind.c" >/dev/null
+grep -F 'current.st_ino == lock.st_ino' "$rpcbind_source/src/rpcbind.c" >/dev/null
 
 sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
     "$output_dir/host" "$OPENSSL_VERSION"

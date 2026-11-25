@@ -1,7 +1,7 @@
 Subject: [PATCH] Restrict and retain the local rpcbind socket
 
 Bind the local transport with mode 0600. Let bind refuse a preexisting
-pathname and unlink only the socket inode created by this process.
+pathname and unlink only the socket and lock inodes owned by this process.
 
 Signed-off-by: PhantoWD EX4 contributors
 ---
@@ -17,6 +17,21 @@ Signed-off-by: PhantoWD EX4 contributors
  
  rpcblist_ptr list_rbl;	/* A list of version 3/4 rpcbind services */
  
+@@ -155,11 +156,11 @@
+ 
+ 	/* Check that another rpcbind isn't already running. */
+ 	if ((rpcbindlockfd = (open(RPCBINDDLOCK,
+-	    O_RDONLY|O_CREAT, 0444))) == -1)
++	    O_RDONLY|O_CREAT|O_NOFOLLOW|O_CLOEXEC, 0444))) == -1)
+ 		err(1, "%s", RPCBINDDLOCK);
+ 
+-	if(flock(rpcbindlockfd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK)
+-		errx(1, "another rpcbind is already running. Aborting");
++	if (flock(rpcbindlockfd, LOCK_EX|LOCK_NB) == -1)
++		err(1, "cannot acquire %s", RPCBINDDLOCK);
+ 
+ 	getrlimit(RLIMIT_NOFILE, &rl);
+ 	if (rl.rlim_cur < 128) {
 @@ -210,7 +211,8 @@
  	}
  	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
@@ -63,19 +78,24 @@ Signed-off-by: PhantoWD EX4 contributors
  
  		/* Copy the address */
  		taddr.addr.len = taddr.addr.maxlen = addrlen;
-@@ -861,9 +872,13 @@
+@@ -861,10 +872,17 @@
  static void
  terminate(int dummy /*__unused*/)
  {
-+	struct stat current;
++	struct stat current, lock;
 +
 +	if (createdsocket && lstat(_PATH_RPCBINDSOCK, &current) == 0 &&
 +	    S_ISSOCK(current.st_mode) && current.st_dev == local_socket.st_dev &&
 +	    current.st_ino == local_socket.st_ino)
 +		unlink(_PATH_RPCBINDSOCK);
++	if (fstat(rpcbindlockfd, &lock) == 0 &&
++	    lstat(RPCBINDDLOCK, &current) == 0 && S_ISREG(current.st_mode) &&
++	    current.st_dev == lock.st_dev && current.st_ino == lock.st_ino)
++		unlink(RPCBINDDLOCK);
  	close(rpcbindlockfd);
 -	if(createdsocket)
 -		unlink(_PATH_RPCBINDSOCK);
- 	unlink(RPCBINDDLOCK);
+-	unlink(RPCBINDDLOCK);
  #ifdef WARMSTART
  	write_warmstart();	/* Dump yourself */
+ #endif

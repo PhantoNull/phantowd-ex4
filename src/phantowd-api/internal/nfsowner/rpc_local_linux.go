@@ -24,9 +24,9 @@ const (
 // rpcLocal borrows the original runtime directory through RPC.Close. All
 // operations run under the original RPC gate in the admitted namespace.
 type rpcLocal struct {
-	state  *runtimeState
-	legacy bool
-	socket *os.File
+	state        *runtimeState
+	legacy       bool
+	socket, lock *os.File
 }
 
 func (l *rpcLocal) parent() (int, uint64, error) {
@@ -66,20 +66,25 @@ func (l *rpcLocal) pin(ctx context.Context, pid int) error {
 	if err != nil {
 		return err
 	}
-	opened, err := unix.Openat2(fd, rpcLocalSocket, &unix.OpenHow{
-		Flags:   unix.O_PATH | unix.O_CLOEXEC,
-		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS,
-	})
-	if err != nil {
-		return err
+	for _, entry := range []struct {
+		name string
+		pin  **os.File
+	}{{rpcLocalSocket, &l.socket}, {rpcLocalLock, &l.lock}} {
+		opened, err := unix.Openat2(fd, entry.name, &unix.OpenHow{
+			Flags:   unix.O_PATH | unix.O_CLOEXEC,
+			Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS,
+		})
+		if err != nil {
+			return err
+		}
+		// Keep a successfully acquired descriptor on failure for review.
+		*entry.pin = os.NewFile(uintptr(opened), "managed-"+entry.name)
 	}
-	// Keep the descriptor even on a failed check for review and teardown.
-	l.socket = os.NewFile(uintptr(opened), "managed-rpcbind-socket")
 	return l.check(ctx, pid)
 }
 
 func (l *rpcLocal) check(ctx context.Context, pid int) error {
-	if l.socket == nil || pid <= 0 {
+	if l.socket == nil || l.lock == nil || pid <= 0 {
 		return ErrState
 	}
 	if err := l.checkPaths(); err != nil {
@@ -96,9 +101,10 @@ func (l *rpcLocal) checkPaths() error {
 	if err != nil {
 		return err
 	}
-	var held, name, lock unix.Statx_t
+	var held, name, heldLock, lock unix.Statx_t
 	if unix.Statx(int(l.socket.Fd()), "", unix.AT_EMPTY_PATH, rpcLocalMask, &held) != nil ||
 		unix.Statx(fd, rpcLocalSocket, unix.AT_SYMLINK_NOFOLLOW, rpcLocalMask, &name) != nil ||
+		unix.Statx(int(l.lock.Fd()), "", unix.AT_EMPTY_PATH, rpcLocalMask, &heldLock) != nil ||
 		unix.Statx(fd, rpcLocalLock, unix.AT_SYMLINK_NOFOLLOW, rpcLocalMask, &lock) != nil {
 		return ErrState
 	}
@@ -107,7 +113,8 @@ func (l *rpcLocal) checkPaths() error {
 		mode = unix.S_IFSOCK | 0666
 	}
 	if !validRPCNode(held, mount, mode) || !validRPCNode(name, mount, mode) ||
-		name.Ino != held.Ino || !validRPCNode(lock, mount, unix.S_IFREG|0444) {
+		name.Ino != held.Ino || !validRPCNode(heldLock, mount, unix.S_IFREG|0444) ||
+		!validRPCNode(lock, mount, unix.S_IFREG|0444) || lock.Ino != heldLock.Ino {
 		return ErrState
 	}
 	return nil

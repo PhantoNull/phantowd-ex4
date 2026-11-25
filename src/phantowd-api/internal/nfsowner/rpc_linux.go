@@ -300,11 +300,13 @@ func (r *RPC) Close(ctx context.Context) error {
 }
 
 func (r *RPC) release() error {
-	if r.local.socket != nil {
-		if err := r.local.socket.Close(); err != nil {
-			return err
+	for _, slot := range []**os.File{&r.local.socket, &r.local.lock} {
+		if *slot != nil {
+			if err := (*slot).Close(); err != nil {
+				return err
+			}
+			*slot = nil
 		}
-		r.local.socket = nil
 	}
 	for _, set := range r.sets {
 		if set != nil {
