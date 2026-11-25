@@ -7,6 +7,8 @@ on:
       - 'configs/phantowd_rc0_armv5_defconfig'
       - 'board/rc0/**'
       - 'support/container/build-rc0-profile.sh'
+      - 'support/container/augment-cyclonedx.py'
+      - 'support/compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
       - 'support/fixtures/rc0-management.go'
   push:
@@ -103,7 +105,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - name: Upload the unmodified research images for comparison
+      - name: Upload the unmodified research images and build metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: phantowd-rc0-images-${{ github.run_attempt }}-${{ matrix.instance }}
@@ -118,7 +120,7 @@ jobs:
           docker volume rm "$BUILD_VOLUME" 2>/dev/null || true
 
   compare:
-    name: Compare independent RC0 images
+    name: Compare independent RC0 images and metadata
     runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 10

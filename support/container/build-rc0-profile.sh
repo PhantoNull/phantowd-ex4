@@ -55,5 +55,36 @@ if [ -n "$reports" ]; then
     for artifact in zImage versatile-pb.dtb rootfs.ext2; do
         cp --sparse=always -- "$output/images/$artifact" "$comparison/$artifact"
     done
-    (cd "$comparison" && sha256sum zImage versatile-pb.dtb rootfs.ext2 > SHA256SUMS)
+    install -m 0644 "$output/.config" "$comparison/buildroot.config"
+    install -m 0644 "$output/build/linux-$LINUX_VERSION/.config" "$comparison/linux.config"
+
+    schema="$workspace/dl/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
+    if [ ! -f "$schema" ]; then
+        curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$output/spdx.schema.json" \
+            "https://raw.githubusercontent.com/CycloneDX/specification/$CYCLONEDX_SPEC_VERSION/schema/spdx.schema.json"
+        printf '%s  %s\n' "$CYCLONEDX_SPDX_SCHEMA_SHA256" "$output/spdx.schema.json" | sha256sum --check --status
+        mv -- "$output/spdx.schema.json" "$schema"
+    fi
+    printf '%s  %s\n' "$CYCLONEDX_SPDX_SCHEMA_SHA256" "$schema" | sha256sum --check --status
+    grep -Fx "CYCLONEDX_VERSION = \"$CYCLONEDX_SPEC_VERSION\"" "$buildroot/utils/generate-cyclonedx" >/dev/null
+    build --no-print-directory show-info > "$comparison/buildroot-show-info.json"
+    (
+        cd "$buildroot"
+        O="$output" BR2_EXTERNAL="$external" BR2_DL_DIR="$workspace/dl" \
+            ./utils/generate-cyclonedx \
+            --project-name "PhantoWD EX4 RC0 ARMv5" \
+            --project-version "dev-buildroot-$BUILDROOT_VERSION-linux-$LINUX_VERSION" \
+            < "$comparison/buildroot-show-info.json" > "$output/buildroot-sbom.cdx.json"
+    )
+    python3 -B "$external/support/container/augment-cyclonedx.py" \
+        < "$output/buildroot-sbom.cdx.json" > "$comparison/sbom.cdx.json"
+    build legal-info
+    install -m 0644 "$output/legal-info/manifest.csv" "$comparison/license-manifest.csv"
+    install -m 0644 "$output/legal-info/host-manifest.csv" "$comparison/host-license-manifest.csv"
+    (
+        cd "$comparison"
+        sha256sum zImage versatile-pb.dtb rootfs.ext2 buildroot.config linux.config \
+            buildroot-show-info.json sbom.cdx.json license-manifest.csv host-license-manifest.csv > SHA256SUMS
+    )
 fi
