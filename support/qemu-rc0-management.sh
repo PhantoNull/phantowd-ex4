@@ -105,11 +105,13 @@ for phase in seed verify rotated; do
         exit 1
     fi
     expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
-    if ! awk -v ready="$expected" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
+    identities="PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=$phase original=true runtime_lock=verified release=verified"
+    if ! awk -v ready="$expected" -v identities="$identities" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
         { sub(/\r$/, "") }
         $0 == ready { startup++ }
+        $0 == identities { identity++ }
         $0 == stopped { unmount++ }
-        END { exit !(startup == 1 && unmount == 1) }
+        END { exit !(startup == 1 && identity == 1 && unmount == 1) }
     ' "$log" || ! grep -F 'reboot: Restarting system' "$log" >/dev/null ||
         grep -Eq 'PHANTOWD_RC0_SUPERVISOR_FAILED|Kernel panic' "$log"; then
         tail -n 25 "$log" >&2

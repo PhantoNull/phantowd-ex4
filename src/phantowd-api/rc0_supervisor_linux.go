@@ -104,6 +104,13 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if plan.TLSLeafSHA256 != "" && !plan.matchesTLS(identity) {
 		return errRC0Review
 	}
+	identities, err := openRC0ServiceIdentities(stateRoot)
+	if identities != nil {
+		defer func() { result = errors.Join(result, identities.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
 	listener, err := openRC0PolicyListener(gid)
 	if err != nil {
 		return err

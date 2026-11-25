@@ -32,17 +32,18 @@ import (
 )
 
 const (
-	root     = "/mnt/rc0-state"
-	proof    = "/run/rc0-confirmed-policy.json"
-	launch   = "/run/rc0-boot-v1.json"
-	bootDir  = "/run/phantowd-boot"
-	initHook = "/etc/init.d/S51phantowd-management"
-	address  = "127.0.0.1:18443"
-	origin   = "https://" + address
-	install  = "c71c2ba76bd04d29816335c13c31a380"
-	api      = "/usr/bin/phantowd-api"
-	tlsRole  = root + "/management-tls.pem"
-	policy   = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
+	root         = "/mnt/rc0-state"
+	proof        = "/run/rc0-confirmed-policy.json"
+	launch       = "/run/rc0-boot-v1.json"
+	bootDir      = "/run/phantowd-boot"
+	initHook     = "/etc/init.d/S51phantowd-management"
+	address      = "127.0.0.1:18443"
+	origin       = "https://" + address
+	install      = "c71c2ba76bd04d29816335c13c31a380"
+	api          = "/usr/bin/phantowd-api"
+	tlsRole      = root + "/management-tls.pem"
+	identityRole = root + "/service-identities"
+	policy       = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":1,"file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":1,"shares":{"format":"phantowd-share-config","schema_version":1,"revision":1,"volumes":[],"users":[],"shares":[]},"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":1,"volume_revision":1,"exports":[]}},"iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":1,"volume_revision":1,"backings":[],"targets":[]}}`
 )
 
 type bootPlan struct {
@@ -62,6 +63,7 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
+	fmt.Printf("PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=%s original=true runtime_lock=verified release=verified\n", os.Args[1])
 }
 
 func check() error {
@@ -104,6 +106,9 @@ func check() error {
 		return err
 	}
 	if phase == "seed" {
+		if err := proveIdentityStartupRefusal(ctx); err != nil {
+			return err
+		}
 		stage := root + "/.management-tls.provisioning"
 		if err := os.WriteFile(stage, []byte("interrupted TLS fixture"), 0600); err != nil {
 			return err
@@ -146,6 +151,18 @@ func check() error {
 	if raw, err := os.ReadFile(root + "/accounts/accounts.json"); err != nil || bytes.Contains(raw, bytes.TrimSpace(secret)) {
 		return errors.New("credential absent or held plaintext")
 	}
+	ledger, err := os.ReadFile(identityRole + "/registry/service-accounts.json")
+	var identities struct {
+		Revision uint64            `json:"revision"`
+		FirstID  uint32            `json:"first_id"`
+		LastID   uint32            `json:"last_id"`
+		Accounts []json.RawMessage `json:"accounts"`
+	}
+	if err != nil || json.Unmarshal(ledger, &identities) != nil || identities.Revision != 1 ||
+		identities.FirstID != 23000 || identities.LastID != 23010 ||
+		identities.Accounts == nil || len(identities.Accounts) != 0 {
+		return errors.New("original service identities changed across supervision")
+	}
 	return nil
 }
 
@@ -180,7 +197,58 @@ func seed(ctx context.Context, credentials []byte) error {
 	if err := provision(ctx, provisionPolicy, root, []byte(policy)); err != nil {
 		return fmt.Errorf("policy preparation: %w", err)
 	}
+	if err := provisionServiceIdentityRange(ctx, `{"first_id":23010,"last_id":23000}`); err == nil || ctx.Err() != nil {
+		return errors.New("identity provisioning accepted an invalid range")
+	}
+	if _, err := os.Lstat(identityRole); !os.IsNotExist(err) {
+		return errors.New("invalid allocation published an identity role")
+	}
+	if err := provisionServiceIdentityRange(ctx, `{"first_id":23000,"last_id":23010}`); err != nil {
+		return fmt.Errorf("service identity preparation: %w", err)
+	}
 	return provisionCertificate(ctx)
+}
+
+func provisionServiceIdentityRange(ctx context.Context, configuration string) error {
+	cmd := exec.CommandContext(ctx, api, "--provision-rc0-service-identities")
+	return provision(ctx, cmd, root, []byte(configuration))
+}
+
+func proveIdentityStartupRefusal(ctx context.Context) error {
+	stage := root + "/.service-identities.provisioning"
+	if err := os.WriteFile(stage, []byte("interrupted identity fixture"), 0600); err != nil {
+		return err
+	}
+	if err := expectRefusal(ctx, proof, nil); err != nil {
+		return err
+	}
+	if raw, err := os.ReadFile(stage); err != nil || string(raw) != "interrupted identity fixture" {
+		return errors.New("supervisor did not preserve staged service identity evidence")
+	}
+	if err := os.Remove(stage); err != nil {
+		return err
+	}
+	file, err := os.Open(identityRole)
+	if err != nil {
+		return err
+	}
+	if err := unix.Flock(int(file.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		return errors.Join(err, file.Close())
+	}
+	return errors.Join(expectRefusal(ctx, proof, nil), file.Close())
+}
+
+func checkServiceIdentityLock(held bool) error {
+	file, err := os.Open(identityRole)
+	if err != nil {
+		return err
+	}
+	lockErr := unix.Flock(int(file.Fd()), unix.LOCK_EX|unix.LOCK_NB)
+	closeErr := file.Close()
+	if held && !errors.Is(lockErr, unix.EWOULDBLOCK) || !held && lockErr != nil {
+		return errors.Join(errors.New("service identity role lock did not match supervisor lifetime"), lockErr, closeErr)
+	}
+	return closeErr
 }
 
 func provision(ctx context.Context, cmd *exec.Cmd, directory string, input []byte) error {
@@ -402,8 +470,11 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err := runInitHook(ctx, "start"); err != nil {
 		return fmt.Errorf("init could not start admitted management: %w", err)
 	}
+	if err := checkServiceIdentityLock(true); err != nil {
+		return err
+	}
 	// Exercise shutdown as soon as startup is acknowledged, before any HTTP I/O.
-	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent()); err != nil {
+	if err := errors.Join(runInitHook(ctx, "stop"), runtimeAbsent(), checkServiceIdentityLock(false)); err != nil {
 		return fmt.Errorf("init could not stop immediately after startup: %w", err)
 	}
 	if err := runInitHook(ctx, "start"); err != nil {
@@ -426,11 +497,14 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	if err != nil {
 		return err
 	}
+	if err := checkServiceIdentityLock(true); err != nil {
+		return err
+	}
 	if err := runInitHook(ctx, "stop"); err != nil {
 		return fmt.Errorf("init could not confirm management shutdown: %w", err)
 	}
 	stopped = true
-	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop")); err != nil {
+	if err := errors.Join(runtimeAbsent(), runInitHook(ctx, "stop"), checkServiceIdentityLock(false)); err != nil {
 		return err
 	}
 	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
@@ -574,6 +648,9 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err != nil {
 		return err
 	}
+	if err := checkServiceIdentityLock(true); err != nil {
+		return err
+	}
 	if during != nil {
 		if err := during(fingerprint); err != nil {
 			return err
@@ -582,7 +659,7 @@ func serve(ctx context.Context, phase string, credentials []byte, during func(st
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return err
 	}
-	err = errors.Join(cmd.Wait(), runtimeAbsent())
+	err = errors.Join(cmd.Wait(), runtimeAbsent(), checkServiceIdentityLock(false))
 	joined = true
 	if err == nil {
 		fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=%s sha256=%s\n", phase, fingerprint)

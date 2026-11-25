@@ -1522,6 +1522,11 @@ open.
   stage. The NFS fixture provisions and opens the role through those entry
   points, closes the original descriptor and uses the retained owner for
   policy and readiness checks.
+  Normal RC0 startup now opens and retains the committed identity role when
+  installed, refuses interrupted provisioning and checks its lifetime during
+  init startup and shutdown. A protected installer command uses the same
+  state lock and an explicit allocation range. Existing management-only
+  state can still boot without an identity role.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

@@ -15,6 +15,12 @@ The independent two-kernel state fixture writes a fresh ledger to a
 disposable ext-family disk, checks the original range on reboot and refuses
 reprovisioning.
 
+RC0's installer mode can provision this role from an explicit allocation
+and inherited state descriptor while the state is offline. The normal RC0
+supervisor opens and holds the committed role before serving HTTPS and
+releases its lock after shutdown. Management-only state created before
+this role was added may still omit it.
+
 This is the cooperative owner of one configured native-account reservation
 ledger, native creation journals and optional Samba-enrollment journals. It
 coordinates allocation and typed Unix/Samba operations under one lifetime
