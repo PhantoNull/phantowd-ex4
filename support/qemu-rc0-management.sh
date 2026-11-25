@@ -37,6 +37,10 @@ mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 test "$(tr -d '\000' < /sys/firmware/devicetree/base/model)" = 'ARM Versatile PB'
 test "$(cat /sys/class/block/sdb/size)" = 65536
+case "$(cat /sys/class/misc/hw_random/rng_current)" in
+    virtio_rng.*) ;;
+    *) echo 'RC0 fixture requires the virtual entropy source' >&2; exit 1 ;;
+esac
 mount -t tmpfs -o mode=0755,size=64m tmpfs /run
 mount -t ext4 /dev/sdb /mnt
 ifconfig lo 127.0.0.1 up
@@ -66,6 +70,8 @@ chmod a-w "$image"
 
 for phase in seed verify; do
     log="$log_prefix.$phase.log"
+    # The hosted reader has a different UID. Keep the fixture inputs private.
+    (umask 022; : > "$log")
     if ! timeout --signal=TERM --kill-after=5 75 "$qemu" \
         -M versatilepb -cpu arm926 -m 256M -display none -serial stdio -monitor none -no-reboot -nic none \
         -kernel "$images/zImage" -dtb "$images/versatile-pb.dtb" \
