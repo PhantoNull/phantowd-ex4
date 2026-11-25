@@ -4,73 +4,26 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"syscall"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/configjson"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"golang.org/x/sys/unix"
 )
 
-const rc0SambaLaunchFormat = "phantowd-rc0-samba-launch-v1"
-const rc0SambaLaunchLimit = 16 << 10
-
-var rc0SambaShareID = regexp.MustCompile("^[a-z][a-z0-9-]{0,63}$")
-
-type rc0SambaShareRole struct {
-	ID       string `json:"id"`
-	ReadOnly *bool  `json:"read_only"`
-}
-
-func decodeRC0SambaLaunch(data []byte) ([]rc0SambaShareRole, error) {
-	var launch struct {
-		Format string              `json:"format"`
-		Shares []rc0SambaShareRole `json:"shares"`
-	}
-	keys := map[string]bool{"format": true, "shares": true, "id": true, "read_only": true}
-	if configjson.Decode(bytes.NewReader(data), &launch, rc0SambaLaunchLimit, 4, keys) != nil ||
-		launch.Format != rc0SambaLaunchFormat || len(launch.Shares) == 0 || len(launch.Shares) > shareconfig.MaxShares {
-		return nil, errRC0Review
-	}
-	seen := make(map[string]bool, len(launch.Shares))
-	for _, share := range launch.Shares {
-		if !rc0SambaShareID.MatchString(share.ID) || share.ReadOnly == nil || seen[share.ID] {
-			return nil, errRC0Review
-		}
-		seen[share.ID] = true
-	}
-	return launch.Shares, nil
-}
-
-func readRC0SambaLaunch() (_ []rc0SambaShareRole, result error) {
+func readRC0SambaLaunch() (_ []runtimebundle.SambaLaunchRole, result error) {
 	file, err := takeStartupFile(3, unix.S_IFREG)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { result = errors.Join(result, file.Close()) }()
-	const required = unix.F_SEAL_WRITE | unix.F_SEAL_GROW | unix.F_SEAL_SHRINK | unix.F_SEAL_SEAL
-	seals, err := unix.FcntlInt(file.Fd(), unix.F_GET_SEALS, 0)
-	var st unix.Stat_t
-	var fs unix.Statfs_t
-	fd := int(file.Fd())
-	if err != nil || seals&required != required || unix.Fstat(fd, &st) != nil || st.Mode != unix.S_IFREG|0400 ||
-		st.Uid != 0 || st.Gid != 0 || st.Size <= 0 || st.Size > rc0SambaLaunchLimit ||
-		unix.Fstatfs(fd, &fs) != nil || fs.Type != unix.TMPFS_MAGIC {
-		return nil, errRC0Review
-	}
-	data := make([]byte, st.Size)
-	if _, err := file.ReadAt(data, 0); err != nil {
-		return nil, err
-	}
-	return decodeRC0SambaLaunch(data)
+	return runtimebundle.ReadSambaLaunchDeclaration(file)
 }
 
 type rc0SambaMountRole struct {
@@ -140,7 +93,7 @@ func rc0SambaChildContext() bool {
 	return selfErr == nil && parentErr == nil && os.SameFile(selfNS, parentNS) && os.Getppid() == parent
 }
 
-func takeRC0SambaMountRoles(code *os.File, shares []rc0SambaShareRole) ([]rc0SambaMountRole, error) {
+func takeRC0SambaMountRoles(code *os.File, shares []runtimebundle.SambaLaunchRole) ([]rc0SambaMountRole, error) {
 	const protected = unix.MOUNT_ATTR_NOSUID | unix.MOUNT_ATTR_NODEV
 	const data = protected | unix.MOUNT_ATTR_NOEXEC
 	const immutable = protected | unix.MOUNT_ATTR_RDONLY
@@ -180,11 +133,11 @@ func takeRC0SambaMountRoles(code *os.File, shares []rc0SambaShareRole) ([]rc0Sam
 			return roles, err
 		}
 		attrs := uint64(data)
-		if *share.ReadOnly {
+		if share.ReadOnly {
 			attrs |= unix.MOUNT_ATTR_RDONLY
 		}
 		roles = append(roles, rc0SambaMountRole{dir, "shares/" + share.ID, attrs})
-		mount, err := observeRC0SambaShare(dir, *share.ReadOnly)
+		mount, err := observeRC0SambaShare(dir, share.ReadOnly)
 		if err != nil || mounts[mount] {
 			return roles, errRC0Review
 		}

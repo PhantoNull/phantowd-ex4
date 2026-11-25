@@ -14,9 +14,12 @@ on:
       - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
       - 'support/fixtures/rc0-management-nfs.go'
-      - 'support/fixtures/rc0-samba-child.go'
+      - 'src/phantowd-api/cmd/rc0-samba-child-fixture/**'
       - 'src/phantowd-api/rc0_samba_child_linux.go'
       - 'src/phantowd-api/rc0_samba_code_linux.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_documents.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_launch_linux.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_service_configuration_linux.go'
       - 'tools/phantowd-lab/**'
   push:
     branches: [develop]
@@ -42,7 +45,6 @@ on:
       - 'support/qemu-rc0-pair.py'
       - 'support/fixtures/rc0-management.go'
       - 'support/fixtures/rc0-management-nfs.go'
-      - 'support/fixtures/rc0-samba-child.go'
       - 'tools/phantowd-lab/**'
   workflow_dispatch:
 

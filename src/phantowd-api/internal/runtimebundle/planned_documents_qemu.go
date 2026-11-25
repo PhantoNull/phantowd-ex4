@@ -85,22 +85,5 @@ func SambaRoleDocumentsQEMU(candidate fileserviceplan.SambaRoleCandidate) (manag
 }
 
 func boundedNativeDocumentsQEMU(passwd, group, nss, sections string) (map[string]string, error) {
-	if passwd == "" || group == "" || nss == "" {
-		return nil, ErrInvalid
-	}
-	documents := map[string]string{
-		"passwd": passwd, "group": group, "nsswitch.conf": nss,
-		"hosts": "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n",
-		"services":       "microsoft-ds 445/tcp\n",
-		"samba/smb.conf": nativeSambaGlobalsQEMU + sections,
-	}
-	var size int64
-	for _, contents := range documents {
-		bytes := int64(len(contents))
-		if bytes > maxConfigurationBytes-size {
-			return nil, ErrInvalid
-		}
-		size += bytes
-	}
-	return documents, nil
+	return boundedSambaDocuments(nativeSambaGlobalsQEMU, passwd, group, nss, sections)
 }

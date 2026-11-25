@@ -19,6 +19,12 @@ modes. The clean RC0 build runs this fixture with the kernel and userspace it
 just produced. Boot policy, the production identity backend, and authenticated
 SMB service supervision remain open.
 
+The service configuration and sealed share declaration come from the same
+validated candidate. A temporary mount holds the expected NSS and Samba files
+under a private workspace. The owner checks their complete bytes and original
+mount before supplying the child descriptor. The emulated service uses this
+constructor and checks the single TCP/445 address and covered-mount refusal.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,

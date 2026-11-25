@@ -28,7 +28,7 @@ mkfs.ext4 -q -F "$virtual_data"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" "$support/fixtures/rc0-samba-child.go"
+        "$host_go" build -mod=vendor -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/runner" ./cmd/rc0-samba-child-fixture
 )
 cat > "$scratch/init" <<'SH'
 #!/bin/sh
@@ -41,7 +41,8 @@ test "$(tr -d '\000' < /sys/firmware/devicetree/base/model)" = 'ARM Versatile PB
 test "$(cat /sys/class/block/sdb/size)" = 49152
 mount -t tmpfs -o mode=0755,nosuid,nodev,size=32m tmpfs /run
 ifconfig lo 127.0.0.1 up
-mkdir /run/data /run/rw /run/ro /run/config
+ifconfig lo:1 192.0.2.21 netmask 255.255.255.255 up
+mkdir /run/data /run/rw /run/ro
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdb /run/data
 mkdir -m 0700 /run/data/private /run/data/state
 mkdir -m 0755 /run/data/writable /run/data/readonly
@@ -76,7 +77,7 @@ if ! timeout --signal=TERM --kill-after=5 70 "$qemu" \
     tail -n 25 "$log" >&2
     exit 1
 fi
-expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused'
+expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused'
 if ! awk -v expected="$expected" '{sub(/\r$/, "")} $0 == expected { n++ } END { exit n != 1 }' "$log" ||
     ! grep -F 'reboot: Restarting system' "$log" >/dev/null || grep -Eq 'PHANTOWD_RC0_SAMBA_LAUNCH_FAILED|Kernel panic' "$log"; then
     tail -n 25 "$log" >&2
