@@ -61,6 +61,16 @@ func (s *Store) Load() (Document, error) {
 }
 
 func (s *Store) Initialize(username, verifier string) error {
+	return s.initialize(username, verifier, false)
+}
+
+// InitializePristine starts a new installation only with an empty credential
+// directory and independently authorized local provisioning.
+func (s *Store) InitializePristine(username, verifier string) error {
+	return s.initialize(username, verifier, true)
+}
+
+func (s *Store) initialize(username, verifier string, pristine bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.engine == nil {
@@ -69,6 +79,9 @@ func (s *Store) Initialize(username, verifier string) error {
 	d := Document{Version: Version, Revision: 1, Admin: Account{Username: username, PasswordHash: verifier}}
 	if d.Validate() != nil {
 		return ErrInvalid
+	}
+	if pristine {
+		return s.engine.CommitPristine(d)
 	}
 	return s.engine.Commit(0, d)
 }

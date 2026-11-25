@@ -32,6 +32,11 @@ with the existing reopen sync boundary, not transfer of a bootstrap/review epoch
   verifier)` preserves the name, requires the current revision, validates a
   different bounded verifier and increments once without wraparound. There is
   no arbitrary-document commit, delete/reset, name change or revision bypass.
+- Local `InitializePristine` also requires an empty directory while holding
+  the writer lock. It leaves pending and unrecognized entries available for
+  review and publishes without replacing a current file. A failed publication
+  retains the staged file. The supervisor supplies a dedicated directory only
+  after confirming ownership and first-use authorization independently.
 - The shared transaction engine syncs the staged file, renames it, then syncs
   the directory. A rename/directory-sync error returns `ErrUncertain` and blocks
   reads and writes until close/reopen/reconciliation. No cached verifier is

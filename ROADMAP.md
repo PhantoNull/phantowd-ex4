@@ -2257,6 +2257,11 @@ milestone before enabling its controls; M1/M6 for deployment.
   without default passwords or unauthenticated remote enrollment takeover.
   Preserve admin/file-service identity separation. No reset may silently erase
   data or ownership.
+  The ordinary API starts only with initialized administrator credentials.
+  A trusted supervisor can provision the first administrator over private
+  stdin and a locked, empty credential directory on FD 3. Browser enrollment
+  is limited to the QEMU development build. A persistent first-use authority,
+  operator interaction and reset recovery remain open.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
   The Linux API accepts one root-owned certificate/key bundle from its

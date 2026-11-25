@@ -31,6 +31,7 @@ type authController struct {
 	accounts         *accountStore
 	sessions         *sessionStore
 	allowedOrigin    string
+	setupDisabled    bool
 	loginMu          sync.Mutex
 	windowAt         time.Time
 	attempts         int
@@ -107,6 +108,10 @@ func (a *authController) setup(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin_not_allowed"})
 		}
+		return
+	}
+	if a.setupDisabled {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "setup_unavailable"})
 		return
 	}
 	var request setupRequest

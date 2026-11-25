@@ -3,6 +3,15 @@
 
 # Implementation status
 
+## Local first administrator enrollment
+
+The ordinary Linux API requires initialized administrator credentials before
+listening. Its local provisioning command uses the existing credential store,
+bounded stdin and an inherited directory. It preserves staged and unfamiliar
+state and forbids replacing a published credential. The development QEMU
+build retains its browser setup flow. Supervisor and device recovery design
+still define when first-use authority may be granted.
+
 ## ARMv5 integration baseline restored
 
 The first QEMU run on `5eb1374` stopped during the SDK download of `gpg-agent`
