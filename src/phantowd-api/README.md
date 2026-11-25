@@ -888,6 +888,11 @@ and refuses non-Versatile PB machines. See the
   or an interrupted stage requires review. RC0 holds the committed directory
   and its two roles until shutdown. The stock Samba tools stay dormant while
   the isolated daemon and credential lifecycle are integrated.
+  RC0 carries a separate code-only Samba root and its build-generated
+  manifest. On a kernel read-only image, the root-only verifier
+  --verify-rc0-samba-code checks the complete roster through its image
+  directory descriptors. The boot test also runs the packaged smbd version
+  command from that isolated root.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

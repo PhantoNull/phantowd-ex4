@@ -110,8 +110,9 @@ for table in /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6; do
     fi
 done
 echo 'PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent'
-if /usr/bin/phantowd-api --verify-rc0-samba-code; then
-    echo 'PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified'
+if /usr/bin/phantowd-api --verify-rc0-samba-code &&
+    chroot /usr/lib/phantowd-samba-code/root /usr/sbin/smbd --version >/dev/null; then
+    echo 'PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified loader=verified'
 else
     echo 'PHANTOWD_RC0_SMB_ERROR isolated code verification failed'
     exit 1
@@ -125,7 +126,7 @@ debugfs -w -R 'set_inode_field /etc/init.d/S99rc0-nfs-check mode 0100755' "$imag
     -kernel "$images/zImage" -dtb "$images/versatile-pb.dtb" \
     -drive "file=$image,if=none,id=rootdisk,format=raw,snapshot=on" \
     -device lsi53c895a,id=scsi0 -device scsi-hd,bus=scsi0.0,drive=rootdisk \
-    -append 'rootwait root=/dev/sda console=ttyAMA0,115200' \
+    -append 'rootwait root=/dev/sda ro console=ttyAMA0,115200' \
     -display none -serial stdio -monitor none -nic none -no-reboot > "$log" 2>&1 &
 pid=$!
 attempt=0
@@ -139,7 +140,7 @@ while [ "$attempt" -lt 60 ]; do
         awk '{ sub(/\r$/, "") }
              $0=="PHANTOWD_RC0_NFS_DORMANT version=3 threads=0 rpc=absent listeners=absent exports=empty" { n++ }
              $0=="PHANTOWD_RC0_SMB_DORMANT processes=absent listeners=absent" { s++ }
-             $0=="PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified" { c++ }
+             $0=="PHANTOWD_RC0_SMB_CODE readonly=true manifest=verified loader=verified" { c++ }
              END { exit(n!=1 || s!=1 || c!=1) }' "$log"; then
         echo 'PHANTOWD_RC0_PROFILE_READY boot=busybox fixtures=absent flashable=no installable=no'
         exit 0
