@@ -29,7 +29,7 @@ func runQEMUNFSKernelActivation() error {
 	defer cancel()
 	var previous *nfskernel.ControllerQEMU
 	for cycle := 1; cycle <= 2; cycle++ {
-		if err := runQEMUNFSKernelCycle(ctx, cycle, &previous, false); err != nil {
+		if err := runQEMUNFSKernelCycle(ctx, cycle, &previous); err != nil {
 			return fmt.Errorf("NFS cycle=%d: %w", cycle, err)
 		}
 		fmt.Printf("PHANTOWD_NFS_KERNEL_CYCLE_DONE cycle=%d\n", cycle)
@@ -39,22 +39,19 @@ func runQEMUNFSKernelActivation() error {
 	return nil
 }
 
-func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, peer bool) error {
-	return runQEMUNFSKernelCycleWithReboot(ctx, cycle, previous, peer, nil)
+func runQEMUNFSKernelCycle(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU) error {
+	return runQEMUNFSKernelCycleWithReboot(ctx, cycle, previous, nil)
 }
 
-func runQEMUNFSKernelCycleWithReboot(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, peer bool, reboot *qemuNFSReboot) error {
+func runQEMUNFSKernelCycleWithReboot(ctx context.Context, cycle int, previous **nfskernel.ControllerQEMU, reboot *qemuNFSReboot) error {
 	const payload = "retained-controller-nfs3-tcp-write\n"
-	open, rpcAddress := nfskernel.OpenSmokeQEMU, "127.0.0.1"
+	open := nfskernel.OpenSmokeQEMU
 	server := "/srv/phantowd-nfs-smoke"
 	if reboot != nil {
-		if peer || reboot.check(ctx) != nil {
+		if reboot.check(ctx) != nil {
 			return errQEMURebootNFS
 		}
 		open, server = nfskernel.OpenRebootQEMU, qemuStateAnchor+"/nfs-reboot"
-	}
-	if peer {
-		open, rpcAddress = nfskernel.OpenPeerQEMU, "192.0.2.1"
 	}
 	k, err := open(ctx)
 	if err != nil {
@@ -124,7 +121,7 @@ func runQEMUNFSKernelCycleWithReboot(ctx context.Context, cycle int, previous **
 			}
 		}, nil
 	}
-	stopRPC, err := start("/usr/sbin/rpcbind", "-f", "-h", rpcAddress)
+	stopRPC, err := start("/usr/sbin/rpcbind", "-f", "-h", "127.0.0.1")
 	if err != nil {
 		return phase("rpcbind-start", err)
 	}
@@ -165,11 +162,6 @@ func runQEMUNFSKernelCycleWithReboot(ctx context.Context, cycle int, previous **
 	}
 	if err := phase("export", command("/usr/sbin/exportfs", "-i", "-o", "rw,sync,no_subtree_check,all_squash,anonuid=65534,anongid=65534", export)); err != nil {
 		return err
-	}
-	if peer {
-		if err := phase("separate-client", serveQEMUNFSPeer(ctx, command)); err != nil {
-			return err
-		}
 	}
 	if err := phase("client-mount", command("/bin/mount", "-t", "nfs", "-o", "vers=3,proto=tcp,nolock,soft,timeo=5,retrans=1", export, client)); err != nil {
 		return err

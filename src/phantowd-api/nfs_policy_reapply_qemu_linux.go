@@ -100,7 +100,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil || string(data) != "owner-derived-nfs\n" {
 		return errors.New("saved-policy client lost the previous dataset")
 	}
-	if err := nfsowner.CheckManagedTablesQEMU(ctx, ownerNFSRoot); err != nil {
+	if err := nfsowner.CheckManagedTablesQEMU(ctx, ownerNFSRoot, "127.0.0.1"); err != nil {
 		return err
 	}
 	const payload = "saved-policy-nfs-revision2\n"

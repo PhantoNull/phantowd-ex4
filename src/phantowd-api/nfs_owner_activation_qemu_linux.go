@@ -110,39 +110,7 @@ func runQEMUNFSOwnerActivation() error {
 			}
 		}()
 		var err error
-		b.uid, b.gid, err = qemuIdentityOwnerAPIIdentity()
-		if err != nil {
-			return err
-		}
-		const authority = "/run/phantowd-nfs-owner-identity"
-		for _, p := range []string{authority, authority + "/registry", authority + "/operations"} {
-			if err := os.Mkdir(p, 0700); err != nil {
-				return err
-			}
-		}
-		seed, err := serviceaccountstore.Open(authority + "/registry")
-		if err != nil {
-			return err
-		}
-		if err := errors.Join(seed.Initialize(23000, 23010), seed.Close()); err != nil {
-			return err
-		}
-		// No imported identities exist in this guarded synthetic guest. The
-		// Owner independently reads the actual /etc Unix census on each check.
-		b.identity, err = identityowner.Open(authority, func(context.Context) (serviceaccounts.Reservations, error) {
-			return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
-		})
-		if err != nil {
-			return err
-		}
-		config := emptyQEMUFileServiceConfig()
-		config.Shares.Volumes = []shareconfig.Volume{{ID: qemuPlannerVolumeID, FilesystemUUID: qemuNFSVolumeUUID}}
-		config.NFS.Exports = []nfsconfig.Export{{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: qemuPlannerVolumeID, RelativePath: "nfs-owner",
-			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: b.uid, AnonymousGID: b.gid, Security: "sys"}}}}
-		document := naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: 1, FileServices: config,
-			ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
-				Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
-		if err := b.retainPolicy(ctx, document); err != nil {
+		if err := b.prepareFixtureSources(ctx, "127.0.0.1/32", "ro"); err != nil {
 			return err
 		}
 		b.management, err = newQEMUNASPolicyHTTP(b.policyOwner)
@@ -151,23 +119,6 @@ func runQEMUNFSOwnerActivation() error {
 		}
 		before, err := os.ReadFile(ownerNFSPolicy + "/nas-services.json")
 		if err != nil {
-			return err
-		}
-		identity, err := b.identity.FileServiceSnapshot(ctx)
-		if err != nil {
-			return err
-		}
-		b.identityLease, err = b.identity.RetainFileServiceSnapshot(ctx, identity.Fingerprint)
-		if err != nil {
-			return err
-		}
-		if err := os.Mkdir(ownerNFSRoot, 0700); err != nil {
-			return err
-		}
-		if err := os.Chown(ownerNFSRoot, int(b.uid), int(b.gid)); err != nil {
-			return err
-		}
-		if err := os.WriteFile(ownerNFSRoot+"/marker", []byte("owner-derived-nfs\n"), 0644); err != nil {
 			return err
 		}
 		var candidate fileserviceplan.NFSv3Candidate
@@ -217,7 +168,7 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil || string(data) != "owner-derived-nfs\n" {
 			return errors.New("NFS owner client read differs")
 		}
-		if err := nfsowner.CheckManagedTablesQEMU(ctx, ownerNFSRoot); err != nil {
+		if err := nfsowner.CheckManagedTablesQEMU(ctx, ownerNFSRoot, "127.0.0.1"); err != nil {
 			return err
 		}
 		f, err := os.OpenFile(ownerNFSClient+"/denied", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
@@ -373,6 +324,63 @@ func qemuNFSDefaultTables() ([2]qemuNFSTable, error) {
 	return tables, nil
 }
 
+func (b *ownerNFSQEMU) prepareFixtureSources(ctx context.Context, network, access string) error {
+	var err error
+	b.uid, b.gid, err = qemuIdentityOwnerAPIIdentity()
+	if err != nil {
+		return err
+	}
+	const authority = "/run/phantowd-nfs-owner-identity"
+	for _, p := range []string{authority, authority + "/registry", authority + "/operations"} {
+		if err := os.Mkdir(p, 0700); err != nil {
+			return err
+		}
+	}
+	seed, err := serviceaccountstore.Open(authority + "/registry")
+	if err != nil {
+		return err
+	}
+	if err := errors.Join(seed.Initialize(23000, 23010), seed.Close()); err != nil {
+		return err
+	}
+	// No imported identities exist in this guarded synthetic guest. The
+	// Owner independently reads the actual /etc Unix census on each check.
+	b.identity, err = identityowner.Open(authority, func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	})
+	if err != nil {
+		return err
+	}
+	config := emptyQEMUFileServiceConfig()
+	config.Shares.Volumes = []shareconfig.Volume{{ID: qemuPlannerVolumeID, FilesystemUUID: qemuNFSVolumeUUID}}
+	config.NFS.Exports = []nfsconfig.Export{{ID: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", VolumeID: qemuPlannerVolumeID, RelativePath: "nfs-owner",
+		Clients: []nfsconfig.Client{{Network: network, Access: access, Squash: "all", AnonymousUID: b.uid, AnonymousGID: b.gid, Security: "sys"}}}}
+	document := naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: 1, FileServices: config,
+		ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
+			Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
+	if err := b.retainPolicy(ctx, document); err != nil {
+		return err
+	}
+	identity, err := b.identity.FileServiceSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+	b.identityLease, err = b.identity.RetainFileServiceSnapshot(ctx, identity.Fingerprint)
+	if err != nil {
+		return err
+	}
+	if err := os.Mkdir(ownerNFSRoot, 0700); err != nil {
+		return err
+	}
+	if err := os.Chown(ownerNFSRoot, int(b.uid), int(b.gid)); err != nil {
+		return err
+	}
+	if err := os.WriteFile(ownerNFSRoot+"/marker", []byte("owner-derived-nfs\n"), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Bootstrap only this synthetic guest document through the existing store.
 // Uncertain setup retains the original writer. Consumer operations receive
 // neither this document nor a replacement configuration/backend per call.
@@ -419,13 +427,14 @@ func verifyOwnerNFSClientAbsent(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs) (_ *nfsowner.Owner, result error) {
+func withQEMUNFSGrants(address netip.Addr, quiescent func(context.Context) error,
+	use func(nfsowner.LinuxServiceGrants) (*nfsowner.Owner, error)) (_ *nfsowner.Owner, result error) {
 	// The caller established the disposable guest and synthetic disk. Acquire
 	// the originals from this thread and close them before the service starts.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	grants := nfsowner.LinuxServiceGrants{
-		Address: netip.AddrFrom4([4]byte{127, 0, 0, 1}), Quiescent: verifyOwnerNFSClientAbsent,
+		Address: address, Quiescent: quiescent,
 	}
 	for _, entry := range []struct {
 		path string
@@ -446,34 +455,40 @@ func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs
 		defer func() { result = errors.Join(result, file.Close()) }()
 		*entry.file = file
 	}
+	return use(grants)
+}
 
-	wrong := grants
-	wrong.Network, wrong.MountNamespace = wrong.MountNamespace, wrong.Network
-	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
-		return owner, errors.Join(errors.New("managed NFSD did not cleanly refuse swapped namespace grants"), err)
-	}
-	if err := nfsowner.CheckStaleManagedStateQEMU(ctx, inputs, grants); err != nil {
-		return nil, err
-	}
-	incomplete := grants
-	incomplete.Mountd = nil
-	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
-		return owner, errors.Join(errors.New("managed construction did not unwind a refused mountd grant"), err)
-	}
+func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs) (*nfsowner.Owner, error) {
+	return withQEMUNFSGrants(netip.AddrFrom4([4]byte{127, 0, 0, 1}), verifyOwnerNFSClientAbsent, func(grants nfsowner.LinuxServiceGrants) (_ *nfsowner.Owner, result error) {
 
-	owner, err := nfsowner.NewManagedLinux(ctx, inputs, grants)
-	if err != nil {
-		return owner, err
-	}
-	lock, err := os.OpenFile("/run/.phantowd-nfs-kernel.lock", os.O_WRONLY, 0)
-	if err != nil {
-		return owner, err
-	}
-	defer func() { result = errors.Join(result, lock.Close()) }()
-	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); !errors.Is(err, unix.EWOULDBLOCK) {
-		return owner, errors.New("Linux NFSD admitted another lock claimant")
-	}
-	return owner, nfsowner.CheckManagedRefusalsQEMU(ctx, owner)
+		wrong := grants
+		wrong.Network, wrong.MountNamespace = wrong.MountNamespace, wrong.Network
+		if owner, err := nfsowner.NewManagedLinux(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
+			return owner, errors.Join(errors.New("managed NFSD did not cleanly refuse swapped namespace grants"), err)
+		}
+		if err := nfsowner.CheckStaleManagedStateQEMU(ctx, inputs, grants); err != nil {
+			return nil, err
+		}
+		incomplete := grants
+		incomplete.Mountd = nil
+		if owner, err := nfsowner.NewManagedLinux(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
+			return owner, errors.Join(errors.New("managed construction did not unwind a refused mountd grant"), err)
+		}
+
+		owner, err := nfsowner.NewManagedLinux(ctx, inputs, grants)
+		if err != nil {
+			return owner, err
+		}
+		lock, err := os.OpenFile("/run/.phantowd-nfs-kernel.lock", os.O_WRONLY, 0)
+		if err != nil {
+			return owner, err
+		}
+		defer func() { result = errors.Join(result, lock.Close()) }()
+		if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); !errors.Is(err, unix.EWOULDBLOCK) {
+			return owner, errors.New("Linux NFSD admitted another lock claimant")
+		}
+		return owner, nfsowner.CheckManagedRefusalsQEMU(ctx, owner)
+	})
 }
 
 func (b *ownerNFSQEMU) releaseBorrowedInputs(ctx context.Context) error {
@@ -483,6 +498,10 @@ func (b *ownerNFSQEMU) releaseBorrowedInputs(ctx context.Context) error {
 	if err := os.Remove(ownerNFSClient); err != nil {
 		return err
 	}
+	return b.releaseFixtureClaims(ctx)
+}
+
+func (b *ownerNFSQEMU) releaseFixtureClaims(ctx context.Context) error {
 	// The parent owns both claims through verified service and storage close.
 	if err := errors.Join(b.identityLease.Verify(ctx), b.policyLease.Verify(ctx)); err != nil {
 		return err

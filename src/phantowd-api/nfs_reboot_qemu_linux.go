@@ -161,7 +161,7 @@ func (b *qemuNFSReboot) run(phase string) error {
 		}
 	}
 	var previous *nfskernel.ControllerQEMU
-	if err := runQEMUNFSKernelCycleWithReboot(ctx, int(b.rev), &previous, false, b); err != nil {
+	if err := runQEMUNFSKernelCycleWithReboot(ctx, int(b.rev), &previous, b); err != nil {
 		return err
 	}
 	if err := b.check(ctx); err != nil {

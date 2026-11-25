@@ -8,22 +8,33 @@ export PATH=/sbin:/usr/sbin:/bin:/usr/bin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 grep -q ' /dev devtmpfs ' /proc/mounts
-mount -t tmpfs tmpfs /run
-mkdir -p /run/nfs
-: > /run/nfs/etab
+mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run
+mkdir -p /run/rpcbind
 trap 'echo PHANTOWD_NFS_PEER_ERROR; exec /sbin/reboot -f' EXIT
 case " $(cat /proc/cmdline) " in
-    *' phantowd_nfs_peer=server '*) role=server; host=1 ;;
-    *' phantowd_nfs_peer=client '*) role=client; host=2 ;;
+    *' phantowd_nfs_peer=server '*) role=server; nic=1; host=1 ;;
+    *' phantowd_nfs_peer=client '*) role=client; nic=2; host=3 ;;
     *) exit 1 ;;
 esac
 ifconfig lo up
+found=
 for device in /sys/class/net/*; do
-    [ "$(cat "$device/address")" = "52:54:00:12:34:0$host" ] || continue
-    ifconfig "${device##*/}" "192.0.2.$host" netmask 255.255.255.252 up
+    [ "$(cat "$device/address")" = "52:54:00:12:34:0$nic" ] || continue
+    [ -z "$found" ]
+    found=1
+    ifconfig "${device##*/}" "192.0.2.$host" netmask 255.255.255.248 up
 done
-mkdir -p /proc/fs/nfsd
-mount -t nfsd nfsd /proc/fs/nfsd
+[ -n "$found" ]
+if [ "$role" = server ]; then
+    /usr/bin/phantowd-api --qemu-nfs-test=verify-disk
+    mkdir -p /srv/phantowd/volumes/qemu-only /proc/fs/nfsd
+    mount -t ext2 -o rw /dev/sdb /srv/phantowd/volumes/qemu-only
+    mount -t nfsd nfsd /proc/fs/nfsd
+fi
 /usr/bin/phantowd-api --qemu-nfs-test="peer-$role"
+if [ "$role" = server ]; then
+    umount /proc/fs/nfsd
+    umount /srv/phantowd/volumes/qemu-only
+fi
 trap - EXIT
 exec /sbin/reboot -f
