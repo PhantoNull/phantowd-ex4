@@ -78,7 +78,8 @@ independent hosted runners with fresh Buildroot workspaces. Each runner keeps
 the serial logs and source commit and tree for that attempt. After its QEMU
 checks pass, it exports only the original kernel, Versatile PB DTB and root
 filesystem with their checksums. A separate job verifies the source commit and
-compares both sets byte for byte. For a local container run, pass an empty
+compares both sets byte for byte. The HTTPS fixture checks that QEMU provides
+entropy through its virtual RNG. For a local container run, pass an empty
 report directory to `build-rc0-profile.sh` to retain its logs and comparison
 images. The workflow keeps the artifacts for one day.
 

@@ -19,7 +19,7 @@ on:
       - '.dockerignore'
       - 'configs/phantowd_rc0_armv5_defconfig'
       - 'board/rc0/**'
-      - 'board/qemu/arm-versatile/**'
+      - 'board/qemu/armv5/linux-qemu-rng.fragment'
       - 'board/qemu/armv5/patches/**'
       - 'package/phantowd-api/**'
       - 'src/phantowd-api/**'
