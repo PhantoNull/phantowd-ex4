@@ -14,6 +14,11 @@ The Linux RPC component holds executable references for `rpcbind`, `mountd`
 and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
 that NFSD is running. It checks both original processes and program readiness,
 then reaps the process groups in reverse order before releasing the grants.
+`mountd` uses TCP on port 20048. Before publishing exports the runtime
+matches the kernel listener inodes to the retained process and refuses UDP,
+unexpected owned ports and foreign listeners on the mount port. The same
+port must be free before startup and after shutdown. The platform still
+owns interface and source-network access for mountd and rpcbind.
 The ordinary Linux constructor `NewManagedLinux` composes the controller, RPC
 helpers and export manager. It retains the explicit NFSD, namespace and
 executable grants before startup, then sequences rpcbind, NFSD, mountd and

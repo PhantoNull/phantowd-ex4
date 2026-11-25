@@ -1511,6 +1511,10 @@ storage. No production roster provider or activation path exists.
   reserves fresh root-only `etab` and `rmtab` state on `/run`, rejects stale
   state and removes its tables after verified shutdown. Both guest lifetimes
   check the private tables and confirm the default tables were untouched.
+  The managed mount protocol uses TCP on port 20048. Startup and health
+  match kernel listener inodes to the original helper; pre-start and
+  teardown require a free port. The loopback guest attempts a conflicting
+  UDP bind before each lifetime and verifies refusal before normal startup.
   RC0 still needs network exposure control, RPC socket isolation and qualified
   storage integration.
   Actual root capture and existing process-constructor
