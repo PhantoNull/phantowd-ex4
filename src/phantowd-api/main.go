@@ -23,6 +23,7 @@ func main() {
 	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
 	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
+	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
 	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
@@ -42,7 +43,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *superviseRC0, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -55,8 +56,17 @@ func main() {
 	if !*registryCommit && *registryExpected != "" {
 		log.Fatal("registry revision requires commit mode")
 	}
-	if !*provisionNAS && *nasInstallation != "" {
-		log.Fatal("NAS installation ID requires provisioning mode")
+	if !*provisionNAS && !*superviseRC0 && *nasInstallation != "" {
+		log.Fatal("NAS installation ID requires provisioning or supervision mode")
+	}
+	if *superviseRC0 {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
+		stop()
+		if err != nil {
+			log.Fatal("RC0 management startup or shutdown requires review")
+		}
+		return
 	}
 	if *provisionNAS {
 		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {

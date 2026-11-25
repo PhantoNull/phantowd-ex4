@@ -29,12 +29,10 @@ func openInheritedAccountStore() (*accountStore, error) {
 func openInheritedAdministratorCredentials() (*admincredentials.Store, error) {
 	// Only an inherited, non-CLOEXEC directory is consumed. Do not wrap/close a
 	// runtime-created FD when the parent forgot to supply the promised grant.
-	flags, err := unix.FcntlInt(3, unix.F_GETFD, 0)
-	var st unix.Stat_t
-	if err != nil || flags&unix.FD_CLOEXEC != 0 || unix.Fstat(3, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR {
+	source, err := takeStartupFile(3, unix.S_IFDIR)
+	if err != nil {
 		return nil, errAccountUnavailable
 	}
-	source := os.NewFile(3, "inherited-administrator-directory")
 	store, err := admincredentials.OpenDirectory(source)
 	if closeErr := source.Close(); closeErr != nil {
 		if store != nil {
