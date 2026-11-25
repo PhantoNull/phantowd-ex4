@@ -735,8 +735,7 @@ and refuses non-Versatile PB machines. See the
   The API reads from offset zero, checks for file changes, closes its copy of
   the descriptor and uses the same certificate validity and hostname checks
   as path mode. Each API start needs a fresh descriptor from the supervisor.
-  Certificate issuance, client trust and replacement remain operator and
-  supervisor responsibilities.
+  Certificate issuance and client trust remain operator responsibilities.
 - Before RC0 management starts, a trusted root launcher can run
   `--provision-rc0-tls` with the private state root on FD 3 and one bounded
   PEM certificate chain and private key on private stdin. Set
@@ -746,6 +745,19 @@ and refuses non-Versatile PB machines. See the
   existing identity or staged operation. The supervisor also refuses startup
   while the staging role is present. Establish client trust in the issuer or
   the original certificate through a trusted channel before connecting.
+- With RC0 management stopped, the trusted launcher can use
+  `--replace-rc0-tls --expected-tls-certificate <fingerprint>` with the same
+  FD 3, private stdin and HTTPS origin as initial provisioning. The fingerprint
+  is the 64 lowercase hexadecimal digits of the SHA-256 hash of the current
+  leaf certificate's DER bytes. Use the fingerprint recorded from the trusted
+  certificate. The replacement must have a different leaf certificate and must
+  be currently valid for the origin. The command holds the same state-root lock
+  as the supervisor and publishes the staged identity with an atomic rename
+  and directory sync. Startup opens the new identity at the next launch.
+  Keep any previous identity needed for rollback in protected external storage.
+  Restoring a still-valid identity uses the same replacement command with the
+  current fingerprint. If the command reports an unconfirmed result, review the
+  published identity and any staged file before proceeding.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships

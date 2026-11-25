@@ -67,9 +67,11 @@ In the pinned Buildroot container, run `support/container/build-rc0-profile.sh`
 with the repository mounted at `/external` and the project workspace at
 `/workspace`. The check builds the normal ARMv5 API, audits the root
 filesystem and boots it on the Versatile PB model. It also tests the explicit
-management supervisor in two isolated boots with a disposable persistent
-state image. The second boot must authenticate and read the same policy over
-HTTPS, and both boots must stop cleanly. Test files enter a copy of the root
+management supervisor across three isolated boots with a disposable persistent
+state image. It authenticates and reads the same policy over HTTPS, rotates
+the TLS identity while the supervisor is stopped, and verifies both certificate
+fingerprints across their respective boot cycles. Every boot must stop cleanly.
+Test files enter a copy of the root
 image. The build directory is temporary. The profile remains compile-only,
 `flashable=no` and `installable=no`.
 

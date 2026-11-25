@@ -47,6 +47,7 @@ ifconfig lo 127.0.0.1 up
 case "$(cat /proc/cmdline)" in
     *' phantowd.state=seed') phase=seed ;;
     *' phantowd.state=verify') phase=verify ;;
+    *' phantowd.state=rotated') phase=rotated ;;
     *) exit 1 ;;
 esac
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
@@ -68,7 +69,7 @@ install_fixture init 0100755
 install_fixture password 0100600
 chmod a-w "$image"
 
-for phase in seed verify; do
+for phase in seed verify rotated; do
     log="$log_prefix.$phase.log"
     # The hosted reader has a different UID. Keep the fixture inputs private.
     (umask 022; : > "$log")
@@ -98,4 +99,27 @@ for phase in seed verify; do
     fi
     printf '%s\n' "$expected"
 done
+
+fingerprint() {
+    awk -v prefix="PHANTOWD_RC0_TLS_CERTIFICATE phase=$2 sha256=" '
+        { sub(/\r$/, "") }
+        index($0, prefix) == 1 {
+            digest = substr($0, length(prefix) + 1)
+            if (length(digest) != 64 || digest !~ /^[0-9a-f]+$/) exit 1
+            seen++
+        }
+        END { if (seen != 1) exit 1; print digest }
+    ' "$1"
+}
+original=$(fingerprint "$log_prefix.seed.log" seed)
+reopened=$(fingerprint "$log_prefix.verify.log" verify)
+replacement=$(fingerprint "$log_prefix.verify.log" replacement)
+rotated=$(fingerprint "$log_prefix.rotated.log" rotated)
+if [ "$original" != "$reopened" ] || [ "$original" = "$replacement" ] || [ "$replacement" != "$rotated" ]; then
+    echo 'RC0 did not retain both authenticated TLS generations across boots' >&2
+    exit 1
+fi
+tr -d '\r' < "$log_prefix.verify.log" |
+    grep -Fx 'PHANTOWD_RC0_TLS_ROTATION live=refused wrong_fingerprint=refused stale=refused replacement=published' >/dev/null
+echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 sha256sum -c "$scratch/base.sha256"
