@@ -204,7 +204,7 @@ func runQEMUNFSOwnerActivation() error {
 		if err := os.Mkdir(ownerNFSClient, 0700); err != nil {
 			return err
 		}
-		if err := b.command(ctx, "/bin/mount", "-t", "nfs", "-o", "rw,vers=3,proto=tcp,nolock,soft,timeo=5,retrans=1", "127.0.0.1:"+ownerNFSRoot, ownerNFSClient); err != nil {
+		if err := b.command(ctx, "/bin/mount", "-t", "nfs", "-o", "rw,vers=3,proto=tcp,mountproto=tcp,nolock,soft,timeo=5,retrans=1", "127.0.0.1:"+ownerNFSRoot, ownerNFSClient); err != nil {
 			return err
 		}
 		mounts, err := os.ReadFile("/proc/mounts")
@@ -341,6 +341,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_MOUNT_TRANSPORT_READY profile=tcp port=20048 listener=owned occupied_udp=refused teardown=verified lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RUNTIME_READY grants=retained rollback=verified lifetimes=2 teardown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_PRIVATE_STATE_READY etab=private rmtab=private defaults=unchanged stale=refused lifetimes=2 cleanup=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_EXPORTS_READY candidate=retained readback=exact live_close=refused withdrawal=verified lifetimes=2 scope=qemu-loopback-only")

@@ -8,6 +8,8 @@ package nfsowner
 import (
 	"context"
 	"errors"
+	"net"
+	"strconv"
 )
 
 // CheckManagedRefusalsQEMU probes the real components without exposing them.
@@ -29,6 +31,9 @@ func CheckManagedRefusalsQEMU(ctx context.Context, owner *Owner) error {
 		if !errors.Is(m.rpc.StartMountd(ctx), ErrState) {
 			return errors.New("managed mountd accepted startup before rpcbind")
 		}
+		if err := verifyOccupiedMountPortQEMU(ctx, m.rpc); err != nil {
+			return err
+		}
 	case Running:
 		if !errors.Is(m.rpc.Close(ctx), ErrState) || !errors.Is(m.exports.Close(ctx), ErrState) {
 			return errors.New("running NFS released managed helper or export references")
@@ -37,4 +42,21 @@ func CheckManagedRefusalsQEMU(ctx context.Context, owner *Owner) error {
 		return ErrState
 	}
 	return nil
+}
+
+func verifyOccupiedMountPortQEMU(ctx context.Context, rpc *RPC) error {
+	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(mountdPort))
+	var config net.ListenConfig
+	packet, err := config.ListenPacket(ctx, "udp4", address)
+	if err != nil {
+		return err
+	}
+	refused := rpc.VerifyStopped(ctx)
+	if err := packet.Close(); err != nil {
+		return err
+	}
+	if !errors.Is(refused, ErrState) {
+		return errors.Join(errors.New("managed mountd admitted an occupied UDP port"), refused)
+	}
+	return rpc.VerifyStopped(ctx)
 }

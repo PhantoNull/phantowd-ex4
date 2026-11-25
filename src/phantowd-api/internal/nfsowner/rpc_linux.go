@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
@@ -68,7 +69,7 @@ func NewRPC(ctx context.Context, kernel *nfskernel.Controller, address netip.Add
 		args []string
 	}{
 		{bind, "rpcbind", "/usr/sbin/rpcbind", []string{"-f", "-h", address.String()}},
-		{mount, "mountd", "/usr/sbin/rpc.mountd", []string{"-F", "-N", "2", "-N", "4", "-V", "3", "-p", "20048"}},
+		{mount, "mountd", "/usr/sbin/rpc.mountd", []string{"-F", "-N", "2", "-N", "4", "-V", "3", "-u", "-p", strconv.Itoa(mountdPort)}},
 	} {
 		spec := processowner.Spec{Executable: role.path, Args: role.args, ReadyTimeout: 3 * time.Second,
 			ProbeInterval: 50 * time.Millisecond, StopTimeout: time.Second, Ready: func(ctx context.Context) (bool, error) {
@@ -105,9 +106,21 @@ func (r *RPC) start(ctx context.Context, role int) error {
 	if err := checkKernel(ctx); err != nil {
 		return err
 	}
-	if snapshot, err := r.sets[role].Start(ctx); err != nil || snapshot.State != processowner.StateReady {
+	if role == 1 {
+		if err := checkMountTransport(ctx, 0); err != nil {
+			return err
+		}
+	}
+	snapshot, err := r.sets[role].Start(ctx)
+	if err != nil || snapshot.State != processowner.StateReady {
 		r.review = true
 		return errors.Join(ErrReviewRequired, err)
+	}
+	if role == 1 {
+		if err := r.verifyMountdTransport(ctx, snapshot); err != nil {
+			r.review = true
+			return errors.Join(ErrReviewRequired, err)
+		}
 	}
 	r.started++
 	return nil
@@ -147,8 +160,33 @@ func (r *RPC) VerifyReady(ctx context.Context) error {
 			r.review = true
 			return errors.Join(ErrReviewRequired, err)
 		}
+		if i == 1 {
+			if err := r.verifyMountdTransport(ctx, state); err != nil {
+				r.review = true
+				return errors.Join(ErrReviewRequired, err)
+			}
+		}
 	}
 	return nil
+}
+
+// The caller holds the RPC gate and the OS thread throughout the observations.
+func (r *RPC) verifyMountdTransport(ctx context.Context, original processowner.SetSnapshot) error {
+	if len(original.Members) != 1 || original.Members[0].Process.PID <= 0 {
+		return ErrState
+	}
+	if err := r.kernel.CheckDomain(ctx, r.address); err != nil {
+		return err
+	}
+	if err := checkMountTransport(ctx, original.Members[0].Process.PID); err != nil {
+		return err
+	}
+	current, err := r.sets[1].Observe(ctx)
+	if err != nil || current.State != processowner.StateReady || current.Generation != original.Generation ||
+		len(current.Members) != 1 || current.Members[0].Process.PID != original.Members[0].Process.PID {
+		return errors.Join(ErrState, err)
+	}
+	return r.kernel.CheckDomain(ctx, r.address)
 }
 
 func (r *RPC) Stop(ctx context.Context) error {
@@ -193,7 +231,15 @@ func (r *RPC) verifyStopped(ctx context.Context) error {
 			return errors.Join(ErrReviewRequired, err)
 		}
 	}
-	return nil
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	if err := r.kernel.CheckDomain(ctx, r.address); err != nil {
+		return err
+	}
+	if err := checkMountTransport(ctx, 0); err != nil {
+		return err
+	}
+	return r.kernel.CheckDomain(ctx, r.address)
 }
 
 func (r *RPC) Close(ctx context.Context) error {

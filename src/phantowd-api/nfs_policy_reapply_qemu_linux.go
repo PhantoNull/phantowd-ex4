@@ -87,7 +87,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err := os.Mkdir(ownerNFSClient, 0700); err != nil {
 		return err
 	}
-	if err := b.command(ctx, "/bin/mount", "-t", "nfs", "-o", "rw,vers=3,proto=tcp,nolock,soft,timeo=5,retrans=1", "127.0.0.1:"+ownerNFSRoot, ownerNFSClient); err != nil {
+	if err := b.command(ctx, "/bin/mount", "-t", "nfs", "-o", "rw,vers=3,proto=tcp,mountproto=tcp,nolock,soft,timeo=5,retrans=1", "127.0.0.1:"+ownerNFSRoot, ownerNFSClient); err != nil {
 		return err
 	}
 	mounts, err := os.ReadFile("/proc/mounts")
