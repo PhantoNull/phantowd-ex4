@@ -771,6 +771,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   future supervisor and retain the same lock and watch through confirmation.
   The NFS reboot fixture uses this path. Host tests exercise a replaced
   pathname, caller closure and unsafe grants.
+  An explicit RC0 management supervisor opens the policy, credentials and TLS
+  from one admitted local ext state root. It starts one non-root API for the
+  confirmed policy lifetime and releases authority after the child stops.
+  Startup requires an independently supplied policy confirmation. Automatic
+  boot binding, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
   require explicit decisions before the respective

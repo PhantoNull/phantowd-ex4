@@ -778,6 +778,23 @@ and refuses non-Versatile PB machines. See the
   descriptor; the usual schema/permissions/sync rules remain. The current S50
   path launcher does not implement this descriptor handoff. A trusted parent
   must separately qualify provisioning/admission; this is not complete boot recovery.
+- The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
+  A trusted root launcher supplies the installation ID as `--nas-installation-id`,
+  an open private root-owned local ext directory on FD 3, and a separate
+  root-owned read-only file with the exact confirmed NAS policy bytes on FD 4.
+  Use a distinct file from the current policy. The launcher also supplies
+  `PHANTOWD_LISTEN_ADDR` and `PHANTOWD_PUBLIC_ORIGIN` with an HTTPS origin.
+  The state root contains `accounts/`, `nas-policy/` and `management-tls.pem`.
+  The supervisor opens these roles beneath one locked root, admits the NAS
+  Owner, and starts one `phantowd` child with the retained account and TLS
+  descriptors. The policy stream accepts only the original live child. Stop
+  via the supervisor; it reaps the child before releasing policy authority.
+  Unexpected child or channel loss ends the lifetime and requires review.
+  A later start requires a fresh independent policy confirmation if policy
+  changed. The mode relies on the launcher for state-medium admission, first
+  provisioning and key installation. RC0 has no default init binding to this
+  mode. Management reads and desired configuration are available while SMB,
+  NFS and iSCSI activation remains outside this supervisor's authority.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

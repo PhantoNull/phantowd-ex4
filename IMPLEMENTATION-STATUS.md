@@ -3,6 +3,16 @@
 
 # Implementation status
 
+## Explicit RC0 management supervisor
+
+The ordinary Linux API can supervise one management lifetime from a retained,
+locked state-root descriptor and separate exact policy confirmation. It runs
+the HTTPS API as `phantowd`, with confined account and TLS descriptors, and
+accepts the original child's policy connection using kernel credentials and
+a pidfd. The supervisor handles clean shutdown and stops the child on channel
+failure. State discovery, automated boot, durable reconciliation and data
+service activation remain open.
+
 ## Local first administrator enrollment
 
 The ordinary Linux API requires initialized administrator credentials before
