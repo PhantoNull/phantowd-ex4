@@ -21,6 +21,8 @@ func main() {
 	storageBroker := flag.Bool("storage-broker", false, "serve the local read-only storage broker")
 	registryCommit := flag.Bool("commit-volume-registry", false, "persist explicit claims using inherited directory 3; no storage adoption")
 	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
+	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
+	nasInstallation := flag.String("nas-installation-id", "", "trusted installation ID for NAS policy provisioning")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
@@ -39,7 +41,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*selfTest, *storageBroker, *registryCommit, *nfsTest != "", *smbTest, *mountGuardTest,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -51,6 +53,15 @@ func main() {
 	}
 	if !*registryCommit && *registryExpected != "" {
 		log.Fatal("registry revision requires commit mode")
+	}
+	if !*provisionNAS && *nasInstallation != "" {
+		log.Fatal("NAS installation ID requires provisioning mode")
+	}
+	if *provisionNAS {
+		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 	if *registryCommit {
 		if err := commitInheritedVolumeRegistry(*registryExpected); err != nil {

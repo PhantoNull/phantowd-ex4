@@ -3,6 +3,7 @@
 
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -29,7 +30,7 @@ class ReproPhases(unittest.TestCase):
             return result, arguments.read_text() if arguments.exists() else ""
 
     def test_each_phase_has_its_own_budget_and_label(self):
-        for phase, seconds in (("toolchain", 2400), ("kernel", 1200),
+        for phase, seconds in (("toolchain", 3600), ("kernel", 1200),
                                ("userspace", 3600), ("rootfs", 900),
                                ("boot", 2700)):
             with self.subTest(phase=phase):
@@ -58,14 +59,36 @@ class ReproPhases(unittest.TestCase):
                     self.assertNotIn("PHANTOWD_REPRO_PHASE_DONE",
                                      result.stdout)
 
+    def test_inner_phase_limits_precede_actions_timeouts(self):
+        workflow = (ROOT / ".github/workflows/reproducibility.yml").read_text()
+        limits = dict(re.findall(
+            r"(?m)^\s+(\w+)\) seconds=(\d+) ;;$", DRIVER.read_text()))
+        steps = re.findall(
+            r"- name: ([^\n]+)\n\s+timeout-minutes: (\d+)\n"
+            r'\s+run: sh support/container/run-repro-phase.sh (\w+) ',
+            workflow)
+        self.assertEqual({phase for _, _, phase in steps}, set(limits))
+        for label, minutes, phase in steps:
+            with self.subTest(phase=phase):
+                self.assertLess(int(limits[phase]) + 10, int(minutes) * 60)
+                self.assertIn(f"({int(limits[phase]) // 60} minute ceiling)",
+                              label)
+        toolchain = [(label, minutes) for label, minutes, phase in steps
+                     if phase == "toolchain"]
+        self.assertEqual(toolchain, [
+            ("Toolchain and host preflight (60 minute ceiling)", "62")])
+        build = workflow.split("  compare:\n", 1)[0]
+        self.assertEqual(re.findall(
+            r"(?m)^    timeout-minutes: (\d+)$", build), ["150"])
+
     def test_unknown_phase_refuses_before_docker(self):
         result, args = self.invoke("all")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(args, "")
 
-    def test_workflow_preserves_global_budget_and_full_original_boot(self):
+    def test_workflow_preserves_qualified_budget_and_full_original_boot(self):
         workflow = (ROOT / ".github/workflows/reproducibility.yml").read_text()
-        self.assertIn("timeout-minutes: 120", workflow)
+        self.assertIn("timeout-minutes: 150", workflow)
         self.assertIn("fail-fast: false", workflow)
         positions = [workflow.index(
             f'run-repro-phase.sh {phase} "$BUILD_IMAGE" "$BUILD_VOLUME"')

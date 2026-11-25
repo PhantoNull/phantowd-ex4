@@ -554,6 +554,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Saved NAS-policy NFS read-write reactivation assertion missing' >&2
             exit 1
         fi
+        if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
+            echo "Missing server-side TCP TIME_WAIT NFS owner rebind assertion" >&2
+            exit 1
+        fi
         if ! awk '{ sub(/\r$/, "") } $0=="PHANTOWD_NFS_ORDERED_POLICY_READY original_owner=true ordered_writer=true receipt=verified reactivation=verified kernel_backend=true activation=true scope=qemu-loopback-only" { n++ } END { exit(n!=1) }' "$log_file"; then
             echo 'Ordered NAS-policy NFS activation and receipt assertion missing' >&2
             exit 1

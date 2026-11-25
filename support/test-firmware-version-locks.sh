@@ -55,6 +55,9 @@ check_version_lock \
     configs/phantowd_qemu_armv5_defconfig \
     board/qemu/armv5/rootfs-overlay/etc/phantowd-release
 check_version_lock \
+    configs/phantowd_rc0_armv5_defconfig \
+    board/rc0/rootfs-overlay/etc/phantowd-release
+check_version_lock \
     configs/phantowd_ex4_stage_a_defconfig \
     board/wd/ex4/stage-a/rootfs-overlay/etc/phantowd-release
 check_version_lock \

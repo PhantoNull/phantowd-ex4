@@ -17,7 +17,7 @@ class RoutingTests(unittest.TestCase):
         for path in ('.github/workflows/reproducibility.yml', 'versions.env', 'configs/**', 'package/**', 'support/docker/**', 'support/container/build-qemu*', 'external.*'):
             self.assertIn("'"+path+"'", push)
         self.assertIn('  workflow_dispatch:', text)
-        self.assertIn('timeout-minutes: 120', text)
+        self.assertIn('timeout-minutes: 150', text)
         self.assertIn('PHANTOWD_REPRO_COMPARE_FAILED', text)
 
     def test_light_promotion_check_covers_pr_and_main_push(self):
