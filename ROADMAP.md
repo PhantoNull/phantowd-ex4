@@ -1510,7 +1510,11 @@ open.
   protected storage registry through the retained runtime. Shutdown releases
   service claims only after the kernel and helpers close. Empty export policy
   leaves no claim or daemon runtime. The ARMv5 peer fixture exercises this
-  composition. The RC0 boot provider still needs platform grants.
+  composition. The local appliance adapter opens fixed image executables and
+  the admitted NFSD mount and namespaces. It verifies the selected IPv4
+  address is unique and assigned to the named kernel interface, then rechecks
+  the original link identity. The RC0 boot provider still owns NFSD mount
+  creation, endpoint selection and client-quiescence authority.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and

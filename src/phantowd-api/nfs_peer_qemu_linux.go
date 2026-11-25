@@ -70,7 +70,7 @@ func peerNFSFilterMode() (string, error) {
 	return filter, nil
 }
 
-func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
+func serveQEMUManagedNFS(ctx context.Context, filter string) error {
 	if !nfskernel.PeerServerQEMU() {
 		return nfskernel.ErrRefused
 	}
@@ -80,14 +80,6 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	}
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
-	}
-	var nft *os.File
-	if filter == "nftables" {
-		nft, err = os.Open("/usr/sbin/nft")
-		if err != nil {
-			return err
-		}
-		defer func() { result = errors.Join(result, nft.Close()) }()
 	}
 	removeConfig, err := nfsowner.InstallManagedStateConfigQEMU(ctx)
 	if err != nil {
@@ -115,17 +107,26 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 			return ctx.Err()
 		}
 		b.phase = "peer-runtime"
-		owner, err = withQEMUNFSGrants(netip.MustParseAddr(peerNFSServer), checkQuiescence, func(runtime nfsowner.LinuxServiceGrants) (*registeredNFS, error) {
-			grants := registeredNFSGrants{policy: b.policyOwner, identity: b.identity, storage: storage, desired: 1, runtime: runtime}
-			if unexpected, err := prepareRegisteredNFS(ctx, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
-				return unexpected, errors.Join(errors.New("production NFS admitted a missing firewall grant"), err)
-			}
-			if filter == "export-policy" {
-				return prepareRegisteredNFSWith(ctx, grants, nfsowner.NewManagedLinuxQEMU)
-			}
-			grants.runtime.NFTables, grants.runtime.IngressIndex = nft, device.Index
-			return prepareRegisteredNFS(ctx, grants)
-		})
+		address := netip.MustParseAddr(peerNFSServer)
+		grants := registeredNFSGrants{policy: b.policyOwner, identity: b.identity, storage: storage, desired: 1,
+			runtime: nfsowner.LinuxServiceGrants{Address: address, IngressIndex: device.Index, Quiescent: checkQuiescence}}
+		if unexpected, err := prepareRegisteredNFS(ctx, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
+			owner = unexpected
+			return errors.Join(errors.New("production NFS admitted a missing firewall grant"), err)
+		}
+		wrongInterface := grants
+		wrongInterface.runtime.IngressIndex++
+		if unexpected, err := prepareLocalRegisteredNFS(ctx, wrongInterface); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
+			owner = unexpected
+			return errors.Join(errors.New("NFS platform admitted a wrong interface"), err)
+		}
+		if filter == "export-policy" {
+			owner, err = prepareRegisteredNFSWith(ctx, grants, func(ctx context.Context, inputs *nfsowner.RetainedInputs, runtime nfsowner.LinuxServiceGrants) (*nfsowner.Owner, error) {
+				return newLocalNFSRuntime(ctx, inputs, runtime, false, nfsowner.NewManagedLinuxQEMU)
+			})
+		} else {
+			owner, err = prepareLocalRegisteredNFS(ctx, grants)
+		}
 		if err != nil {
 			return err
 		}
@@ -207,7 +208,7 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) (result error) {
 	if err := removeConfig(); err != nil {
 		return err
 	}
-	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered supervisor=true scope=isolated-two-guest-only\n", filter)
+	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered supervisor=true platform_grants=true scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 
