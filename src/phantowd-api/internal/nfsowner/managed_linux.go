@@ -16,12 +16,15 @@ import (
 )
 
 // LinuxServiceGrants comes from the platform that owns the NFSD mount,
-// namespaces and network exposure. Quiescent must verify client quiescence in
-// that domain within the supplied context.
+// namespaces and service ports. IngressIndex identifies the platform-selected
+// interface in that domain and NFTables is the qualified nft executable.
+// Quiescent verifies client quiescence in the domain within the context.
 type LinuxServiceGrants struct {
 	Address                         netip.Addr
 	NFSD, Network, MountNamespace   *os.File
 	ExportFS, RPCBind, Mountd, Info *os.File
+	NFTables                        *os.File
+	IngressIndex                    int
 	Quiescent                       func(context.Context) error
 }
 
@@ -30,6 +33,7 @@ type managedLinux struct {
 	exports         *Exports
 	rpc             *RPC
 	state           *runtimeState
+	firewall        *nfsFirewall
 	quiescent       func(context.Context) error
 	kernelAttempted bool
 }
@@ -48,8 +52,13 @@ func (r *managedConstructionReview) Unwrap() error {
 
 // NewManagedLinux attaches enabled original inputs to one NFSv3/TCP lifetime.
 // It retains independent references to the file grants and starts no services.
+// The runtime installs and verifies its packet filter before opening ports.
 // The caller retains the borrowed policy and identity claims through Owner.Close.
-func NewManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxServiceGrants) (_ *Owner, result error) {
+func NewManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxServiceGrants) (*Owner, error) {
+	return newManagedLinux(ctx, inputs, grants, false)
+}
+
+func newManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxServiceGrants, isolatedFixture bool) (_ *Owner, result error) {
 	if err := inputs.enter(); err != nil {
 		return nil, err
 	}
@@ -61,6 +70,10 @@ func NewManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxSe
 		return nil, ErrState
 	}
 	if ctx == nil || grants.Quiescent == nil {
+		return nil, ErrInvalid
+	}
+	useFirewall := grants.NFTables != nil && grants.IngressIndex > 0
+	if !useFirewall && (!isolatedFixture || grants.NFTables != nil || grants.IngressIndex != 0) {
 		return nil, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
@@ -86,6 +99,28 @@ func NewManagedLinux(ctx context.Context, inputs *RetainedInputs, grants LinuxSe
 	m.kernel, err = nfskernel.OpenLinux(ctx, grants.NFSD, grants.Network, grants.MountNamespace, grants.Address)
 	if err != nil {
 		return nil, fmt.Errorf("open NFSD: %w", err)
+	}
+	if useFirewall {
+		_, _, roots, err := inputs.candidate.Documents()
+		if err != nil {
+			return nil, err
+		}
+		var sources []netip.Prefix
+		for _, root := range roots {
+			for _, client := range root.Clients {
+				prefix, err := netip.ParsePrefix(client.Network)
+				if err != nil {
+					return nil, ErrInvalid
+				}
+				sources = append(sources, prefix)
+			}
+		}
+		m.firewall, err = newNFSFirewall(ctx, func(ctx context.Context) error {
+			return m.kernel.CheckDomain(ctx, grants.Address)
+		}, grants.Address, grants.IngressIndex, sources, grants.NFTables)
+		if err != nil {
+			return nil, fmt.Errorf("retain NFS firewall: %w", err)
+		}
 	}
 	m.state, err = prepareRuntimeState(ctx)
 	if err != nil {
@@ -122,6 +157,11 @@ func (m *managedLinux) releaseUnstarted() error {
 			return err
 		}
 	}
+	if m.firewall != nil {
+		if err := m.firewall.release(); err != nil {
+			return err
+		}
+	}
 	if m.kernel != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -134,6 +174,11 @@ func (m *managedLinux) Start(ctx context.Context) error {
 	if err := m.state.check(ctx); err != nil {
 		return err
 	}
+	if m.firewall != nil {
+		if err := checked(ctx, m.firewall.requireUnclaimed, m.firewall.start, m.firewall.requireUnclaimed); err != nil {
+			return fmt.Errorf("start NFS firewall: %w", err)
+		}
+	}
 	if err := m.rpc.StartBinder(ctx); err != nil {
 		return fmt.Errorf("start rpcbind: %w", err)
 	}
@@ -141,11 +186,11 @@ func (m *managedLinux) Start(ctx context.Context) error {
 	if err := m.kernel.Start(ctx); err != nil {
 		return fmt.Errorf("start NFSD: %w", err)
 	}
-	return checked(ctx, m.state.check, m.rpc.StartMountd, m.exports.Publish)
+	return checked(ctx, m.state.check, m.rpc.StartMountd, m.checkFirewall, m.exports.Publish)
 }
 
 func (m *managedLinux) VerifyReady(ctx context.Context) error {
-	return checked(ctx, m.kernel.CheckRunning, m.state.check, m.rpc.VerifyReady, m.exports.CheckPublished)
+	return checked(ctx, m.checkFirewall, m.kernel.CheckRunning, m.state.check, m.rpc.VerifyReady, m.exports.CheckPublished)
 }
 
 func (m *managedLinux) Stop(ctx context.Context) error {
@@ -162,11 +207,25 @@ func (m *managedLinux) VerifyStopped(ctx context.Context) error {
 	if m.kernelAttempted {
 		checkKernel = m.kernel.CheckStopped
 	}
-	return checked(ctx, m.quiescent, checkKernel, m.state.check, m.exports.VerifyEmpty, m.rpc.VerifyStopped)
+	return checked(ctx, m.quiescent, checkKernel, m.state.check, m.exports.VerifyEmpty, m.rpc.VerifyStopped, m.checkFirewall)
 }
 
 func (m *managedLinux) Close(ctx context.Context) error {
 	return checked(ctx, m.state.check, m.exports.Close, m.rpc.Close, func(context.Context) error {
 		return m.state.release()
-	}, m.kernel.Close)
+	}, m.closeFirewall, m.kernel.Close)
+}
+
+func (m *managedLinux) checkFirewall(ctx context.Context) error {
+	if m.firewall == nil {
+		return nil
+	}
+	return m.firewall.check(ctx)
+}
+
+func (m *managedLinux) closeFirewall(ctx context.Context) error {
+	if m.firewall == nil {
+		return nil
+	}
+	return m.firewall.close(ctx)
 }

@@ -83,7 +83,10 @@ func serveQEMUManagedNFS(ctx context.Context) error {
 		}
 		b.phase = "peer-runtime"
 		owner, err = withQEMUNFSGrants(netip.MustParseAddr(peerNFSServer), checkQuiescence, func(grants nfsowner.LinuxServiceGrants) (*nfsowner.Owner, error) {
-			return nfsowner.NewManagedLinux(ctx, b.inputs, grants)
+			if unexpected, err := nfsowner.NewManagedLinux(ctx, b.inputs, grants); unexpected != nil || !errors.Is(err, nfsowner.ErrInvalid) {
+				return unexpected, errors.Join(errors.New("production NFS admitted a missing firewall grant"), err)
+			}
+			return nfsowner.NewManagedLinuxQEMU(ctx, b.inputs, grants)
 		})
 		if err != nil {
 			return err

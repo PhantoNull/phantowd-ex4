@@ -31,6 +31,7 @@ trap 'exit 1' INT TERM
 stat_path() {
     debugfs -R "stat $1" "$images/rootfs.ext2" 2>/dev/null
 }
+[ -n "$(stat_path /usr/sbin/nft)" ] || { echo 'Missing RC0 nftables executable' >&2; exit 1; }
 [ -n "$(stat_path /usr/bin/phantowd-api)" ]
 [ -n "$(stat_path /etc/init.d/S51phantowd-management)" ]
 for path in /usr/lib/phantowd /etc/default/phantowd-api /etc/exports /etc/samba/smb.conf \

@@ -56,7 +56,7 @@ func CheckStaleManagedStateQEMU(ctx context.Context, inputs *RetainedInputs, gra
 	if err := os.WriteFile(sentinel, []byte(payload), 0600); err != nil {
 		return err
 	}
-	owner, err := NewManagedLinux(ctx, inputs, grants)
+	owner, err := NewManagedLinuxQEMU(ctx, inputs, grants)
 	if owner != nil || !errors.Is(err, ErrState) || constructionreview.Contains(err) {
 		return errors.Join(errors.New("managed NFS did not cleanly refuse stale state"), err)
 	}

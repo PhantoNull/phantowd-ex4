@@ -39,7 +39,7 @@ func TestMountTransportObservations(t *testing.T) {
 			if tc.active {
 				owned = map[uint64]struct{}{51: {}}
 			}
-			found, err := scanMountTransport(context.Background(), strings.NewReader(header+tc.rows), owned, tc.udp)
+			found, err := scanNFSTransport(context.Background(), strings.NewReader(header+tc.rows), owned, tc.udp, []int{mountdPort})
 			if found != tc.found || (err != nil) != tc.fail {
 				t.Fatalf("socket observation = %t, %v", found, err)
 			}
