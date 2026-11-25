@@ -1,13 +1,22 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
 
-# Retained disposable NFSD component
+# Retained NFSD component
 
-Ported from `fix/api-plaintext-listener-guard` at `17f929f`: ten existing
-files, adapted to the current integration tree. This package is available only
-with `qemu`; its controller additionally requires Linux, root, ARMv5,
-VersatilePB and one exact, mutually exclusive boot selector. Normal builds do
-not include it. It is not a production NFS backend or appliance activation.
+`OpenLinux` accepts the original NFSD mount and current network and mount
+namespace descriptors from a trusted platform owner. It keeps duplicates,
+verifies the exact stopped profile and holds a protected `/run` flock until
+verified closure. The platform establishes mount provenance and shares the
+protected runtime directory among cooperating controllers. The controller
+binds one admitted IPv4 address and reuses its original thread and socket
+checks. This layer controls the kernel listener and threads. RPC helpers,
+export policy and storage admission belong to the service runtime.
+
+The existing QEMU entry points require Linux, root, ARMv5, VersatilePB and an
+exact mutually exclusive boot selector. The guarded owner fixture also uses
+`OpenLinux`, rejects swapped grants and a conflicting lock, closes its
+original copies before starting, and stops and closes two successive kernel
+lifetimes.
 
 `OpenCodeQEMU` and `OpenRebootQEMU` preserve the original fixture admissions.
 `OpenSmokeQEMU` admits only `phantowd_nfs_kernel_smoke=1`. No constructor

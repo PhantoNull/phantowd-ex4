@@ -11,8 +11,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -32,6 +34,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"golang.org/x/sys/unix"
 )
 
 const ownerNFSRoot = "/srv/phantowd/volumes/qemu-plan/nfs-owner"
@@ -50,7 +53,7 @@ type ownerNFSQEMU struct {
 	policyLease    *naspolicystore.Lease
 	policyEvidence *revisionstore.NASEvidenceAuthority
 	management     *qemuNASPolicyHTTP
-	kernel         *nfskernel.ControllerQEMU
+	kernel         *nfskernel.Controller
 	helpers        [2]*ownerNFSChild
 	options        string
 	access         string
@@ -89,6 +92,9 @@ func (r *ownerNFSReview) Error() string {
 func (r *ownerNFSReview) Unwrap() error { return r.cause }
 
 func runQEMUNFSOwnerActivation() error {
+	if !nfskernel.SmokeFixtureQEMU() {
+		return nfskernel.ErrRefused
+	}
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
@@ -323,6 +329,7 @@ func runQEMUNFSOwnerActivation() error {
 	}
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only")
@@ -397,7 +404,7 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 		return errors.New("NFS fixture requires empty export table")
 	}
 	b.phase = phase + "-kernel-open"
-	b.kernel, err = nfskernel.OpenSmokeQEMU(ctx)
+	b.kernel, err = openOwnerNFSKernel(ctx)
 	if err != nil {
 		return err
 	}
@@ -431,6 +438,39 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 		b.phase = phase + "-verify-ready"
 	}
 	return err
+}
+
+func openOwnerNFSKernel(ctx context.Context) (_ *nfskernel.Controller, result error) {
+	// The caller already established the disposable Versatile guest and data
+	// disk. These grants come from the same current thread and NFSD mount.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	var grants [3]*os.File
+	for i, path := range []string{"/proc/fs/nfsd", "/proc/thread-self/ns/net", "/proc/thread-self/ns/mnt"} {
+		grant, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { result = errors.Join(result, grant.Close()) }()
+		grants[i] = grant
+	}
+	address := netip.AddrFrom4([4]byte{127, 0, 0, 1})
+	if controller, err := nfskernel.OpenLinux(ctx, grants[0], grants[2], grants[1], address); controller != nil || !errors.Is(err, nfskernel.ErrRefused) {
+		return controller, errors.New("Linux NFSD accepted swapped namespace grants")
+	}
+	controller, err := nfskernel.OpenLinux(ctx, grants[0], grants[1], grants[2], address)
+	if err != nil {
+		return controller, err
+	}
+	lock, err := os.OpenFile("/run/.phantowd-nfs-kernel.lock", os.O_WRONLY, 0)
+	if err != nil {
+		return controller, err
+	}
+	defer func() { result = errors.Join(result, lock.Close()) }()
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); !errors.Is(err, unix.EWOULDBLOCK) {
+		return controller, errors.New("Linux NFSD admitted another lock claimant")
+	}
+	return controller, nil
 }
 
 func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
