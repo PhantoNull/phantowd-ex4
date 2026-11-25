@@ -815,6 +815,20 @@ and refuses non-Versatile PB machines. See the
   first-use authorization. RC0 has no default init binding to this
   mode. Management reads and desired configuration are available while SMB,
   NFS and iSCSI activation remains outside this supervisor's authority.
+- An early Linux launcher can use `--supervise-rc0-boot` to hand off the
+  same admitted state directory on FD 3, a private read-only boot record
+  on FD 4 and the independent confirmed policy bytes on FD 5. FD 4 must
+  reside on tmpfs and hold one JSON object of at most 4096 bytes. The required
+  keys are `format` (`phantowd-rc0-boot-v1`), `installation_id`,
+  `listen_address`, `origin` (HTTPS), `state_mount_id` (the current kernel's
+  `STATX_MNT_ID_UNIQUE` for the admitted descriptor), `state_root_inode`,
+  `policy_sha256` (exact FD 5 bytes) and `tls_leaf_sha256` (the expected
+  certificate's DER leaf). Both hashes use 64 lowercase hexadecimal digits.
+  The launcher supplies the boot-local mount identity and independently
+  confirmed digests. The supervisor checks the retained ext state directory,
+  the policy bytes and the TLS identity before starting the child. Listener
+  settings come from the record. The selected physical medium and default
+  init integration need separate qualification.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain
