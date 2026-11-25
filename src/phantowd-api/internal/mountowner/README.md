@@ -1,10 +1,10 @@
 # Internal mount owner
 
-`mountowner` is an internal M3.4 lifecycle prototype. It is not constructed by
-normal product code, is not wired to the storage broker or service startup, and
-has no HTTP/RPC surface. Its current real mount driver and qualification helper
-exist only in `qemu_linux.go` (`qemu && linux`) and refuse machines other than
-the disposable Versatile PB guest.
+`mountowner` manages Linux volume binds and lease lifetimes for internal
+service owners. `AdmitLinuxMountedRoster` accepts a complete grant roster from
+a trusted storage supervisor. Appliance discovery, platform compatibility
+decisions and boot-time wiring are still pending. The service entry point is
+`LinuxMountedRoster.Volumes()`.
 
 ## Contract
 
@@ -25,8 +25,18 @@ the disposable Versatile PB guest.
   IDs, filesystem UUIDs, mount IDs or device numbers are rejected. Its
   generation advances when any member tuple or Owner generation changes. A
   snapshot is complete only relative to the immutable roster supplied at
-  construction; the current constructor is used by host tests and a one-volume
-  QEMU fixture, not product discovery.
+  construction.
+- A Linux grant carries an already-mounted source descriptor, its expected
+  mount tuple and the independently authorized UUID. Admission checks the
+  descriptor and live filesystem, rejects aliased grants and requires empty
+  protected anchors on a private mount parent. It prepares the complete roster
+  before creating any binds, then publishes only after revalidating every bind.
+  Non-recursive binds carry `nodev`, `nosuid` and `noexec`. The supervisor owns
+  persistent trust decisions and pre-creates the fixed volume directories.
+- Roster retirement first checks every member for busy leases. A busy result
+  preserves the full active roster. After successful retirement it blocks
+  further access and unmounts in reverse order. An uncertain outcome retains
+  the affected owners for review.
 - `MountedVolumeSet.Acquire` takes that same all-owner lock set, obtains a
   complete fresh observation and retains one child lease per roster member
   before releasing any lock. If a member fails revalidation, already acquired
@@ -184,7 +194,7 @@ qualification. The separate guest case above supplies the latter's controlled
 premature-close scope only; durable product recovery remains required.
 
 The qualification token currently comes only from the QEMU fixture. There is
-no production qualifier or production roster source, no EX4-complete mounted-
+no EX4 platform qualifier or boot-time roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product
 service handoff/start/stop integration, per-share service ACL matrix,
 service-account/group provisioning, automatic source-loss monitor, or operator

@@ -20,15 +20,15 @@ import (
 
 // MountedVolumeSet owns a fixed, trusted roster of logical-volume mount
 // Owners. Its completeness is scoped to that roster; constructing the
-// production roster still requires complete trusted storage discovery and
-// qualification. The current constructor is used only by internal tests and
-// the disposable QEMU fixture.
+// platform roster requires complete trusted storage discovery and qualification.
 type MountedVolumeSet struct {
 	mu          sync.Mutex
 	members     []mountedVolumeMember
 	lockOrder   []*Owner
 	generation  uint64
 	fingerprint [32]byte
+	retired     bool
+	retireErr   error // only accessed while linuxRosterMu is held
 }
 
 type mountedVolumeMember struct {
@@ -166,6 +166,9 @@ func (s *MountedVolumeSet) WithEvidence(inspect func(MountedVolumeSetEvidence) e
 }
 
 func (s *MountedVolumeSet) observeLocked() (MountedVolumeSetEvidence, error) {
+	if s.retired {
+		return MountedVolumeSetEvidence{}, ErrUnavailable
+	}
 	volumes := make([]MountedVolumeEvidence, len(s.members))
 	seenUUIDs := make(map[string]bool, len(s.members))
 	seenMounts := make(map[uint64]bool, len(s.members))
