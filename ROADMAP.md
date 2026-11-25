@@ -1497,7 +1497,10 @@ storage. No production roster provider or activation path exists.
   protected lock across the lifetime, and checks the explicit listener and
   threads at start and stop. A guarded guest uses that path for both real
   NFS lifetimes. The RC0 service runtime still needs platform admission and
-  managed RPC composition.
+  export composition. The Linux RPC layer retains qualified `rpcbind`,
+  `mountd` and `rpcinfo` executables and checks process and RPC readiness in
+  the admitted domain. It owns helper shutdown before releasing executable
+  references. Both real guest lifetimes use this layer.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

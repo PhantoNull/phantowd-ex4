@@ -44,28 +44,25 @@ const ownerNFSInstallation = "66666666666666666666666666666666"
 
 // Fixed disposable-guest composition only, with original retained inputs.
 type ownerNFSQEMU struct {
-	identity       *identityowner.Owner
-	identityLease  *identityowner.FileServiceLease
-	storage        *mountowner.MountedVolumeSet
-	inputs         *nfsowner.RetainedInputs
-	policySeed     *naspolicystore.Store
-	policyOwner    *naspolicystore.Owner
-	policyLease    *naspolicystore.Lease
-	policyEvidence *revisionstore.NASEvidenceAuthority
-	management     *qemuNASPolicyHTTP
-	kernel         *nfskernel.Controller
-	helpers        [2]*ownerNFSChild
-	options        string
-	access         string
-	phase          string
-	uid, gid       uint32
-	exported       bool
+	identity        *identityowner.Owner
+	identityLease   *identityowner.FileServiceLease
+	storage         *mountowner.MountedVolumeSet
+	inputs          *nfsowner.RetainedInputs
+	policySeed      *naspolicystore.Store
+	policyOwner     *naspolicystore.Owner
+	policyLease     *naspolicystore.Lease
+	policyEvidence  *revisionstore.NASEvidenceAuthority
+	management      *qemuNASPolicyHTTP
+	kernel          *nfskernel.Controller
+	rpc             *nfsowner.RPC
+	options         string
+	access          string
+	phase           string
+	uid, gid        uint32
+	exported        bool
+	kernelAttempted bool
 }
 
-type ownerNFSChild struct {
-	command *exec.Cmd
-	done    chan error
-}
 type ownerNFSReview struct {
 	constructionreview.Marker
 	backend     *ownerNFSQEMU
@@ -330,6 +327,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_OWNER_ACTIVATION_READY original_identity=true original_storage=true generated_policy=true owner_running=true kernel_backend=true activation=true read=true write=EROFS stopped=true sources_released=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_OWNER_TCP_REBIND_READY previous_server_time_wait=true live_duplicate_refused=true reapply=true teardown=clean scope=qemu-loopback-only")
@@ -380,14 +378,22 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 }
 
 func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
-	if b.exported || b.helpers[0] != nil || b.helpers[1] != nil {
+	if b.exported {
 		return errors.New("NFS consumers remain")
+	}
+	if b.rpc != nil {
+		if err := b.rpc.VerifyStopped(ctx); err != nil {
+			return err
+		}
 	}
 	mounts, err := os.ReadFile("/proc/mounts")
 	if err != nil || strings.Contains(string(mounts), " "+ownerNFSClient+" ") {
 		return errors.New("NFS client absence uncertain")
 	}
 	if b.kernel != nil {
+		if !b.kernelAttempted {
+			return b.kernel.CheckPrepared(ctx)
+		}
 		return b.kernel.CheckStopped(ctx)
 	}
 	threads, e1 := os.ReadFile("/proc/fs/nfsd/threads")
@@ -408,28 +414,30 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	b.phase = phase + "-rpcbind-start"
-	b.helpers[0], err = startOwnerNFSChild("/usr/sbin/rpcbind", "-f", "-h", "127.0.0.1")
+	b.phase = phase + "-rpc-admission"
+	b.rpc, err = openOwnerNFSRPC(ctx, b.kernel)
 	if err != nil {
 		return err
 	}
-	b.phase = phase + "-rpcbind-ready"
-	if err := b.waitRPC(ctx, "100000", "4"); err != nil {
+	if !errors.Is(b.rpc.StartMountd(ctx), nfsowner.ErrState) {
+		return errors.New("managed mountd accepted startup before rpcbind")
+	}
+	b.phase = phase + "-rpcbind-start"
+	if err := b.rpc.StartBinder(ctx); err != nil {
 		return err
 	}
 	b.phase = phase + "-kernel-start"
+	b.kernelAttempted = true
 	if err := b.kernel.Start(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_OWNER_KERNEL_START_REFUSED owner_phase=%s cause=%v\n", b.phase, err)
 		return err
 	}
 	b.phase = phase + "-mountd-start"
-	b.helpers[1], err = startOwnerNFSChild("/usr/sbin/rpc.mountd", "-F", "-N", "2", "-N", "4", "-V", "3", "-p", "20048")
-	if err != nil {
+	if err := b.rpc.StartMountd(ctx); err != nil {
 		return err
 	}
-	b.phase = phase + "-mountd-ready"
-	if err := b.waitRPC(ctx, "100005", "3"); err != nil {
-		return err
+	if !errors.Is(b.rpc.Close(ctx), nfsowner.ErrState) {
+		return errors.New("managed RPC pins were released while the helpers ran")
 	}
 	b.phase = phase + "-export"
 	b.exported = true // Retain ownership even if exportfs completion is uncertain.
@@ -438,6 +446,19 @@ func (b *ownerNFSQEMU) Start(ctx context.Context) error {
 		b.phase = phase + "-verify-ready"
 	}
 	return err
+}
+
+func openOwnerNFSRPC(ctx context.Context, kernel *nfskernel.Controller) (_ *nfsowner.RPC, result error) {
+	var grants [3]*os.File
+	for i, path := range []string{"/usr/sbin/rpcbind", "/usr/sbin/rpc.mountd", "/usr/bin/rpcinfo"} {
+		grant, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { result = errors.Join(result, grant.Close()) }()
+		grants[i] = grant
+	}
+	return nfsowner.NewRPC(ctx, kernel, netip.AddrFrom4([4]byte{127, 0, 0, 1}), grants[0], grants[1], grants[2])
 }
 
 func openOwnerNFSKernel(ctx context.Context) (_ *nfskernel.Controller, result error) {
@@ -477,15 +498,8 @@ func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
 	if err := b.kernel.CheckRunning(ctx); err != nil {
 		return err
 	}
-	for _, child := range b.helpers {
-		if child == nil {
-			return errors.New("NFS helper absent")
-		}
-		select {
-		case err := <-child.done:
-			return errors.Join(errors.New("NFS helper exited"), err)
-		default:
-		}
+	if err := b.rpc.VerifyReady(ctx); err != nil {
+		return err
 	}
 	current, err := runQEMUExportfsContext(ctx, "-s")
 	lines := normalizedQEMUExportLines(current)
@@ -496,7 +510,7 @@ func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
 }
 
 func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
-	if b.kernel != nil {
+	if b.kernelAttempted {
 		if err := b.kernel.Stop(ctx); err != nil {
 			return err
 		}
@@ -511,19 +525,18 @@ func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
 		}
 		b.exported = false
 	}
-	for i := len(b.helpers) - 1; i >= 0; i-- {
-		if b.helpers[i] == nil {
-			continue
-		}
-		if err := b.helpers[i].stop(ctx); err != nil {
-			return err
-		}
-		b.helpers[i] = nil
+	if b.rpc != nil {
+		return b.rpc.Stop(ctx)
 	}
 	return nil
 }
 
 func (b *ownerNFSQEMU) Close(ctx context.Context) error {
+	if b.rpc != nil {
+		if err := b.rpc.Close(ctx); err != nil {
+			return err
+		}
+	}
 	if b.kernel != nil {
 		if err := b.kernel.Close(ctx); err != nil {
 			return err
@@ -550,45 +563,4 @@ func (b *ownerNFSQEMU) command(ctx context.Context, path string, args ...string)
 		return fmt.Errorf("NFS command %s: %w", path, err)
 	}
 	return nil
-}
-
-func (b *ownerNFSQEMU) waitRPC(ctx context.Context, program, version string) error {
-	for {
-		if b.command(ctx, "/usr/bin/rpcinfo", "-T", "tcp", "127.0.0.1", program, version) == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
-}
-
-func startOwnerNFSChild(path string, args ...string) (*ownerNFSChild, error) {
-	// Owner.Start's short context ends on return; it must not kill healthy children.
-	cmd := exec.Command(path, args...)
-	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	child := &ownerNFSChild{command: cmd, done: make(chan error, 1)}
-	go func() { child.done <- cmd.Wait() }()
-	return child, nil
-}
-
-func (child *ownerNFSChild) stop(ctx context.Context) error {
-	if err := child.command.Process.Signal(syscall.SIGTERM); err != nil {
-		return err
-	}
-	select {
-	case err := <-child.done:
-		var exit *exec.ExitError
-		if err == nil || errors.As(err, &exit) && exit.ProcessState.Sys().(syscall.WaitStatus).Signal() == syscall.SIGTERM {
-			return nil
-		}
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
 }

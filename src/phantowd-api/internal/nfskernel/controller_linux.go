@@ -322,10 +322,10 @@ func (k *Controller) CheckRunning(ctx context.Context) error {
 	return nil
 }
 
-// CheckPreparedQEMU observes an ORIGINAL reserved but never-started controller.
+// CheckPrepared observes an ORIGINAL reserved but never-started controller.
 // No transaction writes, stop, close, release or replacement are performed.
 // It is not sole kernel-domain authority or complete client quiescence.
-func (k *Controller) CheckPreparedQEMU(ctx context.Context) error {
+func (k *Controller) CheckPrepared(ctx context.Context) error {
 	if err := k.enter(ctx, false); err != nil {
 		return err
 	}

@@ -15,6 +15,22 @@ import (
 
 const kernelLockName = ".phantowd-nfs-kernel.lock"
 
+// CheckDomain checks the admitted Linux controller and its explicit endpoint
+// before the surrounding runtime launches a helper in the same namespace.
+func (k *Controller) CheckDomain(ctx context.Context, address netip.Addr) error {
+	if k == nil || !address.Is4() || k.address != address.As4() {
+		return ErrRefused
+	}
+	if err := k.enter(ctx, false); err != nil {
+		return err
+	}
+	defer k.leave()
+	if k.lock == nil {
+		return ErrRefused
+	}
+	return nil
+}
+
 // OpenLinux retains the exact NFSD mount and namespaces granted by a platform
 // owner. The caller must establish that the mount was created in that network
 // namespace and that cooperating runtimes use the same protected /run mount.
