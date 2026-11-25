@@ -44,21 +44,17 @@ const ownerNFSInstallation = "66666666666666666666666666666666"
 
 // Fixed disposable-guest composition only, with original retained inputs.
 type ownerNFSQEMU struct {
-	identity        *identityowner.Owner
-	identityLease   *identityowner.FileServiceLease
-	storage         *mountowner.MountedVolumeSet
-	inputs          *nfsowner.RetainedInputs
-	policySeed      *naspolicystore.Store
-	policyOwner     *naspolicystore.Owner
-	policyLease     *naspolicystore.Lease
-	policyEvidence  *revisionstore.NASEvidenceAuthority
-	management      *qemuNASPolicyHTTP
-	kernel          *nfskernel.Controller
-	rpc             *nfsowner.RPC
-	exports         *nfsowner.Exports
-	phase           string
-	uid, gid        uint32
-	kernelAttempted bool
+	identity       *identityowner.Owner
+	identityLease  *identityowner.FileServiceLease
+	storage        *mountowner.MountedVolumeSet
+	inputs         *nfsowner.RetainedInputs
+	policySeed     *naspolicystore.Store
+	policyOwner    *naspolicystore.Owner
+	policyLease    *naspolicystore.Lease
+	policyEvidence *revisionstore.NASEvidenceAuthority
+	management     *qemuNASPolicyHTTP
+	phase          string
+	uid, gid       uint32
 }
 
 type ownerNFSReview struct {
@@ -179,16 +175,19 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil || !enabled || len(roots) != 1 || len(lines) != 2 || !matchesQEMUOwnerMountedExport(lines[1], ownerNFSRoot, b.uid, b.gid) {
 			return errors.New("NFS generated policy differs from the fixed owner fixture")
 		}
-		owner, err = nfsowner.NewLinux(b.inputs, b)
+		owner, err = prepareOwnerNFSRuntime(ctx, b.inputs)
 		if err != nil {
 			return err
 		}
-		if duplicate, err := nfsowner.NewLinux(b.inputs, b); duplicate != nil || !errors.Is(err, nfsowner.ErrState) {
+		if duplicate, err := nfsowner.NewManagedLinux(ctx, b.inputs, nfsowner.LinuxServiceGrants{}); duplicate != nil || !errors.Is(err, nfsowner.ErrState) {
 			return errors.New("NFS runtime took the same retained inputs twice")
 		}
 		b.phase = "start"
 		if err := owner.Start(ctx); err != nil {
 			return fmt.Errorf("owner-start: %w", err)
+		}
+		if err := nfsowner.CheckManagedRefusalsQEMU(ctx, owner); err != nil {
+			return err
 		}
 		if !errors.Is(b.inputs.Close(), nfsowner.ErrState) || !errors.Is(b.inputs.Check(ctx, candidate), nfsowner.ErrState) {
 			return errors.New("running NFS input ownership could be bypassed")
@@ -324,6 +323,7 @@ func runQEMUNFSOwnerActivation() error {
 	fmt.Println("PHANTOWD_NFS_LINUX_OWNER_READY input_owner=exclusive duplicate=refused live_close=refused borrowed_claims=retained shutdown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_LINUX_KERNEL_READY grants=retained swapped_namespace=refused lock=exclusive lifetimes=2 threads=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_RPC_READY code=retained order=verified live_close=refused helpers=reaped lifetimes=2 scope=qemu-loopback-only")
+	fmt.Println("PHANTOWD_NFS_MANAGED_RUNTIME_READY grants=retained rollback=verified lifetimes=2 teardown=verified scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_MANAGED_EXPORTS_READY candidate=retained readback=exact live_close=refused withdrawal=verified lifetimes=2 scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_ACTIVATION_READY original_policy=true revision=1 update_while_running=busy active_bytes_unchanged=true update_after_close=committed released_after_stop=true kernel_backend=true activation=true scope=qemu-loopback-only")
 	fmt.Println("PHANTOWD_NFS_POLICY_REAPPLY_READY revision=2 lifetimes=2 original_policy=true fresh_claims=true read=true write=sync-verified uid_gid=verified old_owner=inert teardown=clean kernel_backend=true activation=true scope=qemu-loopback-only")
@@ -374,187 +374,72 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 	return err
 }
 
-func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
-	if b.exports != nil {
-		if err := b.exports.VerifyEmpty(ctx); err != nil {
-			return err
-		}
-	}
-	if b.rpc != nil {
-		if err := b.rpc.VerifyStopped(ctx); err != nil {
-			return err
-		}
-	}
+func verifyOwnerNFSClientAbsent(ctx context.Context) error {
 	mounts, err := os.ReadFile("/proc/mounts")
 	if err != nil || strings.Contains(string(mounts), " "+ownerNFSClient+" ") {
 		return errors.New("NFS client absence uncertain")
 	}
-	if b.kernel != nil {
-		if !b.kernelAttempted {
-			return b.kernel.CheckPrepared(ctx)
-		}
-		return b.kernel.CheckStopped(ctx)
-	}
-	threads, e1 := os.ReadFile("/proc/fs/nfsd/threads")
-	versions, e2 := os.ReadFile("/proc/fs/nfsd/versions")
-	ports, e3 := os.ReadFile("/proc/fs/nfsd/portlist")
-	return errors.Join(e1, e2, e3, nfskernel.ValidateProfileQEMU(threads, versions, ports, false))
+	return ctx.Err()
 }
 
-func (b *ownerNFSQEMU) Start(ctx context.Context) error {
-	phase := b.phase
-	b.phase = phase + "-kernel-open"
-	var err error
-	b.kernel, err = openOwnerNFSKernel(ctx)
-	if err != nil {
-		return err
-	}
-	b.phase = phase + "-export-admission"
-	b.exports, err = openOwnerNFSExports(ctx, b)
-	if err != nil {
-		return err
-	}
-	if err := b.exports.VerifyEmpty(ctx); err != nil {
-		return err
-	}
-	b.phase = phase + "-rpc-admission"
-	b.rpc, err = openOwnerNFSRPC(ctx, b.kernel)
-	if err != nil {
-		return err
-	}
-	if !errors.Is(b.rpc.StartMountd(ctx), nfsowner.ErrState) {
-		return errors.New("managed mountd accepted startup before rpcbind")
-	}
-	b.phase = phase + "-rpcbind-start"
-	if err := b.rpc.StartBinder(ctx); err != nil {
-		return err
-	}
-	b.phase = phase + "-kernel-start"
-	b.kernelAttempted = true
-	if err := b.kernel.Start(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "PHANTOWD_NFS_OWNER_KERNEL_START_REFUSED owner_phase=%s cause=%v\n", b.phase, err)
-		return err
-	}
-	b.phase = phase + "-mountd-start"
-	if err := b.rpc.StartMountd(ctx); err != nil {
-		return err
-	}
-	if !errors.Is(b.rpc.Close(ctx), nfsowner.ErrState) {
-		return errors.New("managed RPC pins were released while the helpers ran")
-	}
-	b.phase = phase + "-export"
-	if err := b.exports.Publish(ctx); err != nil {
-		return err
-	}
-	if !errors.Is(b.exports.Close(ctx), nfsowner.ErrState) {
-		return errors.New("managed export grants were released while published")
-	}
-	b.phase = phase + "-verify-ready"
-	return nil
-}
-
-func openOwnerNFSExports(ctx context.Context, b *ownerNFSQEMU) (_ *nfsowner.Exports, result error) {
-	file, err := os.Open("/usr/sbin/exportfs")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { result = errors.Join(result, file.Close()) }()
-	return nfsowner.NewExports(ctx, b.inputs, b.kernel, netip.AddrFrom4([4]byte{127, 0, 0, 1}), file)
-}
-
-func openOwnerNFSRPC(ctx context.Context, kernel *nfskernel.Controller) (_ *nfsowner.RPC, result error) {
-	var grants [3]*os.File
-	for i, path := range []string{"/usr/sbin/rpcbind", "/usr/sbin/rpc.mountd", "/usr/bin/rpcinfo"} {
-		grant, err := os.Open(path)
-		if err != nil {
-			return nil, err
-		}
-		defer func() { result = errors.Join(result, grant.Close()) }()
-		grants[i] = grant
-	}
-	return nfsowner.NewRPC(ctx, kernel, netip.AddrFrom4([4]byte{127, 0, 0, 1}), grants[0], grants[1], grants[2])
-}
-
-func openOwnerNFSKernel(ctx context.Context) (_ *nfskernel.Controller, result error) {
-	// The caller already established the disposable Versatile guest and data
-	// disk. These grants come from the same current thread and NFSD mount.
+func prepareOwnerNFSRuntime(ctx context.Context, inputs *nfsowner.RetainedInputs) (_ *nfsowner.Owner, result error) {
+	// The caller established the disposable guest and synthetic disk. Acquire
+	// the originals from this thread and close them before the service starts.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	var grants [3]*os.File
-	for i, path := range []string{"/proc/fs/nfsd", "/proc/thread-self/ns/net", "/proc/thread-self/ns/mnt"} {
-		grant, err := os.Open(path)
+	grants := nfsowner.LinuxServiceGrants{
+		Address: netip.AddrFrom4([4]byte{127, 0, 0, 1}), Quiescent: verifyOwnerNFSClientAbsent,
+	}
+	for _, entry := range []struct {
+		path string
+		file **os.File
+	}{
+		{"/proc/fs/nfsd", &grants.NFSD},
+		{"/proc/thread-self/ns/net", &grants.Network},
+		{"/proc/thread-self/ns/mnt", &grants.MountNamespace},
+		{"/usr/sbin/exportfs", &grants.ExportFS},
+		{"/usr/sbin/rpcbind", &grants.RPCBind},
+		{"/usr/sbin/rpc.mountd", &grants.Mountd},
+		{"/usr/bin/rpcinfo", &grants.Info},
+	} {
+		file, err := os.Open(entry.path)
 		if err != nil {
 			return nil, err
 		}
-		defer func() { result = errors.Join(result, grant.Close()) }()
-		grants[i] = grant
+		defer func() { result = errors.Join(result, file.Close()) }()
+		*entry.file = file
 	}
-	address := netip.AddrFrom4([4]byte{127, 0, 0, 1})
-	if controller, err := nfskernel.OpenLinux(ctx, grants[0], grants[2], grants[1], address); controller != nil || !errors.Is(err, nfskernel.ErrRefused) {
-		return controller, errors.New("Linux NFSD accepted swapped namespace grants")
+
+	wrong := grants
+	wrong.Network, wrong.MountNamespace = wrong.MountNamespace, wrong.Network
+	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, wrong); owner != nil || !errors.Is(err, nfskernel.ErrRefused) || constructionreview.Contains(err) {
+		return owner, errors.Join(errors.New("managed NFSD did not cleanly refuse swapped namespace grants"), err)
 	}
-	controller, err := nfskernel.OpenLinux(ctx, grants[0], grants[1], grants[2], address)
+	incomplete := grants
+	incomplete.Mountd = nil
+	if owner, err := nfsowner.NewManagedLinux(ctx, inputs, incomplete); owner != nil || err == nil || constructionreview.Contains(err) {
+		return owner, errors.Join(errors.New("managed construction did not unwind a refused mountd grant"), err)
+	}
+
+	owner, err := nfsowner.NewManagedLinux(ctx, inputs, grants)
 	if err != nil {
-		return controller, err
+		return owner, err
 	}
 	lock, err := os.OpenFile("/run/.phantowd-nfs-kernel.lock", os.O_WRONLY, 0)
 	if err != nil {
-		return controller, err
+		return owner, err
 	}
 	defer func() { result = errors.Join(result, lock.Close()) }()
 	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); !errors.Is(err, unix.EWOULDBLOCK) {
-		return controller, errors.New("Linux NFSD admitted another lock claimant")
+		return owner, errors.New("Linux NFSD admitted another lock claimant")
 	}
-	return controller, nil
-}
-
-func (b *ownerNFSQEMU) VerifyReady(ctx context.Context) error {
-	if err := b.kernel.CheckRunning(ctx); err != nil {
-		return err
-	}
-	if err := b.rpc.VerifyReady(ctx); err != nil {
-		return err
-	}
-	return b.exports.CheckPublished(ctx)
-}
-
-func (b *ownerNFSQEMU) Stop(ctx context.Context) error {
-	if b.kernelAttempted {
-		if err := b.kernel.Stop(ctx); err != nil {
-			return err
-		}
-	}
-	if b.exports != nil {
-		if err := b.exports.Withdraw(ctx); err != nil {
-			return err
-		}
-	}
-	if b.rpc != nil {
-		return b.rpc.Stop(ctx)
-	}
-	return nil
-}
-
-func (b *ownerNFSQEMU) Close(ctx context.Context) error {
-	if b.exports != nil {
-		if err := b.exports.Close(ctx); err != nil {
-			return err
-		}
-	}
-	if b.rpc != nil {
-		if err := b.rpc.Close(ctx); err != nil {
-			return err
-		}
-	}
-	if b.kernel != nil {
-		if err := b.kernel.Close(ctx); err != nil {
-			return err
-		}
-	}
-	return os.Remove(ownerNFSClient)
+	return owner, nfsowner.CheckManagedRefusalsQEMU(ctx, owner)
 }
 
 func (b *ownerNFSQEMU) releaseBorrowedInputs(ctx context.Context) error {
+	if err := os.Remove(ownerNFSClient); err != nil {
+		return err
+	}
 	// The parent owns both claims through verified service and storage close.
 	if err := errors.Join(b.identityLease.Verify(ctx), b.policyLease.Verify(ctx)); err != nil {
 		return err

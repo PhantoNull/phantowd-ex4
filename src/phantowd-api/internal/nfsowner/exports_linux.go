@@ -73,14 +73,8 @@ type Exports struct {
 	withdrawn, closed, review bool
 }
 
-func NewExports(ctx context.Context, inputs *RetainedInputs, kernel *nfskernel.Controller, address netip.Addr, executable *os.File) (*Exports, error) {
-	if err := inputs.enter(); err != nil {
-		return nil, err
-	}
-	defer inputs.leave()
-	if !inputs.attached || inputs.closed || inputs.review || inputs.exportsAttached {
-		return nil, ErrState
-	}
+// The caller holds the retained input gate through attachment.
+func newExports(ctx context.Context, inputs *RetainedInputs, kernel *nfskernel.Controller, address netip.Addr, executable *os.File) (*Exports, error) {
 	if err := kernel.CheckDomain(ctx, address); err != nil {
 		return nil, err
 	}
@@ -101,7 +95,6 @@ func NewExports(ctx context.Context, inputs *RetainedInputs, kernel *nfskernel.C
 	if err != nil {
 		return nil, err
 	}
-	inputs.exportsAttached = true
 	return e, nil
 }
 

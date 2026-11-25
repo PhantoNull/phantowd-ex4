@@ -14,8 +14,15 @@ The Linux RPC component holds executable references for `rpcbind`, `mountd`
 and `rpcinfo`. It starts `rpcbind` before NFSD and `mountd` after confirming
 that NFSD is running. It checks both original processes and program readiness,
 then reaps the process groups in reverse order before releasing the grants.
-The guarded guest composes the Linux components in both real lifetimes. The
-platform must still provide namespace isolation and private RPC/export state.
+The ordinary Linux constructor `NewManagedLinux` composes the controller, RPC
+helpers and export manager. It retains the explicit NFSD, namespace and
+executable grants before startup, then sequences rpcbind, NFSD, mountd and
+publication. It verifies readiness through all three components and verifies
+client quiescence, an empty export table and stopped helpers before release.
+The platform supplies namespace isolation, private RPC/export state, network
+exposure and the client quiescence check. The guarded guest uses this constructor
+for both lifetimes and proves that rejected partial admission unwinds before a
+fresh admission with the same original inputs.
 The Linux export component pins `exportfs` and takes the original candidate
 from the attached input handle. It starts from an empty table and checks the
 exact nfs-utils display of each generated client rule. After verified NFSD
@@ -52,9 +59,7 @@ remove synthetic data and close its authorities. This is never an automatic
 restart after a failed or uncertain lifetime.
 Guest failure reports preserve the nested lifetime's phase and distinguish
 deadline, cancellation and parent-context completion without printing private
-cause text. Start phases distinguish RPC helpers, the kernel controller and
-export setup. These labels do not identify the root cause by themselves or
-change the existing deadlines, settlement, retention or refusal rules.
+cause text.
 The policy is synthetic guest state: this does not qualify product boot
 provisioning or this composition across reboots.
 Bracketed owner observations do not establish atomic three-owner admission.

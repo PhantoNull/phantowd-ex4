@@ -56,7 +56,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil {
 		return err
 	}
-	owner, err = nfsowner.NewLinux(b.inputs, b)
+	owner, err = prepareOwnerNFSRuntime(ctx, b.inputs)
 	if err != nil {
 		return err
 	}
@@ -66,6 +66,9 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	}
 	b.phase = "revision2-start"
 	if err := owner.Start(ctx); err != nil {
+		return err
+	}
+	if err := nfsowner.CheckManagedRefusalsQEMU(ctx, owner); err != nil {
 		return err
 	}
 	// The old Owner is closed; its calls cannot touch the new backend.
