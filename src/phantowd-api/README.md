@@ -892,6 +892,15 @@ and refuses non-Versatile PB machines. See the
   --verify-rc0-samba-code checks the complete roster through its image
   directory descriptors. The boot test also runs the packaged smbd version
   command from that isolated root.
+  With RC0 stopped, a trusted root launcher can configure a previously
+  confirmed Unix identity using `--configure-rc0-samba-account` and
+  `--rc0-samba-identity-id` for its exact registry ID. Pass the admitted
+  state directory on FD 3 for each operation. Use `create-disabled` to
+  create the disabled passdb record, `set-password` to assign its initial
+  password from private stdin, and `enable` to enable the credential and
+  its desired identity. Provide the UTF-8 password with an optional final
+  newline. The initial password operation refuses a replacement. An active
+  supervisor holds the state lock and prevents offline configuration.
 - The digest-bound storage document can include an `smb` object with an
   IPv4 `address` and `ingress_index`. The platform configures the approved
   interface before init starts. The supervisor requires a nonempty confirmed

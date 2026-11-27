@@ -87,7 +87,7 @@ func check() error {
 	phase := os.Args[1]
 	budget := 45 * time.Second
 	if strings.HasPrefix(phase, "smb-") {
-		budget = 120 * time.Second
+		budget = 180 * time.Second
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()

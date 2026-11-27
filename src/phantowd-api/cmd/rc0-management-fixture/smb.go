@@ -79,15 +79,18 @@ func seedSMBAccount(ctx context.Context, secret []byte) error {
 		return errors.New("Samba enabled an account before credential setup")
 	}
 	if err := configureSMBAccount(ctx, "create-disabled", nil); err != nil {
-		return err
+		return fmt.Errorf("create disabled account: %w", err)
 	}
 	if err := configureSMBAccount(ctx, "set-password", secret); err != nil {
-		return err
+		return fmt.Errorf("set initial password: %w", err)
 	}
 	if err := configureSMBAccount(ctx, "set-password", []byte("unexpected replacement password")); err == nil || ctx.Err() != nil {
 		return errors.New("initial Samba password action accepted a replacement")
 	}
-	return configureSMBAccount(ctx, "enable", nil)
+	if err := configureSMBAccount(ctx, "enable", nil); err != nil {
+		return fmt.Errorf("enable provisioned account: %w", err)
+	}
+	return nil
 }
 
 func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) error {

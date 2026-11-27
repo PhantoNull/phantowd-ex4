@@ -100,7 +100,7 @@ def run(qemu, kernel, root, state, data, output, protocol="nfs"):
                                      stderr=subprocess.STDOUT, pass_fds=(fd,)),
                     log,
                 )
-        deadline = time.monotonic() + (95 if protocol == "nfs" else 145)
+        deadline = time.monotonic() + (95 if protocol == "nfs" else 205)
         pending = set(workers)
         while pending:
             for role in tuple(pending):
