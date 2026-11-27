@@ -48,4 +48,4 @@ nsenter -t "$peer" -n -- ip link set pwother up
 nsenter -t "$peer" -n -- ip addr add 192.0.2.2/29 dev pwclient
 nsenter -t "$peer" -n -- ip addr add 192.0.2.3/29 dev pwclient
 nsenter -t "$peer" -n -- ip addr add 198.51.100.2/29 dev pwother
-PHANTOWD_NFT_FIXTURE="$3" PHANTOWD_NFT_PEER_PID="$peer" "$2" -test.v -test.run '^TestNFSFirewallKernel$'
+PHANTOWD_NFT_FIXTURE="$3" PHANTOWD_NFT_PEER_PID="$peer" "$2" -test.v -test.run '^Test(NFS|Samba)FirewallKernel$'

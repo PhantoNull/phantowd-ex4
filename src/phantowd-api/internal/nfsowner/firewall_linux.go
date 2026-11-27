@@ -4,12 +4,9 @@
 package nfsowner
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
-	"io"
 	"net"
 	"net/netip"
 	"os"
@@ -19,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nftguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
@@ -161,9 +159,9 @@ func (f *nfsFirewall) inspect(ctx context.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	objects, err := parseNFTObjects(out)
+	objects, err := nftguard.ParseObjects(out)
 	if err != nil {
-		return 0, err
+		return 0, ErrState
 	}
 	return f.rules.snapshot(objects)
 }
@@ -173,40 +171,11 @@ func (f *nfsFirewall) requireAbsent(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	objects, err := parseNFTObjects(out)
-	if err != nil {
-		return err
-	}
-	for _, object := range objects {
-		table, ok := object["table"].(map[string]any)
-		if !ok || len(object) != 1 {
-			return ErrState
-		}
-		family, familyOK := table["family"].(string)
-		name, nameOK := table["name"].(string)
-		if !familyOK || !nameOK || family == "inet" && name == nfsTable {
-			return ErrState
-		}
+	objects, err := nftguard.ParseObjects(out)
+	if err != nil || nftguard.RequireAbsent(objects, "inet", nfsTable) != nil {
+		return ErrState
 	}
 	return nil
-}
-
-func parseNFTObjects(out []byte) ([]nftObject, error) {
-	decoder := json.NewDecoder(bytes.NewReader(out))
-	decoder.DisallowUnknownFields()
-	decoder.UseNumber()
-	var document struct {
-		Objects []nftObject `json:"nftables"`
-	}
-	if decoder.Decode(&document) != nil || decoder.Decode(new(any)) != io.EOF || len(document.Objects) == 0 {
-		return nil, ErrState
-	}
-	first := document.Objects[0]
-	meta, ok := first["metainfo"].(map[string]any)
-	if !ok || len(first) != 1 || meta["json_schema_version"] != json.Number("1") {
-		return nil, ErrState
-	}
-	return document.Objects[1:], nil
 }
 
 func (f *nfsFirewall) run(ctx context.Context, request string, args ...string) ([]byte, error) {

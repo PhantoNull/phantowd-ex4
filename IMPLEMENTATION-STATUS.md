@@ -52,6 +52,16 @@ confirmation, rejects stop while a TCP client is live, and checks that the
 listener and process group disappear after the client closes. Network admission
 and protocol-level session drain still belong to the boot supervisor.
 
+The Samba ingress guard stages an nftables table before publication. It
+admits TCP/445 only on the selected IPv4 address and interface. During drain
+it blocks incoming SYN packets and keeps established traffic flowing. It
+checks the kernel's exact rules and original handles after each change. The
+isolated Linux packet fixture verifies publication, wrong-interface and
+wrong-address refusal, a live stream through the fence, and retention of
+unexpected rules for review. The boot supervisor still needs to wire this
+guard to the process owner, confirm protocol drain and exercise the pair in
+the RC0 ARMv5 guest.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,
