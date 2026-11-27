@@ -44,6 +44,14 @@ group after a kernel reboot, completes the user, and enrolls it in Samba while
 the image account database stays read-only. The fixture supplies its own
 external-ownership inventory for the disposable volume.
 
+The isolated daemon owner verifies a single TCP/445 listener on the approved
+IPv4 address and checks that the original child holds the socket. It retains
+the configuration and share descriptors through process-group shutdown. The
+ARMv5 fixture exercises authenticated file I/O, rejects stop without drain
+confirmation, rejects stop while a TCP client is live, and checks that the
+listener and process group disappear after the client closes. Network admission
+and protocol-level session drain still belong to the boot supervisor.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,

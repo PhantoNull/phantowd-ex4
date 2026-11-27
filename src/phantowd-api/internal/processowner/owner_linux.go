@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -350,14 +351,18 @@ func startPinnedProcess(spec Spec, executable *os.File) (*managedProcess, error)
 // Only an internal construction adapter can fix additional retained inputs.
 // No Spec/Start option exposes arbitrary descriptors; ordinary launch is nil.
 func startPinnedProcessWithInputs(spec Spec, executable *os.File, inputs []*os.File) (*managedProcess, error) {
+	return startDescriptorProcess(spec, 3, append([]*os.File{executable}, inputs...), 0)
+}
+
+func startDescriptorProcess(spec Spec, executableFD int, inherited []*os.File, parentDeath syscall.Signal) (*managedProcess, error) {
 	diagnostics := newDiagnosticRing()
-	command := exec.Command("/proc/self/fd/3")
+	command := exec.Command("/proc/self/fd/" + strconv.Itoa(executableFD))
 	command.Args = append([]string{spec.Executable}, spec.Args...)
 	command.Dir = "/"
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
-	command.ExtraFiles = append([]*os.File{executable}, inputs...)
+	command.ExtraFiles = inherited
 	command.Stdout, command.Stderr = diagnostics, diagnostics
-	attributes := &syscall.SysProcAttr{Setpgid: true}
+	attributes := &syscall.SysProcAttr{Setpgid: true, Pdeathsig: parentDeath}
 	if spec.RunAs != nil {
 		attributes.Credential = &syscall.Credential{
 			Uid: spec.RunAs.UID, Gid: spec.RunAs.GID,

@@ -27,6 +27,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
@@ -97,7 +98,7 @@ func expectRefusal(cmd *exec.Cmd) {
 
 func main() {
 	const safe = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 55*time.Second)
 	defer cancel()
 	if len(os.Args) != 2 {
 		panic("fixture phase required")
@@ -170,29 +171,37 @@ func main() {
 	clear(auth)
 	must(os.Chown("/run/data/writable", fixtureID, fixtureID))
 	must(os.WriteFile("/run/smb-payload", []byte("isolated write\n"), 0600))
-	cmd := makeCmd(false, grantFile, conf, private, state, ro, rw)
-	must(cmd.Start())
-	pid := cmd.Process.Pid
-	defer unix.Kill(-pid, unix.SIGKILL)
-	waiting := make(chan error, 1)
-	go func() { waiting <- cmd.Wait() }()
-	ready := false
-	for i := 0; i < 120; i++ {
-		select {
-		case err := <-waiting:
-			panic(fmt.Sprintf("smbd before readiness: %v", err))
-		default:
-		}
-		conn, err := net.DialTimeout("tcp4", endpoint, 100*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			ready = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
+	drainConfirmed := false
+	newDaemon := func() *processowner.SambaDaemon {
+		daemon, err := processowner.NewSambaDaemon(netip.MustParseAddr(address), grantFile, conf, private, state, []*os.File{ro, rw},
+			func(ctx context.Context) error {
+				if !drainConfirmed {
+					return processowner.ErrNotReady
+				}
+				return ctx.Err()
+			})
+		must(err)
+		return daemon
 	}
-	if !ready {
-		panic("smbd never ready")
+	daemon := newDaemon()
+	foreign, err := net.Listen("tcp4", endpoint)
+	must(err)
+	if _, err := daemon.Start(ctx); !errors.Is(err, processowner.ErrBusy) {
+		panic("Samba admitted a foreign listener as ready")
+	}
+	must(foreign.Close())
+	started, err := daemon.Start(ctx)
+	must(err)
+	if started.State != processowner.StateReady || started.PID <= 1 || started.Generation != 1 {
+		panic("Samba readiness did not identify its own listener")
+	}
+	pid := started.PID
+	defer daemon.Abort()
+	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
+		panic("Samba accepted stop without drain authority")
+	}
+	if err := daemon.Close(); !errors.Is(err, processowner.ErrAlreadyRunning) {
+		panic("Samba released inherited inputs while running")
 	}
 	if conn, err := net.DialTimeout("tcp4", "127.0.0.1:445", 100*time.Millisecond); err == nil {
 		conn.Close()
@@ -240,7 +249,22 @@ func main() {
 		(!strings.Contains(string(output), "NT_STATUS_ACCOUNT_DISABLED") && !strings.Contains(string(output), "NT_STATUS_LOGON_FAILURE")) {
 		panic(fmt.Sprintf("disabled SMB credential accepted or unexpected refusal: %s %v", output, err))
 	}
-	must(identities.SMB(accountID).Enable(ctx, disabled.Revision))
+	// The credential executor's product profile is offline. Restart Samba
+	// after explicit enable, keeping the approved config and original state.
+	drainConfirmed = true
+	stopDaemon(ctx, daemon, pid)
+	if err := identities.SMB(accountID).Enable(ctx, disabled.Revision); err != nil {
+		panic(fmt.Errorf("enable between Samba lifetimes (context: %v): %w", ctx.Err(), err))
+	}
+	drainConfirmed = false
+	daemon = newDaemon()
+	restarted, err := daemon.Start(ctx)
+	must(err)
+	if restarted.State != processowner.StateReady || restarted.PID <= 1 || restarted.PID == pid {
+		panic("Samba did not start a new owned lifetime")
+	}
+	pid = restarted.PID
+	defer daemon.Abort()
 	enabled, err := identities.SMB(accountID).Load(ctx)
 	must(err)
 	if enabled.Phase != smbprovision.Enabled || enabled.SID != disabled.SID {
@@ -289,22 +313,19 @@ func main() {
 	if _, err := os.Stat("/run/data/readonly/uploaded"); !os.IsNotExist(err) {
 		panic("read-only share changed")
 	}
-	must(unix.Kill(-pid, unix.SIGTERM))
-	select {
-	case err := <-waiting:
-		var exit *exec.ExitError
-		if err != nil && (!errors.As(err, &exit) || exit.Sys().(syscall.WaitStatus).Signal() != syscall.SIGTERM) {
-			panic(err)
-		}
-	case <-time.After(5 * time.Second):
-		panic("smbd did not drain")
+	drainConfirmed = true
+	held, err := net.DialTimeout("tcp4", endpoint, time.Second)
+	must(err)
+	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrBusy) {
+		panic("Samba accepted stop with a live TCP client")
 	}
-	for i := 0; !errors.Is(unix.Kill(-pid, 0), unix.ESRCH); i++ {
-		if i == 40 {
-			panic("process group remained")
-		}
-		time.Sleep(25 * time.Millisecond)
+	stillRunning, err := daemon.Observe(ctx)
+	must(err)
+	if stillRunning.State != processowner.StateReady || stillRunning.PID != pid {
+		panic("declined stop disturbed the running process")
 	}
+	must(held.Close())
+	stopDaemon(ctx, daemon, pid)
 	if conn, err := net.DialTimeout("tcp4", endpoint, 100*time.Millisecond); err == nil {
 		conn.Close()
 		panic("SMB listener remained")
@@ -328,7 +349,26 @@ func main() {
 	if _, err := owner.DuplicateRoot(ctx); err == nil {
 		panic("closed configuration still supplied an input")
 	}
-	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused")
+	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified busy_stop=refused process_group=drained bad_handoffs=refused")
+}
+
+func stopDaemon(ctx context.Context, daemon *processowner.SambaDaemon, pid int) {
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		final, err := daemon.Stop(ctx)
+		if !errors.Is(err, processowner.ErrBusy) {
+			must(err)
+			if final.State != processowner.StateStopped || !errors.Is(unix.Kill(-pid, 0), unix.ESRCH) {
+				panic("Samba process group was not drained")
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			panic("Samba transport remained busy after peers closed")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	must(daemon.Close())
 }
 
 func emptyInventory(context.Context) (serviceaccounts.Reservations, error) {

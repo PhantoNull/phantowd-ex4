@@ -94,7 +94,7 @@ for phase in prepare verify; do
     cat "$scratch/serial" >> "$log"
     case "$phase" in
         prepare) expected='PHANTOWD_RC0_NATIVE_GROUP persistent=recorded phase=group-confirmed' ;;
-        verify) expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused' ;;
+        verify) expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified busy_stop=refused process_group=drained bad_handoffs=refused' ;;
     esac
     if ! awk -v expected="$expected" '{sub(/\r$/, "")} $0 == expected { n++ } END { exit n != 1 }' "$scratch/serial" ||
         ! grep -F 'reboot: Restarting system' "$scratch/serial" >/dev/null || grep -Eq 'PHANTOWD_RC0_SAMBA_LAUNCH_FAILED|Kernel panic' "$scratch/serial"; then
