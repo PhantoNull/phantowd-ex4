@@ -42,19 +42,8 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil {
 		return err
 	}
-	plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, b.storage)
-	if err != nil {
-		return err
-	}
-	candidate, err := plan.NFSv3TCPCandidate()
-	if err != nil {
-		return err
-	}
-	b.storageLease, _, err = b.storage.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	b.roots, err = nfsowner.NewExportRootsQEMU(ctx, candidate, b.storageLease)
+	var candidate fileserviceplan.NFSv3Candidate
+	b.inputs, candidate, err = nfsowner.PrepareInputs(ctx, b.policyLease, b.identityLease, b.storage, 0)
 	if err != nil {
 		return err
 	}
