@@ -17,18 +17,36 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// SambaDaemon owns one fixed isolated Samba process group. It retains the
-// original launch inputs until the group has been reaped. Its caller controls
-// firewall admission, protocol-level drain and identity/storage authority.
+// SambaIngress owns the filter for the same address as the daemon. A trusted
+// caller transfers it to the daemon on successful construction.
+type SambaIngress interface {
+	Address() netip.Addr
+	Stage(context.Context) error
+	CheckStaged(context.Context) error
+	Publish(context.Context) error
+	CheckPublished(context.Context) error
+	Fence(context.Context) error
+	CheckFenced(context.Context) error
+	Close(context.Context) error
+}
+
+// SambaDaemon owns one fixed isolated Samba process group and its ingress.
+// Its caller admits the original identity and storage authority, authorizes
+// the stop request, and checks protocol quiescence after new connections
+// have been fenced.
 type SambaDaemon struct {
 	mu        sync.Mutex
 	self      *SambaDaemon
 	owner     *Owner
 	address   netip.Addr
 	files     []*os.File
+	ingress   SambaIngress
+	authorize func(context.Context) error
 	quiescent func(context.Context) error
 	listener  uint64
 	attempted bool
+	published bool
+	fenced    bool
 	closed    bool
 	review    bool
 	closeErr  error
@@ -38,12 +56,13 @@ type SambaDaemon struct {
 // child independently checks the sealed declaration, its mounts and Samba code
 // before exec. Each share descriptor is in the order of the sealed declaration.
 func NewSambaDaemon(address netip.Addr, declaration, configuration, private, state *os.File,
-	shares []*os.File, quiescent func(context.Context) error) (_ *SambaDaemon, result error) {
-	if !address.Is4() || !address.IsGlobalUnicast() || quiescent == nil ||
+	shares []*os.File, ingress SambaIngress, authorize, quiescent func(context.Context) error) (_ *SambaDaemon, result error) {
+	if !address.Is4() || !address.IsGlobalUnicast() || ingress == nil || ingress.Address() != address ||
+		authorize == nil || quiescent == nil ||
 		len(shares) == 0 || len(shares) > shareconfig.MaxShares || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return nil, ErrInvalid
 	}
-	d := &SambaDaemon{owner: New(), address: address, quiescent: quiescent}
+	d := &SambaDaemon{owner: New(), address: address, authorize: authorize, quiescent: quiescent}
 	d.self = d
 	defer func() {
 		if result != nil {
@@ -89,6 +108,10 @@ func NewSambaDaemon(address netip.Addr, declaration, configuration, private, sta
 		go func() {
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
+			if err := d.ingress.CheckStaged(context.Background()); err != nil {
+				started <- launchResult{err: ErrReviewRequired}
+				return
+			}
 			process, err := startDescriptorProcess(spec, 3+len(d.files)-1, d.files, syscall.SIGKILL)
 			started <- launchResult{process, err}
 			if process != nil {
@@ -98,6 +121,7 @@ func NewSambaDaemon(address netip.Addr, declaration, configuration, private, sta
 		result := <-started
 		return result.process, result.err
 	}
+	d.ingress = ingress
 	return d, nil
 }
 
@@ -114,7 +138,10 @@ func (d *SambaDaemon) Start(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, errors.Join(ErrBusy, err)
 	}
 	d.attempted = true
-	return d.owner.Start(ctx, Spec{
+	if err := d.ingress.Stage(ctx); err != nil {
+		return Snapshot{}, err
+	}
+	state, err := d.owner.Start(ctx, Spec{
 		Executable: "/usr/bin/phantowd-api", Args: []string{"--run-rc0-samba-child"}, RunAs: &Credentials{},
 		ReadyTimeout: 15 * time.Second, ProbeInterval: 100 * time.Millisecond, StopTimeout: 5 * time.Second,
 		Ready: func(ctx context.Context) (bool, error) {
@@ -132,6 +159,26 @@ func (d *SambaDaemon) Start(ctx context.Context) (Snapshot, error) {
 			return listener != 0, nil
 		},
 	})
+	if err != nil {
+		d.review = state.State == StateReviewRequired
+		return state, err
+	}
+	if _, err := d.checkTransport(ctx, state.PID); err != nil {
+		return d.failAdmission(state, err)
+	}
+	if err := d.ingress.Publish(ctx); err != nil {
+		return d.failAdmission(state, err)
+	}
+	d.published = true
+	if _, err := d.checkTransport(ctx, state.PID); err != nil {
+		return d.failAdmission(state, err)
+	}
+	return state, nil
+}
+
+func (d *SambaDaemon) failAdmission(state Snapshot, err error) (Snapshot, error) {
+	state.State = StateReviewRequired
+	return state, errors.Join(err, d.abort())
 }
 
 func (d *SambaDaemon) Observe(ctx context.Context) (Snapshot, error) {
@@ -144,13 +191,29 @@ func (d *SambaDaemon) Observe(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, ErrReviewRequired
 	}
 	state, err := d.owner.Observe(ctx)
-	if err == nil && state.State == StateReady {
-		_, err = d.checkTransport(ctx, state.PID)
-		if d.review {
-			state.State = StateReviewRequired
-		}
+	if errors.Is(err, ErrReviewRequired) {
+		return d.failAdmission(state, err)
 	}
-	return state, err
+	if err != nil || state.State != StateReady {
+		return state, err
+	}
+	if _, err := d.checkTransport(ctx, state.PID); err != nil {
+		if d.review {
+			return d.failAdmission(state, err)
+		}
+		return state, err
+	}
+	check := d.ingress.CheckPublished
+	if d.fenced {
+		check = d.ingress.CheckFenced
+	}
+	if err := check(ctx); err != nil {
+		if ctx.Err() != nil {
+			return state, ctx.Err()
+		}
+		return d.failAdmission(state, err)
+	}
+	return state, nil
 }
 
 func (d *SambaDaemon) checkTransport(ctx context.Context, pid int) (bool, error) {
@@ -165,9 +228,9 @@ func (d *SambaDaemon) checkTransport(ctx context.Context, pid int) (bool, error)
 	return drained, nil
 }
 
-// Stop permits graceful group shutdown only after the caller has fenced new
-// connections and confirmed protocol quiescence. Live TCP connections refuse
-// the request even after that confirmation. A refused stop sends no signal.
+// Stop fences new connections after authenticating the request. A fence
+// survives declined quiescence and busy transport checks so clients can
+// finish. A declined drain check sends no signal to the daemon.
 func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 	if d == nil || d.self != d || ctx == nil || ctx.Err() != nil {
 		return Snapshot{}, ErrInvalid
@@ -181,8 +244,29 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 	if err == nil && d.attempted && observed.State == StateStopped {
 		return observed, nil
 	}
+	if errors.Is(err, ErrReviewRequired) {
+		return d.failAdmission(observed, err)
+	}
 	if err != nil || observed.State != StateReady {
 		return observed, errors.Join(ErrUnavailable, err)
+	}
+	if err := d.authorize(ctx); err != nil {
+		return observed, err
+	}
+	if err := ctx.Err(); err != nil {
+		return observed, err
+	}
+	if !d.fenced {
+		if err := d.ingress.Fence(context.WithoutCancel(ctx)); err != nil {
+			return d.failAdmission(observed, err)
+		}
+		d.fenced = true
+	}
+	if err := d.ingress.CheckFenced(ctx); err != nil {
+		if ctx.Err() != nil {
+			return observed, ctx.Err()
+		}
+		return d.failAdmission(observed, err)
 	}
 	if err := d.quiescent(ctx); err != nil {
 		return observed, err
@@ -190,18 +274,30 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 	drained, err := d.checkTransport(ctx, observed.PID)
 	if err != nil {
 		if d.review {
-			observed.State = StateReviewRequired
+			return d.failAdmission(observed, err)
 		}
 		return observed, err
 	}
 	if !drained {
 		return observed, ErrBusy
 	}
+	if err := d.ingress.CheckFenced(ctx); err != nil {
+		if ctx.Err() != nil {
+			return observed, ctx.Err()
+		}
+		return d.failAdmission(observed, err)
+	}
 	state, err := d.owner.Stop(ctx)
 	if err != nil {
 		d.review = true
+		return state, err
 	}
-	return state, err
+	if err := d.ingress.Close(context.WithoutCancel(ctx)); err != nil {
+		d.review = true
+		state.State = StateReviewRequired
+		return state, errors.Join(ErrReviewRequired, err)
+	}
+	return state, nil
 }
 
 // Abort settles the original group after a supervisor failure. It always
@@ -215,9 +311,19 @@ func (d *SambaDaemon) Abort() error {
 	if d.closed {
 		return ErrUnavailable
 	}
+	return d.abort()
+}
+
+func (d *SambaDaemon) abort() error {
 	d.review = true
-	_, err := d.owner.Stop(context.Background())
-	return errors.Join(ErrReviewRequired, err)
+	ctx := context.Background()
+	var fenceErr error
+	if d.published && !d.fenced {
+		fenceErr = d.ingress.Fence(ctx)
+		d.fenced = fenceErr == nil
+	}
+	_, err := d.owner.Stop(ctx)
+	return errors.Join(ErrReviewRequired, fenceErr, err)
 }
 
 func (d *SambaDaemon) Close() error {
@@ -231,6 +337,15 @@ func (d *SambaDaemon) Close() error {
 	}
 	if d.closed {
 		return d.closeErr
+	}
+	if d.review {
+		return ErrReviewRequired
+	}
+	if d.ingress != nil {
+		if err := d.ingress.Close(context.Background()); err != nil {
+			d.review = true
+			return errors.Join(ErrReviewRequired, err)
+		}
 	}
 	d.closed = true
 	for _, file := range d.files {

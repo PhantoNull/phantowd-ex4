@@ -58,9 +58,12 @@ it blocks incoming SYN packets and keeps established traffic flowing. It
 checks the kernel's exact rules and original handles after each change. The
 isolated Linux packet fixture verifies publication, wrong-interface and
 wrong-address refusal, a live stream through the fence, and retention of
-unexpected rules for review. The boot supervisor still needs to wire this
-guard to the process owner, confirm protocol drain and exercise the pair in
-the RC0 ARMv5 guest.
+unexpected rules for review. The daemon owner now controls this firewall
+through listener admission and shutdown. An authorized stop fences new
+connections while waiting for the protocol check and TCP drain. The owner
+removes the verified firewall after the original group exits. The RC0 ARMv5
+fixture exercises this sequence with the image's nftables and Samba. Normal
+boot attachment and the production SMB session census remain open.
 
 ## Explicit RC0 management supervisor
 

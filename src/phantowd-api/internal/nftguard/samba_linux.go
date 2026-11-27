@@ -57,12 +57,17 @@ type Samba struct {
 	index    int
 	name     string
 	hardware string
+	loopback bool
 	token    string
 	phase    sambaPhase
 	handles  []uint64
 }
 
 func NewSamba(ctx context.Context, domain func(context.Context) error, address netip.Addr, index int, code *os.File) (*Samba, error) {
+	return newSamba(ctx, domain, address, index, code, false)
+}
+
+func newSamba(ctx context.Context, domain func(context.Context) error, address netip.Addr, index int, code *os.File, loopback bool) (*Samba, error) {
 	if ctx == nil || domain == nil || !address.Is4() || !address.IsGlobalUnicast() || index <= 0 {
 		return nil, ErrState
 	}
@@ -71,7 +76,7 @@ func NewSamba(ctx context.Context, domain func(context.Context) error, address n
 	if err := domain(ctx); err != nil {
 		return nil, err
 	}
-	device, err := sambaInterface(address, index)
+	device, err := sambaInterface(address, index, loopback)
 	if err != nil {
 		return nil, err
 	}
@@ -80,14 +85,18 @@ func NewSamba(ctx context.Context, domain func(context.Context) error, address n
 		return nil, err
 	}
 	f := &Samba{code: pin, domain: domain, address: address, index: index, name: device.Name,
-		hardware: device.HardwareAddr.String(), token: "phantowd:" + rand.Text()}
+		hardware: device.HardwareAddr.String(), loopback: loopback, token: "phantowd:" + rand.Text()}
 	f.self = f
 	return f, nil
 }
 
-func sambaInterface(address netip.Addr, index int) (*net.Interface, error) {
+func sambaInterface(address netip.Addr, index int, loopback bool) (*net.Interface, error) {
 	device, err := net.InterfaceByIndex(index)
-	if err != nil || device.Flags&net.FlagUp == 0 || device.Flags&net.FlagLoopback != 0 || len(device.HardwareAddr) != 6 {
+	if err != nil || device.Flags&net.FlagUp == 0 {
+		return nil, ErrState
+	}
+	if (device.Flags&net.FlagLoopback != 0) != loopback ||
+		loopback && device.Name != "lo" || !loopback && len(device.HardwareAddr) != 6 {
 		return nil, ErrState
 	}
 	addrs, err := device.Addrs()
@@ -106,12 +115,27 @@ func sambaInterface(address netip.Addr, index int) (*net.Interface, error) {
 	return nil, ErrState
 }
 
+func (f *Samba) Address() netip.Addr {
+	if f == nil || f.self != f {
+		return netip.Addr{}
+	}
+	return f.address
+}
+
 func (f *Samba) Stage(ctx context.Context) error {
 	return f.change(ctx, sambaFresh, sambaSealed)
 }
 
 func (f *Samba) Publish(ctx context.Context) error {
 	return f.change(ctx, sambaSealed, sambaPublished)
+}
+
+func (f *Samba) CheckStaged(ctx context.Context) error {
+	return f.checkPhase(ctx, sambaSealed)
+}
+
+func (f *Samba) CheckPublished(ctx context.Context) error {
+	return f.checkPhase(ctx, sambaPublished)
 }
 
 // Fence rejects incoming SYNs on TCP/445 and preserves established traffic
@@ -124,6 +148,10 @@ func (f *Samba) Fence(ctx context.Context) error {
 // CheckFenced verifies that the filter still blocks new TCP connections.
 // The stop coordinator combines this proof with protocol and transport drain.
 func (f *Samba) CheckFenced(ctx context.Context) error {
+	return f.checkPhase(ctx, sambaFenced)
+}
+
+func (f *Samba) checkPhase(ctx context.Context, phase sambaPhase) error {
 	if f == nil || f.self != f || ctx == nil {
 		return ErrState
 	}
@@ -132,7 +160,7 @@ func (f *Samba) CheckFenced(ctx context.Context) error {
 	if f.phase == sambaReview {
 		return ErrReviewRequired
 	}
-	if f.phase != sambaFenced {
+	if f.phase != phase {
 		return ErrState
 	}
 	return f.check(ctx)
@@ -206,6 +234,9 @@ func (f *Samba) check(ctx context.Context) error {
 		return f.requireAbsent(ctx)
 	}
 	handles, err := f.inspect(ctx, f.phase)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if err != nil || !slices.Equal(handles, f.handles) {
 		return f.review(err)
 	}
@@ -302,7 +333,7 @@ func (f *Samba) run(ctx context.Context, input string, args ...string) ([]byte, 
 	if err := f.domain(ctx); err != nil {
 		return nil, err
 	}
-	device, err := sambaInterface(f.address, f.index)
+	device, err := sambaInterface(f.address, f.index, f.loopback)
 	if err != nil || device.Name != f.name || device.HardwareAddr.String() != f.hardware {
 		return nil, errors.Join(ErrState, err)
 	}

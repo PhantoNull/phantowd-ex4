@@ -27,6 +27,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nftguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
@@ -94,6 +95,26 @@ func expectRefusal(cmd *exec.Cmd) {
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
 		panic(fmt.Sprintf("unexpected child result: %v", err))
 	}
+}
+
+func expectFenced() {
+	conn, err := net.DialTimeout("tcp4", endpoint, 200*time.Millisecond)
+	if err == nil {
+		_ = conn.Close()
+	}
+	var timeout net.Error
+	if !errors.As(err, &timeout) || !timeout.Timeout() {
+		panic(fmt.Errorf("expected TCP input drop: %v", err))
+	}
+}
+
+type fixtureIngress struct{ *nftguard.Samba }
+
+func (f fixtureIngress) Publish(ctx context.Context) error {
+	// A rejection proves the real staged firewall still shields smbd at
+	// publication, after the process owner has admitted its listener.
+	expectFenced()
+	return f.Samba.Publish(ctx)
 }
 
 func main() {
@@ -171,9 +192,33 @@ func main() {
 	clear(auth)
 	must(os.Chown("/run/data/writable", fixtureID, fixtureID))
 	must(os.WriteFile("/run/smb-payload", []byte("isolated write\n"), 0600))
-	drainConfirmed := false
+	stopAuthorized, drainConfirmed := false, false
+	nftCode := open("/usr/sbin/nft")
+	defer nftCode.Close()
+	var nftMount unix.Statfs_t
+	must(unix.Fstatfs(int(nftCode.Fd()), &nftMount))
+	if nftMount.Flags&unix.ST_RDONLY == 0 {
+		panic("fixture nftables executable is not from the read-only image")
+	}
+	network, err := os.Stat("/proc/self/ns/net")
+	must(err)
+	checkNetwork := func(ctx context.Context) error {
+		current, err := os.Stat("/proc/thread-self/ns/net")
+		if err != nil || !os.SameFile(network, current) {
+			return nftguard.ErrState
+		}
+		return ctx.Err()
+	}
 	newDaemon := func() *processowner.SambaDaemon {
+		guard, err := nftguard.NewSambaLoopbackFixture(ctx, checkNetwork, nftCode)
+		must(err)
 		daemon, err := processowner.NewSambaDaemon(netip.MustParseAddr(address), grantFile, conf, private, state, []*os.File{ro, rw},
+			fixtureIngress{guard}, func(ctx context.Context) error {
+				if !stopAuthorized {
+					return processowner.ErrNotReady
+				}
+				return ctx.Err()
+			},
 			func(ctx context.Context) error {
 				if !drainConfirmed {
 					return processowner.ErrNotReady
@@ -251,12 +296,12 @@ func main() {
 	}
 	// The credential executor's product profile is offline. Restart Samba
 	// after explicit enable, keeping the approved config and original state.
-	drainConfirmed = true
+	stopAuthorized, drainConfirmed = true, true
 	stopDaemon(ctx, daemon, pid)
 	if err := identities.SMB(accountID).Enable(ctx, disabled.Revision); err != nil {
 		panic(fmt.Errorf("enable between Samba lifetimes (context: %v): %w", ctx.Err(), err))
 	}
-	drainConfirmed = false
+	stopAuthorized, drainConfirmed = false, false
 	daemon = newDaemon()
 	restarted, err := daemon.Start(ctx)
 	must(err)
@@ -313,9 +358,14 @@ func main() {
 	if _, err := os.Stat("/run/data/readonly/uploaded"); !os.IsNotExist(err) {
 		panic("read-only share changed")
 	}
-	drainConfirmed = true
 	held, err := net.DialTimeout("tcp4", endpoint, time.Second)
 	must(err)
+	stopAuthorized = true
+	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
+		panic("Samba accepted stop without protocol drain")
+	}
+	expectFenced()
+	drainConfirmed = true
 	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrBusy) {
 		panic("Samba accepted stop with a live TCP client")
 	}
@@ -330,6 +380,11 @@ func main() {
 		conn.Close()
 		panic("SMB listener remained")
 	}
+	listed, err := exec.CommandContext(ctx, "/usr/sbin/nft", "-j", "list", "tables").Output()
+	must(err)
+	tables, err := nftguard.ParseObjects(listed)
+	must(err)
+	must(nftguard.RequireAbsent(tables, "inet", "phantowd_smb"))
 	for _, basename := range []string{"passdb.tdb", "secrets.tdb"} {
 		info, err := os.Stat(filepath.Join("/run/data/private", basename))
 		must(err)
@@ -349,7 +404,7 @@ func main() {
 	if _, err := owner.DuplicateRoot(ctx); err == nil {
 		panic("closed configuration still supplied an input")
 	}
-	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified busy_stop=refused process_group=drained bad_handoffs=refused")
+	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified ingress=staged-published-fenced-released unauthorized_stop=refused busy_stop=refused process_group=drained bad_handoffs=refused")
 }
 
 func stopDaemon(ctx context.Context, daemon *processowner.SambaDaemon, pid int) {
