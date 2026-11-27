@@ -53,7 +53,14 @@ func publishRC0BootGrant(ctx context.Context) error {
 	if err := tls.Close(); err != nil || !matches {
 		return errRC0Review
 	}
+	return stageRC0BootGrant(ctx, root, plan, policy)
+}
 
+// The caller holds the boot lifecycle and original state-root locks.
+func stageRC0BootGrant(ctx context.Context, root *os.File, plan rc0BootPlan, policy []byte) error {
+	if !rc0BootServiceAbsent() || ctx.Err() != nil {
+		return errRC0Review
+	}
 	run, err := os.Open("/run")
 	if err != nil {
 		return err
@@ -83,6 +90,9 @@ func publishRC0BootGrant(ctx context.Context) error {
 	data, err := json.Marshal(plan)
 	if err != nil {
 		return err
+	}
+	if len(data) > rc0BootMaxBytes {
+		return errRC0Review
 	}
 	if err := writeRC0BootRole(stage, "boot.json", data); err != nil {
 		return err

@@ -134,5 +134,7 @@ tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained' >/dev/null
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_STATE_PROVISION input_refusal=clean concurrent=refused orphan_stage=retained state=published replay=refused roles=admin,policy,tls' >/dev/null
+tr -d '\r' < "$log_prefix.rotated.log" |
+    grep -Fx 'PHANTOWD_RC0_STATE_PUBLICATION absent=refused symlink=refused staging=refused credentials_pending=refused stale_policy=refused independent_tls=verified grant=published' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 sha256sum -c "$scratch/base.sha256"

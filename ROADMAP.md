@@ -790,6 +790,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   administrator inputs before staging on an already admitted local ext parent.
   It publishes all three management roles together and retains interrupted
   staging for review. This bundle covers the management roles consumed by RC0.
+  The platform launcher can publish the init grant directly from the provisioned
+  child of its admitted parent after confirming the policy, TLS and initialized
+  administrator state. The grant binds the actual boot-local mount and inode.
   Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery

@@ -103,10 +103,18 @@ func (plan rc0BootPlan) validTransport() bool {
 }
 
 func (plan rc0BootPlan) matchesState(root *os.File) bool {
+	mount, inode, err := rc0StateIdentity(root)
+	return err == nil && mount == plan.StateMountID && inode == plan.StateRootInode
+}
+
+func rc0StateIdentity(root *os.File) (mountID, inode uint64, err error) {
 	const mask = unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
 	var observed unix.Statx_t
-	return unix.Statx(int(root.Fd()), "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, mask, &observed) == nil &&
-		observed.Mask&mask == mask && observed.Mnt_id == plan.StateMountID && observed.Ino == plan.StateRootInode
+	if unix.Statx(int(root.Fd()), "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, mask, &observed) != nil ||
+		observed.Mask&mask != mask || observed.Mnt_id == 0 || observed.Ino == 0 {
+		return 0, 0, errRC0Review
+	}
+	return observed.Mnt_id, observed.Ino, nil
 }
 
 func (plan rc0BootPlan) matchesPolicy(known []byte) bool {
