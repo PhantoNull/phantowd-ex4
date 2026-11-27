@@ -22,8 +22,6 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"os/exec"
-	"os/user"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -36,6 +34,7 @@ const (
 	proof    = "/run/rc0-confirmed-policy.json"
 	launch   = "/run/rc0-boot-v1.json"
 	bootDir  = "/run/phantowd-boot"
+	control  = "/run/phantowd-boot-control"
 	initHook = "/etc/init.d/S51phantowd-management"
 	address  = "127.0.0.1:18443"
 	origin   = "https://" + address
@@ -131,11 +130,15 @@ func check() error {
 	}
 	switch phase {
 	case "verify":
-		err = renewCertificate(ctx, credentials)
+		if err = runtimeAbsent(); err == nil {
+			err = renewCertificate(ctx, credentials)
+		}
 	case "rotated":
 		err = serveFromInit(ctx, credentials)
 	default:
-		err = serve(ctx, phase, credentials, nil)
+		if err = serve(ctx, phase, credentials, nil); err == nil {
+			err = proveInterruptedInitLifetime(ctx)
+		}
 	}
 	if err != nil {
 		return err
@@ -150,37 +153,95 @@ func check() error {
 }
 
 func seed(ctx context.Context, credentials []byte) error {
-	if err := os.Mkdir(root, 0700); err != nil {
+	const parent = "/mnt"
+	const stage = parent + "/.rc0-state.provisioning"
+	const policyInput = "/run/rc0-fixture-initial-policy.json"
+	const tlsInput = "/run/rc0-fixture-initial-tls.pem"
+	if err := os.Chmod(parent, 0700); err != nil {
 		return err
 	}
-	if err := os.Mkdir(root+"/accounts", 0700); err != nil {
-		return err
-	}
-	principal, err := user.Lookup("phantowd")
+	pair, err := generateCertificate()
 	if err != nil {
 		return err
 	}
-	uid, err := strconv.Atoi(principal.Uid)
-	if err != nil || uid <= 0 {
-		return errors.New("test principal UID refused")
-	}
-	gid, err := strconv.Atoi(principal.Gid)
-	if err != nil || gid <= 0 {
-		return errors.New("test principal GID refused")
-	}
-	if err := os.Chown(root+"/accounts", uid, gid); err != nil {
+	defer clear(pair)
+	if err := os.WriteFile(policyInput, []byte(policy), 0600); err != nil {
 		return err
 	}
-	provisionAdmin := exec.CommandContext(ctx, api, "--provision-administrator")
-	provisionAdmin.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}}}
-	if err := provision(ctx, provisionAdmin, root+"/accounts", credentials); err != nil {
-		return fmt.Errorf("admin preparation: %w", err)
+	if err := os.WriteFile(tlsInput, pair, 0600); err != nil {
+		return err
 	}
-	provisionPolicy := exec.CommandContext(ctx, api, "--provision-nas-policy", "--nas-installation-id", install)
-	if err := provision(ctx, provisionPolicy, root, []byte(policy)); err != nil {
-		return fmt.Errorf("policy preparation: %w", err)
+	defer os.Remove(tlsInput)
+	installState := func(publicOrigin, policyFile string, admin []byte) (result error) {
+		cmd := exec.CommandContext(ctx, api, "--provision-rc0-state", "--nas-installation-id", install)
+		cmd.Env = []string{"PHANTOWD_PUBLIC_ORIGIN=" + publicOrigin}
+		cmd.Stdin, cmd.Stderr = bytes.NewReader(admin), os.Stderr
+		for _, path := range []string{parent, policyFile, tlsInput} {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer func() { result = errors.Join(result, file.Close()) }()
+			cmd.ExtraFiles = append(cmd.ExtraFiles, file)
+		}
+		return cmd.Run()
 	}
-	return provisionCertificate(ctx)
+	refused := func(publicOrigin, policyFile string, admin []byte) bool {
+		var exit *exec.ExitError
+		return errors.As(installState(publicOrigin, policyFile, admin), &exit) && ctx.Err() == nil
+	}
+	if !refused("https://localhost:18443", policyInput, credentials) ||
+		!refused(origin, tlsInput, credentials) || !refused(origin, policyInput, []byte(`{}`)) {
+		return errors.New("RC0 provisioning accepted invalid TLS, policy or administrator input")
+	}
+	lockedParent, err := os.Open(parent)
+	if err != nil {
+		return err
+	}
+	if err := unix.Flock(int(lockedParent.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		return errors.Join(err, lockedParent.Close())
+	}
+	excluded := refused(origin, policyInput, credentials)
+	if err := lockedParent.Close(); err != nil || !excluded {
+		return errors.New("RC0 provisioning did not honor parent exclusion")
+	}
+	for _, path := range []string{stage, root} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			return errors.New("invalid provisioning input created state")
+		}
+	}
+	if err := os.Mkdir(stage, 0700); err != nil {
+		return err
+	}
+	if !refused(origin, policyInput, credentials) {
+		return errors.New("RC0 provisioning accepted interrupted staging")
+	}
+	if err := os.Remove(stage); err != nil {
+		return errors.New("provisioner failed to retain interrupted staging")
+	}
+	if err := installState(origin, policyInput, credentials); err != nil {
+		return fmt.Errorf("provision RC0 state: %w", err)
+	}
+	if _, err := os.Lstat(stage); !os.IsNotExist(err) {
+		return errors.New("initialized RC0 state retained provisioning staging")
+	}
+	account := root + "/accounts/accounts.json"
+	before, err := os.ReadFile(account)
+	if err != nil || !refused(origin, policyInput, credentials) {
+		return errors.New("RC0 provisioning did not preserve enrolled state")
+	}
+	after, err := os.ReadFile(account)
+	if err != nil || !bytes.Equal(before, after) {
+		return errors.New("repeat provisioning changed the administrator credentials")
+	}
+	if info, err := os.Stat(tlsRole); err != nil || info.Mode() != 0600 {
+		return errors.New("TLS identity lacks private mode")
+	}
+	if raw, err := os.ReadFile(tlsRole); err != nil || !bytes.Equal(raw, pair) {
+		return errors.New("published TLS identity differs")
+	}
+	fmt.Println("PHANTOWD_RC0_STATE_PROVISION input_refusal=clean concurrent=refused orphan_stage=retained state=published replay=refused roles=admin,policy,tls")
+	return nil
 }
 
 func provision(ctx context.Context, cmd *exec.Cmd, directory string, input []byte) error {
@@ -213,38 +274,6 @@ func generateCertificate() ([]byte, error) {
 	defer clear(keyDER)
 	public := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 	return append(public, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})...), nil
-}
-
-func provisionCertificate(ctx context.Context) error {
-	pair, err := generateCertificate()
-	if err != nil {
-		return err
-	}
-	defer clear(pair)
-	install := func(publicOrigin string) error {
-		cmd := exec.CommandContext(ctx, api, "--provision-rc0-tls")
-		cmd.Env = []string{"PHANTOWD_PUBLIC_ORIGIN=" + publicOrigin}
-		return provision(ctx, cmd, root, pair)
-	}
-	if err := install("https://localhost:18443"); err == nil || ctx.Err() != nil {
-		return errors.New("TLS provisioning accepted a wrong origin or timed out")
-	}
-	if _, err := os.Stat(tlsRole); !os.IsNotExist(err) {
-		return errors.New("wrong origin left a TLS identity")
-	}
-	if err := install(origin); err != nil {
-		return fmt.Errorf("TLS provisioning: %w", err)
-	}
-	if err := install(origin); err == nil || ctx.Err() != nil {
-		return errors.New("TLS provisioning replaced an existing identity or timed out")
-	}
-	if info, err := os.Stat(tlsRole); err != nil || info.Mode() != 0600 {
-		return errors.New("TLS identity lacks private mode")
-	}
-	if raw, err := os.ReadFile(tlsRole); err != nil || !bytes.Equal(raw, pair) {
-		return errors.New("published TLS identity differs")
-	}
-	return nil
 }
 
 func renewCertificate(ctx context.Context, credentials []byte) error {
@@ -357,7 +386,7 @@ func expectRefusal(ctx context.Context, confirmation string, change func(*bootPl
 }
 
 func runtimeAbsent() error {
-	for _, path := range []string{"/run/phantowd-rc0", "/run/phantowd-boot-control"} {
+	for _, path := range []string{"/run/phantowd-rc0", control} {
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			return errors.New("RC0 runtime authority was retained")
 		}
@@ -451,6 +480,84 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
 	return nil
+}
+
+func proveInterruptedInitLifetime(ctx context.Context) error {
+	if err := publishInitGrant(ctx, proof, nil); err != nil {
+		return err
+	}
+	if err := runInitHook(ctx, "start"); err != nil {
+		return err
+	}
+	if err := terminateInitSupervisor(ctx); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(control); err != nil || info.Mode() != os.ModeDir|0700 {
+		return errors.New("interrupted supervisor lost its protected review directory")
+	}
+	for _, path := range []string{control + "/stop", "/run/phantowd-rc0"} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			return errors.New("interrupted supervisor kept its live service channel")
+		}
+	}
+	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
+		conn.Close()
+		return errors.New("interrupted supervisor left a live HTTPS listener")
+	}
+	var exit *exec.ExitError
+	for _, action := range []string{"stop", "start"} {
+		if err := runInitHook(ctx, action); !errors.As(err, &exit) || ctx.Err() != nil {
+			return fmt.Errorf("init accepted %s after an interrupted lifetime", action)
+		}
+	}
+	if err := withdrawInitGrant(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("withdraw accepted after an interrupted lifetime")
+	}
+	if _, err := os.Stat(bootDir + "/state/accounts/accounts.json"); err != nil {
+		return errors.New("interrupted supervisor lost its published grant")
+	}
+	fmt.Println("PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained")
+	return nil
+}
+
+func terminateInitSupervisor(ctx context.Context) error {
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: control + "/stop", Net: "unix"})
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	raw, err := conn.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var peer *unix.Ucred
+	var peerErr error
+	if err := raw.Control(func(fd uintptr) {
+		peer, peerErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+	}); err != nil || peerErr != nil || peer == nil || peer.Pid <= 1 || peer.Uid != 0 {
+		return errors.New("cannot identify the original RC0 init supervisor")
+	}
+	pidFD, err := unix.PidfdOpen(int(peer.Pid), 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(pidFD)
+	if err := conn.Close(); err != nil {
+		return err
+	}
+	if err := unix.PidfdSendSignal(pidFD, unix.SIGTERM, nil, 0); err != nil {
+		return err
+	}
+	exit := []unix.PollFd{{Fd: int32(pidFD), Events: unix.POLLIN}}
+	for ctx.Err() == nil {
+		if _, err := unix.Poll(exit, 100); err != nil && !errors.Is(err, unix.EINTR) {
+			return err
+		}
+		if exit[0].Revents&unix.POLLIN != 0 {
+			return nil
+		}
+	}
+	return ctx.Err()
 }
 
 func publishInitGrant(ctx context.Context, confirmation string, change func(*bootPlan)) error {

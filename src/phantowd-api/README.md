@@ -798,6 +798,17 @@ and refuses non-Versatile PB machines. See the
   descriptor; the usual schema/permissions/sync rules remain. The current S50
   path launcher does not implement this descriptor handoff. A trusted parent
   must separately qualify provisioning/admission; this is not complete boot recovery.
+- The ordinary Linux root command `--provision-rc0-state` prepares the
+  management state on an already admitted private local ext parent passed on
+  FD 3. Supply `--nas-installation-id`, an HTTPS `PHANTOWD_PUBLIC_ORIGIN`,
+  the exact revision-1 NAS policy on FD 4 and the matching TLS PEM bundle on
+  FD 5. Both files must be read-only grants owned by root with one link and
+  mode 0400 or 0600. Supply the administrator JSON with `username` and
+  `password` through private stdin. The command validates the inputs, creates
+  the initial policy, TLS identity and non-root credential store in
+  `.rc0-state.provisioning`, then publishes `rc0-state` after syncing all
+  roles. A repeat or interrupted stage requires review. Retain the independent
+  policy and certificate confirmation for the boot handoff.
 - The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
   A trusted root launcher supplies the installation ID as `--nas-installation-id`,
   an open private root-owned local ext directory on FD 3, and a separate
@@ -839,8 +850,11 @@ and refuses non-Versatile PB machines. See the
   after the original API child binds its HTTPS address and the supervisor
   admits that child to its policy channel.
   Stop waits for verified supervisor teardown through a private control
-  socket. The physical EX4 launcher that admits and mounts the medium
-  needs separate qualification.
+  socket. An admitted supervisor that exits without a verified stop leaves
+  its protected control directory in `/run`. Init refuses stop and restart,
+  and the publisher refuses to withdraw the grant for the rest of that boot.
+  The physical EX4 launcher that admits and mounts the medium needs separate
+  qualification.
 - A trusted root launcher can publish those roles using
   `--rc0-boot-service=publish` with the same three descriptors. In this mode
   the boot record describes the original admitted directory on FD 3. The
