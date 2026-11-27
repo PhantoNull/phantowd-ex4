@@ -1499,6 +1499,12 @@ storage. No production roster provider or activation path exists.
   guest lifetimes exercise its start, check and stop, with runtime closure
   preceding storage release. The caller retains the policy and identity claims
   through that closure.
+  A Linux NFSD controller retains the original mount and namespace grants
+  from a trusted platform owner. It verifies the stopped profile, holds a
+  protected lock across the lifetime, and checks the explicit listener and
+  threads at start and stop. A guarded guest uses that path for both real
+  NFS lifetimes. The RC0 service runtime still needs platform admission and
+  managed RPC composition.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed

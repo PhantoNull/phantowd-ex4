@@ -1,5 +1,3 @@
-//go:build qemu && linux
-
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 package nfskernel
@@ -32,7 +30,7 @@ func checkUnattachedSocketQEMU(fd int, original nfsSocketIdentityQEMU) error {
 	return nil
 }
 
-func (k *ControllerQEMU) originalReviewedReservationQEMU() bool {
+func (k *Controller) originalReviewedReservationQEMU() bool {
 	kernelRetention.Lock()
 	defer kernelRetention.Unlock()
 	return kernelRetention.active == k && len(kernelRetention.objects) == 1 && kernelRetention.objects[0] == k
@@ -40,7 +38,7 @@ func (k *ControllerQEMU) originalReviewedReservationQEMU() bool {
 
 // Read-only classification of THIS original known bind refusal before cleanup.
 // A successful observation is not a lease, release or independent stop authority.
-func (k *ControllerQEMU) CheckUnattachedPendingQEMU(ctx context.Context) error {
+func (k *Controller) CheckUnattachedPendingQEMU(ctx context.Context) error {
 	if err := k.enter(ctx, true); err != nil {
 		return err
 	}
@@ -59,7 +57,7 @@ func (k *ControllerQEMU) CheckUnattachedPendingQEMU(ctx context.Context) error {
 // The original controller gate and OS thread are held. The only mutation is
 // one close of its original unbound socket. No NFSD write, foreign socket stop,
 // namespace/control release, retry or review reset is admitted.
-func (k *ControllerQEMU) stopUnattachedSocketQEMU(ctx context.Context) error {
+func (k *Controller) stopUnattachedSocketQEMU(ctx context.Context) error {
 	u := k.unattached
 	if u == nil || !errors.Is(u.bindCause, unix.EADDRINUSE) || !k.review || k.started || k.stopped ||
 		k.socket < 0 || k.uncertain != nil || u.attempted || u.closed || u.verified || u.closeCause != nil {
@@ -90,7 +88,7 @@ func (k *ControllerQEMU) stopUnattachedSocketQEMU(ctx context.Context) error {
 // Fresh read-only witness of this ORIGINAL reviewed, unstarted controller AFTER
 // its one verified socket close. This is not healthy admission, release, global
 // domain ownership or complete export/client quiescence.
-func (k *ControllerQEMU) CheckUnattachedStoppedQEMU(ctx context.Context) error {
+func (k *Controller) CheckUnattachedStoppedQEMU(ctx context.Context) error {
 	if err := k.enter(ctx, true); err != nil {
 		return err
 	}
