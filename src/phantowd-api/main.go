@@ -19,6 +19,8 @@ import (
 
 const rc0PrebindEnv = "PHANTOWD_RC0_PREBIND"
 
+var errRC0DrainPending = errors.New("RC0 file service drain is pending")
+
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
 	storageBroker := flag.Bool("storage-broker", false, "serve the local read-only storage broker")
@@ -26,7 +28,18 @@ func main() {
 	registryExpected := flag.String("expected-registry-revision", "", "explicit expected revision for volume-registry commit")
 	provisionNAS := flag.Bool("provision-nas-policy", false, "publish initial NAS policy from stdin under inherited directory 3")
 	provisionAdmin := flag.Bool("provision-administrator", false, "initialize administrator from private stdin under inherited directory 3")
+	provisionRC0 := flag.Bool("provision-rc0-state", false, "provision RC0 from an inherited parent, initial policy, TLS bundle and private admin input")
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
+	provisionIdentities := flag.Bool("provision-rc0-service-identities", false, "initialize the service identity allocation range in inherited RC0 state directory 3")
+	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
+	provisionISCSI := flag.Bool("provision-rc0-iscsi-credentials", false, "initialize CHAP credentials using inherited RC0 state and policy confirmation")
+	configureSamba := flag.String("configure-rc0-samba-account", "", "prepare a provisioned Samba account from inherited RC0 state directory 3")
+	sambaIdentityID := flag.String("rc0-samba-identity-id", "", "exact provisioned identity ID for Samba account configuration")
+	verifySambaCode := flag.Bool("verify-rc0-samba-code", false, "verify the fixed isolated Samba code in this RC0 image")
+	runSambaChild := flag.Bool("run-rc0-samba-child", false, "start isolated Samba from inherited supervisor descriptors")
+	runSambaStatus := flag.Bool("run-rc0-samba-status", false, "read activity from the inherited isolated Samba root")
+	sambaWorker := flag.String("run-rc0-samba-worker", "", "run a fixed Samba enrollment operation from inherited supervisor descriptors")
+	sambaAccount := flag.String("rc0-samba-account", "", "native account for the inherited Samba enrollment operation")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
 	expectedTLS := flag.String("expected-tls-certificate", "", "SHA-256 fingerprint of the current TLS leaf certificate")
 	superviseRC0 := flag.Bool("supervise-rc0", false, "launch RC0 management from inherited state and policy confirmation")
@@ -51,8 +64,8 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*rc0BootService != "",
-		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
+		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "", *configureSamba != "", *provisionISCSI,
+		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionRC0, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
 		if selected {
@@ -65,16 +78,25 @@ func main() {
 	if !*registryCommit && *registryExpected != "" {
 		log.Fatal("registry revision requires commit mode")
 	}
+	if *sambaWorker == "" && *sambaAccount != "" {
+		log.Fatal("Samba account requires worker mode")
+	}
+	if (*configureSamba == "") != (*sambaIdentityID == "") {
+		log.Fatal("RC0 Samba account configuration requires the identity ID and operation")
+	}
 	if *replaceTLS != (*expectedTLS != "") {
 		log.Fatal("RC0 TLS replacement requires the current certificate fingerprint")
 	}
-	if !*provisionNAS && !*superviseRC0 && *nasInstallation != "" {
+	if !*provisionNAS && !*provisionRC0 && !*provisionISCSI && !*superviseRC0 && *nasInstallation != "" {
 		log.Fatal("NAS installation ID requires provisioning or supervision mode")
 	}
 	if *rc0BootService != "" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		err := manageRC0BootService(ctx, *rc0BootService)
 		stop()
+		if errors.Is(err, errRC0DrainPending) {
+			log.Fatal(errRC0DrainPending)
+		}
 		if err != nil {
 			log.Fatal("RC0 boot service requires review")
 		}
@@ -84,7 +106,7 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		var err error
 		if *superviseRC0Boot {
-			err = runRC0BootManagement(ctx, nil)
+			err = runRC0BootManagement(ctx, nil, nil)
 		} else {
 			err = runRC0Management(ctx, *nasInstallation, os.Getenv(listenAddressEnv), os.Getenv(publicOriginEnv))
 		}
@@ -100,6 +122,69 @@ func main() {
 		}
 		return
 	}
+	if *provisionISCSI {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0ISCSICredentials(ctx, *nasInstallation, os.Stdin)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 iSCSI credential provisioning refused or requires review")
+		}
+		return
+	}
+	if *configureSamba != "" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := configureInheritedRC0SambaAccount(ctx, *configureSamba, *sambaIdentityID, os.Stdin)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 Samba account configuration requires review")
+		}
+		return
+	}
+	if *verifySambaCode {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := verifyRC0SambaCode(ctx)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 Samba runtime code requires review")
+		}
+		return
+	}
+	if *runSambaChild {
+		if err := runRC0SambaChild(context.Background()); err != nil {
+			log.Fatal("RC0 Samba child requires review: ", err)
+		}
+		return
+	}
+	if *runSambaStatus {
+		exit, err := runRC0SambaStatus()
+		log.Print("RC0 Samba status requires review: ", err)
+		os.Exit(exit)
+		return
+	}
+	if *sambaWorker != "" {
+		if err := runRC0SambaWorker(context.Background(), *sambaWorker, *sambaAccount); err != nil {
+			log.Fatal("RC0 Samba enrollment worker requires review: ", err)
+		}
+		return
+	}
+	if *provisionSamba {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0SambaState(ctx)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 Samba state requires review")
+		}
+		return
+	}
+	if *provisionRC0 {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0State(ctx, os.Stdin, *nasInstallation, os.Getenv(publicOriginEnv))
+		stop()
+		if err != nil {
+			log.Fatal("RC0 state provisioning refused or requires review")
+		}
+		return
+	}
 	if *provisionAdmin {
 		if err := provisionInheritedAdministrator(context.Background(), os.Stdin); err != nil {
 			log.Fatal(err)
@@ -109,6 +194,15 @@ func main() {
 	if *provisionTLS || *replaceTLS {
 		if err := provisionInheritedRC0TLS(os.Stdin, os.Getenv(publicOriginEnv), *expectedTLS); err != nil {
 			log.Fatal(err)
+		}
+		return
+	}
+	if *provisionIdentities {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0ServiceIdentities(ctx, os.Stdin)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 service identity provisioning requires review")
 		}
 		return
 	}

@@ -14,16 +14,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/constructionreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"golang.org/x/sys/unix"
 )
 
 const (
-	rc0BootGrantName      = "phantowd-boot"
-	rc0BootStagingName    = ".phantowd-boot.staging"
-	rc0BootControlDir     = "/run/phantowd-boot-control"
-	rc0BootControlSocket  = rc0BootControlDir + "/stop"
-	rc0BootServiceTimeout = 12 * time.Second
+	rc0BootGrantName         = "phantowd-boot"
+	rc0BootStagingName       = ".phantowd-boot.staging"
+	rc0BootControlDir        = "/run/phantowd-boot-control"
+	rc0BootControlSocket     = rc0BootControlDir + "/stop"
+	rc0BootStartTimeout      = 20 * time.Second
+	rc0BootSambaStartTimeout = 60 * time.Second
+	rc0BootStopTimeout       = 45 * time.Second
+	rc0StopRequest           = 'S'
+	rc0DrainedStopRequest    = 'D'
 )
 
 func manageRC0BootService(ctx context.Context, action string) error {
@@ -45,7 +50,9 @@ func manageRC0BootService(ctx context.Context, action string) error {
 	case "start":
 		return startRC0BootService(ctx)
 	case "stop":
-		return stopRC0BootService(ctx)
+		return stopRC0BootService(ctx, rc0StopRequest)
+	case "stop-nfs-drained":
+		return stopRC0BootService(ctx, rc0DrainedStopRequest)
 	case "publish":
 		return publishRC0BootGrant(ctx)
 	case "withdraw":
@@ -70,36 +77,61 @@ func lockRC0BootLifecycle() (*os.File, error) {
 	return lock, nil
 }
 
-func openRC0BootGrants() ([]*os.File, error) {
+func openRC0BootGrants() ([]*os.File, time.Duration, error) {
 	run, err := os.Open("/run")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer run.Close()
 	if !rc0AbsentRole(run, rc0BootStagingName) {
-		return nil, errRC0Review
+		return nil, 0, errRC0Review
 	}
 	grantDir, err := openRC0BootDirectory(run, rc0BootGrantName)
 	if errors.Is(err, unix.ENOENT) {
-		return nil, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer grantDir.Close()
 	state, err := openRC0BootState(grantDir)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	plan, err := openRC0PrivateFile(grantDir, "boot.json", rc0BootMaxBytes)
 	if err != nil {
-		return nil, errors.Join(err, state.Close())
+		return nil, 0, errors.Join(err, state.Close())
 	}
 	policy, err := openRC0PrivateFile(grantDir, "policy.json", naspolicy.MaxInputBytes)
 	if err != nil {
-		return nil, errors.Join(err, state.Close(), plan.Close())
+		return nil, 0, errors.Join(err, state.Close(), plan.Close())
 	}
-	return []*os.File{state, plan, policy}, nil
+	data, _, err := readPrivateStartupFile(plan, 0, rc0BootMaxBytes)
+	if err != nil {
+		return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+	}
+	boot, err := decodeRC0BootPlan(data)
+	if err != nil || !fixedRC0BootInventory(grantDir, boot.StorageSHA256 != "") {
+		return nil, 0, errors.Join(errRC0Review, state.Close(), plan.Close(), policy.Close())
+	}
+	grants := []*os.File{state, plan, policy}
+	wait := rc0BootStartTimeout
+	if boot.StorageSHA256 != "" {
+		storage, err := openRC0PrivateFile(grantDir, rc0StorageRole, rc0StorageApprovalLimit)
+		if err != nil {
+			return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+		}
+		data, _, err := readPrivateStartupFile(storage, 0, rc0StorageApprovalLimit)
+		approval, decodeErr := decodeRC0StorageApproval(data, boot.StorageSHA256)
+		if err := errors.Join(err, decodeErr); err != nil {
+			return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close(), storage.Close())
+		}
+		if approval.SMB != nil {
+			wait = rc0BootSambaStartTimeout
+		}
+		grants = append(grants, storage)
+	}
+	return grants, wait, nil
 }
 
 func openRC0BootDirectory(run *os.File, name string) (*os.File, error) {
@@ -127,7 +159,10 @@ func openRC0BootState(grant *os.File) (*os.File, error) {
 }
 
 func startRC0BootService(ctx context.Context) error {
-	grants, err := openRC0BootGrants()
+	if !rc0BootServiceAbsent() {
+		return errRC0Review
+	}
+	grants, readyTimeout, err := openRC0BootGrants()
 	if err != nil {
 		return err
 	}
@@ -147,13 +182,14 @@ func startRC0BootService(ctx context.Context) error {
 	defer ack.Close()
 	defer childAck.Close()
 	cmd := exec.Command("/proc/self/exe", "--rc0-boot-service=run")
-	cmd.ExtraFiles = append(grants, childAck)
+	cmd.ExtraFiles = append(grants[:3:3], childAck)
+	cmd.ExtraFiles = append(cmd.ExtraFiles, grants[3:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := ack.SetReadDeadline(time.Now().Add(rc0BootServiceTimeout)); err != nil {
+	if err := ack.SetReadDeadline(time.Now().Add(readyTimeout)); err != nil {
 		return err
 	}
 	if err := cmd.Start(); err != nil {
@@ -163,12 +199,13 @@ func startRC0BootService(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { _ = ack.SetReadDeadline(time.Now()) })
 	defer stop()
 	var reply [1]byte
-	if _, err := io.ReadFull(ack, reply[:]); err == nil && reply[0] == 'R' && ctx.Err() == nil {
+	_, readyErr := io.ReadFull(ack, reply[:])
+	if readyErr == nil && reply[0] == 'R' && ctx.Err() == nil {
 		return cmd.Process.Release()
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	return errors.Join(errRC0Review, stopRC0API(cmd.Process, done))
+	return errors.Join(errRC0Review, readyErr, stopRC0API(cmd.Process, done))
 }
 
 func runRC0BootService(ctx context.Context) error {
@@ -190,35 +227,61 @@ func runRC0BootService(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stop := make(chan *net.UnixConn, 1)
-	go receiveRC0Stop(listener, cancel, stop)
+	control := &rc0BootStopAuthority{}
+	go receiveRC0Stop(ctx, listener, control, cancel, stop)
 
-	err = runRC0BootManagement(ctx, func() error {
+	admitted := false
+	err = runRC0BootManagement(ctx, control, func() error {
+		admitted = true
+		control.ready.Store(true)
 		_, writeErr := ack.Write([]byte{'R'})
 		return errors.Join(writeErr, ack.Close())
 	})
-	err = errors.Join(err, listener.Close(), os.Remove(rc0BootControlDir))
-	if conn := <-stop; conn != nil {
+	cancel()
+	err = errors.Join(err, listener.Close())
+	conn := <-stop
+	if conn != nil {
 		defer conn.Close()
-		if err == nil {
-			if deadlineErr := conn.SetWriteDeadline(time.Now().Add(time.Second)); deadlineErr != nil {
-				return deadlineErr
-			}
-			_, err = conn.Write([]byte{'S'})
-		}
 	}
+	// The policy worker has joined before runRC0BootManagement returns. Once
+	// it admitted the API, preserve the already-reserved control directory
+	// unless an explicit stop completed successfully. A killed supervisor
+	// also leaves the directory behind.
+	if constructionreview.Contains(err) || (admitted || control.nfs.Load() || control.stopSamba != nil) && (err != nil || conn == nil) {
+		return errors.Join(errRC0Review, err)
+	}
+	if err := errors.Join(err, os.Remove(rc0BootControlDir)); err != nil || conn == nil {
+		return err
+	}
+	if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+		return err
+	}
+	_, err = conn.Write([]byte{'S'})
 	return err
 }
 
-func receiveRC0Stop(listener *net.UnixListener, cancel context.CancelFunc, stop chan<- *net.UnixConn) {
+func receiveRC0Stop(ctx context.Context, listener *net.UnixListener, control *rc0BootStopAuthority, cancel context.CancelFunc, stop chan<- *net.UnixConn) {
 	for {
 		conn, err := listener.AcceptUnix()
 		if err != nil {
 			stop <- nil
 			return
 		}
-		conn.SetReadDeadline(time.Now().Add(time.Second))
-		var request [1]byte
-		if _, err := io.ReadFull(conn, request[:]); err == nil && request[0] == 'S' {
+		if receiveRC0StopRequest(conn, control) {
+			drainCtx, done := context.WithTimeout(ctx, rc0BootStopTimeout-time.Second)
+			err := control.drainSamba(drainCtx)
+			done()
+			if err != nil {
+				if conn.SetWriteDeadline(time.Now().Add(time.Second)) == nil {
+					reply := byte('B')
+					if constructionreview.Contains(err) {
+						reply = 'R'
+					}
+					_, _ = conn.Write([]byte{reply})
+				}
+				conn.Close()
+				continue
+			}
 			stop <- conn
 			cancel()
 			return
@@ -227,16 +290,37 @@ func receiveRC0Stop(listener *net.UnixListener, cancel context.CancelFunc, stop 
 	}
 }
 
-func stopRC0BootService(ctx context.Context) error {
+func receiveRC0StopRequest(conn *net.UnixConn, control *rc0BootStopAuthority) bool {
+	raw, err := conn.SyscallConn()
+	if err != nil {
+		return false
+	}
+	root := false
+	err = raw.Control(func(fd uintptr) {
+		peer, err := unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+		root = err == nil && peer.Uid == 0 && peer.Pid > 0
+	})
+	if err != nil || !root || conn.SetReadDeadline(time.Now().Add(time.Second)) != nil {
+		return false
+	}
+	var request [1]byte
+	_, err = io.ReadFull(conn, request[:])
+	return err == nil && control.accept(request[0])
+}
+
+func stopRC0BootService(ctx context.Context, request byte) error {
 	var st unix.Stat_t
 	err := unix.Lstat(rc0BootControlDir, &st)
 	if errors.Is(err, unix.ENOENT) {
-		return nil
+		if request == rc0StopRequest {
+			return nil
+		}
+		return errRC0Review
 	}
 	if err != nil || !safeRC0RunDirectory() || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 {
 		return errRC0Review
 	}
-	ctx, cancel := context.WithTimeout(ctx, rc0BootServiceTimeout)
+	ctx, cancel := context.WithTimeout(ctx, rc0BootStopTimeout)
 	defer cancel()
 	dialer := net.Dialer{}
 	conn, err := dialer.DialContext(ctx, "unix", rc0BootControlSocket)
@@ -248,11 +332,17 @@ func stopRC0BootService(ctx context.Context) error {
 	if err := conn.SetDeadline(deadline); err != nil {
 		return err
 	}
-	if _, err := conn.Write([]byte{'S'}); err != nil {
+	if _, err := conn.Write([]byte{request}); err != nil {
 		return err
 	}
 	var reply [1]byte
-	if _, err := io.ReadFull(conn, reply[:]); err != nil || reply[0] != 'S' {
+	if _, err := io.ReadFull(conn, reply[:]); err != nil {
+		return errRC0Review
+	}
+	if reply[0] == 'B' {
+		return errRC0DrainPending
+	}
+	if reply[0] != 'S' {
 		return errRC0Review
 	}
 	return nil

@@ -82,6 +82,14 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
     -o "$scratch/capture.test" ./internal/smartcollect)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+# The producer and both Go test executables need independent staging space.
+# Grow only this bounded tmpfs copy, as in the SMART report fixture.
+[ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || {
+    echo 'PHANTOWD_SMART_ARM_REPLAY_CAPACITY_REFUSED' >&2
+    exit 1
+}
+truncate -s 128M "$scratch/rootfs.ext2"
+"$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 echo "PHANTOWD_SMART_ARM_REPLAY_PAYLOAD_BYTES producer=$(wc -c <smartctl) parser=$(wc -c <"$scratch/replay.test") capture=$(wc -c <"$scratch/capture.test")"
 # debugfs can return zero after a failed allocation. Verify exact injected bytes
 # before booting; a successful command status alone is not injection evidence.

@@ -29,6 +29,15 @@ func publishRC0BootGrant(ctx context.Context) error {
 	if err != nil || !plan.matchesPolicy(policy) {
 		return errRC0Review
 	}
+	approval, storage, err := takeRC0StorageApproval(plan, 6)
+	if err != nil {
+		return err
+	}
+	if approval != nil {
+		if err := requireUnboundRC0Targets(approval.Volumes); err != nil {
+			return err
+		}
+	}
 	root, err := lockRC0StateRoot(state)
 	if err != nil {
 		return err
@@ -89,6 +98,11 @@ func publishRC0BootGrant(ctx context.Context) error {
 	}
 	if err := writeRC0BootRole(stage, "policy.json", policy); err != nil {
 		return err
+	}
+	if storage != nil {
+		if err := writeRC0BootRole(stage, rc0StorageRole, storage); err != nil {
+			return err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -174,9 +188,6 @@ func withdrawRC0BootGrant() error {
 		return err
 	}
 	defer grant.Close()
-	if !fixedRC0BootInventory(grant) {
-		return errRC0Review
-	}
 	planFile, err := openRC0PrivateFile(grant, "boot.json", rc0BootMaxBytes)
 	if err != nil {
 		return err
@@ -187,6 +198,12 @@ func withdrawRC0BootGrant() error {
 	}
 	plan, err := decodeRC0BootPlan(data)
 	if err != nil {
+		return err
+	}
+	if !fixedRC0BootInventory(grant, plan.StorageSHA256 != "") {
+		return errRC0Review
+	}
+	if err := requireWithdrawableRC0BootStorage(grant, plan); err != nil {
 		return err
 	}
 	state, err := openRC0BootState(grant)
@@ -222,21 +239,34 @@ func withdrawRC0BootGrant() error {
 			return err
 		}
 	}
+	if plan.StorageSHA256 != "" {
+		if err := unix.Unlinkat(dir, rc0StorageRole, 0); err != nil {
+			return err
+		}
+	}
 	if err := unix.Unlinkat(dir, "state", unix.AT_REMOVEDIR); err != nil {
 		return err
 	}
 	return unix.Unlinkat(fd, rc0BootStagingName, unix.AT_REMOVEDIR)
 }
 
-func fixedRC0BootInventory(grant *os.File) bool {
-	entries, err := grant.ReadDir(4)
-	if (err != nil && !errors.Is(err, io.EOF)) || len(entries) != 3 {
+func fixedRC0BootInventory(grant *os.File, hasStorage bool) bool {
+	entries, err := grant.ReadDir(5)
+	expected := 3
+	if hasStorage {
+		expected++
+	}
+	if (err != nil && !errors.Is(err, io.EOF)) || len(entries) != expected {
 		return false
 	}
 	for _, entry := range entries {
 		switch entry.Name() {
 		case "boot.json", "policy.json":
 			if !entry.Type().IsRegular() {
+				return false
+			}
+		case rc0StorageRole:
+			if !hasStorage || !entry.Type().IsRegular() {
 				return false
 			}
 		case "state":

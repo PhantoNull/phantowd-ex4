@@ -171,6 +171,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
+        if ! sed 's/\r$//' "$log_file" | grep -Fx 'PHANTOWD_SAMBA_SHARE_HANDOFF_READY policy=declared original=true stale=refused foreign=refused close_order=verified' >/dev/null; then
+            echo 'Missing retained Samba share handoff assertion' >&2
+            exit 1
+        fi
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_M24_NATIVE_ENROLLMENT_LOOKUP_READY accounts=2 before_enrollment=true private_groups=true files_only=true foreign_omitted=true journals_unchanged=true json_refused=true installed=false activation=false scope=disposable-qemu-only')" -eq 1; then
             echo 'Missing or duplicate native enrollment lookup assertion' >&2
             exit 1

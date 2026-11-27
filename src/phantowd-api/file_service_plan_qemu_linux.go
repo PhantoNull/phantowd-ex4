@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
@@ -70,8 +71,79 @@ func exerciseQEMUFileServicePlan() error {
 		if err := validateQEMUPlanSambaWithTestparm(samba, string(qemuPlannerVolumeID)); err != nil {
 			return err
 		}
-		return validateQEMUIsolatedSambaPlan(plan)
+		if err := validateQEMUIsolatedSambaPlan(plan); err != nil {
+			return err
+		}
+		return exerciseQEMUSambaShareHandoff(plan, storage, set, mounted.MountPath())
 	})
+}
+
+func exerciseQEMUSambaShareHandoff(plan fileserviceplan.Plan, storage fileserviceplan.StorageSnapshot,
+	set *mountowner.MountedVolumeSet, volume string) error {
+	const parent = "/run/phantowd/service-handoff"
+	const root = parent + "/samba-plan-fixture"
+	ctx := context.Background()
+	candidate, err := plan.SambaIsolatedCandidate()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(parent, 0755); err != nil {
+		return err
+	}
+	if err := os.Mkdir(root, 0710); err != nil {
+		return err
+	}
+	if err := errors.Join(os.Chown(root, 0, 1000), os.Chmod(root, 0710)); err != nil {
+		return err
+	}
+	storage.Generation++
+	stalePlan, err := buildQEMUFileServicePlan(qemuPlannerVolumeID, storage)
+	if err != nil {
+		return err
+	}
+	stale, err := stalePlan.SambaIsolatedCandidate()
+	if err != nil {
+		return err
+	}
+	if handoff, pins, err := stale.MountShareRoots(ctx, root, set, 1000); handoff != nil || pins != nil || !errors.Is(err, fileserviceplan.ErrNotReady) {
+		return errors.New("stale Samba candidate reached share admission")
+	}
+	handoff, pins, err := candidate.MountShareRoots(ctx, root, set, 1000)
+	if err != nil {
+		return err
+	}
+	if err := candidate.VerifyShareRoots(set, pins); err != nil {
+		return err
+	}
+	if err := candidate.VerifyShareRoots(&mountowner.MountedVolumeSet{}, pins); !errors.Is(err, mountowner.ErrHandoffInvalid) {
+		return errors.New("Samba share accepted a different mount roster")
+	}
+	if err := handoff.Close(); !errors.Is(err, mountowner.ErrHandoffBusy) {
+		return errors.New("retained Samba share descriptor did not hold its handoff")
+	}
+	roots, err := pins.DuplicateRoots()
+	if err != nil || len(roots) != 1 || roots[0].ShareID != "books" || roots[0].ReadOnly {
+		return errors.Join(errors.New("Samba share descriptor did not match its policy"), err)
+	}
+	original, origErr := os.Stat(filepath.Join(volume, "books"))
+	descriptor, statErr := roots[0].File.Stat()
+	if err := errors.Join(origErr, statErr, roots[0].File.Close()); err != nil {
+		return err
+	}
+	if !os.SameFile(original, descriptor) {
+		return errors.New("Samba share descriptor did not retain the original directory")
+	}
+	if err := pins.Close(); err != nil {
+		return err
+	}
+	if err := handoff.Close(); err != nil {
+		return err
+	}
+	if err := os.Remove(root); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SAMBA_SHARE_HANDOFF_READY policy=declared original=true stale=refused foreign=refused close_order=verified")
+	return nil
 }
 
 func runQEMUMountedFileServicePlanFixture() error {

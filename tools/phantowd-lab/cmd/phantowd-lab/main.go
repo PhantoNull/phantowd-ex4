@@ -122,6 +122,15 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inventory-rootfs":
 		return inventoryRootfs(args[1:], output)
 
+	case "stage-samba-code":
+		if len(args) != 3 {
+			return 1, errors.New("usage: phantowd-lab stage-samba-code IMAGE_DIRECTORY NEW_BUNDLE_DIRECTORY")
+		}
+		if err := rootfsinventory.StageSambaCode(args[1], args[2]); err != nil {
+			return 1, err
+		}
+		return 0, nil
+
 	case "inspect-nfs-runtime":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-nfs-runtime DIRECTORY")

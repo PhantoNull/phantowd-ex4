@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"syscall"
@@ -34,6 +35,8 @@ type CaptureOwner struct {
 	current                       *managedProcess
 	consumed, review, closed      bool
 	closeFailed                   bool
+	dieWithParent                 bool
+	stdoutLimit                   int
 	// Fixed typed constructors populate these private retained inputs.
 	// Generic CaptureSpec has no descriptor-injection option.
 	fixtureInputs      []*os.File
@@ -238,7 +241,18 @@ func (c *CaptureOwner) captureLocked(ctx context.Context) (CaptureResult, error)
 		return CaptureResult{}, err
 	}
 	c.consumed = true
-	stdout, stderr := newCaptureBuffer(MaxCaptureStdout), newCaptureBuffer(MaxCaptureStderr)
+	limit := c.stdoutLimit
+	if limit == 0 {
+		limit = MaxCaptureStdout
+	}
+	stdout, stderr := newCaptureBuffer(limit), newCaptureBuffer(MaxCaptureStderr)
+	keepOutput := false
+	defer func() {
+		if !keepOutput {
+			clear(stdout.data)
+			clear(stderr.data)
+		}
+	}()
 	command := exec.Command("/proc/self/fd/3")
 	command.Args = append([]string{c.spec.ExecutableLabel}, c.spec.Args...)
 	command.Dir = "/"
@@ -246,6 +260,12 @@ func (c *CaptureOwner) captureLocked(ctx context.Context) (CaptureResult, error)
 	command.ExtraFiles = append([]*os.File{c.executable}, c.fixtureInputs...)
 	command.Stdin, command.Stdout, command.Stderr = c.input, stdout, stderr
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if c.dieWithParent {
+		// Linux tracks the thread that forks the child, not only the process.
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		command.SysProcAttr.Pdeathsig = syscall.SIGKILL
+	}
 	if c.spec.RunAs != nil {
 		command.SysProcAttr.Credential = &syscall.Credential{
 			Uid: c.spec.RunAs.UID, Gid: c.spec.RunAs.GID,
@@ -312,6 +332,7 @@ func (c *CaptureOwner) captureLocked(ctx context.Context) (CaptureResult, error)
 	if err := operation.Err(); err != nil {
 		return CaptureResult{}, err
 	}
+	keepOutput = true
 	return CaptureResult{Kind: CaptureExited, ExitCode: status.ExitStatus(), Stdout: stdout.data, Stderr: stderr.data}, nil
 }
 

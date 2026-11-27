@@ -783,6 +783,14 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   is staged. The trusted launcher can publish and withdraw the volatile
   handoff from admitted descriptors, with an independent policy confirmation
   and a pinned certificate. Withdrawing releases only the mount clone.
+  An admitted supervisor exit outside verified init stop retains the protected
+  boot-local control directory. The init lifecycle refuses to confirm stop,
+  restart management or withdraw the grant after that exit.
+  Explicit RC0 management provisioning validates independent policy, TLS and
+  administrator inputs before staging on an already admitted local ext parent.
+  It publishes all three management roles together and retains interrupted
+  staging for review. The same entry point supplies the original management
+  state in the ARMv5 management, SMB and NFS boot fixtures.
   Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
@@ -1517,8 +1525,60 @@ open.
   creation, endpoint selection and client-quiescence authority.
   The identity owner now borrows a verified startup-state descriptor and
   pins its registry and operations directories on that same mount. The
-  NFS fixture closes the original descriptor before continuing and uses the
-  retained owner for policy and readiness checks.
+  fixed boot-state provisioner forms the empty native identity ledger before
+  publishing the service-identities role. The opener refuses an interrupted
+  stage. The NFS fixture provisions and opens the role through those entry
+  points, closes the original descriptor and uses the retained owner for
+  policy and readiness checks.
+  Normal RC0 startup now opens and retains the committed identity role when
+  installed, refuses interrupted provisioning and checks its lifetime during
+  init startup and shutdown. A protected installer command uses the same
+  state lock and an explicit allocation range. Existing management-only
+  state can still boot without an identity role.
+  An optional per-boot storage approval ties the fixed source mount and its
+  independently supplied disk and array evidence to one confirmed volume
+  registry revision. The protected BusyBox handoff carries the same bytes to
+  the supervisor. Boot retains the verified service binds and registry before
+  acknowledging readiness. Clean shutdown restores the target directory and
+  releases the registry. The synthetic state and data media are distinct in
+  the ARMv5 fixture. The RC0 research kernel supplies the MD census with
+  automatic assembly disabled.
+  The normal BusyBox handoff can opt in to managed NFSv3 through a digest-bound
+  IPv4 endpoint and ingress interface, with the platform's existing NFSD mount.
+  It starts the retained protocol owner after the management listener has bound.
+  A private root control request authorizes teardown once clients have drained.
+  The kernel stop checks that confirmation before modifying listeners or
+  exports. Ordinary stop refuses an active NFS lifetime. An uncertain exit
+  preserves the boot grant for review. The independent RC0 build fixture now
+  runs this full startup and shutdown in two isolated ARMv5 guests. It requires
+  a packet-filter drop for an unlisted address, a permitted NFSv3 mount and
+  synced write, refusal of ordinary stop while mounted, and release after
+  confirmed drain. Successful combined-image evidence and a physical EX4
+  platform provider are release prerequisites.
+  RC0 includes Samba tools and admits a separately provisioned
+  persistent Samba state directory. The installer publishes private
+  and shared database directories under the admitted local state mount.
+  Startup holds their original descriptors and excludes a second owner.
+  The ARMv5 Samba reboot fixture uses these same directories for its
+  actual passdb and requires their original inodes after reboot.
+  The normal BusyBox handoff now attaches the isolated Samba daemon to
+  the approved storage and network endpoint, with the credential backend
+  bound to the original persistent state. Stop keeps management available
+  while the Samba service is fenced and the supervisor checks sessions,
+  trees, open files and transport. The paired ARMv5 test covers SMB3 I/O
+  and the stop sequence on virtual media. Physical EX4 qualification and
+  the platform producer for these grants remain release prerequisites.
+  The Samba planner now attaches only its declared share roots through the
+  normal Linux handoff. It retains the complete original volume roster and
+  exact, mount-protected share descriptors. A stale generation or a foreign
+  roster refuses admission. The bounded ARMv5 planner fixture verifies this
+  path against its generated volume, and the isolated Samba test harness
+  passes these same descriptors to its runtime.
+  The RC0 image build now stages the bounded Samba ELF closure and the
+  fixed CP850 converter in a dedicated code-only root. The image includes
+  its expected file hashes, modes and alias map. The boot test verifies the
+  complete original code tree on a kernel read-only mount. The launcher
+  attaches separate configuration, database and share descriptors.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and
@@ -1800,6 +1860,11 @@ open.
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
   separate protocol/identity/recovery qualification, not an assumed feature.
+  The RC0 ARMv5 profile includes the NFSv3 kernel server and RPC tools for the
+  managed runtime. The image build omits upstream init launchers and static
+  exports. The stock boot fixture checks for zero NFSD threads, no RPC/NFS
+  processes or listeners and an empty export table. Runtime activation
+  requires the admitted kernel and storage owners.
   The combined desired-policy preview flags equal or ancestor/descendant
   SMB/NFS relative paths on the same logical volume for focused review. This is
   consultative only and does not block, mount or activate services. It is
@@ -3278,6 +3343,11 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
+  RC0 initial CHAP provisioning uses the admitted state and independently
+  confirmed NAS policy descriptors. The launcher verifies the complete
+  credential reference set and publishes the root-private role atomically.
+  Normal management retains the role if present and rechecks it at shutdown.
+  Rotation and qualified iSCSI activation remain separate work.
   **Desired preview:** authenticated caller-only projection, exact decimals and advisory path overlaps; no state access or target activation.
   Manual dashboard review preserves original input bytes and retires stale results.
   A guided disabled-target/LUN0 draft preserves existing definitions and validates

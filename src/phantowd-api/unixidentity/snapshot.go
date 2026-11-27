@@ -48,6 +48,35 @@ type Snapshot struct {
 	groups []group
 }
 
+// ManagedIdentity represents an appliance-owned private group and its optional
+// user. These numeric identities are projected into an isolated service's NSS.
+type ManagedIdentity struct {
+	Account     serviceaccounts.Account
+	UserPresent bool
+}
+
+// WithManagedIdentities combines image reservations and the appliance's
+// durable native identity records without modifying system account files.
+func (s Snapshot) WithManagedIdentities(records []ManagedIdentity) (Snapshot, error) {
+	if !s.valid || len(records) > serviceaccounts.MaxLive || len(s.users)+len(records) > MaxRecords ||
+		len(s.groups)+len(records) > MaxRecords {
+		return Snapshot{}, ErrInvalid
+	}
+	result := Snapshot{valid: true, users: slices.Clone(s.users), groups: slices.Clone(s.groups)}
+	for _, record := range records {
+		account := record.Account
+		assessment, err := result.Inspect(account)
+		if err != nil || assessment.Status != Absent || account.State != serviceaccounts.Disabled {
+			return Snapshot{}, ErrInvalid
+		}
+		result.groups = append(result.groups, group{name: account.Name, gid: account.GID})
+		if record.UserPresent {
+			result.users = append(result.users, user{name: account.Name, uid: account.UID, gid: account.GID})
+		}
+	}
+	return result, nil
+}
+
 func Parse(passwd, groups io.Reader) (Snapshot, error) {
 	var result Snapshot
 	rows, err := readRows(passwd, 7)

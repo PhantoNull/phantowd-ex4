@@ -18,7 +18,7 @@ func TestSharePinRequestMatchingBindsCompleteDeclarationWithoutAliasing(t *testi
 	}
 	reversed := []ServiceShare{actual[1], actual[0]}
 	before := slices.Clone(reversed)
-	if !sameDeclaredRootsQEMU(reversed, actual) || !reflect.DeepEqual(reversed, before) {
+	if !sameDeclaredRoots(reversed, actual) || !reflect.DeepEqual(reversed, before) {
 		t.Fatal("equivalent declaration was refused or reordered in caller memory")
 	}
 	for name, mutate := range map[string]func([]ServiceShare) []ServiceShare{
@@ -32,12 +32,12 @@ func TestSharePinRequestMatchingBindsCompleteDeclarationWithoutAliasing(t *testi
 		"duplicate": func(r []ServiceShare) []ServiceShare { r[1] = r[0]; return r },
 	} {
 		t.Run(name, func(t *testing.T) {
-			if sameDeclaredRootsQEMU(mutate(slices.Clone(actual)), actual) {
+			if sameDeclaredRoots(mutate(slices.Clone(actual)), actual) {
 				t.Fatal("different or incomplete root requests matched original pins")
 			}
 		})
 	}
-	if sameDeclaredRootsQEMU(nil, nil) || sameDeclaredRootsQEMU([]ServiceShare{{}}, []ServiceShare{{}}) {
+	if sameDeclaredRoots(nil, nil) || sameDeclaredRoots([]ServiceShare{{}}, []ServiceShare{{}}) {
 		t.Fatal("empty/invalid declaration matched")
 	}
 }

@@ -15,9 +15,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"golang.org/x/sys/unix"
 )
 
@@ -50,7 +53,7 @@ func runRC0Management(ctx context.Context, installation, address, origin string)
 	if err != nil {
 		return err
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo, nil)
+	return superviseRC0State(ctx, plan, state, known, proofInfo, nil, nil, nil)
 }
 
 func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
@@ -62,7 +65,7 @@ func readRC0PolicyGrant(descriptor int) ([]byte, unix.Stat_t, error) {
 	return known, proofInfo, errors.Join(readErr, proof.Close())
 }
 
-func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, started func() error) (result error) {
+func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, known []byte, proofInfo unix.Stat_t, approval *rc0StorageApproval, control *rc0BootStopAuthority, started func() error) (result error) {
 	uid, gid, err := managementAPIIdentity()
 	if err != nil {
 		return err
@@ -104,6 +107,46 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if plan.TLSLeafSHA256 != "" && !plan.matchesTLS(identity) {
 		return errRC0Review
 	}
+	chap, err := openRC0ISCSICredentials(ctx, stateRoot)
+	if err != nil {
+		return err
+	}
+	if chap != nil {
+		defer func() {
+			result = errors.Join(result, chap.check(context.WithoutCancel(ctx), stateRoot), chap.close())
+		}()
+	}
+	samba, err := openRC0SambaState(stateRoot)
+	if samba != nil {
+		defer func() { result = errors.Join(result, samba.check(stateRoot, rc0SambaStateRole), samba.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
+	var identities *identityowner.Owner
+	var enrollment *runtimebundle.SambaConfiguration
+	var smbBackend *smbexec.EnrollmentBackend
+	if approval != nil && approval.SMB != nil {
+		identities, enrollment, smbBackend, err = openRC0SambaIdentities(ctx, stateRoot, samba)
+	} else {
+		identities, err = openRC0ServiceIdentities(stateRoot)
+	}
+	if enrollment != nil {
+		defer func() { result = errors.Join(result, enrollment.Close()) }()
+	}
+	if identities != nil {
+		defer func() { result = errors.Join(result, identities.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
+	storage, err := admitRC0BootStorage(ctx, stateRoot, approval)
+	if storage != nil {
+		defer func() { result = errors.Join(result, storage.Close(context.WithoutCancel(ctx))) }()
+	}
+	if err != nil {
+		return err
+	}
 	listener, err := openRC0PolicyListener(gid)
 	if err != nil {
 		return err
@@ -112,7 +155,6 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-
 	cmd := exec.Command("/proc/self/exe")
 	cmd.Dir = "/"
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C",
@@ -125,7 +167,47 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	cmd.ExtraFiles = []*os.File{accounts, identity}
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
-	return superviseRC0API(ctx, cmd, listener, server, uid, gid, started)
+	ready := started
+	if approval != nil && (approval.NFS != nil || approval.SMB != nil) {
+		if started == nil || control == nil {
+			return errRC0Review
+		}
+		var nfs *registeredNFS
+		var smb *registeredSamba
+		ready = func() error {
+			var err error
+			if approval.SMB != nil {
+				smb, err = prepareRegisteredSamba(ctx, registeredSambaGrants{
+					policy: owner, identity: identities, backend: smbBackend, storage: storage, state: samba,
+					verifyState: func() error { return samba.check(stateRoot, rc0SambaStateRole) },
+					endpoint:    *approval.SMB, authorize: control.authorizeSamba,
+				})
+				if err != nil {
+					return err
+				}
+				if err := smb.Start(ctx); err != nil {
+					return err
+				}
+				control.stopSamba = smb.Stop
+			}
+			nfs, err = startRC0NFS(ctx, control, approval, owner, identities, storage)
+			if err != nil {
+				return err
+			}
+			return started()
+		}
+		// The policy worker has joined before teardown. Close the NFS
+		// lifetime before touching its original storage and identity claims.
+		defer func() {
+			if nfs != nil {
+				result = errors.Join(result, nfs.Close(context.WithoutCancel(ctx)))
+			}
+			if smb != nil {
+				result = errors.Join(result, smb.Close())
+			}
+		}()
+	}
+	return superviseRC0API(ctx, cmd, listener, server, uid, gid, ready)
 }
 
 func managementAPIIdentity() (uint32, uint32, error) {

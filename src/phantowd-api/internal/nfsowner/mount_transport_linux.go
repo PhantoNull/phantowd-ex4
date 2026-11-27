@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/sys/unix"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
 const mountdPort = 20048
@@ -30,7 +30,7 @@ func checkNFSTransport(ctx context.Context, pid int, ports []int) error {
 	var owned map[uint64]struct{}
 	if pid != 0 {
 		var err error
-		owned, err = mountProcessSockets(ctx, pid)
+		owned, err = processowner.ProcessSocketInodes(ctx, pid)
 		if err != nil {
 			return err
 		}
@@ -59,45 +59,6 @@ func checkNFSTransport(ctx context.Context, pid int, ports []int) error {
 		}
 	}
 	return ctx.Err()
-}
-
-func mountProcessSockets(ctx context.Context, pid int) (_ map[uint64]struct{}, result error) {
-	const maxDescriptors = 1024
-	fd, err := unix.Open(fmt.Sprintf("/proc/%d/fd", pid), unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
-	if err != nil {
-		return nil, err
-	}
-	dir := os.NewFile(uintptr(fd), "mountd-fds")
-	defer func() { result = errors.Join(result, dir.Close()) }()
-	names, err := dir.Readdirnames(maxDescriptors + 1)
-	if err != nil && !errors.Is(err, io.EOF) || len(names) > maxDescriptors {
-		return nil, errors.Join(ErrState, err)
-	}
-	sockets := make(map[uint64]struct{})
-	var link [64]byte
-	for _, name := range names {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		n, err := unix.Readlinkat(fd, name, link[:])
-		if errors.Is(err, unix.ENOENT) {
-			continue // A worker can finish with an accepted connection mid-scan.
-		}
-		if err != nil {
-			return nil, err
-		}
-		encoded, ok := strings.CutPrefix(string(link[:n]), "socket:[")
-		if !ok {
-			continue
-		}
-		value, complete := strings.CutSuffix(encoded, "]")
-		inode, err := strconv.ParseUint(value, 10, 64)
-		if !complete || err != nil || inode == 0 {
-			return nil, ErrState
-		}
-		sockets[inode] = struct{}{}
-	}
-	return sockets, nil
 }
 
 // The pinned Linux profile lists TCP, UDP and IPv6 sockets in proc. TCP

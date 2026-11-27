@@ -208,7 +208,7 @@ func serveQEMUManagedNFS(ctx context.Context, filter string) error {
 	if err := removeConfig(); err != nil {
 		return err
 	}
-	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered supervisor=true platform_grants=true scope=isolated-two-guest-only\n", filter)
+	fmt.Printf("PHANTOWD_NFS_PEER_SERVER_READY kernel_backend=true activation=true managed=true remote_bytes=true mapped_identity=true tables=private filter=%s teardown=clean storage=registered supervisor=true platform_grants=true identities=provisioned scope=isolated-two-guest-only\n", filter)
 	return nil
 }
 

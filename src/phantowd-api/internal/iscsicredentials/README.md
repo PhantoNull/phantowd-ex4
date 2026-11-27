@@ -1,10 +1,9 @@
-# Retained CHAP material — internal prerequisite
+# Retained CHAP material
 
 First-release storage policy permits **recoverable plaintext CHAP secrets** in
 an exclusively provisioned root-owned directory (`0700`), with a root-owned
-single-link regular document (`0600`). Encryption at rest is deferred; root or
-offline-media access can disclose the credentials. This is not a production
-credential service or authority to activate a target.
+single-link regular document (`0600`). Encryption at rest is deferred. Root or
+offline-media access can disclose the credentials.
 
 The Linux-only wrapper requires effective UID 0, trusted parent directories,
 stable process credentials and a suitable local filesystem. It reuses
@@ -12,9 +11,16 @@ stable process credentials and a suitable local filesystem. It reuses
 bounded strict JSON, metadata/content checks, mutation watch and revision claims.
 Opening retains the existing engine's reopen fsync boundary, not a promise of
 zero filesystem effects. Missing/corrupt/pending/unsafe state is not initialized,
-promoted or repaired. No public writer, generation, rotation, import, HTTP,
-listener, startup or NAS operation exists. The QEMU-only provisioner writes
-fixed **public synthetic tokens**, only to a newly created disposable directory.
+promoted or repaired. The descriptor opener maintains the original mount and
+retains its observation epoch independently of the caller's file handle.
+
+An RC0 root launcher can provision the initial vault from private stdin while
+holding the admitted state directory and the independently confirmed NAS
+policy lease. The revision-one document covers the exact set of initiator
+and target secret references. The transaction initializes a private staging
+role, syncs the document and publishes the role by rename. Interrupted stages
+remain for review. Management retains the committed role through shutdown and
+checks its original location and store epoch before releasing it.
 
 The private document is versioned separately from desired NAS policy; policy
 contains only `SecretRef`. The wrapper never exposes the disk document or a

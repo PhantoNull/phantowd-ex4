@@ -4,7 +4,7 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package iscsicredentials retains recoverable CHAP material for an internal,
-// fixed trusted consumer. It exposes no HTTP, provisioning or rotation writer.
+// fixed trusted consumer. Initial state can be provisioned by the root launcher.
 package iscsicredentials
 
 import (
@@ -33,6 +33,7 @@ var (
 
 const maxBytes = 256 << 10
 const maxEntries = iscsipolicy.MaxTargets * iscsipolicy.MaxInitiators * 2
+const CurrentFile = "chap-secrets.json"
 
 // Unlike web-login verifiers, this private disk document deliberately contains
 // recoverable plaintext. JSON encoding is only for the protected local store.
@@ -111,7 +112,7 @@ func decode(r io.Reader) (document, error) {
 	return d, nil
 }
 func codec() revisionstore.Codec[document] {
-	return revisionstore.Codec[document]{CurrentName: "chap-secrets.json", PendingName: ".chap-secrets.pending", MaxBytes: maxBytes,
+	return revisionstore.Codec[document]{CurrentName: CurrentFile, PendingName: ".chap-secrets.pending", MaxBytes: maxBytes,
 		Decode: decode, Validate: validate, Revision: func(d document) uint64 { return d.Revision }}
 }
 
@@ -130,6 +131,20 @@ func Open(directory string) (*Owner, error) {
 		return nil, ErrUnavailable
 	}
 	s, err := revisionstore.OpenOwnedWithCodec(directory, codec())
+	return openOwner(s, err)
+}
+
+// OpenDirectory retains an independently opened descriptor and store epoch
+// beneath a directory already admitted by the platform owner.
+func OpenDirectory(directory *os.File) (*Owner, error) {
+	if os.Getuid() != 0 || os.Geteuid() != 0 {
+		return nil, ErrUnavailable
+	}
+	s, err := revisionstore.OpenOwnedDirectoryWithCodec(directory, codec())
+	return openOwner(s, err)
+}
+
+func openOwner(s *revisionstore.OwnedStore[document], err error) (*Owner, error) {
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -157,6 +172,15 @@ func (o *Owner) Close() error {
 		return ErrInvalid
 	}
 	return mapError(o.store.Close())
+}
+
+// Verify checks the original live observation epoch without returning material.
+func (o *Owner) Verify(ctx context.Context) error {
+	if o == nil || o.self != o || o.store == nil || ctx == nil || os.Geteuid() != 0 {
+		return ErrInvalid
+	}
+	_, err := o.store.Snapshot(ctx)
+	return mapError(err)
 }
 
 // Consumer is fixed trusted in-process backend code captured at acquisition,
@@ -250,22 +274,16 @@ func (o *Owner) Acquire(ctx context.Context, expected uint64, policy naspolicy.C
 	if err != nil {
 		return nil, mapError(err)
 	}
-	values := make(map[iscsipolicy.SecretRef]string, len(d.Entries))
-	for _, e := range d.Entries {
-		values[e.Ref] = e.Secret
+	values := credentialValues(d)
+	if _, err := matchPolicyCredentials(policy, values); err != nil {
+		return nil, err
 	}
 	var selected *iscsipolicy.Target
 	for i := range policy.ISCSI.Targets {
 		target := &policy.ISCSI.Targets[i]
-		for _, peer := range target.Initiators {
-			a := peer.Authentication
-			if strings.HasPrefix(a.InitiatorUser, "NULL") || values[a.InitiatorSecretRef] == "" ||
-				a.Mode == "mutual-chap" && (strings.HasPrefix(a.TargetUser, "NULL") || values[a.TargetSecretRef] == "") {
-				return nil, ErrInvalid
-			}
-		}
 		if target.ID == targetID {
 			selected = target
+			break
 		}
 	}
 	if selected == nil || claim.Verify(ctx) != nil {
@@ -283,6 +301,35 @@ func (o *Owner) Acquire(ctx context.Context, expected uint64, policy naspolicy.C
 	}
 	keep = true
 	return b, nil
+}
+
+func credentialValues(d document) map[iscsipolicy.SecretRef]string {
+	values := make(map[iscsipolicy.SecretRef]string, len(d.Entries))
+	for _, e := range d.Entries {
+		values[e.Ref] = e.Secret
+	}
+	return values
+}
+
+// A validated policy gives every peer and direction a distinct reference.
+func matchPolicyCredentials(policy naspolicy.Config, values map[iscsipolicy.SecretRef]string) (int, error) {
+	count := 0
+	for _, target := range policy.ISCSI.Targets {
+		for _, peer := range target.Initiators {
+			a := peer.Authentication
+			if strings.HasPrefix(a.InitiatorUser, "NULL") || values[a.InitiatorSecretRef] == "" {
+				return 0, ErrInvalid
+			}
+			count++
+			if a.Mode == "mutual-chap" {
+				if strings.HasPrefix(a.TargetUser, "NULL") || values[a.TargetSecretRef] == "" {
+					return 0, ErrInvalid
+				}
+				count++
+			}
+		}
+	}
+	return count, nil
 }
 func nilConsumer(c Consumer) bool {
 	if c == nil {

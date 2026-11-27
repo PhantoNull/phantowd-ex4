@@ -47,7 +47,7 @@ type isolatedRootPin struct {
 // dedicated handoff belongs to this one service; create separate handoffs for
 // distinct grants. Inputs are copied once and not selectable through HTTP/RPC.
 func NewIsolatedServiceRuntime(handoff *ServiceHandoff, spec processowner.Spec, launcher string) (*IsolatedServiceRuntime, error) {
-	if handoff == nil || !filepath.IsAbs(launcher) || filepath.Clean(launcher) != launcher ||
+	if handoff == nil || handoff.privateParent || !filepath.IsAbs(launcher) || filepath.Clean(launcher) != launcher ||
 		strings.ContainsRune(launcher, '\x00') {
 		return nil, ErrServiceRuntimeInvalid
 	}

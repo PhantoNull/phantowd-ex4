@@ -32,7 +32,6 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
 )
@@ -333,25 +332,19 @@ func (b *ownerNFSQEMU) prepareFixtureSources(ctx context.Context, network, acces
 		return err
 	}
 	const authority = "/run/phantowd-nfs-owner-identity"
-	for _, p := range []string{authority, authority + "/registry", authority + "/operations"} {
-		if err := os.Mkdir(p, 0700); err != nil {
-			return err
-		}
-	}
-	seed, err := serviceaccountstore.Open(authority + "/registry")
-	if err != nil {
+	if err := os.Mkdir(authority, 0700); err != nil {
 		return err
 	}
-	if err := errors.Join(seed.Initialize(23000, 23010), seed.Close()); err != nil {
-		return err
-	}
-	// No imported identities exist in this guarded synthetic guest. The
-	// Owner independently reads the actual /etc Unix census on each check.
 	state, err := os.Open(authority)
 	if err != nil {
 		return err
 	}
-	b.identity, err = identityowner.OpenFromDirectory(state, func(context.Context) (serviceaccounts.Reservations, error) {
+	if err := identityowner.ProvisionInitial(ctx, state, 23000, 23010); err != nil {
+		return errors.Join(err, state.Close())
+	}
+	// No imported identities exist in this guarded synthetic guest. The
+	// Owner independently reads the actual /etc Unix census on each check.
+	b.identity, err = identityowner.OpenProvisioned(state, func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
 	})
 	if err := errors.Join(err, state.Close()); err != nil {

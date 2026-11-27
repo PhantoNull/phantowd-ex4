@@ -3,10 +3,14 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 set -eu
 
-[ "$#" -eq 3 ] || { echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX' >&2; exit 2; }
+[ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && { [ "$4" = smb-legacy ] || [ "$4" = smb-loss ]; }; } || {
+    echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX [smb-legacy|smb-loss]' >&2
+    exit 2
+}
 images=$1
 host_go=$2
 log_prefix=$3
+mode=${4:-all}
 qemu=${QEMU_SYSTEM_ARM:-qemu-system-arm}
 support=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 for name in rootfs.ext2 zImage versatile-pb.dtb; do
@@ -22,13 +26,17 @@ case "$scratch" in *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exi
 sha256sum -- "$images/rootfs.ext2" "$images/zImage" "$images/versatile-pb.dtb" > "$scratch/base.sha256"
 image="$scratch/rootfs.ext2"
 data="$scratch/virtual-state.ext4"
+volume="$scratch/virtual-volume.ext2"
 cp --sparse=always -- "$images/rootfs.ext2" "$image"
 truncate -s 32M "$data"
 mkfs.ext4 -F -q "$data"
+truncate -s 16M "$volume"
+mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$volume"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" "$support/fixtures/rc0-management.go"
+        "$host_go" build -tags=qemu -mod=vendor -buildvcs=false -trimpath -ldflags='-s -w' \
+        -o "$scratch/runner" ./cmd/rc0-management-fixture
 )
 od -An -N24 -tx1 /dev/urandom | tr -d ' \n' > "$scratch/password"
 [ "$(wc -c < "$scratch/password")" -eq 48 ]
@@ -38,21 +46,48 @@ set -eu
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+case " $(cat /proc/cmdline) " in
+    *' phantowd.state=seed '*) phase=seed ;;
+    *' phantowd.state=verify '*) phase=verify ;;
+    *' phantowd.state=rotated '*) phase=rotated ;;
+    *' phantowd.state=nfs-server '*) phase=nfs-server ;;
+    *' phantowd.state=nfs-client '*) phase=nfs-client ;;
+    *' phantowd.state=smb-server '*) phase=smb-server ;;
+    *' phantowd.state=smb-client '*) phase=smb-client ;;
+    *' phantowd.state=smb-legacy-server '*) phase=smb-legacy-server ;;
+    *' phantowd.state=smb-legacy-client '*) phase=smb-legacy-client ;;
+    *' phantowd.state=smb-loss-server '*) phase=smb-loss-server ;;
+    *' phantowd.state=smb-loss-client '*) phase=smb-loss-client ;;
+    *) exit 1 ;;
+esac
+mount -t tmpfs -o mode=0755,size=64m tmpfs /run
+ifconfig lo 127.0.0.1 up
+case "$phase" in
+    *-client)
+        /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+        exec reboot -f ;;
+esac
+if [ ! -r /proc/mdstat ]; then
+    echo 'RC0 storage fixture requires the kernel MD census' >&2
+    exit 1
+fi
 test "$(tr -d '\000' < /sys/firmware/devicetree/base/model)" = 'ARM Versatile PB'
 test "$(cat /sys/class/block/sdb/size)" = 65536
+test "$(cat /sys/class/block/sdc/size)" = 32768
 case "$(cat /sys/class/misc/hw_random/rng_current)" in
     virtio_rng.*) ;;
     *) echo 'RC0 fixture requires the virtual entropy source' >&2; exit 1 ;;
 esac
-mount -t tmpfs -o mode=0755,size=64m tmpfs /run
 mount -t ext4 /dev/sdb /mnt
-ifconfig lo 127.0.0.1 up
-case "$(cat /proc/cmdline)" in
-    *' phantowd.state=seed') phase=seed ;;
-    *' phantowd.state=verify') phase=verify ;;
-    *' phantowd.state=rotated') phase=rotated ;;
-    *) exit 1 ;;
-esac
+mount -t tmpfs -o mode=0755,size=1m tmpfs /srv
+mkdir -m 0700 /run/phantowd-data-sources
+mkdir -m 0700 /run/phantowd-data-sources/boot-data
+mkdir -p /srv/phantowd/volumes/boot-data
+mount -t ext4 /dev/sdc /run/phantowd-data-sources/boot-data
+if [ "$phase" = nfs-server ]; then
+    mkdir /run/rpcbind
+    mount -t nfsd nfsd /proc/fs/nfsd
+fi
 if [ "$phase" = seed ]; then
     table=phantowd_rc0_nft_fixture
     printf '%s\n' \
@@ -68,13 +103,32 @@ if [ "$phase" = seed ]; then
     if grep -F "\"$table\"" /run/rc0-nft-after.json; then exit 1; fi
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
-/rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+if ! /rc0-fixture/runner "$phase"; then
+    echo PHANTOWD_RC0_SUPERVISOR_FAILED
+    sync
+    exec reboot -f
+fi
+# The review fixtures retain storage and their firewall. The emulator
+# discards both disposable disks after the verified reboot.
+case "$phase" in
+    smb-legacy-server|smb-loss-server)
+        sync
+        exec reboot -f ;;
+esac
+if [ "$phase" = nfs-server ]; then
+    umount /proc/fs/nfsd
+fi
+umount /srv
+umount /run/phantowd-data-sources/boot-data
 umount /mnt
 echo "PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase"
 reboot -f
 SH
 
 debugfs -w -R 'mkdir /rc0-fixture' "$image"
+if ! debugfs -R 'stat /srv' "$image" 2>/dev/null | grep -F 'Type: directory' >/dev/null; then
+    debugfs -w -R 'mkdir /srv' "$image"
+fi
 install_fixture() {
     target="/rc0-fixture/$1"
     debugfs -w -R "write $scratch/$1 $target" "$image"
@@ -87,6 +141,24 @@ install_fixture init 0100755
 install_fixture password 0100600
 chmod a-w "$image"
 
+run_pair() {
+    protocol=$1
+    state="$scratch/$protocol-state.ext4"
+    data="$scratch/$protocol-data.ext2"
+    truncate -s 32M "$state"
+    mkfs.ext4 -F -q "$state"
+    truncate -s 16M "$data"
+    mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$data"
+    (umask 022; : > "$log_prefix.$protocol-server.log"; : > "$log_prefix.$protocol-client.log")
+    python3 -B "$support/qemu-rc0-pair.py" "$qemu" "$images" "$image" "$state" "$data" "$log_prefix" "$protocol"
+}
+
+if [ "$mode" != all ]; then
+    run_pair "$mode"
+    sha256sum -c "$scratch/base.sha256"
+    exit
+fi
+
 for phase in seed verify rotated; do
     log="$log_prefix.$phase.log"
     # The hosted reader has a different UID. Keep the fixture inputs private.
@@ -98,6 +170,8 @@ for phase in seed verify rotated; do
         -device lsi53c895a,id=scsi0 -device scsi-hd,bus=scsi0.0,drive=rootdisk,serial=RC0-ROOT \
         -drive "file=$data,if=none,id=statedisk,format=raw,cache=writethrough" \
         -device scsi-hd,bus=scsi0.0,drive=statedisk,serial=RC0-STATE \
+        -drive "file=$volume,if=none,id=datadisk,format=raw,cache=writethrough" \
+        -device scsi-hd,bus=scsi0.0,drive=datadisk,serial=PHANTOWD-RC0-FIXTURE-DATA,wwn=0x500f000000000003,device_id=PHANTOWD-RC0-DATA \
         -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0 \
         -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 init=/rc0-fixture/init phantowd.state=$phase" \
         > "$log" 2>&1; then
@@ -105,11 +179,19 @@ for phase in seed verify rotated; do
         exit 1
     fi
     expected="PHANTOWD_RC0_SUPERVISOR_READY phase=$phase https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true"
-    if ! awk -v ready="$expected" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
+    identities="PHANTOWD_RC0_SERVICE_IDENTITIES_READY phase=$phase original=true runtime_lock=verified release=verified"
+    storage="PHANTOWD_RC0_BOOT_STORAGE_READY phase=$phase exact_bind=true registry_lock=verified release=verified"
+    samba="PHANTOWD_RC0_SAMBA_STATE_READY phase=$phase original=true runtime_lock=verified release=verified"
+    chap="PHANTOWD_RC0_ISCSI_CREDENTIALS phase=$phase opaque=true original=true lock_released=true"
+    if ! awk -v ready="$expected" -v identities="$identities" -v storage="$storage" -v samba="$samba" -v chap="$chap" -v stopped="PHANTOWD_RC0_STATE_UNMOUNTED phase=$phase" '
         { sub(/\r$/, "") }
         $0 == ready { startup++ }
+        $0 == identities { identity++ }
+        $0 == storage { roster++ }
+        $0 == samba { samba_state++ }
+        $0 == chap { credential_state++ }
         $0 == stopped { unmount++ }
-        END { exit !(startup == 1 && unmount == 1) }
+        END { exit !(startup == 1 && identity == 1 && roster == 1 && samba_state == 1 && credential_state == 1 && unmount == 1) }
     ' "$log" || ! grep -F 'reboot: Restarting system' "$log" >/dev/null ||
         grep -Eq 'PHANTOWD_RC0_SUPERVISOR_FAILED|Kernel panic' "$log"; then
         tail -n 25 "$log" >&2
@@ -147,5 +229,18 @@ tr -d '\r' < "$log_prefix.rotated.log" |
     grep -Fx 'PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed' >/dev/null
 tr -d '\r' < "$log_prefix.rotated.log" |
     grep -Fx 'PHANTOWD_RC0_GRANT interrupted=refused self_confirmation=refused wrong_tls=refused duplicate=refused live_withdraw=refused withdraw=confirmed' >/dev/null
+tr -d '\r' < "$log_prefix.rotated.log" |
+    grep -Fx 'PHANTOWD_RC0_NFS_DRAIN management_only=refused https=preserved' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_SAMBA_STATE_REFUSAL duplicate=refused interrupted=refused mount_alias=refused' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_STATE_PROVISION input_refusal=clean concurrent=refused orphan_stage=retained state=published replay=refused roles=admin,policy,tls' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_ISCSI_PROVISION policy=confirmed mismatch=refused reuse=refused interrupted=retained pending=retained published=true replay=refused' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
+run_pair nfs
+run_pair smb
+run_pair smb-loss
 sha256sum -c "$scratch/base.sha256"

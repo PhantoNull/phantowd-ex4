@@ -49,6 +49,7 @@ type dependencies struct {
 	executor     func(serviceaccounts.Account) (backend, error)
 	inventory    Inventory
 	smbBackend   smbprovision.Backend
+	provisioned  bool
 	afterJournal func() // private process-interruption test seam
 }
 
@@ -62,6 +63,7 @@ type Owner struct {
 	journals              map[string]*identityprovision.Store
 	smbJournals           map[string]*smbprovision.Store
 	smbBackend            smbprovision.Backend
+	nativeState           *nativeIdentityState
 	fileServiceLeases     map[*fileServiceLeaseState]struct{}
 	inodes                map[string]uint64
 	smbInodes             map[string]uint64
@@ -84,9 +86,17 @@ func OpenFromDirectory(directory *os.File, inventory Inventory) (*Owner, error) 
 	if directory == nil || inventory == nil || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return nil, ErrInvalid
 	}
+	fd, err := borrowPrivateDirectory(directory)
+	if err != nil {
+		return nil, err
+	}
+	return openOwned(fd, ownerDependencies(inventory))
+}
+
+func borrowPrivateDirectory(directory *os.File) (int, error) {
 	raw, err := directory.SyscallConn()
 	if err != nil {
-		return nil, ErrInvalid
+		return -1, ErrInvalid
 	}
 	fd := -1
 	var openErr error
@@ -97,9 +107,9 @@ func OpenFromDirectory(directory *os.File, inventory Inventory) (*Owner, error) 
 		if fd >= 0 {
 			_ = unix.Close(fd)
 		}
-		return nil, ErrUnavailable
+		return -1, ErrUnavailable
 	}
-	return openOwned(fd, ownerDependencies(inventory))
+	return fd, nil
 }
 
 // OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for
@@ -169,6 +179,15 @@ func openOwned(fd int, deps dependencies) (*Owner, error) {
 		}
 		return nil, ErrUnavailable
 	}
+	if deps.provisioned {
+		state, err := openNativeIdentityState(fd, deps.observe)
+		if err != nil {
+			return nil, errors.Join(ErrReview, err)
+		}
+		if state != nil {
+			o.nativeState, o.deps.observe, o.deps.executor = state, state.observe, state.bind
+		}
+	}
 	operations, operationsInfo, err := openPrivateDirectoryAt(fd, "operations")
 	if err != nil {
 		return nil, ErrUnavailable
@@ -186,6 +205,11 @@ func openOwned(fd int, deps dependencies) (*Owner, error) {
 	}
 	if _, _, err := o.snapshot(); err != nil {
 		return nil, err
+	}
+	if o.nativeState != nil {
+		if _, err := o.nativeState.observe(context.Background()); err != nil {
+			return nil, errors.Join(ErrReview, err)
+		}
 	}
 	success = true
 	return o, nil
@@ -289,6 +313,9 @@ func (o *Owner) Close() error {
 	}
 	if o.registry != nil {
 		err = errors.Join(err, o.registry.Close())
+	}
+	if o.nativeState != nil {
+		err = errors.Join(err, o.nativeState.close())
 	}
 	// Preserve the outer authority fence if any inner store's close is uncertain.
 	// Some inner stores may already be closed; never replay their Close calls.
@@ -473,6 +500,9 @@ func (o *Owner) scanSnapshot(recoverSMB bool) (serviceaccounts.Registry, []ident
 		result = append(result, j)
 	}
 	if err := o.checkDirectoryBindings(); err != nil {
+		return fail()
+	}
+	if o.nativeState != nil && o.nativeState.reconcile(result) != nil {
 		return fail()
 	}
 	return r, result, smbResult, nil

@@ -3,6 +3,99 @@
 
 # Implementation status
 
+## RC0 isolated Samba child
+
+The Linux API can start the packaged Samba daemon from a sealed share roster
+and inherited configuration, ext4 state and share descriptors. The child
+revalidates the image's read-only Samba code, creates a private mount namespace
+and chroot, and limits Samba's capabilities before exec.
+
+A disposable ARMv5 guest verified real SMB3 authentication, reads and writes
+under the test account, read-only write refusal, anonymous share refusal,
+retained databases, and process-group shutdown. The fixture checks the original
+mount inodes and the exact kernel capability sets. It also rejects an unsealed
+roster, duplicate state directories, a pre-unshared child and swapped share
+modes. The clean RC0 build runs this fixture with the kernel and userspace it
+just produced.
+
+The service configuration and sealed share declaration come from the same
+validated candidate. A temporary mount holds the expected NSS and Samba files
+under a private workspace. The owner checks their complete bytes and original
+mount before supplying the child descriptor. The emulated service uses this
+constructor and checks the single TCP/445 address and covered-mount refusal.
+
+The provisioned identity owner can bind a fixed credential backend. It stages
+native lookup before a share policy is required and runs `testparm`, `pdbedit`
+and the fixed `smbpasswd` operations in a separate mount and network namespace.
+The ARMv5 guest verifies disabled creation, password assignment while disabled,
+login refusal and explicit enable under the same Samba SID. The tests retain
+the resulting identity evidence through real authenticated SMB3 I/O on the
+original database directories. The offline backend refuses session revocation
+before it changes the journal.
+
+Newly provisioned RC0 identity authorities keep managed private groups and
+users in a separate revisioned state document. The owner builds its service
+lookup from those records and the image's reserved identities. It checks the
+record against the native operation journal before use. Earlier provisioned
+layouts retain their existing observation path. The ARMv5 fixture reopens the
+group after a kernel reboot, completes the user, and enrolls it in Samba while
+the image account database stays read-only. The fixture supplies its own
+external-ownership inventory for the disposable volume.
+
+The isolated daemon owner verifies a single TCP/445 listener on the approved
+IPv4 address and checks that the original child holds the socket. It retains
+the configuration and share descriptors through process-group shutdown. The
+ARMv5 fixture exercises authenticated file I/O, rejects stop without drain
+confirmation, rejects stop while a TCP client is live, and checks that the
+listener and process group disappear after the client closes.
+
+The Samba ingress guard stages an nftables table before publication. It
+admits TCP/445 only on the selected IPv4 address and interface. During drain
+it blocks incoming SYN packets and keeps established traffic flowing. It
+checks the kernel's exact rules and original handles after each change. The
+isolated Linux packet fixture verifies publication, wrong-interface and
+wrong-address refusal, a live stream through the fence, and retention of
+unexpected rules for review. The daemon owner now controls this firewall
+through listener admission and shutdown. An authorized stop fences new
+connections while waiting for the protocol check and TCP drain. The owner
+removes the verified firewall after the original group exits. The RC0 ARMv5
+fixture exercises this sequence with the image's nftables and Samba.
+
+The stop owner now observes the owned Samba process through its pidfd and
+the original private root. The fixed, capability-free `smbstatus` worker
+shares the live lock databases in that root. It exports only counts of
+sessions, tree connections and open files. The packaged Samba census marks
+a report complete after all three traversals succeed. A busy, partial or
+unmarked report leaves the fence in place. The production-profile fixture
+holds an authenticated file open while testing stop, then lets that read
+finish through the fence. Both clean builds qualified the patched binary
+against that fixture. [Guarded ARMv5 Samba runs](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45925896028)
+
+Normal RC0 startup can activate Samba from a boot storage grant that identifies
+the IPv4 address, ingress interface and backing volumes. The supervisor reopens
+the provisioned identity role with the protected passdb backend and retains
+the policy, identity, configuration and share descriptors through shutdown.
+The original root stop socket starts the drain while management remains
+available. A pending drain keeps the ingress fence and allows a later stop
+request. The two-guest ARMv5 campaign checks authenticated file access, continued
+reads through the fence, refusal of new connections and a successful
+release after the packaged census can prove the service idle.
+On the verified ARMv5 research userspace with the patched census, the normal
+init hook drained Samba, removed its firewall and released storage. A separate
+pair terminated the original daemon during an authenticated session. The
+supervisor quarantined all SMB ingress before a stop request, kept HTTPS and
+the approved storage available, and refused a replacement or grant withdrawal.
+
+Two clean RC0 builds booted successfully and produced different root
+filesystem checksums. Their regular-file contents differed only in
+`libsamba-util`, its isolated copy and the manifest recording that copy.
+The six differing bytes in the library were a random host Python path
+suffix. The Samba build now defaults to target Python site paths when
+building without Python bindings. Both independent clean builds of
+`c3c0d52` booted and their full RC0 comparison passed, including the root
+filesystem and its checksum manifest.
+[Independent build and comparison](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45926395090)
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,
@@ -44,6 +137,13 @@ artifacts. The guest verified provider stop, authenticated HTTP 503 responses,
 zero reconnects and normal API exit.
 [PR #286](https://github.com/PhantoNull/phantowd-ex4/pull/286) ·
 [Independent build](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45556040130)
+
+PR #307 moved the retained NFS service lifetime into normal Linux builds.
+QEMU and the EX4 research DTB compiled on tree `419a720`, which is also the
+tree of `develop` merge `8177d12`. The QEMU run checks exclusive input
+transfer and both NFS service lifetimes.
+[PR #307](https://github.com/PhantoNull/phantowd-ex4/pull/307) ·
+[ARMv5 run](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45924984513)
 
 ## Inherited HTTPS identity
 

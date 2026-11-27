@@ -24,6 +24,7 @@ const (
 var rc0BootKeys = map[string]bool{
 	"format": true, "installation_id": true, "listen_address": true, "origin": true,
 	"state_mount_id": true, "state_root_inode": true, "policy_sha256": true, "tls_leaf_sha256": true,
+	"storage_sha256": true,
 }
 
 type rc0BootPlan struct {
@@ -35,11 +36,12 @@ type rc0BootPlan struct {
 	StateRootInode uint64 `json:"state_root_inode"`
 	PolicySHA256   string `json:"policy_sha256"`
 	TLSLeafSHA256  string `json:"tls_leaf_sha256"`
+	StorageSHA256  string `json:"storage_sha256,omitempty"`
 }
 
 // The early launcher admits a local state root and independently selects its
 // policy and TLS generations. Only its descriptors enter this process.
-func runRC0BootManagement(ctx context.Context, started func() error) (result error) {
+func runRC0BootManagement(ctx context.Context, control *rc0BootStopAuthority, started func() error) (result error) {
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0Review
 	}
@@ -59,7 +61,18 @@ func runRC0BootManagement(ctx context.Context, started func() error) (result err
 	if !plan.matchesPolicy(known) {
 		return errRC0Review
 	}
-	return superviseRC0State(ctx, plan, state, known, proofInfo, started)
+	descriptor := 6
+	if control != nil {
+		descriptor = 7 // BusyBox startup uses FD 6 for the readiness pipe.
+	}
+	storage, _, err := takeRC0StorageApproval(plan, descriptor)
+	if err != nil {
+		return err
+	}
+	if storage != nil && (storage.NFS != nil || storage.SMB != nil) && control == nil {
+		return errRC0Review
+	}
+	return superviseRC0State(ctx, plan, state, known, proofInfo, storage, control, started)
 }
 
 func readRC0BootGrant(descriptor int) (rc0BootPlan, error) {
@@ -83,7 +96,8 @@ func decodeRC0BootPlan(data []byte) (rc0BootPlan, error) {
 	if configjson.Decode(bytes.NewReader(data), &plan, rc0BootMaxBytes, 1, rc0BootKeys) != nil ||
 		plan.Format != rc0BootFormat || plan.Installation == "" || !plan.validTransport() ||
 		plan.StateMountID == 0 || plan.StateRootInode == 0 ||
-		!validRC0SHA256(plan.PolicySHA256) || !validRC0SHA256(plan.TLSLeafSHA256) {
+		!validRC0SHA256(plan.PolicySHA256) || !validRC0SHA256(plan.TLSLeafSHA256) ||
+		plan.StorageSHA256 != "" && !validRC0SHA256(plan.StorageSHA256) {
 		return rc0BootPlan{}, errRC0Review
 	}
 	return plan, nil

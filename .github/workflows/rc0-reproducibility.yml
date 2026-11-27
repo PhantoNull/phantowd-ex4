@@ -6,11 +6,40 @@ on:
       - '.github/workflows/rc0-reproducibility.yml'
       - 'configs/phantowd_rc0_armv5_defconfig'
       - 'board/rc0/**'
+      - 'board/qemu/armv5/linux-md.fragment'
+      - 'board/qemu/armv5/patches/samba4/**'
       - 'support/container/build-rc0-profile.sh'
       - 'support/container/augment-cyclonedx.py'
       - 'support/compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
-      - 'support/fixtures/rc0-management.go'
+      - 'support/qemu-rc0-pair.py'
+      - 'src/phantowd-api/cmd/rc0-management-fixture/**'
+      - 'src/phantowd-api/registered_samba_linux.go'
+      - 'src/phantowd-api/rc0_*boot_linux.go'
+      - 'src/phantowd-api/rc0_init_linux.go'
+      - 'src/phantowd-api/rc0_service_identities_linux.go'
+      - 'src/phantowd-api/rc0_state_provision_linux.go'
+      - 'src/phantowd-api/rc0_iscsi_credentials_linux.go'
+      - 'src/phantowd-api/internal/iscsicredentials/**'
+      - 'src/phantowd-api/rc0_supervisor_linux.go'
+      - 'src/phantowd-api/internal/fileserviceplan/samba_share_handoff_linux.go'
+      - 'src/phantowd-api/internal/mountowner/handoff_linux.go'
+      - 'src/phantowd-api/cmd/rc0-samba-child-fixture/**'
+      - 'src/phantowd-api/rc0_samba_child_linux.go'
+      - 'src/phantowd-api/rc0_samba_enrollment_linux.go'
+      - 'src/phantowd-api/rc0_samba_status_linux.go'
+      - 'src/phantowd-api/rc0_samba_code_linux.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_documents.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_launch_linux.go'
+      - 'src/phantowd-api/internal/runtimebundle/samba_service_configuration_linux.go'
+      - 'src/phantowd-api/identityowner/provision_linux.go'
+      - 'src/phantowd-api/internal/processowner/samba_enrollment_linux.go'
+      - 'src/phantowd-api/internal/processowner/samba_daemon_linux.go'
+      - 'src/phantowd-api/internal/processowner/samba_status_linux.go'
+      - 'src/phantowd-api/internal/nftguard/samba_linux.go'
+      - 'src/phantowd-api/internal/smbexec/enrollment_linux.go'
+      - 'src/phantowd-api/internal/smbprovision/worker_linux.go'
+      - 'tools/phantowd-lab/**'
   push:
     branches: [develop]
     paths:
@@ -22,6 +51,7 @@ on:
       - 'configs/phantowd_rc0_armv5_defconfig'
       - 'board/rc0/**'
       - 'board/qemu/armv5/linux-qemu-rng.fragment'
+      - 'board/qemu/armv5/linux-md.fragment'
       - 'board/qemu/armv5/patches/**'
       - 'package/phantowd-api/**'
       - 'src/phantowd-api/**'
@@ -31,7 +61,8 @@ on:
       - 'support/compare-build-artifacts.sh'
       - 'support/test-compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
-      - 'support/fixtures/rc0-management.go'
+      - 'support/qemu-rc0-pair.py'
+      - 'tools/phantowd-lab/**'
   workflow_dispatch:
 
 permissions:
@@ -100,9 +131,16 @@ jobs:
           path: |
             ${{ runner.temp }}/phantowd-rc0/source.txt
             ${{ runner.temp }}/phantowd-rc0/rc0-profile-serial.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-samba-child.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.seed.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.verify.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.rotated.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-client.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-client.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-loss-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-loss-client.log
           if-no-files-found: ignore
           retention-days: 1
 

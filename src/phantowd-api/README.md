@@ -798,6 +798,17 @@ and refuses non-Versatile PB machines. See the
   descriptor; the usual schema/permissions/sync rules remain. The current S50
   path launcher does not implement this descriptor handoff. A trusted parent
   must separately qualify provisioning/admission; this is not complete boot recovery.
+- The ordinary Linux root command `--provision-rc0-state` prepares the
+  management state on an already admitted private local ext parent passed on
+  FD 3. Supply `--nas-installation-id`, an HTTPS `PHANTOWD_PUBLIC_ORIGIN`,
+  the exact revision-1 NAS policy on FD 4 and the matching TLS PEM bundle on
+  FD 5. Both files must be read-only grants owned by root with one link and
+  mode 0400 or 0600. Supply the administrator JSON with `username` and
+  `password` through private stdin. The command validates the inputs, creates
+  the initial policy, TLS identity and non-root credential store in
+  `.rc0-state.provisioning`, then publishes `rc0-state` after syncing all
+  roles. A repeat or interrupted stage requires review. Retain the independent
+  policy and certificate confirmation for the boot handoff.
 - The ordinary Linux binary has an explicit `--supervise-rc0` management mode.
   A trusted root launcher supplies the installation ID as `--nas-installation-id`,
   an open private root-owned local ext directory on FD 3, and a separate
@@ -837,10 +848,13 @@ and refuses non-Versatile PB machines. See the
   With the grant directory absent, init reports that management is waiting.
   An incomplete or inconsistent handoff requires review. Start returns
   after the original API child binds its HTTPS address and the supervisor
-  admits that child to its policy channel.
+  admits that child to its policy channel and starts any approved file services.
   Stop waits for verified supervisor teardown through a private control
-  socket. The physical EX4 launcher that admits and mounts the medium
-  needs separate qualification.
+  socket. An admitted supervisor that exits without a verified stop leaves
+  its protected control directory in `/run`. Init refuses stop and restart,
+  and the publisher refuses to withdraw the grant for the rest of that boot.
+  The physical EX4 launcher that admits and mounts the medium needs separate
+  qualification.
 - A trusted root launcher can publish those roles using
   `--rc0-boot-service=publish` with the same three descriptors. In this mode
   the boot record describes the original admitted directory on FD 3. The
@@ -853,6 +867,80 @@ and refuses non-Versatile PB machines. See the
   clone and removes the fixed runtime roles. The platform keeps its original
   mount. An interrupted publication or withdrawal retains staging for review
   and inhibits the next start. A new boot clears the volatile publication.
+- The boot record can also carry `storage_sha256` for a separate root-private
+  tmpfs document on FD 6. Publication stores these exact bytes as
+  `storage.json` in the runtime grant. Its format is
+  `phantowd-rc0-storage-v1`, with a confirmed `registry_revision` and a
+  `volumes` array. Each volume records its ID, filesystem UUID, current
+  mount ID, root inode, device numbers, read-only flag and independently
+  approved disk and MD identities. The platform prepares the original
+  mounts under `/run/phantowd-data-sources/<id>` and empty targets under
+  `/srv/phantowd/volumes/<id>`. Startup checks the complete registry in the
+  admitted state and binds only its approved roster. It releases those binds
+  before confirming stop, and withdrawal refuses a target that remains
+  mounted.
+- The same digest-bound storage document can include an `nfs` object with
+  `address` (one unicast IPv4 address) and `ingress_index` (the current
+  interface index). The trusted platform configures that interface and mounts
+  the stopped NFSD filesystem at `/proc/fs/nfsd` before normal init startup.
+  The supervisor verifies the actual interface, admits a nonempty confirmed
+  NFSv3 policy and starts it with the image's helpers and packet filter after
+  authenticating the management child. The default profile leaves NFS dormant.
+  Keep the source mounts in place while NFS owns them. After ensuring all
+  clients have flushed their writes and unmounted, root can run
+  `/usr/bin/phantowd-api --rc0-boot-service=stop-nfs-drained`. That request
+  applies to the running supervisor and waits for verified service teardown.
+  Plain init stop refuses while the NFS lifetime needs this confirmation.
+  An interrupted active lifetime retains the boot grant for review.
+- With RC0 stopped, a trusted root installer can run
+  --provision-rc0-samba-state with the admitted state directory on FD 3.
+  It publishes the root-private samba-state directory and the private
+  and state roles used for persistent Samba databases. A second initialization
+  or an interrupted stage requires review. RC0 holds the committed directory
+  and its two roles until shutdown.
+  RC0 carries a separate code-only Samba root and its build-generated
+  manifest. On a kernel read-only image, the root-only verifier
+  --verify-rc0-samba-code checks the complete roster through its image
+  directory descriptors. The boot test also runs the packaged smbd version
+  command from that isolated root.
+  With RC0 stopped, a trusted root launcher can configure a previously
+  confirmed Unix identity using `--configure-rc0-samba-account` and
+  `--rc0-samba-identity-id` for its exact registry ID. Pass the admitted
+  state directory on FD 3 for each operation. Use `create-disabled` to
+  create the disabled passdb record, `set-password` to assign its initial
+  password from private stdin, and `enable` to enable the credential and
+  its desired identity. Provide a UTF-8 password of 12 to 256 bytes without
+  control characters. The input may end with one newline. The initial
+  password operation refuses a replacement. An active supervisor holds the
+  state lock and prevents offline configuration.
+- With RC0 stopped, a trusted root launcher can initialize the CHAP
+  credential role using `--provision-rc0-iscsi-credentials` and
+  `--nas-installation-id`. Pass the admitted state directory on FD 3 and an
+  independent read-only copy of the exact confirmed NAS policy on FD 4.
+  Supply a private JSON document on stdin with format
+  `phantowd-chap-credentials`, schema version and revision both 1, and an
+  `entries` array containing `ref` and `secret` for each CHAP reference.
+  Supply distinct randomly generated printable ASCII secrets of 16 to 128
+  bytes. The provisioner checks coverage for all targets and directions.
+  It publishes the root-private `iscsi-credentials` role after syncing its
+  contents. An active supervisor holds the state lock and prevents
+  provisioning. An interrupted stage or repeat publication requires review.
+- The digest-bound storage document can include an `smb` object with an
+  IPv4 `address` and `ingress_index`. The platform configures the approved
+  interface before init starts. The supervisor requires a nonempty confirmed
+  share policy, admitted Samba state and matching enabled accounts in the
+  persistent identity registry and passdb. It launches the isolated daemon
+  on TCP/445 with the original configuration, database and share references.
+  Leaving out the `smb` object leaves Samba dormant.
+  A stop request fences new SMB connections and checks current sessions,
+  share connections, open files and TCP activity while HTTPS stays available.
+  After clients have disconnected, root can retry a pending stop. A complete
+  idle report is required to release the service and its storage. When NFS
+  is also active, each attempt requires `stop-nfs-drained` after confirming
+  the NFS clients have flushed and unmounted.
+  If the original Samba leader exits unexpectedly, the supervisor blocks
+  all incoming SMB traffic on the original verified table and keeps HTTPS
+  and the boot grant available for review. A later stop reports review.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

@@ -96,12 +96,12 @@ func OpenWithCodec[T any](directory string, codec Codec[T]) (*Store[T], error) {
 	if err != nil {
 		return nil, ErrUnsafe
 	}
-	return openDescriptorWithCodec(fd, codec)
+	return openDescriptorWithCodec(fd, codec, false)
 }
 
 // The caller validates its codec and transfers exclusive ownership of fd.
-func openDescriptorWithCodec[T any](fd int, codec Codec[T]) (*Store[T], error) {
-	s := &Store[T]{dir: fd, ready: true, io: systemOps(), codec: codec}
+func openDescriptorWithCodec[T any](fd int, codec Codec[T], noAtime bool) (*Store[T], error) {
+	s := &Store[T]{dir: fd, ready: true, noAtime: noAtime, io: systemOps(), codec: codec}
 	var st unix.Stat_t
 	if unix.Fstat(fd, &st) != nil || st.Mode&07777 != 0700 || st.Uid != uint32(os.Geteuid()) {
 		unix.Close(fd)

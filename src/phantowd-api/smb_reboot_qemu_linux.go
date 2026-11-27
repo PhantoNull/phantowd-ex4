@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,7 @@ import (
 )
 
 const smbRebootRoot = qemuStateAnchor + "/smb-reboot"
+const smbRebootSambaState = smbRebootRoot + "/" + rc0SambaStateRole
 const smbRebootRuntime = "/run/phantowd-smb-reboot"
 const smbRebootData = "/run/phantowd-smb-reboot-data"
 const smbRebootOld = "public-qemu-reboot-old-password"
@@ -34,8 +36,9 @@ const smbRebootPayload = "persistent-qemu-account-data\n"
 var smbRebootAccount = serviceaccounts.Account{ID: "reboot-user", Name: "qpreboot", UID: 21000, GID: 21000, State: serviceaccounts.Disabled}
 
 type smbRebootEvidence struct {
-	Unix  map[string][32]byte `json:"unix"`
-	Inode uint64              `json:"inode"`
+	Unix        map[string][32]byte `json:"unix"`
+	Inode       uint64              `json:"inode"`
+	SambaInodes [3]uint64           `json:"samba_inodes"`
 }
 
 // Only the dedicated, NIC-less, two-boot fixture may call this function. It
@@ -74,7 +77,7 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 		return errors.New("SMB reboot fixture requires fresh guest Unix state")
 	}
 	if phase == "seed" {
-		for _, path := range []string{smbRebootRoot, smbRebootRoot + "/ledger", smbRebootRoot + "/private", smbRebootRoot + "/state", smbRebootRoot + "/data"} {
+		for _, path := range []string{smbRebootRoot, smbRebootRoot + "/ledger", smbRebootRoot + "/data"} {
 			if err := os.Mkdir(path, 0700); err != nil {
 				return err
 			}
@@ -83,6 +86,25 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 			return errors.New("guest-only etc copy failed")
 		}
 	}
+	parent, err := os.Open(smbRebootRoot)
+	if err != nil {
+		return err
+	}
+	state, err := lockRC0StateRoot(parent)
+	if closeErr := parent.Close(); err != nil || closeErr != nil {
+		return errors.Join(err, closeErr)
+	}
+	defer func() { result = errors.Join(result, state.Close()) }()
+	if phase == "seed" {
+		if err := provisionRC0SambaState(context.Background(), state); err != nil {
+			return fmt.Errorf("persistent RC0 Samba state provision: %w", err)
+		}
+	}
+	samba, err := openRC0SambaState(state)
+	if err != nil || samba == nil {
+		return errors.Join(errors.New("persistent RC0 Samba state absent or refused"), err)
+	}
+	defer func() { result = errors.Join(result, samba.check(state, rc0SambaStateRole), samba.Close()) }()
 	if err := unix.Mount(smbRebootRoot+"/etc", "/etc", "", unix.MS_BIND, ""); err != nil {
 		return err
 	}
@@ -131,10 +153,10 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 		}
 	}
 	config := "[global]\nserver role = standalone server\nsecurity = user\nmap to guest = Never\ninterfaces = 127.0.0.1\nbind interfaces only = yes\nsmb ports = 1445\nserver min protocol = SMB3_00\nserver max protocol = SMB3_11\nload printers = no\nprinting = bsd\nprintcap name = /dev/null\n"
-	for key, path := range map[string]string{"private dir": smbRebootRoot + "/private", "state directory": smbRebootRoot + "/state", "lock directory": smbRebootRuntime + "/lock", "cache directory": smbRebootRuntime + "/cache", "pid directory": smbRebootRuntime + "/pid", "ncalrpc dir": smbRebootRuntime + "/rpc"} {
+	for key, path := range map[string]string{"private dir": smbRebootSambaState + "/private", "state directory": smbRebootSambaState + "/state", "lock directory": smbRebootRuntime + "/lock", "cache directory": smbRebootRuntime + "/cache", "pid directory": smbRebootRuntime + "/pid", "ncalrpc dir": smbRebootRuntime + "/rpc"} {
 		config += key + " = " + path + "\n"
 	}
-	config += "passdb backend = tdbsam:" + smbRebootRoot + "/private/passdb.tdb\n[Reboot]\npath = " + smbRebootData + "\nvalid users = qpreboot\nread only = no\nguest ok = no\nfollow symlinks = no\nwide links = no\ncreate mask = 0600\ndirectory mask = 0700\n"
+	config += "passdb backend = tdbsam:" + smbRebootSambaState + "/private/passdb.tdb\n[Reboot]\npath = " + smbRebootData + "\nvalid users = qpreboot\nread only = no\nguest ok = no\nfollow symlinks = no\nwide links = no\ncreate mask = 0600\ndirectory mask = 0700\n"
 	configPath := smbRebootRuntime + "/smb.conf"
 	if err := writeQEMUStateFixture(configPath, []byte(config)); err != nil {
 		return err
@@ -223,7 +245,11 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 		return err
 	}
 	err = unix.Syncfs(int(f.Fd()))
-	return errors.Join(err, f.Close())
+	if err := errors.Join(err, f.Close()); err != nil {
+		return err
+	}
+	fmt.Printf("PHANTOWD_RC0_SAMBA_STATE_REBOOT phase=%s provisioned_roles=original passdb=used\n", phase)
+	return nil
 }
 
 func observeSMBRebootEvidence() (smbRebootEvidence, error) {
@@ -244,6 +270,12 @@ func observeSMBRebootEvidence() (smbRebootEvidence, error) {
 		return e, errors.New("reboot data identity mismatch")
 	}
 	e.Inode = st.Ino
+	for i, path := range [...]string{smbRebootSambaState, smbRebootSambaState + "/private", smbRebootSambaState + "/state"} {
+		if unix.Lstat(path, &st) != nil || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 || st.Gid != 0 {
+			return e, errors.New("reboot Samba state directory identity mismatch")
+		}
+		e.SambaInodes[i] = st.Ino
+	}
 	return e, nil
 }
 

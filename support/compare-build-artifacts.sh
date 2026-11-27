@@ -93,14 +93,16 @@ validate_build_directory() {
 validate_build_directory "$left"
 validate_build_directory "$right"
 
+different=0
 for artifact in $expected_files; do
     if ! cmp -s "$left/$artifact" "$right/$artifact"; then
         left_hash=$(sha256sum "$left/$artifact" | cut -d ' ' -f 1)
         right_hash=$(sha256sum "$right/$artifact" | cut -d ' ' -f 1)
         echo "artifact differs: $artifact (build-a=$left_hash build-b=$right_hash)" >&2
-        exit 1
+        different=1
     fi
 done
+[ "$different" -eq 0 ] || exit 1
 
 artifact_count=$(printf '%s\n' "$expected_files" | wc -l | tr -d '[:space:]')
 echo "Independent build artifacts match byte-for-byte ($artifact_count allowlisted paths)."

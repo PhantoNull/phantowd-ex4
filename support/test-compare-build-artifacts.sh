@@ -89,6 +89,8 @@ expect_rejection "a damaged RC0 manifest" --rc0 "$rc0_a" "$rc0_b"
 printf 'changed SBOM\n' >> "$rc0_b/rc0-armv5/sbom.cdx.json"
 rc0_manifest "$rc0_b"
 expect_rejection "RC0 metadata that matches its manifest but differs" --rc0 "$rc0_a" "$rc0_b"
+grep -F 'artifact differs: rc0-armv5/SHA256SUMS ' "$temporary/rejection.log" >/dev/null
+grep -F 'artifact differs: rc0-armv5/sbom.cdx.json ' "$temporary/rejection.log" >/dev/null
 
 cp "$rc0_a/rc0-armv5/sbom.cdx.json" "$rc0_a/rc0-armv5/SHA256SUMS" "$rc0_b/rc0-armv5/"
 rm "$rc0_b/rc0-armv5/linux.config"
