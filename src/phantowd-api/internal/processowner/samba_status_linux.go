@@ -6,6 +6,7 @@ package processowner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -46,7 +47,7 @@ func viaProcDirectory(proc *os.File, name string, flags int) (*os.File, error) {
 	// Only fixed /proc/<owned-pid> magic links are followed here.
 	fd, err := unix.Openat(int(proc.Fd()), name, flags|unix.O_PATH|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return nil, ErrUnavailable
+		return nil, errors.Join(ErrUnavailable, err)
 	}
 	return os.NewFile(uintptr(fd), "owned-samba-proc-"+name), nil
 }
@@ -59,7 +60,7 @@ func sambaStatusObject(root *os.File, path string, directory bool) (*os.File, er
 	fd, err := unix.Openat2(int(root.Fd()), path, &unix.OpenHow{Flags: flags,
 		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_SYMLINKS})
 	if err != nil {
-		return nil, ErrUnavailable
+		return nil, errors.Join(ErrUnavailable, err)
 	}
 	return os.NewFile(uintptr(fd), "owned-samba-status-role"), nil
 }
@@ -154,7 +155,7 @@ func (d *SambaDaemon) observeActivity(ctx context.Context) (smbprovision.Activit
 		if errors.Is(err, ErrReviewRequired) {
 			d.review = true
 		}
-		return empty, err
+		return empty, fmt.Errorf("verify owned Samba status root: %w", err)
 	}
 	input, err := smbprovision.SealWorkerInput(nil)
 	if err != nil {
@@ -192,12 +193,19 @@ func (d *SambaDaemon) observeActivity(ctx context.Context) (smbprovision.Activit
 		d.review = true
 		return empty, ErrReviewRequired
 	}
-	if captureErr != nil || output.Kind != CaptureExited || output.ExitCode != 0 || len(output.Stderr) != 0 || !d.sambaProcessAlive() {
-		return empty, errors.Join(ErrUnavailable, ctx.Err())
+	if captureErr != nil {
+		return empty, fmt.Errorf("capture owned Samba status: %w", captureErr)
+	}
+	if output.Kind != CaptureExited || output.ExitCode != 0 || len(output.Stderr) != 0 {
+		return empty, fmt.Errorf("Samba status worker outcome %d, exit %d, diagnostics %d bytes: %w",
+			output.Kind, output.ExitCode, len(output.Stderr), ErrUnavailable)
+	}
+	if !d.sambaProcessAlive() {
+		return empty, ErrUnavailable
 	}
 	result, err := smbprovision.ParseActivity(output.Stdout)
 	if err != nil {
-		return empty, ErrUnavailable
+		return empty, fmt.Errorf("Samba status output does not match the admitted census: %w", ErrUnavailable)
 	}
 	return result, nil
 }
