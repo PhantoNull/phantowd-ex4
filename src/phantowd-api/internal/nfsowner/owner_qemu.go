@@ -16,11 +16,6 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 )
 
-var ErrInvalid = errors.New("invalid NFS owner")
-var ErrReviewRequired = errors.New("NFS owner requires review")
-var ErrBusy = errors.New("NFS owner busy")
-var ErrState = errors.New("NFS owner transition refused")
-
 type State string
 
 const (

@@ -44,8 +44,7 @@ type ownerNFSQEMU struct {
 	identity       *identityowner.Owner
 	identityLease  *identityowner.FileServiceLease
 	storage        *mountowner.MountedVolumeSet
-	storageLease   *mountowner.MountedVolumeSetLease
-	roots          *nfsowner.ExportRootsQEMU
+	inputs         *nfsowner.RetainedInputs
 	policySeed     *naspolicystore.Store
 	policyOwner    *naspolicystore.Owner
 	policyLease    *naspolicystore.Lease
@@ -157,18 +156,6 @@ func runQEMUNFSOwnerActivation() error {
 		if err != nil {
 			return err
 		}
-		plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, set)
-		if err != nil {
-			return err
-		}
-		candidate, err := plan.NFSv3TCPCandidate()
-		if err != nil {
-			return err
-		}
-		b.storageLease, _, err = set.Acquire(ctx)
-		if err != nil {
-			return err
-		}
 		if err := os.Mkdir(ownerNFSRoot, 0700); err != nil {
 			return err
 		}
@@ -178,9 +165,13 @@ func runQEMUNFSOwnerActivation() error {
 		if err := os.WriteFile(ownerNFSRoot+"/marker", []byte("owner-derived-nfs\n"), 0644); err != nil {
 			return err
 		}
-		b.roots, err = nfsowner.NewExportRootsQEMU(ctx, candidate, b.storageLease)
+		var candidate fileserviceplan.NFSv3Candidate
+		b.inputs, candidate, err = nfsowner.PrepareInputs(ctx, b.policyLease, b.identityLease, set, 0)
 		if err != nil {
 			return err
+		}
+		if !errors.Is(b.inputs.Check(ctx, fileserviceplan.NFSv3Candidate{}), nfsowner.ErrInvalid) {
+			return errors.New("NFS input preparation accepted an unrelated candidate")
 		}
 		enabled, table, roots, err := candidate.Documents()
 		lines := strings.Split(strings.TrimSpace(table), "\n")
@@ -257,6 +248,9 @@ func runQEMUNFSOwnerActivation() error {
 		b.phase = "close"
 		if err := owner.Close(ctx); err != nil {
 			return err
+		}
+		if !errors.Is(b.inputs.Check(ctx, candidate), nfsowner.ErrState) {
+			return errors.New("closed NFS input preparation admitted its old candidate")
 		}
 		if !errors.Is(b.policyLease.Verify(ctx), naspolicystore.ErrClosed) {
 			return errors.New("closed NFS retained a live desired-policy claim")
@@ -369,14 +363,7 @@ func (b *ownerNFSQEMU) retainPolicy(ctx context.Context, document naspolicy.Conf
 }
 
 func (b *ownerNFSQEMU) CheckInputs(ctx context.Context, candidate fileserviceplan.NFSv3Candidate) error {
-	plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, b.storage)
-	if err != nil {
-		return err
-	}
-	if !candidate.FreshAgainst(plan.Freshness()) {
-		return errors.New("NFS retained sources changed")
-	}
-	return b.roots.Check(ctx)
+	return b.inputs.Check(ctx, candidate)
 }
 
 func (b *ownerNFSQEMU) VerifyStopped(ctx context.Context) error {
@@ -496,14 +483,11 @@ func (b *ownerNFSQEMU) Release(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := b.roots.Close(); err != nil {
-		return err
-	}
 	// Dataset and shared identity/policy Owners belong to the parent fixture.
 	if err := os.Remove(ownerNFSClient); err != nil {
 		return err
 	}
-	for _, close := range []func() error{b.storageLease.Close, b.identityLease.Release, b.policyLease.Release} {
+	for _, close := range []func() error{b.inputs.Close, b.identityLease.Release, b.policyLease.Release} {
 		if err := close(); err != nil {
 			return err
 		}
