@@ -171,7 +171,7 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 				smb, err = prepareRegisteredSamba(ctx, registeredSambaGrants{
 					policy: owner, identity: identities, backend: smbBackend, storage: storage, state: samba,
 					verifyState: func() error { return samba.check(stateRoot, rc0SambaStateRole) },
-					endpoint:    *approval.SMB, group: gid, authorize: control.authorizeSamba,
+					endpoint:    *approval.SMB, authorize: control.authorizeSamba,
 				})
 				if err != nil {
 					return err

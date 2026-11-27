@@ -30,8 +30,6 @@ const (
 	rc0DrainedStopRequest = 'D'
 )
 
-var errRC0DrainPending = errors.New("RC0 file service drain is pending")
-
 func manageRC0BootService(ctx context.Context, action string) error {
 	if developmentBrowserEnrollment || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errRC0Review
@@ -228,6 +226,7 @@ func runRC0BootService(ctx context.Context) error {
 		_, writeErr := ack.Write([]byte{'R'})
 		return errors.Join(writeErr, ack.Close())
 	})
+	cancel()
 	err = errors.Join(err, listener.Close())
 	conn := <-stop
 	if conn != nil {

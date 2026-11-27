@@ -54,7 +54,6 @@ type registeredSambaGrants struct {
 	state       *rc0SambaState
 	verifyState func() error
 	endpoint    rc0ServiceEndpoint
-	group       uint32
 	authorize   func(context.Context) error
 }
 
@@ -136,14 +135,14 @@ func (s *registeredSamba) prepareInputs(ctx context.Context, g registeredSambaGr
 		return err
 	}
 	root := filepath.Join(s.privatePath, "shares")
-	if err := os.Mkdir(root, 0710); err != nil {
+	if err := os.Mkdir(root, 0700); err != nil {
 		return err
 	}
 	s.sharePath = root
-	if err := errors.Join(os.Chown(root, 0, int(g.group)), os.Chmod(root, 0710)); err != nil {
+	if err := errors.Join(os.Chown(root, 0, 0), os.Chmod(root, 0700)); err != nil {
 		return err
 	}
-	s.handoff, s.shares, err = s.candidate.MountPrivateShareRoots(ctx, root, s.volumes, g.group)
+	s.handoff, s.shares, err = s.candidate.MountPrivateShareRoots(ctx, root, s.volumes)
 	if err != nil {
 		return err
 	}

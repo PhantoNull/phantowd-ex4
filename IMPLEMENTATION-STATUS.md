@@ -16,8 +16,7 @@ retained databases, and process-group shutdown. The fixture checks the original
 mount inodes and the exact kernel capability sets. It also rejects an unsealed
 roster, duplicate state directories, a pre-unshared child and swapped share
 modes. The clean RC0 build runs this fixture with the kernel and userspace it
-just produced. Boot policy, the production identity backend, and authenticated
-SMB service supervision remain open.
+just produced.
 
 The service configuration and sealed share declaration come from the same
 validated candidate. A temporary mount holds the expected NSS and Samba files
@@ -32,8 +31,7 @@ The ARMv5 guest verifies disabled creation, password assignment while disabled,
 login refusal and explicit enable under the same Samba SID. The tests retain
 the resulting identity evidence through real authenticated SMB3 I/O on the
 original database directories. The offline backend refuses session revocation
-before it changes the journal. The boot supervisor still needs to admit the
-Samba backend and coordinate live sessions.
+before it changes the journal.
 
 Newly provisioned RC0 identity authorities keep managed private groups and
 users in a separate revisioned state document. The owner builds its service
@@ -49,8 +47,7 @@ IPv4 address and checks that the original child holds the socket. It retains
 the configuration and share descriptors through process-group shutdown. The
 ARMv5 fixture exercises authenticated file I/O, rejects stop without drain
 confirmation, rejects stop while a TCP client is live, and checks that the
-listener and process group disappear after the client closes. Network admission
-and protocol-level session drain still belong to the boot supervisor.
+listener and process group disappear after the client closes.
 
 The Samba ingress guard stages an nftables table before publication. It
 admits TCP/445 only on the selected IPv4 address and interface. During drain
@@ -62,8 +59,7 @@ unexpected rules for review. The daemon owner now controls this firewall
 through listener admission and shutdown. An authorized stop fences new
 connections while waiting for the protocol check and TCP drain. The owner
 removes the verified firewall after the original group exits. The RC0 ARMv5
-fixture exercises this sequence with the image's nftables and Samba. Normal
-boot attachment remains open.
+fixture exercises this sequence with the image's nftables and Samba.
 
 The stop owner now observes the owned Samba process through its pidfd and
 the original private root. The fixed, capability-free `smbstatus` worker
@@ -74,6 +70,16 @@ unmarked report leaves the fence in place. The production-profile fixture
 holds an authenticated file open while testing stop, then lets that read
 finish through the fence. The complete clean-image campaign must qualify
 the patched status binary.
+
+Normal RC0 startup can activate Samba from a boot storage grant that identifies
+the IPv4 address, ingress interface and backing volumes. The supervisor reopens
+the provisioned identity role with the protected passdb backend and retains
+the policy, identity, configuration and share descriptors through shutdown.
+The original root stop socket starts the drain while management remains
+available. A pending drain keeps the ingress fence and allows a later stop
+request. The two-guest ARMv5 campaign checks authenticated file access, continued
+reads through the fence, refusal of new connections and a successful
+release after the packaged census can prove the service idle.
 
 Two clean RC0 builds booted successfully and produced different root
 filesystem checksums. Their regular-file contents differed only in

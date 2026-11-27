@@ -301,16 +301,8 @@ func smbClient(ctx context.Context) error {
 	if _, err := io.WriteString(input, "put /run/rc0-smb-payload written\nget marker /run/rc0-smb-original\n"); err != nil {
 		return err
 	}
-	for {
-		data, err := os.ReadFile("/run/rc0-smb-original")
-		if err == nil && string(data) == smbMarker {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-		}
+	if err := waitSMBRead(ctx, "/run/rc0-smb-original"); err != nil {
+		return err
 	}
 	if _, err := io.WriteString(peer, "held\n"); err != nil {
 		return err
@@ -328,6 +320,12 @@ func smbClient(ctx context.Context) error {
 	if !errors.As(err, &timeout) || !timeout.Timeout() {
 		return fmt.Errorf("fenced SMB connection was not dropped: %w", err)
 	}
+	if _, err := io.WriteString(input, "get marker /run/rc0-smb-fenced\n"); err != nil {
+		return err
+	}
+	if err := waitSMBRead(ctx, "/run/rc0-smb-fenced"); err != nil {
+		return err
+	}
 	if _, err := io.WriteString(input, "quit\n"); err != nil {
 		return err
 	}
@@ -340,6 +338,22 @@ func smbClient(ctx context.Context) error {
 	if err := readNFSTestMessage(peer, "verified\n"); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified new_connection=dropped")
+	fmt.Println("PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified new_connection=dropped fenced_read=verified")
 	return nil
+}
+
+func waitSMBRead(ctx context.Context, path string) error {
+	tick := time.NewTicker(100 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		data, err := os.ReadFile(path)
+		if err == nil && string(data) == smbMarker {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("SMB read did not return the original content: %w", ctx.Err())
+		case <-tick.C:
+		}
+	}
 }

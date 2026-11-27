@@ -19,6 +19,8 @@ import (
 
 const rc0PrebindEnv = "PHANTOWD_RC0_PREBIND"
 
+var errRC0DrainPending = errors.New("RC0 file service drain is pending")
+
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
 	storageBroker := flag.Bool("storage-broker", false, "serve the local read-only storage broker")
@@ -85,6 +87,9 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		err := manageRC0BootService(ctx, *rc0BootService)
 		stop()
+		if errors.Is(err, errRC0DrainPending) {
+			log.Fatal(errRC0DrainPending)
+		}
 		if err != nil {
 			log.Fatal("RC0 boot service requires review")
 		}

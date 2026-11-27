@@ -148,14 +148,14 @@ func NewServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare
 
 // NewDescriptorServiceHandoff stages roots beneath an immediate root-only
 // parent. The isolated daemon receives the share descriptors from its owner.
-func NewDescriptorServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32) (*ServiceHandoff, error) {
-	return newServiceHandoff(root, set, shares, serviceGroupID, true)
+func NewDescriptorServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare) (*ServiceHandoff, error) {
+	return newServiceHandoff(root, set, shares, 0, true)
 }
 
 func newServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32, privateParent bool) (*ServiceHandoff, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || set == nil || !validHandoffRoot(root) ||
 		shares == nil || len(shares) == 0 || len(shares) > shareconfig.MaxShares ||
-		serviceGroupID < 1000 || serviceGroupID > 60000 {
+		!privateParent && (serviceGroupID < 1000 || serviceGroupID > 60000) {
 		return nil, ErrHandoffInvalid
 	}
 	if err := validateHandoffAncestors(root, privateParent); err != nil {
@@ -185,7 +185,7 @@ func newServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare
 	}()
 	var st unix.Stat_t
 	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR ||
-		st.Mode&07777 != 0710 || st.Uid != 0 || st.Gid != serviceGroupID {
+		st.Mode&07777 != handoffRootMode(privateParent) || st.Uid != 0 || st.Gid != serviceGroupID {
 		return nil, ErrHandoffInvalid
 	}
 	rootIdentity, err := handoffIdentityForFD(fd)
@@ -740,7 +740,15 @@ func (h *ServiceHandoff) rootPathStillPinnedLocked() bool {
 	identity, err := handoffIdentityForFD(fd)
 	var st unix.Stat_t
 	return err == nil && identity == h.rootIdentity && unix.Fstat(fd, &st) == nil &&
-		st.Uid == 0 && st.Gid == h.serviceGroupID && st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0710
+		st.Uid == 0 && st.Gid == h.serviceGroupID && st.Mode&unix.S_IFMT == unix.S_IFDIR &&
+		st.Mode&07777 == handoffRootMode(h.privateParent)
+}
+
+func handoffRootMode(privateParent bool) uint32 {
+	if privateParent {
+		return 0700
+	}
+	return 0710
 }
 
 func validateHandoffAncestors(root string, privateParent bool) error {

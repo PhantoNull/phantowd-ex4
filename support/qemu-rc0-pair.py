@@ -21,7 +21,10 @@ MARKERS = {
         "read=verified fsync=verified unmount=verified",
     ),
 }
-SMB_CLIENT = "PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified new_connection=dropped"
+SMB_CLIENT = (
+    "PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified "
+    "new_connection=dropped fenced_read=verified"
+)
 PAIRS = {
     "nfs": MARKERS,
     "smb": {

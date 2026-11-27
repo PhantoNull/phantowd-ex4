@@ -1550,14 +1550,19 @@ open.
   synced write, refusal of ordinary stop while mounted, and release after
   confirmed drain. Successful combined-image evidence and a physical EX4
   platform provider are release prerequisites.
-  RC0 includes dormant Samba tools and admits a separately provisioned
+  RC0 includes Samba tools and admits a separately provisioned
   persistent Samba state directory. The installer publishes private
   and shared database directories under the admitted local state mount.
   Startup holds their original descriptors and excludes a second owner.
   The ARMv5 Samba reboot fixture uses these same directories for its
   actual passdb and requires their original inodes after reboot.
-  The isolated Samba daemon, policy attachment and controlled client
-  shutdown still need the RC0 production supervisor.
+  The normal BusyBox handoff now attaches the isolated Samba daemon to
+  the approved storage and network endpoint, with the credential backend
+  bound to the original persistent state. Stop keeps management available
+  while the Samba service is fenced and the supervisor checks sessions,
+  trees, open files and transport. The paired ARMv5 test covers SMB3 I/O
+  and the stop sequence on virtual media. Physical EX4 qualification and
+  the platform producer for these grants remain release prerequisites.
   The Samba planner now attaches only its declared share roots through the
   normal Linux handoff. It retains the complete original volume roster and
   exact, mount-protected share descriptors. A stale generation or a foreign
@@ -1567,9 +1572,8 @@ open.
   The RC0 image build now stages the bounded Samba ELF closure and the
   fixed CP850 converter in a dedicated code-only root. The image includes
   its expected file hashes, modes and alias map. The boot test verifies the
-  complete original code tree on a kernel read-only mount before accepting
-  the dormant profile. The isolated code root is ready for the launcher
-  that attaches separate configuration, database and share descriptors.
+  complete original code tree on a kernel read-only mount. The launcher
+  attaches separate configuration, database and share descriptors.
   A Linux NFSD controller retains the original mount and namespace grants
   from a trusted platform owner. It verifies the stopped profile, holds a
   protected lock across the lifetime, and checks the explicit listener and
