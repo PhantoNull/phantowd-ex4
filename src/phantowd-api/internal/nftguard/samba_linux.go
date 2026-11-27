@@ -176,10 +176,6 @@ func (f *Samba) checkPhase(ctx context.Context, phase sambaPhase) error {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.changeLocked(ctx, from, to)
-}
-
-func (f *Samba) changeLocked(ctx context.Context, from, to sambaPhase) error {
 	if f.phase == sambaReview {
 		return ErrReviewRequired
 	}
@@ -229,6 +225,10 @@ func (f *Samba) change(ctx context.Context, from, to sambaPhase) error {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.changeLocked(ctx, from, to)
+}
+
+func (f *Samba) changeLocked(ctx context.Context, from, to sambaPhase) error {
 	if f.phase == sambaReview {
 		return ErrReviewRequired
 	}
