@@ -1,5 +1,3 @@
-//go:build qemu
-
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
@@ -11,7 +9,7 @@ import (
 )
 
 // Check serializes one fresh observation. It does not poll, restart or release
-// inputs. The fixture backend must honor the existing cooperative deadline.
+// inputs. The backend must honor the cooperative deadline.
 func (o *Owner) Check(ctx context.Context) error {
 	if err := o.acquire(ctx); err != nil {
 		return err

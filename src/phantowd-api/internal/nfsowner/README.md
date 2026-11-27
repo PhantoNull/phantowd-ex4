@@ -5,8 +5,13 @@ and mounted volume roster for one enabled NFSv3/TCP request. It owns a complete
 roster lease and export-root pins. `Check` compares the exact request and
 rechecks the original sources. `Close` releases the owned inputs after its caller
 verifies service stop. The caller retains both borrowed leases through close.
-The real two-lifetime guest fixture uses this same input preparation path. The
-kernel and RPC lifecycle remains restricted to the guarded QEMU adapter.
+`NewLinux` transfers the original inputs into one service Owner with a fixed
+trusted runtime. The Owner checks inputs independently of the runtime and
+requires verified stop and runtime closure before releasing storage. While
+attached, the original handle refuses external checks, closure and transfers.
+The caller keeps its borrowed policy and identity claims through closure.
+Both real guest lifetimes use these Linux paths. The kernel and RPC runtime
+remains restricted to the guarded QEMU adapter.
 
 Construction captures one typed candidate and fixed trusted backend without I/O.
 Close serializes input/stopped checks before release; uncertainty retains review

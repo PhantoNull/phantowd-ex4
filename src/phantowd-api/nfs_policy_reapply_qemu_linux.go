@@ -57,7 +57,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil {
 		return err
 	}
-	owner, err = nfsowner.NewQEMU(candidate, b)
+	owner, err = nfsowner.NewLinux(b.inputs, b)
 	if err != nil {
 		return err
 	}
@@ -138,6 +138,9 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	}
 	b.phase = "revision2-close"
 	if err := owner.Close(ctx); err != nil {
+		return err
+	}
+	if err := b.releaseBorrowedInputs(ctx); err != nil {
 		return err
 	}
 	if !errors.Is(b.policyLease.Verify(ctx), naspolicystore.ErrClosed) {

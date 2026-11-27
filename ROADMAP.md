@@ -1495,6 +1495,10 @@ storage. No production roster provider or activation path exists.
   roots for one exact enabled candidate. It checks the original policy and
   identity leases through both guest lifetimes and releases storage after
   verified stop. Kernel control remains limited to the guarded QEMU adapter.
+  The ordinary Linux service Owner takes those inputs exclusively. Both real
+  guest lifetimes exercise its start, check and stop, with runtime closure
+  preceding storage release. The caller retains the policy and identity claims
+  through that closure.
   Actual root capture and existing process-constructor
   integration remain separate, not implied by adding the rollback utility.
   A guarded standalone ARM fixture exercises original-lease root capture, mixed
