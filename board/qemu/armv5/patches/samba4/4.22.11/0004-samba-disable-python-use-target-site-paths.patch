@@ -1,0 +1,36 @@
+From: PhantoWD EX4 contributors
+Subject: [PATCH] wafsamba: keep host Python paths out of disabled bindings
+
+The dynamic configuration still embeds both site directories with
+--disable-python. Use target defaults in this mode while honoring
+explicit configuration. Host Python still runs the build tools.
+
+Signed-off-by: PhantoWD EX4 contributors
+---
+--- a/buildtools/wafsamba/samba_python.py
++++ b/buildtools/wafsamba/samba_python.py
+@@ -1,7 +1,7 @@
+ # waf build tool for building IDL files with pidl
+ 
+ import os, sys
+-from waflib import Build, Logs, Utils, Configure, Errors
++from waflib import Build, Logs, Utils, Configure, Errors, Options
+ from waflib.Configure import conf
+ 
+ @conf
+@@ -31,6 +31,15 @@
+     if conf.env.disable_python:
+ 
+         conf.msg("python headers", "Check disabled due to --disable-python")
++        # Host Python is still used by the build. Its site directories
++        # must not become runtime defaults when Samba has no Python bindings.
++        target_sitedir = os.path.join(conf.env.LIBDIR,
++                                      "python" + conf.env.PYTHON_VERSION,
++                                      "site-packages")
++        for name in ("PYTHONDIR", "PYTHONARCHDIR"):
++            if not getattr(Options.options, name.lower(), None) and not conf.environ.get(name):
++                conf.env[name] = target_sitedir
++
+         # we don't want PYTHONDIR in config.h, as otherwise changing
+         # --prefix causes a complete rebuild
+         conf.env.DEFINES = [x for x in conf.env.DEFINES

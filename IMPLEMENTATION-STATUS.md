@@ -75,6 +75,14 @@ holds an authenticated file open while testing stop, then lets that read
 finish through the fence. The complete clean-image campaign must qualify
 the patched status binary.
 
+Two clean RC0 builds booted successfully and produced different root
+filesystem checksums. Their regular-file contents differed only in
+`libsamba-util`, its isolated copy and the manifest recording that copy.
+The six differing bytes in the library were a random host Python path
+suffix. The Samba build now defaults to target Python site paths when
+building without Python bindings. The independent comparison still checks
+the full root filesystem byte for byte.
+
 ## Explicit RC0 management supervisor
 
 The ordinary Linux API can supervise one management lifetime from a retained,
