@@ -91,6 +91,10 @@ func OpenOwnedWithCodec[T any](directory string, codec Codec[T]) (*OwnedStore[T]
 		return nil, err
 	}
 	s.noAtime = true
+	return ownStore(s)
+}
+
+func ownStore[T any](s *Store[T]) (*OwnedStore[T], error) {
 	o := &OwnedStore[T]{store: s, watch: -1, leases: make(map[*PolicyLease[T]]struct{})}
 	o.self = o
 	if err := o.newEpochLocked(); err != nil {

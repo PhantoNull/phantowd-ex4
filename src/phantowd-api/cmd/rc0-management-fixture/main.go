@@ -116,30 +116,33 @@ func check() error {
 		if err := errors.Join(runInitHook(ctx, "start"), runtimeAbsent()); err != nil {
 			return err
 		}
-		if err := seed(ctx, credentials, policy, true); err != nil {
+		if err := seed(ctx, credentials, managementPolicy, true); err != nil {
 			return err
 		}
 	}
-	if err := os.WriteFile(proof, []byte(policy), 0600); err != nil {
+	if err := os.WriteFile(proof, []byte(managementPolicy), 0600); err != nil {
 		return err
 	}
 	if err := prepareStorageApproval(0); err != nil {
 		return err
 	}
 	current := root + "/nas-policy/nas-services.json"
-	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
+	if raw, err := os.ReadFile(current); err != nil || string(raw) != managementPolicy {
 		return errors.New("persistent policy bytes differ before startup")
 	}
 	if err := expectRefusal(ctx, current, nil); err != nil {
 		return err
 	}
-	if err := os.WriteFile(proof+".wrong", []byte(policy+"\n"), 0600); err != nil {
+	if err := os.WriteFile(proof+".wrong", []byte(managementPolicy+"\n"), 0600); err != nil {
 		return err
 	}
 	if err := expectRefusal(ctx, proof+".wrong", nil); err != nil {
 		return err
 	}
 	if phase == "seed" {
+		if err := provisionFixtureISCSICredentials(ctx, secret); err != nil {
+			return err
+		}
 		if err := proveIdentityStartupRefusal(ctx); err != nil {
 			return err
 		}
@@ -190,7 +193,7 @@ func check() error {
 	if err != nil {
 		return err
 	}
-	if raw, err := os.ReadFile(current); err != nil || string(raw) != policy {
+	if raw, err := os.ReadFile(current); err != nil || string(raw) != managementPolicy {
 		return errors.New("persistent policy changed during startup")
 	}
 	if raw, err := os.ReadFile(root + "/accounts/accounts.json"); err != nil || bytes.Contains(raw, bytes.TrimSpace(secret)) {
@@ -208,7 +211,7 @@ func check() error {
 		identities.Accounts == nil || len(identities.Accounts) != 0 {
 		return errors.New("original service identities changed across supervision")
 	}
-	return nil
+	return verifyFixtureISCSICredentials(ctx, secret, phase)
 }
 
 func seed(ctx context.Context, credentials []byte, confirmedPolicy string, exerciseManagementRefusals bool) error {
@@ -427,7 +430,11 @@ func proveIdentityStartupRefusal(ctx context.Context) error {
 }
 
 func checkPersistentServiceLocks(held bool) error {
-	return errors.Join(checkBootRoleLock(identityRole, held), checkBootRoleLock(sambaRole, held))
+	err := errors.Join(checkBootRoleLock(identityRole, held), checkBootRoleLock(sambaRole, held))
+	if _, statErr := os.Lstat(chapRole); os.IsNotExist(statErr) {
+		return err
+	}
+	return errors.Join(err, checkBootRoleLock(chapRole, held))
 }
 
 func provisionSambaState(ctx context.Context) error {
@@ -595,7 +602,7 @@ func prepareBootPlan(state *os.File, path string, change func(*bootPlan)) (*os.F
 	}
 	plan := bootPlan{
 		Format: "phantowd-rc0-boot-v1", Installation: install, Address: address, Origin: origin,
-		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(policy))),
+		StateMountID: st.Mnt_id, StateRootInode: st.Ino, PolicySHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(managementPolicy))),
 		TLSLeafSHA256: fmt.Sprintf("%x", sha256.Sum256(public.Bytes)),
 		StorageSHA256: fmt.Sprintf("%x", sha256.Sum256(storage)),
 	}
@@ -652,7 +659,7 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 		return err
 	}
 	slot := bootDir + "/state"
-	if err := os.WriteFile(bootDir+"/policy.json", []byte(policy), 0600); err != nil {
+	if err := os.WriteFile(bootDir+"/policy.json", []byte(managementPolicy), 0600); err != nil {
 		return err
 	}
 	if err := rejectSymlinkedInitState(ctx, slot); err != nil {

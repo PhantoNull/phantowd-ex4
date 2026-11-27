@@ -41,6 +41,10 @@ func provisionInheritedRC0SambaState(context.Context) error {
 	return errors.New("RC0 Samba state provisioning requires Linux")
 }
 
+func provisionInheritedRC0ISCSICredentials(context.Context, string, io.Reader) error {
+	return errors.New("RC0 iSCSI credential provisioning requires Linux")
+}
+
 func configureInheritedRC0SambaAccount(context.Context, string, string, io.Reader) error {
 	return errors.New("RC0 Samba account configuration requires Linux")
 }

@@ -137,7 +137,7 @@ func takeRC0SambaMountRoles(code *os.File, shares []runtimebundle.SambaLaunchRol
 			return roles, err
 		}
 		roles = append(roles, rc0SambaMountRole{dir, "state/" + name, data})
-		identity, err := observeRC0SambaDirectory(dir)
+		identity, err := observeRC0PrivateStateDirectory(dir)
 		if err != nil || (index > 0 && (identity.Mnt_id != persistent.Mnt_id || identity.Ino == persistent.Ino)) {
 			return roles, errRC0Review
 		}

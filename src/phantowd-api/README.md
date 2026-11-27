@@ -913,6 +913,18 @@ and refuses non-Versatile PB machines. See the
   control characters. The input may end with one newline. The initial
   password operation refuses a replacement. An active supervisor holds the
   state lock and prevents offline configuration.
+- With RC0 stopped, a trusted root launcher can initialize the CHAP
+  credential role using `--provision-rc0-iscsi-credentials` and
+  `--nas-installation-id`. Pass the admitted state directory on FD 3 and an
+  independent read-only copy of the exact confirmed NAS policy on FD 4.
+  Supply a private JSON document on stdin with format
+  `phantowd-chap-credentials`, schema version and revision both 1, and an
+  `entries` array containing `ref` and `secret` for each CHAP reference.
+  Supply distinct randomly generated printable ASCII secrets of 16 to 128
+  bytes. The provisioner checks coverage for all targets and directions.
+  It publishes the root-private `iscsi-credentials` role after syncing its
+  contents. An active supervisor holds the state lock and prevents
+  provisioning. An interrupted stage or repeat publication requires review.
 - The digest-bound storage document can include an `smb` object with an
   IPv4 `address` and `ingress_index`. The platform configures the approved
   interface before init starts. The supervisor requires a nonempty confirmed

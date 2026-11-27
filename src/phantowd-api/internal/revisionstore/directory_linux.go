@@ -22,7 +22,25 @@ func OpenDirectoryWithCodec[T any](directory *os.File, codec Codec[T]) (*Store[T
 	if err != nil {
 		return nil, err
 	}
-	return openDescriptorWithCodec(fd, codec)
+	return openDescriptorWithCodec(fd, codec, false)
+}
+
+// OpenOwnedDirectoryWithCodec borrows the supplied directory independently
+// and creates a fresh retained observation epoch. Fixed-name file reads stay
+// on the original mount and use O_NOATIME throughout construction and use.
+func OpenOwnedDirectoryWithCodec[T any](directory *os.File, codec Codec[T]) (*OwnedStore[T], error) {
+	if !codec.valid() {
+		return nil, ErrUnsafe
+	}
+	fd, err := borrowDirectoryDescription(directory, unix.O_NOATIME)
+	if err != nil {
+		return nil, err
+	}
+	s, err := openDescriptorWithCodec(fd, codec, true)
+	if err != nil {
+		return nil, err
+	}
+	return ownStore(s)
 }
 
 func borrowDirectoryDescription(directory *os.File, flags uint64) (int, error) {

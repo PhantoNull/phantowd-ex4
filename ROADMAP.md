@@ -3343,6 +3343,11 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
+  RC0 initial CHAP provisioning uses the admitted state and independently
+  confirmed NAS policy descriptors. The launcher verifies the complete
+  credential reference set and publishes the root-private role atomically.
+  Normal management retains the role if present and rechecks it at shutdown.
+  Rotation and qualified iSCSI activation remain separate work.
   **Desired preview:** authenticated caller-only projection, exact decimals and advisory path overlaps; no state access or target activation.
   Manual dashboard review preserves original input bytes and retires stale results.
   A guided disabled-target/LUN0 draft preserves existing definitions and validates

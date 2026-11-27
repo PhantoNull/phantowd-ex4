@@ -32,6 +32,7 @@ func main() {
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	provisionIdentities := flag.Bool("provision-rc0-service-identities", false, "initialize the service identity allocation range in inherited RC0 state directory 3")
 	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
+	provisionISCSI := flag.Bool("provision-rc0-iscsi-credentials", false, "initialize CHAP credentials using inherited RC0 state and policy confirmation")
 	configureSamba := flag.String("configure-rc0-samba-account", "", "prepare a provisioned Samba account from inherited RC0 state directory 3")
 	sambaIdentityID := flag.String("rc0-samba-identity-id", "", "exact provisioned identity ID for Samba account configuration")
 	verifySambaCode := flag.Bool("verify-rc0-samba-code", false, "verify the fixed isolated Samba code in this RC0 image")
@@ -63,7 +64,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "", *configureSamba != "",
+		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "", *configureSamba != "", *provisionISCSI,
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionRC0, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -86,7 +87,7 @@ func main() {
 	if *replaceTLS != (*expectedTLS != "") {
 		log.Fatal("RC0 TLS replacement requires the current certificate fingerprint")
 	}
-	if !*provisionNAS && !*provisionRC0 && !*superviseRC0 && *nasInstallation != "" {
+	if !*provisionNAS && !*provisionRC0 && !*provisionISCSI && !*superviseRC0 && *nasInstallation != "" {
 		log.Fatal("NAS installation ID requires provisioning or supervision mode")
 	}
 	if *rc0BootService != "" {
@@ -118,6 +119,15 @@ func main() {
 	if *provisionNAS {
 		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {
 			log.Fatal(err)
+		}
+		return
+	}
+	if *provisionISCSI {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := provisionInheritedRC0ISCSICredentials(ctx, *nasInstallation, os.Stdin)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 iSCSI credential provisioning refused or requires review")
 		}
 		return
 	}

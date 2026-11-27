@@ -44,7 +44,7 @@ func provisionInheritedRC0SambaState(ctx context.Context) (result error) {
 // The caller holds the admitted state lock. The stage is durable before
 // publication begins and any interrupted stage requires review.
 func provisionRC0SambaState(ctx context.Context, root *os.File) (result error) {
-	if _, err := observeRC0SambaDirectory(root); err != nil || ctx == nil || ctx.Err() != nil ||
+	if _, err := observeRC0PrivateStateDirectory(root); err != nil || ctx == nil || ctx.Err() != nil ||
 		!rc0AbsentRole(root, rc0SambaStateStage) || !rc0AbsentRole(root, rc0SambaStateRole) {
 		return errRC0Review
 	}
@@ -72,8 +72,8 @@ func provisionRC0SambaState(ctx context.Context, root *os.File) (result error) {
 			return errRC0Review
 		}
 	}
-	original, err := observeRC0SambaDirectory(stage)
-	if err != nil || !sameRC0SambaRole(root, rc0SambaStateStage, original) ||
+	original, err := observeRC0PrivateStateDirectory(stage)
+	if err != nil || !sameRC0PrivateStateRole(root, rc0SambaStateStage, original) ||
 		unix.Fsync(int(stage.Fd())) != nil || ctx.Err() != nil {
 		return errRC0Review
 	}
@@ -105,7 +105,7 @@ func retainRC0SambaState(root *os.File, name string) (_ *rc0SambaState, result e
 			result = errors.Join(result, state.Close())
 		}
 	}()
-	_, err = observeRC0SambaDirectory(dir)
+	_, err = observeRC0PrivateStateDirectory(dir)
 	if err != nil || unix.Flock(int(dir.Fd()), unix.LOCK_EX|unix.LOCK_NB) != nil {
 		return nil, errRC0Review
 	}
@@ -126,31 +126,31 @@ func retainRC0SambaState(root *os.File, name string) (_ *rc0SambaState, result e
 }
 
 func (s *rc0SambaState) check(parent *os.File, name string) error {
-	original, err := observeRC0SambaDirectory(s.dir)
-	if err != nil || !sameRC0SambaRole(parent, name, original) {
+	original, err := observeRC0PrivateStateDirectory(s.dir)
+	if err != nil || !sameRC0PrivateStateRole(parent, name, original) {
 		return errRC0Review
 	}
 	for i, role := range rc0SambaPersistentRoles {
-		observed, err := observeRC0SambaDirectory(s.roles[i])
-		if err != nil || !sameRC0SambaRole(s.dir, role, observed) {
+		observed, err := observeRC0PrivateStateDirectory(s.roles[i])
+		if err != nil || !sameRC0PrivateStateRole(s.dir, role, observed) {
 			return errRC0Review
 		}
 	}
 	return nil
 }
 
-const rc0SambaDirMask = unix.STATX_TYPE | unix.STATX_MODE | unix.STATX_UID | unix.STATX_GID |
+const rc0PrivateStateDirMask = unix.STATX_TYPE | unix.STATX_MODE | unix.STATX_UID | unix.STATX_GID |
 	unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
 
-func observeRC0SambaDirectory(dir *os.File) (unix.Statx_t, error) {
+func observeRC0PrivateStateDirectory(dir *os.File) (unix.Statx_t, error) {
 	var st unix.Statx_t
 	var fs unix.Statfs_t
 	if dir == nil {
 		return st, errRC0Review
 	}
 	fd := int(dir.Fd())
-	if unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, rc0SambaDirMask, &st) != nil ||
-		st.Mask&rc0SambaDirMask != rc0SambaDirMask || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 || st.Gid != 0 ||
+	if unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, rc0PrivateStateDirMask, &st) != nil ||
+		st.Mask&rc0PrivateStateDirMask != rc0PrivateStateDirMask || st.Mode != unix.S_IFDIR|0700 || st.Uid != 0 || st.Gid != 0 ||
 		unix.Fstatfs(fd, &fs) != nil || fs.Type != unix.EXT4_SUPER_MAGIC || fs.Flags&unix.ST_RDONLY != 0 {
 		return st, errRC0Review
 	}
@@ -162,10 +162,10 @@ func observeRC0SambaDirectory(dir *os.File) (unix.Statx_t, error) {
 	return st, nil
 }
 
-func sameRC0SambaRole(parent *os.File, name string, original unix.Statx_t) bool {
+func sameRC0PrivateStateRole(parent *os.File, name string, original unix.Statx_t) bool {
 	var current unix.Statx_t
-	return unix.Statx(int(parent.Fd()), name, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT, rc0SambaDirMask, &current) == nil &&
-		current.Mask&rc0SambaDirMask == rc0SambaDirMask && current.Dev_major == original.Dev_major &&
+	return unix.Statx(int(parent.Fd()), name, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT, rc0PrivateStateDirMask, &current) == nil &&
+		current.Mask&rc0PrivateStateDirMask == rc0PrivateStateDirMask && current.Dev_major == original.Dev_major &&
 		current.Dev_minor == original.Dev_minor && current.Mnt_id == original.Mnt_id &&
 		current.Ino == original.Ino && current.Mode == original.Mode &&
 		current.Uid == original.Uid && current.Gid == original.Gid
