@@ -84,6 +84,9 @@ func check() error {
 	}
 	phase := os.Args[1]
 	budget := 45 * time.Second
+	if phase == "seed" {
+		budget = 60 * time.Second
+	}
 	if strings.HasPrefix(phase, "smb-") {
 		budget = 180 * time.Second
 	}
@@ -1008,9 +1011,17 @@ func observeHTTPS(ctx context.Context, credentials []byte) (string, error) {
 		return "", err
 	}
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second, Jar: jar}
+	ready, cancelReady := context.WithTimeout(ctx, 12*time.Second)
+	defer cancelReady()
+	retry := time.NewTicker(100 * time.Millisecond)
+	defer retry.Stop()
 	fingerprint := ""
-	for i := 0; i < 30; i++ {
-		response, err := client.Get(origin + "/healthz")
+	for {
+		request, err := http.NewRequestWithContext(ready, http.MethodGet, origin+"/healthz", nil)
+		if err != nil {
+			return "", err
+		}
+		response, err := client.Do(request)
 		if err == nil {
 			response.Body.Close()
 			if response.StatusCode == 200 && response.TLS != nil && len(response.TLS.PeerCertificates) > 0 &&
@@ -1019,10 +1030,15 @@ func observeHTTPS(ctx context.Context, credentials []byte) (string, error) {
 			}
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-ready.Done():
+			return "", fmt.Errorf("supervised HTTPS did not become ready: %w", errors.Join(ready.Err(), err))
+		case <-retry.C:
+		}
 	}
+	cancelReady()
 	if fingerprint == "" {
-		return "", errors.New("supervised HTTPS did not become ready")
+		return "", errors.New("supervised HTTPS presented an unexpected health response or certificate")
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, origin+"/api/v1/auth/login", bytes.NewReader(credentials))
 	if err != nil {

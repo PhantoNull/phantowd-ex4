@@ -103,7 +103,11 @@ if [ "$phase" = seed ]; then
     if grep -F "\"$table\"" /run/rc0-nft-after.json; then exit 1; fi
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
-/rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+if ! /rc0-fixture/runner "$phase"; then
+    echo PHANTOWD_RC0_SUPERVISOR_FAILED
+    sync
+    exec reboot -f
+fi
 # The review fixtures retain storage and their firewall. The emulator
 # discards both disposable disks after the verified reboot.
 case "$phase" in
