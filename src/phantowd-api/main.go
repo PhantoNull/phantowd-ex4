@@ -126,9 +126,9 @@ func main() {
 		return
 	}
 	if *runSambaStatus {
-		if err := runRC0SambaStatus(); err != nil {
-			log.Fatal("RC0 Samba status requires review")
-		}
+		exit, err := runRC0SambaStatus()
+		log.Print("RC0 Samba status requires review: ", err)
+		os.Exit(exit)
 		return
 	}
 	if *sambaWorker != "" {

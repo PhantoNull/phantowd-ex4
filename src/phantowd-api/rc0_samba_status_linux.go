@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -14,14 +15,14 @@ import (
 
 // The parent retains FD 4 from the original process's procfs root. Use that
 // root directly so the status command sees the actual lock and session DBs.
-func runRC0SambaStatus() error {
+func runRC0SambaStatus() (int, error) {
 	runtime.LockOSThread()
 	if developmentBrowserEnrollment || !rc0SambaChildContext() {
-		return errRC0Review
+		return 64, fmt.Errorf("check status launch: %w", errRC0Review)
 	}
 	root, err := takeStartupFile(4, unix.S_IFDIR)
 	if err != nil {
-		return err
+		return 65, fmt.Errorf("open status root: %w", err)
 	}
 	defer root.Close()
 	var st unix.Stat_t
@@ -30,30 +31,30 @@ func runRC0SambaStatus() error {
 	if unix.Fstat(int(root.Fd()), &st) != nil || st.Mode != unix.S_IFDIR|0755 ||
 		st.Uid != 0 || st.Gid != 0 || unix.Fstatfs(int(root.Fd()), &fs) != nil ||
 		fs.Type != unix.TMPFS_MAGIC || fs.Flags&flags != flags {
-		return errRC0Review
+		return 65, fmt.Errorf("check status root: %w", errRC0Review)
 	}
 	if err := checkRC0SambaStatusCode(root); err != nil {
-		return err
+		return 66, fmt.Errorf("check status code: %w", err)
 	}
 	if err := unix.Unshare(unix.CLONE_FS | unix.CLONE_NEWNET); err != nil {
-		return err
+		return 67, fmt.Errorf("isolate status worker: %w", err)
 	}
 	if err := unix.Fchdir(int(root.Fd())); err != nil {
-		return err
+		return 68, fmt.Errorf("enter status root: %w", err)
 	}
 	if err := unix.Chroot("."); err != nil {
-		return err
+		return 68, fmt.Errorf("set status root: %w", err)
 	}
 	if err := unix.Chdir("/"); err != nil {
-		return err
+		return 68, fmt.Errorf("set status working directory: %w", err)
 	}
 	if err := setRC0SambaCapabilities(0); err != nil {
-		return err
+		return 69, fmt.Errorf("drop status capabilities: %w", err)
 	}
 	if err := unix.CloseRange(3, 0xffffffff, unix.CLOSE_RANGE_CLOEXEC); err != nil {
-		return err
+		return 69, fmt.Errorf("close status descriptors: %w", err)
 	}
-	return syscall.Exec("/usr/bin/smbstatus",
+	return 70, syscall.Exec("/usr/bin/smbstatus",
 		[]string{"smbstatus", "--json", "--fast", "-s", "/etc/samba/smb.conf"},
 		[]string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"})
 }
