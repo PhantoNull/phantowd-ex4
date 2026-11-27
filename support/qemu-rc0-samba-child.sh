@@ -28,7 +28,7 @@ mkfs.ext4 -q -F "$virtual_data"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-        "$host_go" build -mod=vendor -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/runner" ./cmd/rc0-samba-child-fixture
+        "$host_go" build -mod=vendor -buildvcs=false -tags=qemu -trimpath -ldflags='-s -w' -o "$scratch/runner" ./cmd/rc0-samba-child-fixture
 )
 cat > "$scratch/init" <<'SH'
 #!/bin/sh
