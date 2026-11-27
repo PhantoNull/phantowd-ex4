@@ -31,6 +31,7 @@ func main() {
 	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
 	verifySambaCode := flag.Bool("verify-rc0-samba-code", false, "verify the fixed isolated Samba code in this RC0 image")
 	runSambaChild := flag.Bool("run-rc0-samba-child", false, "start isolated Samba from inherited supervisor descriptors")
+	runSambaStatus := flag.Bool("run-rc0-samba-status", false, "read activity from the inherited isolated Samba root")
 	sambaWorker := flag.String("run-rc0-samba-worker", "", "run a fixed Samba enrollment operation from inherited supervisor descriptors")
 	sambaAccount := flag.String("rc0-samba-account", "", "native account for the inherited Samba enrollment operation")
 	replaceTLS := flag.Bool("replace-rc0-tls", false, "replace the RC0 TLS identity while management is stopped")
@@ -57,7 +58,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*rc0BootService != "", *verifySambaCode, *runSambaChild, *sambaWorker != "",
+		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "",
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -121,6 +122,12 @@ func main() {
 	if *runSambaChild {
 		if err := runRC0SambaChild(context.Background()); err != nil {
 			log.Fatal("RC0 Samba child requires review: ", err)
+		}
+		return
+	}
+	if *runSambaStatus {
+		if err := runRC0SambaStatus(); err != nil {
+			log.Fatal("RC0 Samba status requires review")
 		}
 		return
 	}

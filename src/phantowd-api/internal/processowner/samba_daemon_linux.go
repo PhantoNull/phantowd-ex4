@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
 )
@@ -31,9 +32,9 @@ type SambaIngress interface {
 }
 
 // SambaDaemon owns one fixed isolated Samba process group and its ingress.
-// Its caller admits the original identity and storage authority, authorizes
-// the stop request, and checks protocol quiescence after new connections
-// have been fenced.
+// Its caller admits the original identity and storage authority and
+// authorizes the stop request. The owner checks protocol quiescence after
+// new connections have been fenced.
 type SambaDaemon struct {
 	mu        sync.Mutex
 	self      *SambaDaemon
@@ -42,7 +43,8 @@ type SambaDaemon struct {
 	files     []*os.File
 	ingress   SambaIngress
 	authorize func(context.Context) error
-	quiescent func(context.Context) error
+	pidFD     *os.File
+	status    *CaptureOwner
 	listener  uint64
 	attempted bool
 	published bool
@@ -57,13 +59,13 @@ type SambaDaemon struct {
 // child independently checks the sealed declaration, its mounts and Samba code
 // before exec. Each share descriptor is in the order of the sealed declaration.
 func NewSambaDaemon(address netip.Addr, declaration, configuration, private, state *os.File,
-	shares []*os.File, ingress SambaIngress, authorize, quiescent func(context.Context) error) (_ *SambaDaemon, result error) {
+	shares []*os.File, ingress SambaIngress, authorize func(context.Context) error) (_ *SambaDaemon, result error) {
 	if !address.Is4() || !address.IsGlobalUnicast() || ingress == nil || ingress.Address() != address ||
-		authorize == nil || quiescent == nil ||
+		authorize == nil ||
 		len(shares) == 0 || len(shares) > shareconfig.MaxShares || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return nil, ErrInvalid
 	}
-	d := &SambaDaemon{owner: New(), address: address, authorize: authorize, quiescent: quiescent}
+	d := &SambaDaemon{owner: New(), address: address, authorize: authorize}
 	d.self = d
 	defer func() {
 		if result != nil {
@@ -103,6 +105,7 @@ func NewSambaDaemon(address netip.Addr, declaration, configuration, private, sta
 		// alive until the child has been reaped, independently of Start's caller.
 		type launchResult struct {
 			process *managedProcess
+			pidFD   *os.File
 			err     error
 		}
 		started := make(chan launchResult)
@@ -113,13 +116,19 @@ func NewSambaDaemon(address netip.Addr, declaration, configuration, private, sta
 				started <- launchResult{err: ErrReviewRequired}
 				return
 			}
-			process, err := startDescriptorProcess(spec, 3+len(d.files)-1, d.files, syscall.SIGKILL)
-			started <- launchResult{process, err}
+			pidFD := -1
+			process, err := startDescriptorProcess(spec, 3+len(d.files)-1, d.files, syscall.SIGKILL, &pidFD)
+			var handle *os.File
+			if process != nil && pidFD >= 0 {
+				handle = os.NewFile(uintptr(pidFD), "owned-samba-pidfd")
+			}
+			started <- launchResult{process: process, pidFD: handle, err: err}
 			if process != nil {
 				<-process.done
 			}
 		}()
 		result := <-started
+		d.pidFD = result.pidFD
 		return result.process, result.err
 	}
 	d.ingress = ingress
@@ -146,6 +155,9 @@ func (d *SambaDaemon) Start(ctx context.Context) (Snapshot, error) {
 		Executable: "/usr/bin/phantowd-api", Args: []string{"--run-rc0-samba-child"}, RunAs: &Credentials{},
 		ReadyTimeout: 15 * time.Second, ProbeInterval: 100 * time.Millisecond, StopTimeout: 5 * time.Second,
 		Ready: func(ctx context.Context) (bool, error) {
+			if !d.sambaProcessAlive() {
+				return false, ErrReviewRequired
+			}
 			pid := d.owner.current.pid
 			listener, _, err := observeSambaTransport(ctx, pid, d.address)
 			if errors.Is(err, ErrBusy) {
@@ -229,6 +241,19 @@ func (d *SambaDaemon) checkTransport(ctx context.Context, pid int) (bool, error)
 	return drained, nil
 }
 
+// ObserveActivity returns bounded counts from the owned Samba process.
+func (d *SambaDaemon) ObserveActivity(ctx context.Context) (smbprovision.Activity, error) {
+	if d == nil || d.self != d || ctx == nil {
+		return smbprovision.Activity{}, ErrInvalid
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.closed || d.review || !d.published || d.settled {
+		return smbprovision.Activity{}, ErrUnavailable
+	}
+	return d.observeActivity(ctx)
+}
+
 // Stop fences new connections after authenticating the request. A fence
 // survives declined quiescence and busy transport checks so clients can
 // finish. A declined drain check sends no signal to the daemon.
@@ -269,8 +294,15 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 		}
 		return d.failAdmission(observed, err)
 	}
-	if err := d.quiescent(ctx); err != nil {
+	activity, err := d.observeActivity(ctx)
+	if err != nil {
 		return observed, err
+	}
+	if activity.Sessions != 0 || activity.Trees != 0 || activity.OpenFiles != 0 {
+		return observed, ErrBusy
+	}
+	if !activity.Complete {
+		return observed, ErrNotReady
 	}
 	drained, err := d.checkTransport(ctx, observed.PID)
 	if err != nil {
@@ -340,6 +372,12 @@ func (d *SambaDaemon) Close() error {
 	if d.closed {
 		return d.closeErr
 	}
+	if d.status != nil {
+		if err := d.status.Close(context.Background()); err != nil {
+			return errors.Join(ErrReviewRequired, err)
+		}
+		d.status = nil
+	}
 	if d.review {
 		return ErrReviewRequired
 	}
@@ -352,6 +390,10 @@ func (d *SambaDaemon) Close() error {
 	d.closed = true
 	for _, file := range d.files {
 		d.closeErr = errors.Join(d.closeErr, file.Close())
+	}
+	if d.pidFD != nil {
+		d.closeErr = errors.Join(d.closeErr, d.pidFD.Close())
+		d.pidFD = nil
 	}
 	d.files = nil
 	if d.closeErr != nil {

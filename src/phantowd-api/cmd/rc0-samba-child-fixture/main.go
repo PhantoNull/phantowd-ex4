@@ -130,10 +130,11 @@ func main() {
 	case "prepare":
 		prepareNativeGroup(ctx)
 		return
-	case "verify":
+	case "verify", "verify-unqualified":
 	default:
 		panic("invalid fixture phase")
 	}
+	unqualified := os.Args[1] == "verify-unqualified"
 	candidate := fixtureCandidate()
 	owner, err := runtimebundle.StageSambaServiceConfiguration(ctx, candidate, netip.MustParseAddr(address))
 	must(err)
@@ -194,7 +195,7 @@ func main() {
 	clear(auth)
 	must(os.Chown("/run/data/writable", fixtureID, fixtureID))
 	must(os.WriteFile("/run/smb-payload", []byte("isolated write\n"), 0600))
-	stopAuthorized, drainConfirmed := false, false
+	stopAuthorized := false
 	nftCode := open("/usr/sbin/nft")
 	defer nftCode.Close()
 	var nftMount unix.Statfs_t
@@ -220,91 +221,88 @@ func main() {
 					return processowner.ErrNotReady
 				}
 				return ctx.Err()
-			},
-			func(ctx context.Context) error {
-				if !drainConfirmed {
-					return processowner.ErrNotReady
-				}
-				return ctx.Err()
 			})
 		must(err)
 		return daemon
 	}
-	daemon := newDaemon()
-	foreign, err := net.Listen("tcp4", endpoint)
-	must(err)
-	if _, err := daemon.Start(ctx); !errors.Is(err, processowner.ErrBusy) {
-		panic("Samba admitted a foreign listener as ready")
-	}
-	must(foreign.Close())
-	started, err := daemon.Start(ctx)
-	must(err)
-	if started.State != processowner.StateReady || started.PID <= 1 || started.Generation != 1 {
-		panic("Samba readiness did not identify its own listener")
-	}
-	pid := started.PID
-	defer daemon.Abort()
-	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
-		panic("Samba accepted stop without drain authority")
-	}
-	if err := daemon.Close(); !errors.Is(err, processowner.ErrAlreadyRunning) {
-		panic("Samba released inherited inputs while running")
-	}
-	if conn, err := net.DialTimeout("tcp4", "127.0.0.1:445", 100*time.Millisecond); err == nil {
-		conn.Close()
-		panic("SMB listener expanded beyond the confirmed address")
-	}
-	child := fmt.Sprintf("/proc/%d", pid)
-	status, err := os.ReadFile(child + "/status")
-	must(err)
-	for _, line := range []string{"Name:\tsmbd\n", "CapInh:\t0000000000000000\n", "CapPrm:\t00000000000004db\n", "CapEff:\t00000000000004db\n", "CapBnd:\t00000000000004db\n", "CapAmb:\t0000000000000000\n", "NoNewPrivs:\t1\n"} {
-		if !strings.Contains(string(status), line) {
-			panic(fmt.Sprintf("missing %q from %s", line, status))
-		}
-	}
-	for location, original := range map[string]string{"/shares/writable": "/run/data/writable", "/shares/readonly": "/run/data/readonly", "/state/private": "/run/data/private", "/state/state": "/run/data/state", "/etc": configPath} {
-		dst, err := os.Stat(child + "/root" + location)
-		must(err)
-		src, err := os.Stat(original)
-		must(err)
-		if !os.SameFile(src, dst) {
-			panic("changed inode at " + location)
-		}
-	}
-	for _, location := range []string{"/proc", "/dev", "/run", "/bin"} {
-		if _, err := os.Stat(child + "/root" + location); !os.IsNotExist(err) {
-			panic("unexpected root exposure " + location)
-		}
-	}
-	selfNS, err := os.Stat("/proc/self/ns/mnt")
-	must(err)
-	childNS, err := os.Stat(child + "/ns/mnt")
-	must(err)
-	if os.SameFile(selfNS, childNS) {
-		panic("process did not isolate mounts")
-	}
-	client := exec.Command("/usr/bin/smbclient", "-N", "-m", "SMB3", "//"+address+"/fixture-rw", "-c", "ls")
-	output, err := client.CombinedOutput()
-	if err == nil || !strings.Contains(string(output), "NT_STATUS_ACCESS_DENIED") {
-		panic(fmt.Sprintf("anonymous client: %s %v", output, err))
-	}
-
 	runClient := func(share, command string) ([]byte, error) {
 		return exec.Command("/usr/bin/smbclient", "-A", "/run/smb-client.auth", "-m", "SMB3", "//"+address+"/"+share, "-c", command).CombinedOutput()
 	}
-	if output, err := runClient("fixture-rw", "ls"); err == nil ||
-		(!strings.Contains(string(output), "NT_STATUS_ACCOUNT_DISABLED") && !strings.Contains(string(output), "NT_STATUS_LOGON_FAILURE")) {
-		panic(fmt.Sprintf("disabled SMB credential accepted or unexpected refusal: %s %v", output, err))
+	var pid int
+	if !unqualified {
+		daemon := newDaemon()
+		foreign, err := net.Listen("tcp4", endpoint)
+		must(err)
+		if _, err := daemon.Start(ctx); !errors.Is(err, processowner.ErrBusy) {
+			panic("Samba admitted a foreign listener as ready")
+		}
+		must(foreign.Close())
+		started, err := daemon.Start(ctx)
+		must(err)
+		if started.State != processowner.StateReady || started.PID <= 1 || started.Generation != 1 {
+			panic("Samba readiness did not identify its own listener")
+		}
+		pid = started.PID
+		defer daemon.Abort()
+		if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
+			panic("Samba accepted stop without drain authority")
+		}
+		if err := daemon.Close(); !errors.Is(err, processowner.ErrAlreadyRunning) {
+			panic("Samba released inherited inputs while running")
+		}
+		if conn, err := net.DialTimeout("tcp4", "127.0.0.1:445", 100*time.Millisecond); err == nil {
+			conn.Close()
+			panic("SMB listener expanded beyond the confirmed address")
+		}
+		child := fmt.Sprintf("/proc/%d", pid)
+		status, err := os.ReadFile(child + "/status")
+		must(err)
+		for _, line := range []string{"Name:\tsmbd\n", "CapInh:\t0000000000000000\n", "CapPrm:\t00000000000004db\n", "CapEff:\t00000000000004db\n", "CapBnd:\t00000000000004db\n", "CapAmb:\t0000000000000000\n", "NoNewPrivs:\t1\n"} {
+			if !strings.Contains(string(status), line) {
+				panic(fmt.Sprintf("missing %q from %s", line, status))
+			}
+		}
+		for location, original := range map[string]string{"/shares/writable": "/run/data/writable", "/shares/readonly": "/run/data/readonly", "/state/private": "/run/data/private", "/state/state": "/run/data/state", "/etc": configPath} {
+			dst, err := os.Stat(child + "/root" + location)
+			must(err)
+			src, err := os.Stat(original)
+			must(err)
+			if !os.SameFile(src, dst) {
+				panic("changed inode at " + location)
+			}
+		}
+		for _, location := range []string{"/proc", "/dev", "/run", "/bin"} {
+			if _, err := os.Stat(child + "/root" + location); !os.IsNotExist(err) {
+				panic("unexpected root exposure " + location)
+			}
+		}
+		selfNS, err := os.Stat("/proc/self/ns/mnt")
+		must(err)
+		childNS, err := os.Stat(child + "/ns/mnt")
+		must(err)
+		if os.SameFile(selfNS, childNS) {
+			panic("process did not isolate mounts")
+		}
+		client := exec.Command("/usr/bin/smbclient", "-N", "-m", "SMB3", "//"+address+"/fixture-rw", "-c", "ls")
+		output, err := client.CombinedOutput()
+		if err == nil || !strings.Contains(string(output), "NT_STATUS_ACCESS_DENIED") {
+			panic(fmt.Sprintf("anonymous client: %s %v", output, err))
+		}
+
+		if output, err := runClient("fixture-rw", "ls"); err == nil ||
+			(!strings.Contains(string(output), "NT_STATUS_ACCOUNT_DISABLED") && !strings.Contains(string(output), "NT_STATUS_LOGON_FAILURE")) {
+			panic(fmt.Sprintf("disabled SMB credential accepted or unexpected refusal: %s %v", output, err))
+		}
+		// The credential executor's product profile is offline. Restart Samba
+		// after explicit enable, keeping the approved config and original state.
+		stopAuthorized = true
+		stopDaemon(ctx, daemon, pid)
 	}
-	// The credential executor's product profile is offline. Restart Samba
-	// after explicit enable, keeping the approved config and original state.
-	stopAuthorized, drainConfirmed = true, true
-	stopDaemon(ctx, daemon, pid)
 	if err := identities.SMB(accountID).Enable(ctx, disabled.Revision); err != nil {
 		panic(fmt.Errorf("enable between Samba lifetimes (context: %v): %w", ctx.Err(), err))
 	}
-	stopAuthorized, drainConfirmed = false, false
-	daemon = newDaemon()
+	stopAuthorized = false
+	daemon := newDaemon()
 	restarted, err := daemon.Start(ctx)
 	if err != nil {
 		panic(fmt.Errorf("restart guarded Samba (fixture deadline: %v): %w", ctx.Err(), err))
@@ -364,21 +362,72 @@ func main() {
 	}
 	held, err := net.DialTimeout("tcp4", endpoint, time.Second)
 	must(err)
+	defer held.Close()
+	const fifo = "/run/samba-held-download"
+	must(unix.Mkfifo(fifo, 0600))
+	client := exec.CommandContext(ctx, "/usr/bin/smbclient", "-A", "/run/smb-client.auth", "-m", "SMB3",
+		"//"+address+"/fixture-rw", "-c", "get marker "+fifo)
+	client.Stderr = os.Stderr
+	must(client.Start())
+	defer func() {
+		_ = client.Process.Kill()
+		_ = client.Wait()
+	}()
+	for attempt := 0; ; attempt++ {
+		activity, err := daemon.ObserveActivity(ctx)
+		if err != nil {
+			panic(fmt.Errorf("read owned activity with an authenticated client: %w", err))
+		}
+		if activity.Sessions > 0 && activity.Trees > 0 && activity.OpenFiles > 0 {
+			if activity.Complete == unqualified {
+				panic("unexpected Samba census qualification")
+			}
+			break
+		}
+		if attempt == 4 {
+			panic("Samba census never observed the held authenticated file")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	stopAuthorized = true
-	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
-		panic("Samba accepted stop without protocol drain")
+	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrBusy) {
+		panic(fmt.Errorf("Samba did not refuse stop with an open SMB file: %w", err))
 	}
 	expectFenced()
-	drainConfirmed = true
-	if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrBusy) {
-		panic("Samba accepted stop with a live TCP client")
+	sink, err := os.OpenFile(fifo, os.O_RDWR, 0)
+	must(err)
+	must(sink.SetReadDeadline(time.Now().Add(4 * time.Second)))
+	var payload [10]byte
+	_, err = io.ReadFull(sink, payload[:])
+	must(err)
+	must(sink.Close())
+	must(client.Wait())
+	if string(payload[:]) != "rw marker\n" {
+		panic("fenced SMB client did not finish its original file read")
 	}
 	stillRunning, err := daemon.Observe(ctx)
 	must(err)
 	if stillRunning.State != processowner.StateReady || stillRunning.PID != pid {
 		panic("declined stop disturbed the running process")
 	}
+	if !unqualified {
+		if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrBusy) {
+			panic(fmt.Errorf("Samba did not refuse stop with a live TCP client: %w", err))
+		}
+	}
 	must(held.Close())
+	if unqualified {
+		if _, err := daemon.Stop(ctx); !errors.Is(err, processowner.ErrNotReady) {
+			panic(fmt.Errorf("unqualified empty census did not retain the fence: %w", err))
+		}
+		expectFenced()
+		if err := daemon.Abort(); !errors.Is(err, processowner.ErrReviewRequired) ||
+			!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) {
+			panic("fixture did not settle its isolated process group for review")
+		}
+		fmt.Println("PHANTOWD_RC0_SAMBA_UNQUALIFIED live_session=observed open_file=observed fenced_read=verified empty_unqualified=refused review=retained")
+		return
+	}
 	stopDaemon(ctx, daemon, pid)
 	if conn, err := net.DialTimeout("tcp4", endpoint, 100*time.Millisecond); err == nil {
 		conn.Close()
@@ -408,7 +457,7 @@ func main() {
 	if _, err := owner.DuplicateRoot(ctx); err == nil {
 		panic("closed configuration still supplied an input")
 	}
-	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified ingress=staged-published-fenced-released unauthorized_stop=refused busy_stop=refused process_group=drained bad_handoffs=refused")
+	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified ingress=staged-published-fenced-released unauthorized_stop=refused busy_stop=refused sessions_and_files=verified fenced_read=verified process_group=drained bad_handoffs=refused")
 }
 
 func stopDaemon(ctx context.Context, daemon *processowner.SambaDaemon, pid int) {

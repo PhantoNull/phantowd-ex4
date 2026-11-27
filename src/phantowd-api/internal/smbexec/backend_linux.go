@@ -377,7 +377,7 @@ func parseSMBStatusHasUser(output []byte, username string) (bool, error) {
 	if len(output) == 0 || len(output) > maxObserveBytes || username == "" {
 		return false, ErrInvalid
 	}
-	if err := validateUniqueJSONKeys(output); err != nil {
+	if err := smbprovision.ValidateStatusJSON(output); err != nil {
 		return false, ErrInvalid
 	}
 	var root map[string]json.RawMessage
@@ -419,67 +419,6 @@ func parseSMBStatusHasUser(output []byte, username string) (bool, error) {
 		}
 	}
 	return targetPresent, nil
-}
-
-func validateUniqueJSONKeys(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := scanSMBStatusJSONValue(decoder, 0); err != nil {
-		return err
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		return ErrInvalid
-	}
-	return nil
-}
-
-func scanSMBStatusJSONValue(decoder *json.Decoder, depth int) error {
-	if depth > 16 {
-		return ErrInvalid
-	}
-	token, err := decoder.Token()
-	if err != nil {
-		return ErrInvalid
-	}
-	delimiter, compound := token.(json.Delim)
-	if !compound {
-		return nil
-	}
-	switch delimiter {
-	case '{':
-		seen := make(map[string]struct{})
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			key, ok := keyToken.(string)
-			if err != nil || !ok {
-				return ErrInvalid
-			}
-			if _, exists := seen[key]; exists {
-				return ErrInvalid
-			}
-			seen[key] = struct{}{}
-			if err := scanSMBStatusJSONValue(decoder, depth+1); err != nil {
-				return err
-			}
-		}
-		end, err := decoder.Token()
-		if err != nil || end != json.Delim('}') {
-			return ErrInvalid
-		}
-	case '[':
-		for decoder.More() {
-			if err := scanSMBStatusJSONValue(decoder, depth+1); err != nil {
-				return err
-			}
-		}
-		end, err := decoder.Token()
-		if err != nil || end != json.Delim(']') {
-			return ErrInvalid
-		}
-	default:
-		return ErrInvalid
-	}
-	return nil
 }
 
 func validAccount(account serviceaccounts.Account) bool {

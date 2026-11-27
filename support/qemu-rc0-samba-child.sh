@@ -3,10 +3,15 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 set -eu
 
-[ "$#" -eq 3 ] || { echo 'Usage: qemu-rc0-samba-child.sh IMAGES_DIR HOST_GO LOG' >&2; exit 2; }
+[ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = unqualified ]; } || {
+    echo 'Usage: qemu-rc0-samba-child.sh IMAGES_DIR HOST_GO LOG [unqualified]' >&2
+    exit 2
+}
 images=$1
 host_go=$2
 log=$3
+verify=verify
+[ "$#" -ne 4 ] || verify=verify-unqualified
 qemu=${QEMU_SYSTEM_ARM:-qemu-system-arm}
 support=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 for artifact in rootfs.ext2 zImage versatile-pb.dtb; do
@@ -53,12 +58,13 @@ case " $(cat /proc/cmdline) " in
         echo 'ro marker' > /run/data/readonly/marker
         ;;
     *' phantowd.samba=verify '*) phase=verify ;;
+    *' phantowd.samba=verify-unqualified '*) phase=verify-unqualified ;;
     *) exit 1 ;;
 esac
 if ! /rc0-samba-fixture/runner "$phase"; then
     echo PHANTOWD_RC0_SAMBA_LAUNCH_FAILED
 fi
-if [ "$phase" = verify ]; then
+if [ "$phase" != prepare ]; then
     umount /run/ro
     umount /run/rw
 fi
@@ -77,7 +83,7 @@ for role in init runner; do
 done
 chmod a-w "$root_copy"
 (umask 022; : > "$log")
-for phase in prepare verify; do
+for phase in prepare "$verify"; do
     if ! timeout --signal=TERM --kill-after=5 120 "$qemu" \
     -M versatilepb -cpu arm926 -m 256M -nic none -serial stdio -display none -monitor none -no-reboot \
     -kernel "$images/zImage" -dtb "$images/versatile-pb.dtb" \
@@ -94,7 +100,8 @@ for phase in prepare verify; do
     cat "$scratch/serial" >> "$log"
     case "$phase" in
         prepare) expected='PHANTOWD_RC0_NATIVE_GROUP persistent=recorded phase=group-confirmed' ;;
-        verify) expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified ingress=staged-published-fenced-released unauthorized_stop=refused busy_stop=refused process_group=drained bad_handoffs=refused' ;;
+        verify) expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained owned_listener=verified restarted=verified ingress=staged-published-fenced-released unauthorized_stop=refused busy_stop=refused sessions_and_files=verified fenced_read=verified process_group=drained bad_handoffs=refused' ;;
+        verify-unqualified) expected='PHANTOWD_RC0_SAMBA_UNQUALIFIED live_session=observed open_file=observed fenced_read=verified empty_unqualified=refused review=retained' ;;
     esac
     if ! awk -v expected="$expected" '{sub(/\r$/, "")} $0 == expected { n++ } END { exit n != 1 }' "$scratch/serial" ||
         ! grep -F 'reboot: Restarting system' "$scratch/serial" >/dev/null || grep -Eq 'PHANTOWD_RC0_SAMBA_LAUNCH_FAILED|Kernel panic' "$scratch/serial"; then

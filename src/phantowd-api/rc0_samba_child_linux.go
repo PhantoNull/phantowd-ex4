@@ -293,6 +293,10 @@ func restrictRC0SambaCapabilities(bindNetwork bool) error {
 	if bindNetwork {
 		allowed |= 1 << unix.CAP_NET_BIND_SERVICE
 	}
+	return setRC0SambaCapabilities(allowed)
+}
+
+func setRC0SambaCapabilities(allowed uint32) error {
 	if unix.Prctl(unix.PR_CAP_AMBIENT, unix.PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) != nil ||
 		unix.Prctl(unix.PR_SET_KEEPCAPS, 0, 0, 0, 0) != nil {
 		return errRC0Review

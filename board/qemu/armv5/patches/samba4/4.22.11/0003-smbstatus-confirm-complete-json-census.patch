@@ -1,0 +1,116 @@
+From: PhantoWD EX4 contributors
+Subject: [PATCH] smbstatus: confirm completed unfiltered JSON inventory
+
+A graceful shutdown must distinguish a complete empty census from a
+partial report or an uninitialized lock database. Expose a positive
+marker after all unfiltered traversals have finished, and propagate
+reported traversal errors to the caller.
+
+Signed-off-by: PhantoWD EX4 contributors
+---
+--- a/source3/utils/status.c
++++ b/source3/utils/status.c
+@@ -160,7 +160,7 @@
+ 		/* only print header line if there are open files */
+ 		state->first = true;
+ 	} else {
+-		add_section_to_json(state, "open_files");
++		return add_section_to_json(state, "open_files");
+ 	}
+ 	return 0;
+ }
+@@ -523,7 +523,7 @@
+ 		d_printf("\n%-12s %-7s %-13s %-32s %-12s %-12s\n", "Service", "pid", "Machine", "Connected at", "Encryption", "Signing");
+ 		d_printf("---------------------------------------------------------------------------------------------\n");
+ 	} else {
+-		add_section_to_json(state, "tcons");
++		return add_section_to_json(state, "tcons");
+ 	}
+ 	return 0;
+ }
+@@ -701,7 +701,7 @@
+ 		d_printf("%-7s %-12s %-12s %-41s %-17s %-20s %-21s\n", "PID", "Username", "Group", "Machine", "Protocol Version", "Encryption", "Signing");
+ 		d_printf("----------------------------------------------------------------------------------------------------------------------------------------\n");
+ 	} else {
+-		add_section_to_json(state, "sessions");
++		return add_section_to_json(state, "sessions");
+ 	}
+ 	return 0;
+ 
+@@ -1212,8 +1212,17 @@
+ 	}
+ 
+ 	if ( show_processes ) {
+-		prepare_sessionid(&state);
+-		sessionid_traverse_read(traverse_sessionid, &state);
++		NTSTATUS status;
++
++		if (prepare_sessionid(&state) < 0) {
++			ret = 1;
++			goto done;
++		}
++		status = sessionid_traverse_read(traverse_sessionid, &state);
++		if (!NT_STATUS_IS_OK(status)) {
++			ret = 1;
++			goto done;
++		}
+ 
+ 		if (processes_only) {
+ 			goto done;
+@@ -1224,8 +1233,11 @@
+ 		if (brief) {
+ 			goto done;
+ 		}
+-		prepare_connections(&state);
+-		connections_forall_read(traverse_connections, &state);
++		if (prepare_connections(&state) < 0 ||
++		    connections_forall_read(traverse_connections, &state) < 0) {
++			ret = 1;
++			goto done;
++		}
+ 
+ 		if (!state.json_output) {
+ 			d_printf("\n");
+@@ -1269,13 +1281,20 @@
+ 			goto done;
+ 		}
+ 
+-		prepare_share_mode(&state);
++		if (prepare_share_mode(&state) < 0) {
++			locking_end();
++			ret = 1;
++			goto done;
++		}
+ 		result = share_entry_forall_read(print_share_mode, &state);
+ 
+ 		if (result == 0 && !state.json_output) {
+ 			fprintf(stderr, "No locked files\n");
+-		} else if (result < 0 && !state.json_output) {
++		} else if (result < 0) {
+ 			fprintf(stderr, "locked file list truncated\n");
++			locking_end();
++			ret = 1;
++			goto done;
+ 		}
+ 
+ 		if (!state.json_output) {
+@@ -1294,7 +1313,18 @@
+ 		prepare_notify(&state);
+ 		notify_walk(msg_ctx, print_notify_rec, &state);
+ 	}
+-
++#ifdef HAVE_JANSSON
++	/*
++	 * A supervisor needs positive evidence of every successful traversal.
++	 * Count even records whose process is absent, including disconnected
++	 * share-mode entries. Missing tables and partial reports stay unmarked.
++	 */
++	if (state.json_output && !do_checks && !Ucrit_IsActive &&
++	    show_processes && show_shares && show_locks &&
++	    json_add_bool(&state.root_json, "phantowd_complete", true) < 0) {
++		ret = 1;
++	}
++#endif
+ done:
+ 	cmdline_messaging_context_free();
+ 	poptFreeContext(pc);

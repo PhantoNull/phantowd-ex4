@@ -63,7 +63,17 @@ through listener admission and shutdown. An authorized stop fences new
 connections while waiting for the protocol check and TCP drain. The owner
 removes the verified firewall after the original group exits. The RC0 ARMv5
 fixture exercises this sequence with the image's nftables and Samba. Normal
-boot attachment and the production SMB session census remain open.
+boot attachment remains open.
+
+The stop owner now observes the owned Samba process through its pidfd and
+the original private root. The fixed, capability-free `smbstatus` worker
+shares the live lock databases in that root. It exports only counts of
+sessions, tree connections and open files. The packaged Samba census marks
+a report complete after all three traversals succeed. A busy, partial or
+unmarked report leaves the fence in place. The production-profile fixture
+holds an authenticated file open while testing stop, then lets that read
+finish through the fence. The complete clean-image campaign must qualify
+the patched status binary.
 
 ## Explicit RC0 management supervisor
 
