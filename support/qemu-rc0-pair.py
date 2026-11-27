@@ -48,6 +48,14 @@ PAIRS = {
         ),
         "client": (SMB_CLIENT,),
     },
+    "smb-loss": {
+        "server": (
+            SMB_ENROLLMENT,
+            "PHANTOWD_RC0_SMB_LOSS_SERVER boot=init leader=lost ingress=quarantined "
+            "https=preserved stop=review grant=retained",
+        ),
+        "client": ("PHANTOWD_RC0_SMB_LOSS_CLIENT read=verified write=verified new_connection=dropped",),
+    },
 }
 
 

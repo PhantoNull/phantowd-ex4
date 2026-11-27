@@ -93,7 +93,7 @@ func seedSMBAccount(ctx context.Context, secret []byte) error {
 	return nil
 }
 
-func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) error {
+func smbServer(ctx context.Context, credentials, secret []byte, phase string) error {
 	nic, err := nfsInterface("52:54:00:12:34:01")
 	if err != nil {
 		return err
@@ -170,7 +170,10 @@ func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) err
 	if err := readNFSTestMessage(peer, "held\n"); err != nil {
 		return err
 	}
-	if err := smbDrainRefused(ctx); err != nil {
+	if phase == "smb-loss-server" {
+		return smbLossServer(ctx, credentials, peer)
+	}
+	if err := readSMBStopReply(ctx, 'B'); err != nil {
 		return err
 	}
 	if _, err := observeHTTPS(ctx, credentials); err != nil {
@@ -182,8 +185,8 @@ func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) err
 	if err := readNFSTestMessage(peer, "closed\n"); err != nil {
 		return err
 	}
-	if legacy {
-		if err := smbDrainRefused(ctx); err != nil {
+	if phase == "smb-legacy-server" {
+		if err := readSMBStopReply(ctx, 'B'); err != nil {
 			return err
 		}
 		if _, err := observeHTTPS(ctx, credentials); err != nil {
@@ -210,7 +213,7 @@ func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) err
 	return err
 }
 
-func smbDrainRefused(ctx context.Context) error {
+func readSMBStopReply(ctx context.Context, expected byte) error {
 	dialer := net.Dialer{}
 	conn, err := dialer.DialContext(ctx, "unix", control+"/stop")
 	if err != nil {
@@ -225,13 +228,16 @@ func smbDrainRefused(ctx context.Context) error {
 		return err
 	}
 	var reply [1]byte
-	if _, err := io.ReadFull(conn, reply[:]); err != nil || reply[0] != 'B' {
-		return fmt.Errorf("boot did not report a pending SMB drain: %w", err)
+	if _, err := io.ReadFull(conn, reply[:]); err != nil {
+		return err
+	}
+	if reply[0] != expected {
+		return fmt.Errorf("SMB stop returned %q, expected %q", reply[0], expected)
 	}
 	return nil
 }
 
-func smbClient(ctx context.Context) error {
+func smbClient(ctx context.Context, loss bool) error {
 	nic, err := nfsInterface("52:54:00:12:34:02")
 	if err != nil {
 		return err
@@ -290,18 +296,14 @@ func smbClient(ctx context.Context) error {
 	if _, err := io.WriteString(peer, "held\n"); err != nil {
 		return err
 	}
+	if loss {
+		return smbLossClient(ctx, peer)
+	}
 	if err := readNFSTestMessage(peer, "fenced\n"); err != nil {
 		return err
 	}
-	dialer := net.Dialer{Timeout: 800 * time.Millisecond}
-	newPeer, err := dialer.DialContext(ctx, "tcp4", rc0NFSServer+":445")
-	if err == nil {
-		newPeer.Close()
-		return errors.New("new SMB connection reached the draining service")
-	}
-	var timeout net.Error
-	if !errors.As(err, &timeout) || !timeout.Timeout() {
-		return fmt.Errorf("fenced SMB connection was not dropped: %w", err)
+	if err := requireSMBConnectionDrop(ctx); err != nil {
+		return err
 	}
 	if _, err := io.WriteString(input, "get marker /run/rc0-smb-fenced\n"); err != nil {
 		return err
@@ -322,6 +324,20 @@ func smbClient(ctx context.Context) error {
 		return err
 	}
 	fmt.Println("PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified new_connection=dropped fenced_read=verified")
+	return nil
+}
+
+func requireSMBConnectionDrop(ctx context.Context) error {
+	dialer := net.Dialer{Timeout: 800 * time.Millisecond}
+	peer, err := dialer.DialContext(ctx, "tcp4", rc0NFSServer+":445")
+	if err == nil {
+		peer.Close()
+		return errors.New("new SMB connection reached a blocked service")
+	}
+	var timeout net.Error
+	if ctx.Err() != nil || !errors.As(err, &timeout) || !timeout.Timeout() {
+		return fmt.Errorf("blocked SMB connection was not dropped: %w", err)
+	}
 	return nil
 }
 

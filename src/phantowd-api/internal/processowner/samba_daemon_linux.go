@@ -28,6 +28,7 @@ type SambaIngress interface {
 	CheckPublished(context.Context) error
 	Fence(context.Context) error
 	CheckFenced(context.Context) error
+	Quarantine(context.Context) error
 	Close(context.Context) error
 }
 
@@ -229,6 +230,20 @@ func (d *SambaDaemon) Observe(ctx context.Context) (Snapshot, error) {
 	return state, nil
 }
 
+// Exited returns the original daemon leader's completion signal. The
+// lifetime coordinator interprets it under the same lock as planned stop.
+func (d *SambaDaemon) Exited() (<-chan struct{}, error) {
+	if d == nil || d.self != d {
+		return nil, ErrInvalid
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.published || d.settled || d.closed || d.review || d.owner.current == nil {
+		return nil, ErrUnavailable
+	}
+	return d.owner.current.done, nil
+}
+
 func (d *SambaDaemon) checkTransport(ctx context.Context, pid int) (bool, error) {
 	listener, drained, err := observeSambaTransport(ctx, pid, d.address)
 	if err != nil || listener == 0 || listener != d.listener {
@@ -322,8 +337,7 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 	}
 	state, err := d.owner.Stop(ctx)
 	if err != nil {
-		d.review = true
-		return state, err
+		return d.failAdmission(state, err)
 	}
 	if err := d.ingress.Close(context.WithoutCancel(ctx)); err != nil {
 		d.review = true
@@ -351,13 +365,15 @@ func (d *SambaDaemon) Abort() error {
 func (d *SambaDaemon) abort() error {
 	d.review = true
 	ctx := context.Background()
-	var fenceErr error
-	if d.published && !d.fenced {
-		fenceErr = d.ingress.Fence(ctx)
-		d.fenced = fenceErr == nil
+	var ingressErr error
+	if d.published {
+		ingressErr = d.ingress.Quarantine(ctx)
+		if ingressErr == nil {
+			d.published = false
+		}
 	}
 	_, err := d.owner.Stop(ctx)
-	return errors.Join(ErrReviewRequired, fenceErr, err)
+	return errors.Join(ErrReviewRequired, ingressErr, err)
 }
 
 func (d *SambaDaemon) Close() error {

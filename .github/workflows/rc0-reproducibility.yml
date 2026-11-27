@@ -31,7 +31,9 @@ on:
       - 'src/phantowd-api/internal/runtimebundle/samba_service_configuration_linux.go'
       - 'src/phantowd-api/identityowner/provision_linux.go'
       - 'src/phantowd-api/internal/processowner/samba_enrollment_linux.go'
+      - 'src/phantowd-api/internal/processowner/samba_daemon_linux.go'
       - 'src/phantowd-api/internal/processowner/samba_status_linux.go'
+      - 'src/phantowd-api/internal/nftguard/samba_linux.go'
       - 'src/phantowd-api/internal/smbexec/enrollment_linux.go'
       - 'src/phantowd-api/internal/smbprovision/worker_linux.go'
       - 'tools/phantowd-lab/**'
@@ -134,6 +136,8 @@ jobs:
             ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-client.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-server.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-client.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-loss-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-loss-client.log
           if-no-files-found: ignore
           retention-days: 1
 

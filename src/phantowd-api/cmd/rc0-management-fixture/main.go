@@ -92,11 +92,11 @@ func check() error {
 	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 	switch phase {
-	case "smb-client", "smb-legacy-client":
-		return smbClient(ctx)
+	case "smb-client", "smb-legacy-client", "smb-loss-client":
+		return smbClient(ctx, phase == "smb-loss-client")
 	case "nfs-client":
 		return nfsClient(ctx)
-	case "seed", "verify", "rotated", "nfs-server", "smb-server", "smb-legacy-server":
+	case "seed", "verify", "rotated", "nfs-server", "smb-server", "smb-legacy-server", "smb-loss-server":
 	default:
 		return errors.New("unknown guest phase")
 	}
@@ -112,7 +112,7 @@ func check() error {
 		return nfsServer(ctx, credentials)
 	}
 	if strings.HasPrefix(phase, "smb-") {
-		return smbServer(ctx, credentials, bytes.TrimSpace(secret), phase == "smb-legacy-server")
+		return smbServer(ctx, credentials, bytes.TrimSpace(secret), phase)
 	}
 	if phase == "seed" {
 		if err := errors.Join(runInitHook(ctx, "start"), runtimeAbsent()); err != nil {
@@ -743,31 +743,36 @@ func proveInterruptedInitLifetime(ctx context.Context) error {
 	return nil
 }
 
-func terminateInitSupervisor(ctx context.Context) error {
+func bootSupervisorPID() (int, error) {
 	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: control + "/stop", Net: "unix"})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer conn.Close()
 	raw, err := conn.SyscallConn()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var peer *unix.Ucred
 	var peerErr error
 	if err := raw.Control(func(fd uintptr) {
 		peer, peerErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
 	}); err != nil || peerErr != nil || peer == nil || peer.Pid <= 1 || peer.Uid != 0 {
-		return errors.New("cannot identify the original RC0 init supervisor")
+		return 0, errors.New("cannot identify the original RC0 init supervisor")
 	}
-	pidFD, err := unix.PidfdOpen(int(peer.Pid), 0)
+	return int(peer.Pid), nil
+}
+
+func terminateInitSupervisor(ctx context.Context) error {
+	pid, err := bootSupervisorPID()
+	if err != nil {
+		return err
+	}
+	pidFD, err := unix.PidfdOpen(pid, 0)
 	if err != nil {
 		return err
 	}
 	defer unix.Close(pidFD)
-	if err := conn.Close(); err != nil {
-		return err
-	}
 	if err := unix.PidfdSendSignal(pidFD, unix.SIGTERM, nil, 0); err != nil {
 		return err
 	}

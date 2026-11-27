@@ -915,6 +915,9 @@ and refuses non-Versatile PB machines. See the
   idle report is required to release the service and its storage. When NFS
   is also active, each attempt requires `stop-nfs-drained` after confirming
   the NFS clients have flushed and unmounted.
+  If the original Samba leader exits unexpectedly, the supervisor blocks
+  all incoming SMB traffic on the original verified table and keeps HTTPS
+  and the boot grant available for review. A later stop reports review.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain

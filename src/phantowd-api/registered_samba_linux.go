@@ -284,7 +284,32 @@ func (s *registeredSamba) Start(ctx context.Context) error {
 	if err := s.check(ctx); err != nil {
 		return s.retain(errors.Join(err, s.daemon.Abort()))
 	}
+	exited, err := s.daemon.Exited()
+	if err != nil {
+		return s.retain(errors.Join(err, s.daemon.Abort()))
+	}
+	select {
+	case <-exited:
+		return s.retain(s.daemon.Abort())
+	default:
+	}
+	go s.watchExit(ctx, exited)
 	return nil
+}
+
+func (s *registeredSamba) watchExit(ctx context.Context, exited <-chan struct{}) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-exited:
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Stop holds this lock through settlement. Its own leader exit is
+	// expected, including when a later storage check requires review.
+	if !s.stopped && !s.closed && s.review == nil {
+		s.retain(s.daemon.Abort())
+	}
 }
 
 func (s *registeredSamba) Stop(ctx context.Context) error {
@@ -301,6 +326,9 @@ func (s *registeredSamba) Stop(ctx context.Context) error {
 	}
 	state, err := s.daemon.Stop(ctx)
 	if err != nil {
+		if errors.Is(err, processowner.ErrReviewRequired) {
+			return s.retain(err)
+		}
 		return err
 	}
 	if state.State != processowner.StateStopped {

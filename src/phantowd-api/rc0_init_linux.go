@@ -273,7 +273,11 @@ func receiveRC0Stop(ctx context.Context, listener *net.UnixListener, control *rc
 			done()
 			if err != nil {
 				if conn.SetWriteDeadline(time.Now().Add(time.Second)) == nil {
-					_, _ = conn.Write([]byte{'B'})
+					reply := byte('B')
+					if constructionreview.Contains(err) {
+						reply = 'R'
+					}
+					_, _ = conn.Write([]byte{reply})
 				}
 				conn.Close()
 				continue

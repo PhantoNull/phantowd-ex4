@@ -40,6 +40,7 @@ const (
 	sambaSealed
 	sambaPublished
 	sambaFenced
+	sambaQuarantined
 	sambaClosed
 	sambaReview
 )
@@ -151,12 +152,34 @@ func (f *Samba) CheckFenced(ctx context.Context) error {
 	return f.checkPhase(ctx, sambaFenced)
 }
 
+// Quarantine blocks all ingress to TCP and UDP port 445 after a failed
+// daemon lifetime. The verified table stays installed for review.
+func (f *Samba) Quarantine(ctx context.Context) error {
+	if f == nil || f.self != f || ctx == nil {
+		return ErrState
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	switch f.phase {
+	case sambaPublished, sambaFenced:
+		return f.changeLocked(ctx, f.phase, sambaQuarantined)
+	case sambaQuarantined:
+		return f.check(ctx)
+	default:
+		return ErrReviewRequired
+	}
+}
+
 func (f *Samba) checkPhase(ctx context.Context, phase sambaPhase) error {
 	if f == nil || f.self != f || ctx == nil {
 		return ErrState
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.changeLocked(ctx, from, to)
+}
+
+func (f *Samba) changeLocked(ctx context.Context, from, to sambaPhase) error {
 	if f.phase == sambaReview {
 		return ErrReviewRequired
 	}
@@ -254,7 +277,7 @@ func (f *Samba) request(phase sambaPhase) string {
 	if phase == sambaFenced {
 		fmt.Fprintf(&b, "add rule %s tcp dport 445 tcp flags & syn == syn drop\n", sambaChainPath)
 	}
-	if phase != sambaSealed {
+	if phase == sambaPublished || phase == sambaFenced {
 		fmt.Fprintf(&b, "add rule %s meta iif %d ip daddr %s tcp dport 445 accept\n", sambaChainPath, f.index, f.address)
 	}
 	for _, protocol := range []string{"tcp", "udp"} {
@@ -299,7 +322,7 @@ func (f *Samba) inspect(ctx context.Context, phase sambaPhase) ([]uint64, error)
 		syn := Match(Object{"&": []any{Payload("tcp", "flags"), synBit}}, synBit)
 		want = append(want, rule(tcpPort, syn, drop))
 	}
-	if phase != sambaSealed {
+	if phase == sambaPublished || phase == sambaFenced {
 		want = append(want, rule(Match(Object{"meta": Object{"key": "iif"}}, f.name),
 			Match(Payload("ip", "daddr"), f.address.String()), tcpPort, Object{"accept": nil}))
 	}

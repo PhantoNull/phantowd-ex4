@@ -3,8 +3,8 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 set -eu
 
-[ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = smb-legacy ]; } || {
-    echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX [smb-legacy]' >&2
+[ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && { [ "$4" = smb-legacy ] || [ "$4" = smb-loss ]; }; } || {
+    echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX [smb-legacy|smb-loss]' >&2
     exit 2
 }
 images=$1
@@ -56,6 +56,8 @@ case " $(cat /proc/cmdline) " in
     *' phantowd.state=smb-client '*) phase=smb-client ;;
     *' phantowd.state=smb-legacy-server '*) phase=smb-legacy-server ;;
     *' phantowd.state=smb-legacy-client '*) phase=smb-legacy-client ;;
+    *' phantowd.state=smb-loss-server '*) phase=smb-loss-server ;;
+    *' phantowd.state=smb-loss-client '*) phase=smb-loss-client ;;
     *) exit 1 ;;
 esac
 mount -t tmpfs -o mode=0755,size=64m tmpfs /run
@@ -102,12 +104,13 @@ if [ "$phase" = seed ]; then
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
-# The legacy test deliberately retains the service and its fence. The
-# emulator discards both disposable disks after the verified reboot.
-if [ "$phase" = smb-legacy-server ]; then
-    sync
-    exec reboot -f
-fi
+# The review fixtures retain storage and their firewall. The emulator
+# discards both disposable disks after the verified reboot.
+case "$phase" in
+    smb-legacy-server|smb-loss-server)
+        sync
+        exec reboot -f ;;
+esac
 if [ "$phase" = nfs-server ]; then
     umount /proc/fs/nfsd
 fi
@@ -146,8 +149,8 @@ run_pair() {
     python3 -B "$support/qemu-rc0-pair.py" "$qemu" "$images" "$image" "$state" "$data" "$log_prefix" "$protocol"
 }
 
-if [ "$mode" = smb-legacy ]; then
-    run_pair smb-legacy
+if [ "$mode" != all ]; then
+    run_pair "$mode"
     sha256sum -c "$scratch/base.sha256"
     exit
 fi
@@ -229,4 +232,5 @@ tr -d '\r' < "$log_prefix.seed.log" |
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 run_pair nfs
 run_pair smb
+run_pair smb-loss
 sha256sum -c "$scratch/base.sha256"
