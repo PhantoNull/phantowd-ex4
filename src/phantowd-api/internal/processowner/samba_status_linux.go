@@ -196,7 +196,11 @@ func (d *SambaDaemon) observeActivity(ctx context.Context) (smbprovision.Activit
 	if captureErr != nil {
 		return empty, fmt.Errorf("capture owned Samba status: %w", captureErr)
 	}
-	if output.Kind != CaptureExited || output.ExitCode != 0 || len(output.Stderr) != 0 {
+	// Samba probes the interfaces named in the service configuration. The
+	// disconnected status namespace intentionally has none of those links.
+	const isolatedNetworkNotice = "WARNING: no network interfaces found\n"
+	expectedDiagnostics := len(output.Stderr) == 0 || string(output.Stderr) == isolatedNetworkNotice
+	if output.Kind != CaptureExited || output.ExitCode != 0 || !expectedDiagnostics {
 		return empty, fmt.Errorf("Samba status worker outcome %d, exit %d, diagnostics %d bytes: %w",
 			output.Kind, output.ExitCode, len(output.Stderr), ErrUnavailable)
 	}
