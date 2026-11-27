@@ -78,7 +78,7 @@ done
 chmod a-w "$root_copy"
 (umask 022; : > "$log")
 for phase in prepare verify; do
-    if ! timeout --signal=TERM --kill-after=5 70 "$qemu" \
+    if ! timeout --signal=TERM --kill-after=5 120 "$qemu" \
     -M versatilepb -cpu arm926 -m 256M -nic none -serial stdio -display none -monitor none -no-reboot \
     -kernel "$images/zImage" -dtb "$images/versatile-pb.dtb" \
     -drive "file=$root_copy,if=none,id=rootdisk,format=raw,readonly=on" \

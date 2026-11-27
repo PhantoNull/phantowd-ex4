@@ -119,7 +119,9 @@ func (f fixtureIngress) Publish(ctx context.Context) error {
 
 func main() {
 	const safe = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
-	ctx, cancel := context.WithTimeout(context.Background(), 55*time.Second)
+	// Both service lifetimes and credential workers run serially under
+	// emulation. The individual production operations keep their own limits.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 	if len(os.Args) != 2 {
 		panic("fixture phase required")
@@ -304,7 +306,9 @@ func main() {
 	stopAuthorized, drainConfirmed = false, false
 	daemon = newDaemon()
 	restarted, err := daemon.Start(ctx)
-	must(err)
+	if err != nil {
+		panic(fmt.Errorf("restart guarded Samba (fixture deadline: %v): %w", ctx.Err(), err))
+	}
 	if restarted.State != processowner.StateReady || restarted.PID <= 1 || restarted.PID == pid {
 		panic("Samba did not start a new owned lifetime")
 	}
@@ -500,7 +504,9 @@ func enrollDisabled(ctx context.Context, private, state *os.File, password []byt
 		panic("Samba native account was not created disabled")
 	}
 	pendingSID := journal.SID
-	must(operation.SetPasswordDisabled(ctx, journal.Revision, password))
+	if err := operation.SetPasswordDisabled(ctx, journal.Revision, password); err != nil {
+		panic(fmt.Errorf("set disabled password (fixture deadline: %v): %w", ctx.Err(), err))
+	}
 	journal, err = operation.Load(ctx)
 	must(err)
 	if journal.Phase != smbprovision.CredentialSetDisabled || journal.SID != pendingSID {
