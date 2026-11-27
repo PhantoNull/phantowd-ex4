@@ -898,9 +898,10 @@ and refuses non-Versatile PB machines. See the
   state directory on FD 3 for each operation. Use `create-disabled` to
   create the disabled passdb record, `set-password` to assign its initial
   password from private stdin, and `enable` to enable the credential and
-  its desired identity. Provide the UTF-8 password with an optional final
-  newline. The initial password operation refuses a replacement. An active
-  supervisor holds the state lock and prevents offline configuration.
+  its desired identity. Provide a UTF-8 password of 12 to 256 bytes without
+  control characters. The input may end with one newline. The initial
+  password operation refuses a replacement. An active supervisor holds the
+  state lock and prevents offline configuration.
 - The digest-bound storage document can include an `smb` object with an
   IPv4 `address` and `ingress_index`. The platform configures the approved
   interface before init starts. The supervisor requires a nonempty confirmed

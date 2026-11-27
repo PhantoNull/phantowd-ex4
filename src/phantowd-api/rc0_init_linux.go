@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	rc0BootGrantName      = "phantowd-boot"
-	rc0BootStagingName    = ".phantowd-boot.staging"
-	rc0BootControlDir     = "/run/phantowd-boot-control"
-	rc0BootControlSocket  = rc0BootControlDir + "/stop"
-	rc0BootServiceTimeout = 20 * time.Second
-	rc0BootStopTimeout    = 45 * time.Second
-	rc0StopRequest        = 'S'
-	rc0DrainedStopRequest = 'D'
+	rc0BootGrantName         = "phantowd-boot"
+	rc0BootStagingName       = ".phantowd-boot.staging"
+	rc0BootControlDir        = "/run/phantowd-boot-control"
+	rc0BootControlSocket     = rc0BootControlDir + "/stop"
+	rc0BootStartTimeout      = 20 * time.Second
+	rc0BootSambaStartTimeout = 60 * time.Second
+	rc0BootStopTimeout       = 45 * time.Second
+	rc0StopRequest           = 'S'
+	rc0DrainedStopRequest    = 'D'
 )
 
 func manageRC0BootService(ctx context.Context, action string) error {
@@ -76,52 +77,61 @@ func lockRC0BootLifecycle() (*os.File, error) {
 	return lock, nil
 }
 
-func openRC0BootGrants() ([]*os.File, error) {
+func openRC0BootGrants() ([]*os.File, time.Duration, error) {
 	run, err := os.Open("/run")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer run.Close()
 	if !rc0AbsentRole(run, rc0BootStagingName) {
-		return nil, errRC0Review
+		return nil, 0, errRC0Review
 	}
 	grantDir, err := openRC0BootDirectory(run, rc0BootGrantName)
 	if errors.Is(err, unix.ENOENT) {
-		return nil, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer grantDir.Close()
 	state, err := openRC0BootState(grantDir)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	plan, err := openRC0PrivateFile(grantDir, "boot.json", rc0BootMaxBytes)
 	if err != nil {
-		return nil, errors.Join(err, state.Close())
+		return nil, 0, errors.Join(err, state.Close())
 	}
 	policy, err := openRC0PrivateFile(grantDir, "policy.json", naspolicy.MaxInputBytes)
 	if err != nil {
-		return nil, errors.Join(err, state.Close(), plan.Close())
+		return nil, 0, errors.Join(err, state.Close(), plan.Close())
 	}
 	data, _, err := readPrivateStartupFile(plan, 0, rc0BootMaxBytes)
 	if err != nil {
-		return nil, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+		return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close())
 	}
 	boot, err := decodeRC0BootPlan(data)
 	if err != nil || !fixedRC0BootInventory(grantDir, boot.StorageSHA256 != "") {
-		return nil, errors.Join(errRC0Review, state.Close(), plan.Close(), policy.Close())
+		return nil, 0, errors.Join(errRC0Review, state.Close(), plan.Close(), policy.Close())
 	}
 	grants := []*os.File{state, plan, policy}
+	wait := rc0BootStartTimeout
 	if boot.StorageSHA256 != "" {
 		storage, err := openRC0PrivateFile(grantDir, rc0StorageRole, rc0StorageApprovalLimit)
 		if err != nil {
-			return nil, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+			return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close())
+		}
+		data, _, err := readPrivateStartupFile(storage, 0, rc0StorageApprovalLimit)
+		approval, decodeErr := decodeRC0StorageApproval(data, boot.StorageSHA256)
+		if err := errors.Join(err, decodeErr); err != nil {
+			return nil, 0, errors.Join(err, state.Close(), plan.Close(), policy.Close(), storage.Close())
+		}
+		if approval.SMB != nil {
+			wait = rc0BootSambaStartTimeout
 		}
 		grants = append(grants, storage)
 	}
-	return grants, nil
+	return grants, wait, nil
 }
 
 func openRC0BootDirectory(run *os.File, name string) (*os.File, error) {
@@ -152,7 +162,7 @@ func startRC0BootService(ctx context.Context) error {
 	if !rc0BootServiceAbsent() {
 		return errRC0Review
 	}
-	grants, err := openRC0BootGrants()
+	grants, readyTimeout, err := openRC0BootGrants()
 	if err != nil {
 		return err
 	}
@@ -179,7 +189,7 @@ func startRC0BootService(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := ack.SetReadDeadline(time.Now().Add(rc0BootServiceTimeout)); err != nil {
+	if err := ack.SetReadDeadline(time.Now().Add(readyTimeout)); err != nil {
 		return err
 	}
 	if err := cmd.Start(); err != nil {
@@ -189,12 +199,13 @@ func startRC0BootService(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { _ = ack.SetReadDeadline(time.Now()) })
 	defer stop()
 	var reply [1]byte
-	if _, err := io.ReadFull(ack, reply[:]); err == nil && reply[0] == 'R' && ctx.Err() == nil {
+	_, readyErr := io.ReadFull(ack, reply[:])
+	if readyErr == nil && reply[0] == 'R' && ctx.Err() == nil {
 		return cmd.Process.Release()
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	return errors.Join(errRC0Review, stopRC0API(cmd.Process, done))
+	return errors.Join(errRC0Review, readyErr, stopRC0API(cmd.Process, done))
 }
 
 func runRC0BootService(ctx context.Context) error {
