@@ -25,10 +25,15 @@ SMB_CLIENT = (
     "PHANTOWD_RC0_SMB_CLIENT read=verified write=verified authenticated=verified "
     "new_connection=dropped fenced_read=verified"
 )
+SMB_ENROLLMENT = (
+    "PHANTOWD_RC0_SMB_ENROLLMENT cli=verified early_enable=refused "
+    "replacement=refused live_state=refused"
+)
 PAIRS = {
     "nfs": MARKERS,
     "smb": {
         "server": (
+            SMB_ENROLLMENT,
             "PHANTOWD_RC0_SMB_SERVER boot=init storage=approved busy_stop=refused "
             "https=preserved drain=verified release=verified",
             "PHANTOWD_RC0_STATE_UNMOUNTED phase=smb-server",
@@ -37,6 +42,7 @@ PAIRS = {
     },
     "smb-legacy": {
         "server": (
+            SMB_ENROLLMENT,
             "PHANTOWD_RC0_SMB_LEGACY_SERVER boot=init storage=approved "
             "busy_stop=refused https=preserved unqualified=refused",
         ),

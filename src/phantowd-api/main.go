@@ -31,6 +31,8 @@ func main() {
 	provisionTLS := flag.Bool("provision-rc0-tls", false, "install the initial RC0 TLS identity from private stdin under inherited directory 3")
 	provisionIdentities := flag.Bool("provision-rc0-service-identities", false, "initialize the service identity allocation range in inherited RC0 state directory 3")
 	provisionSamba := flag.Bool("provision-rc0-samba-state", false, "initialize the Samba state roles in inherited RC0 state directory 3")
+	configureSamba := flag.String("configure-rc0-samba-account", "", "prepare a provisioned Samba account from inherited RC0 state directory 3")
+	sambaIdentityID := flag.String("rc0-samba-identity-id", "", "exact provisioned identity ID for Samba account configuration")
 	verifySambaCode := flag.Bool("verify-rc0-samba-code", false, "verify the fixed isolated Samba code in this RC0 image")
 	runSambaChild := flag.Bool("run-rc0-samba-child", false, "start isolated Samba from inherited supervisor descriptors")
 	runSambaStatus := flag.Bool("run-rc0-samba-status", false, "read activity from the inherited isolated Samba root")
@@ -60,7 +62,7 @@ func main() {
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
-		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "",
+		*rc0BootService != "", *verifySambaCode, *runSambaChild, *runSambaStatus, *sambaWorker != "", *configureSamba != "",
 		*selfTest, *storageBroker, *registryCommit, *provisionNAS, *provisionAdmin, *provisionTLS, *provisionIdentities, *provisionSamba, *replaceTLS, *superviseRC0, *superviseRC0Boot, *nfsTest != "", *smbTest, *mountGuardTest,
 		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *nasPolicyClient != "", *identityOwnerService, *nasOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest, *lioTargetTest,
 	} {
@@ -76,6 +78,9 @@ func main() {
 	}
 	if *sambaWorker == "" && *sambaAccount != "" {
 		log.Fatal("Samba account requires worker mode")
+	}
+	if (*configureSamba == "") != (*sambaIdentityID == "") {
+		log.Fatal("RC0 Samba account configuration requires the identity ID and operation")
 	}
 	if *replaceTLS != (*expectedTLS != "") {
 		log.Fatal("RC0 TLS replacement requires the current certificate fingerprint")
@@ -112,6 +117,15 @@ func main() {
 	if *provisionNAS {
 		if err := provisionInheritedNASPolicy(*nasInstallation); err != nil {
 			log.Fatal(err)
+		}
+		return
+	}
+	if *configureSamba != "" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		err := configureInheritedRC0SambaAccount(ctx, *configureSamba, *sambaIdentityID, os.Stdin)
+		stop()
+		if err != nil {
+			log.Fatal("RC0 Samba account configuration requires review")
 		}
 		return
 	}

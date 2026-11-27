@@ -23,6 +23,7 @@ on:
       - 'src/phantowd-api/internal/mountowner/handoff_linux.go'
       - 'src/phantowd-api/cmd/rc0-samba-child-fixture/**'
       - 'src/phantowd-api/rc0_samba_child_linux.go'
+      - 'src/phantowd-api/rc0_samba_enrollment_linux.go'
       - 'src/phantowd-api/rc0_samba_status_linux.go'
       - 'src/phantowd-api/rc0_samba_code_linux.go'
       - 'src/phantowd-api/internal/runtimebundle/samba_documents.go'

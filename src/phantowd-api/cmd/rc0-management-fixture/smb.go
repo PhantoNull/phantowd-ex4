@@ -19,9 +19,6 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"golang.org/x/sys/unix"
 )
@@ -35,7 +32,7 @@ const (
 	smbPayload = "RC0 authenticated SMB write\n"
 )
 
-func seedSMBAccount(ctx context.Context, secret []byte) (result error) {
+func seedSMBUnixIdentity(ctx context.Context) (result error) {
 	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
 	}
@@ -48,85 +45,49 @@ func seedSMBAccount(ctx context.Context, secret []byte) (result error) {
 	if err != nil {
 		return err
 	}
+	defer func() { result = errors.Join(result, native.Close()) }()
 	account, err := native.Reserve(ctx, 1, smbID, smbName)
 	if err != nil {
-		return errors.Join(err, native.Close())
+		return err
 	}
 	if account.UID != 23000 || account.GID != 23000 {
-		return errors.Join(errors.New("fixture Unix identity differs"), native.Close())
+		return errors.New("fixture Unix identity differs")
 	}
 	operation := native.Operation(smbID)
 	for attempt := 0; attempt < 2; attempt++ {
 		journal, err := operation.Load(ctx)
-		if err == nil {
-			err = operation.Step(ctx, journal.Revision)
-		}
 		if err != nil {
-			return errors.Join(err, native.Close())
+			return err
+		}
+		if err := operation.Step(ctx, journal.Revision); err != nil {
+			return err
 		}
 	}
-	confirmed, err := operation.Load(ctx)
-	if err != nil {
-		return errors.Join(err, native.Close())
-	}
-	lookup, err := fileserviceplan.SambaEnrollmentLookupFromOwner(ctx, native)
-	if err := errors.Join(err, native.Close()); err != nil {
+	return nil
+}
+
+func configureSMBAccount(ctx context.Context, action string, secret []byte) error {
+	cmd := exec.CommandContext(ctx, api, "--configure-rc0-samba-account="+action, "--rc0-samba-identity-id="+smbID)
+	return provision(ctx, cmd, root, secret)
+}
+
+func seedSMBAccount(ctx context.Context, secret []byte) error {
+	if err := seedSMBUnixIdentity(ctx); err != nil {
 		return err
 	}
-	config, err := runtimebundle.StageSambaEnrollmentConfiguration(ctx, lookup)
-	if err != nil {
+	if err := configureSMBAccount(ctx, "enable", nil); err == nil || ctx.Err() != nil {
+		return errors.New("Samba enabled an account before credential setup")
+	}
+	if err := configureSMBAccount(ctx, "create-disabled", nil); err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, config.Close()) }()
-	private, err := os.Open(sambaRole + "/private")
-	if err != nil {
+	if err := configureSMBAccount(ctx, "set-password", secret); err != nil {
 		return err
 	}
-	defer private.Close()
-	state, err := os.Open(sambaRole + "/state")
-	if err != nil {
-		return err
+	if err := configureSMBAccount(ctx, "set-password", []byte("unexpected replacement password")); err == nil || ctx.Err() != nil {
+		return errors.New("initial Samba password action accepted a replacement")
 	}
-	defer state.Close()
-	backend, err := smbexec.NewEnrollmentBackend(ctx, config, private, state)
-	if err != nil {
-		return err
-	}
-	owner, err := identityowner.OpenProvisionedWithSMBBackend(directory, inventory, backend)
-	if err != nil {
-		return err
-	}
-	defer func() { result = errors.Join(result, owner.Close()) }()
-	smb := owner.SMB(smbID)
-	if err := smb.Begin(ctx, confirmed.Revision); err != nil {
-		return err
-	}
-	expected, err := smb.Load(ctx)
-	if err != nil {
-		return err
-	}
-	if err := smb.Step(ctx, expected.Revision); err != nil {
-		return err
-	}
-	expected, err = smb.Load(ctx)
-	if err != nil {
-		return err
-	}
-	if err := smb.SetPasswordDisabled(ctx, expected.Revision, secret); err != nil {
-		return err
-	}
-	expected, err = smb.Load(ctx)
-	if err != nil {
-		return err
-	}
-	if err := smb.Enable(ctx, expected.Revision); err != nil {
-		return err
-	}
-	registry, _, err := owner.Snapshot(ctx)
-	if err != nil {
-		return err
-	}
-	return owner.SetDesiredState(ctx, registry.Revision, smbID, serviceaccounts.Enabled)
+	return configureSMBAccount(ctx, "enable", nil)
 }
 
 func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) error {
@@ -178,6 +139,10 @@ func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) err
 	if err := runInitHook(ctx, "start"); err != nil {
 		return fmt.Errorf("SMB normal startup: %w", err)
 	}
+	if err := configureSMBAccount(ctx, "enable", nil); err == nil || ctx.Err() != nil {
+		return errors.New("offline Samba configuration accepted a live state mount")
+	}
+	fmt.Println("PHANTOWD_RC0_SMB_ENROLLMENT cli=verified early_enable=refused replacement=refused live_state=refused")
 	if err := errors.Join(checkBootStorage(true), checkPersistentServiceLocks(true)); err != nil {
 		return err
 	}
