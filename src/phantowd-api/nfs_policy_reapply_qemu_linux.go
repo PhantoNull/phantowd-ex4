@@ -42,19 +42,8 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil {
 		return err
 	}
-	plan, err := fileserviceplan.BuildFromLeasedNASOwners(ctx, b.policyLease, 0, b.identityLease, b.storage)
-	if err != nil {
-		return err
-	}
-	candidate, err := plan.NFSv3TCPCandidate()
-	if err != nil {
-		return err
-	}
-	b.storageLease, _, err = b.storage.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	b.roots, err = nfsowner.NewExportRootsQEMU(ctx, candidate, b.storageLease)
+	var candidate fileserviceplan.NFSv3Candidate
+	b.inputs, candidate, err = nfsowner.PrepareInputs(ctx, b.policyLease, b.identityLease, b.storage, 0)
 	if err != nil {
 		return err
 	}
@@ -68,7 +57,7 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	if err != nil {
 		return err
 	}
-	owner, err = nfsowner.NewQEMU(candidate, b)
+	owner, err = nfsowner.NewLinux(b.inputs, b)
 	if err != nil {
 		return err
 	}
@@ -149,6 +138,9 @@ func (parent *ownerNFSQEMU) reapplySavedPolicy(ctx context.Context, previous *nf
 	}
 	b.phase = "revision2-close"
 	if err := owner.Close(ctx); err != nil {
+		return err
+	}
+	if err := b.releaseBorrowedInputs(ctx); err != nil {
 		return err
 	}
 	if !errors.Is(b.policyLease.Verify(ctx), naspolicystore.ErrClosed) {
