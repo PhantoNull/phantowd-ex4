@@ -119,7 +119,14 @@ func seedSMBAccount(ctx context.Context, secret []byte) (result error) {
 	if err != nil {
 		return err
 	}
-	return smb.Enable(ctx, expected.Revision)
+	if err := smb.Enable(ctx, expected.Revision); err != nil {
+		return err
+	}
+	registry, _, err := owner.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+	return owner.SetDesiredState(ctx, registry.Revision, smbID, serviceaccounts.Enabled)
 }
 
 func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) error {
