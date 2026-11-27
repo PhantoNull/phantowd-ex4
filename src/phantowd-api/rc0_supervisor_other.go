@@ -26,3 +26,7 @@ func manageRC0BootService(context.Context, string) error {
 func provisionInheritedRC0TLS(io.Reader, string, string) error {
 	return errors.New("RC0 TLS provisioning requires Linux")
 }
+
+func provisionInheritedRC0State(context.Context, io.Reader, string, string) error {
+	return errors.New("RC0 state provisioning requires Linux")
+}
