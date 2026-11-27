@@ -127,6 +127,9 @@ func openRC0BootState(grant *os.File) (*os.File, error) {
 }
 
 func startRC0BootService(ctx context.Context) error {
+	if !rc0BootServiceAbsent() {
+		return errRC0Review
+	}
 	grants, err := openRC0BootGrants()
 	if err != nil {
 		return err
@@ -192,20 +195,31 @@ func runRC0BootService(ctx context.Context) error {
 	stop := make(chan *net.UnixConn, 1)
 	go receiveRC0Stop(listener, cancel, stop)
 
+	admitted := false
 	err = runRC0BootManagement(ctx, func() error {
+		admitted = true
 		_, writeErr := ack.Write([]byte{'R'})
 		return errors.Join(writeErr, ack.Close())
 	})
-	err = errors.Join(err, listener.Close(), os.Remove(rc0BootControlDir))
-	if conn := <-stop; conn != nil {
+	err = errors.Join(err, listener.Close())
+	conn := <-stop
+	if conn != nil {
 		defer conn.Close()
-		if err == nil {
-			if deadlineErr := conn.SetWriteDeadline(time.Now().Add(time.Second)); deadlineErr != nil {
-				return deadlineErr
-			}
-			_, err = conn.Write([]byte{'S'})
-		}
 	}
+	// The policy worker has joined before runRC0BootManagement returns. Once
+	// it admitted the API, preserve the already-reserved control directory
+	// unless an explicit stop completed successfully. A killed supervisor
+	// also leaves the directory behind.
+	if admitted && (err != nil || conn == nil) {
+		return errors.Join(errRC0Review, err)
+	}
+	if err := errors.Join(err, os.Remove(rc0BootControlDir)); err != nil || conn == nil {
+		return err
+	}
+	if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+		return err
+	}
+	_, err = conn.Write([]byte{'S'})
 	return err
 }
 
