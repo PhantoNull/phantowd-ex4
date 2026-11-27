@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
+//go:build linux && qemu
+
 package main
 
 import (
@@ -69,7 +71,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if os.Args[1] == "nfs-server" || os.Args[1] == "nfs-client" {
+	if strings.HasPrefix(os.Args[1], "nfs-") || strings.HasPrefix(os.Args[1], "smb-") {
 		return
 	}
 	fmt.Printf("PHANTOWD_RC0_SUPERVISOR_READY phase=%s https_login=true tls=local_provisioned policy=confirmed same_file=refused wrong_bytes=refused synthetic_state=true clean_stop=true\n", os.Args[1])
@@ -83,12 +85,18 @@ func check() error {
 		return errors.New("guest phase required")
 	}
 	phase := os.Args[1]
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	budget := 45 * time.Second
+	if strings.HasPrefix(phase, "smb-") {
+		budget = 120 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 	switch phase {
+	case "smb-client", "smb-legacy-client":
+		return smbClient(ctx)
 	case "nfs-client":
 		return nfsClient(ctx)
-	case "seed", "verify", "rotated", "nfs-server":
+	case "seed", "verify", "rotated", "nfs-server", "smb-server", "smb-legacy-server":
 	default:
 		return errors.New("unknown guest phase")
 	}
@@ -102,6 +110,9 @@ func check() error {
 	}
 	if phase == "nfs-server" {
 		return nfsServer(ctx, credentials)
+	}
+	if strings.HasPrefix(phase, "smb-") {
+		return smbServer(ctx, credentials, bytes.TrimSpace(secret), phase == "smb-legacy-server")
 	}
 	if phase == "seed" {
 		if err := errors.Join(runInitHook(ctx, "start"), runtimeAbsent()); err != nil {
@@ -258,6 +269,10 @@ func seed(ctx context.Context, credentials []byte, confirmedPolicy string) error
 }
 
 func prepareStorageApproval(ingressIndex int) error {
+	return prepareNetworkStorageApproval("nfs", ingressIndex)
+}
+
+func prepareNetworkStorageApproval(protocol string, ingressIndex int) error {
 	observed, err := storageMount(storageSource)
 	if err != nil || observed.Attributes&unix.STATX_ATTR_MOUNT_ROOT == 0 {
 		return errors.Join(errors.New("fixture storage source is not mounted"), err)
@@ -267,7 +282,7 @@ func prepareStorageApproval(ingressIndex int) error {
 	data := fmt.Appendf(nil, `{"format":"phantowd-rc0-storage-v1","registry_revision":1,"volumes":[{"id":"boot-data","filesystem_uuid":%q,"mount_id":%d,"root_inode":%d,"device_major":%d,"device_minor":%d,"read_only":false,"disks":[{"wwn_sha256":"%x"}],"arrays":[]}]`,
 		storageUUID, observed.Mnt_id, observed.Ino, observed.Dev_major, observed.Dev_minor, wwn)
 	if ingressIndex > 0 {
-		data = fmt.Appendf(data, `,"nfs":{"address":%q,"ingress_index":%d}`, rc0NFSServer, ingressIndex)
+		data = fmt.Appendf(data, `,%q:{"address":%q,"ingress_index":%d}`, protocol, rc0NFSServer, ingressIndex)
 	}
 	return os.WriteFile(storageProof, append(data, '}'), 0600)
 }

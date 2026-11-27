@@ -15,9 +15,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicyrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"golang.org/x/sys/unix"
 )
 
@@ -111,7 +114,17 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	if err != nil {
 		return err
 	}
-	identities, err := openRC0ServiceIdentities(stateRoot)
+	var identities *identityowner.Owner
+	var enrollment *runtimebundle.SambaConfiguration
+	var smbBackend *smbexec.EnrollmentBackend
+	if approval != nil && approval.SMB != nil {
+		identities, enrollment, smbBackend, err = openRC0SambaIdentities(ctx, stateRoot, samba)
+	} else {
+		identities, err = openRC0ServiceIdentities(stateRoot)
+	}
+	if enrollment != nil {
+		defer func() { result = errors.Join(result, enrollment.Close()) }()
+	}
 	if identities != nil {
 		defer func() { result = errors.Join(result, identities.Close()) }()
 	}
@@ -146,13 +159,28 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
 	ready := started
-	if approval != nil && approval.NFS != nil {
-		if started == nil {
+	if approval != nil && (approval.NFS != nil || approval.SMB != nil) {
+		if started == nil || control == nil {
 			return errRC0Review
 		}
 		var nfs *registeredNFS
+		var smb *registeredSamba
 		ready = func() error {
 			var err error
+			if approval.SMB != nil {
+				smb, err = prepareRegisteredSamba(ctx, registeredSambaGrants{
+					policy: owner, identity: identities, backend: smbBackend, storage: storage, state: samba,
+					verifyState: func() error { return samba.check(stateRoot, rc0SambaStateRole) },
+					endpoint:    *approval.SMB, group: gid, authorize: control.authorizeSamba,
+				})
+				if err != nil {
+					return err
+				}
+				if err := smb.Start(ctx); err != nil {
+					return err
+				}
+				control.stopSamba = smb.Stop
+			}
 			nfs, err = startRC0NFS(ctx, control, approval, owner, identities, storage)
 			if err != nil {
 				return err
@@ -164,6 +192,9 @@ func superviseRC0State(ctx context.Context, plan rc0BootPlan, state *os.File, kn
 		defer func() {
 			if nfs != nil {
 				result = errors.Join(result, nfs.Close(context.WithoutCancel(ctx)))
+			}
+			if smb != nil {
+				result = errors.Join(result, smb.Close())
 			}
 		}()
 	}

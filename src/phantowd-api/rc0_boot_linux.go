@@ -69,7 +69,7 @@ func runRC0BootManagement(ctx context.Context, control *rc0BootStopAuthority, st
 	if err != nil {
 		return err
 	}
-	if storage != nil && storage.NFS != nil && control == nil {
+	if storage != nil && (storage.NFS != nil || storage.SMB != nil) && control == nil {
 		return errRC0Review
 	}
 	return superviseRC0State(ctx, plan, state, known, proofInfo, storage, control, started)

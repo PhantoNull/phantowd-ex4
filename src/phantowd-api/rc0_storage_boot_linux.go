@@ -34,6 +34,7 @@ type rc0StorageApproval struct {
 	RegistryRevision uint64              `json:"registry_revision"`
 	Volumes          []rc0VolumeApproval `json:"volumes"`
 	NFS              *rc0NFSApproval     `json:"nfs,omitempty"`
+	SMB              *rc0ServiceEndpoint `json:"smb,omitempty"`
 }
 
 type rc0VolumeApproval struct {
@@ -63,7 +64,7 @@ var rc0StorageApprovalKeys = map[string]bool{
 	"filesystem_uuid": true, "mount_id": true, "root_inode": true,
 	"device_major": true, "device_minor": true, "read_only": true, "disks": true,
 	"serial_sha256": true, "wwn_sha256": true, "arrays": true, "uuid": true, "level": true,
-	"nfs": true, "address": true, "ingress_index": true,
+	"nfs": true, "smb": true, "address": true, "ingress_index": true,
 }
 
 func decodeRC0StorageApproval(data []byte, expected string) (rc0StorageApproval, error) {
@@ -72,7 +73,8 @@ func decodeRC0StorageApproval(data []byte, expected string) (rc0StorageApproval,
 	if expected != hex.EncodeToString(digest[:]) ||
 		configjson.Decode(bytes.NewReader(data), &approval, rc0StorageApprovalLimit, 5, rc0StorageApprovalKeys) != nil ||
 		approval.Format != rc0StorageApprovalFormat || approval.Volumes == nil || len(approval.Volumes) > shareconfig.MaxVolumes ||
-		approval.NFS != nil && (len(approval.Volumes) == 0 || !approval.NFS.valid()) {
+		approval.NFS != nil && (len(approval.Volumes) == 0 || !approval.NFS.valid()) ||
+		approval.SMB != nil && (len(approval.Volumes) == 0 || !approval.SMB.valid()) {
 		return rc0StorageApproval{}, errRC0Review
 	}
 	claims := volumeregistry.Document{Format: volumeregistry.Format, SchemaVersion: volumeregistry.SchemaVersion,

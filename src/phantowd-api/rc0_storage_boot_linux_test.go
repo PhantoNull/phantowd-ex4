@@ -31,6 +31,12 @@ func TestRC0StorageApprovalRequiresExactMountAndBacking(t *testing.T) {
 	if err != nil || approval.NFS == nil || approval.NFS.Address.String() != "192.0.2.2" || approval.NFS.IngressIndex != 4 {
 		t.Fatalf("valid NFS endpoint rejected: %v", err)
 	}
+	withSMB := strings.TrimSuffix(withNFS, "}") + `,"smb":{"address":"192.0.2.3","ingress_index":5}}`
+	approval, err = decodeRC0StorageApproval([]byte(withSMB), digest(withSMB))
+	if err != nil || approval.NFS == nil || approval.SMB == nil ||
+		approval.SMB.Address.String() != "192.0.2.3" || approval.SMB.IngressIndex != 5 {
+		t.Fatalf("valid SMB endpoint rejected: %v", err)
+	}
 	for _, changed := range []string{
 		strings.Replace(proof, `"id":"boot-data"`, `"id":"../other"`, 1),
 		strings.Replace(proof, `"id":"boot-data"`, `"id":"boot-data","source":"/elsewhere"`, 1),
@@ -43,6 +49,9 @@ func TestRC0StorageApprovalRequiresExactMountAndBacking(t *testing.T) {
 		strings.Replace(withNFS, "192.0.2.2", "::ffff:192.0.2.2", 1),
 		strings.Replace(withNFS, `"ingress_index":4`, `"ingress_index":0`, 1),
 		strings.Replace(withNFS, `"ingress_index":4`, `"ingress_index":4,"nfsd":"/tmp/nfsd"`, 1),
+		strings.Replace(withSMB, "192.0.2.3", "224.0.0.1", 1),
+		strings.Replace(withSMB, `"ingress_index":5`, `"ingress_index":-1`, 1),
+		`{"format":"phantowd-rc0-storage-v1","registry_revision":3,"volumes":[],"smb":{"address":"192.0.2.3","ingress_index":5}}`,
 	} {
 		if _, err := decodeRC0StorageApproval([]byte(changed), digest(changed)); err == nil {
 			t.Fatalf("accepted invalid approval: %s", changed)

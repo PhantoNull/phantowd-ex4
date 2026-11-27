@@ -17,6 +17,19 @@ import (
 // Non-nil handles returned with an error retain uncertain teardown.
 func (c SambaIsolatedCandidate) MountShareRoots(ctx context.Context, root string, storage *mountowner.MountedVolumeSet,
 	serviceGroup uint32) (*mountowner.ServiceHandoff, *mountowner.ServiceSharePins, error) {
+	return c.mountShareRoots(ctx, root, storage, serviceGroup, mountowner.NewServiceHandoff)
+}
+
+// MountPrivateShareRoots retains the original candidate below a root-only
+// parent for a daemon that accepts inherited descriptors.
+func (c SambaIsolatedCandidate) MountPrivateShareRoots(ctx context.Context, root string, storage *mountowner.MountedVolumeSet,
+	serviceGroup uint32) (*mountowner.ServiceHandoff, *mountowner.ServiceSharePins, error) {
+	return c.mountShareRoots(ctx, root, storage, serviceGroup, mountowner.NewDescriptorServiceHandoff)
+}
+
+func (c SambaIsolatedCandidate) mountShareRoots(ctx context.Context, root string, storage *mountowner.MountedVolumeSet,
+	serviceGroup uint32, create func(string, *mountowner.MountedVolumeSet, []mountowner.ServiceShare, uint32) (*mountowner.ServiceHandoff, error)) (
+	*mountowner.ServiceHandoff, *mountowner.ServiceSharePins, error) {
 	if !c.valid || ctx == nil || storage == nil {
 		return nil, nil, ErrNotReady
 	}
@@ -26,7 +39,7 @@ func (c SambaIsolatedCandidate) MountShareRoots(ctx context.Context, root string
 	if err := c.checkShareStorage(storage); err != nil {
 		return nil, nil, err
 	}
-	handoff, err := mountowner.NewServiceHandoff(root, storage, c.shareRequests(), serviceGroup)
+	handoff, err := create(root, storage, c.shareRequests(), serviceGroup)
 	if err != nil {
 		return nil, nil, err
 	}

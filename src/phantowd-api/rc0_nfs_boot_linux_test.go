@@ -34,3 +34,32 @@ func TestRC0BootStopRequiresCurrentNFSLifetimeDrain(t *testing.T) {
 		t.Fatal("management-only operation became NFS drain authority")
 	}
 }
+
+func TestRC0BootStopCanRetrySambaDrain(t *testing.T) {
+	ctx := context.Background()
+	control := &rc0BootStopAuthority{}
+	pending := errors.New("Samba drain pending")
+	calls := 0
+	control.stopSamba = func(ctx context.Context) error {
+		if err := control.authorizeSamba(ctx); err != nil {
+			return err
+		}
+		calls++
+		if calls == 1 {
+			return pending
+		}
+		return nil
+	}
+	if control.accept(rc0StopRequest) || !errors.Is(control.drainSamba(ctx), errRC0Review) || calls != 0 {
+		t.Fatal("authorized Samba drain before startup")
+	}
+	control.ready.Store(true)
+	if !control.accept(rc0StopRequest) || !errors.Is(control.drainSamba(ctx), pending) ||
+		!errors.Is(control.authorizeSamba(ctx), errRC0Review) {
+		t.Fatal("failed drain retained shutdown authorization")
+	}
+	if !control.accept(rc0StopRequest) || control.drainSamba(ctx) != nil ||
+		control.accept(rc0StopRequest) || calls != 2 {
+		t.Fatal("successful drain did not keep exclusive shutdown authorization")
+	}
+}

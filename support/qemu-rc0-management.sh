@@ -3,10 +3,14 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 set -eu
 
-[ "$#" -eq 3 ] || { echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX' >&2; exit 2; }
+[ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = smb-legacy ]; } || {
+    echo 'Usage: qemu-rc0-management.sh IMAGES_DIR HOST_GO LOG_PREFIX [smb-legacy]' >&2
+    exit 2
+}
 images=$1
 host_go=$2
 log_prefix=$3
+mode=${4:-all}
 qemu=${QEMU_SYSTEM_ARM:-qemu-system-arm}
 support=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 for name in rootfs.ext2 zImage versatile-pb.dtb; do
@@ -31,8 +35,8 @@ mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$volume"
 (
     cd "$support/../src/phantowd-api"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 GOPROXY=off GOTOOLCHAIN=local GOWORK=off \
-        "$host_go" build -mod=vendor -trimpath -ldflags='-s -w' -o "$scratch/runner" \
-        "$support/fixtures/rc0-management.go" "$support/fixtures/rc0-management-nfs.go"
+        "$host_go" build -tags=qemu -mod=vendor -buildvcs=false -trimpath -ldflags='-s -w' \
+        -o "$scratch/runner" ./cmd/rc0-management-fixture
 )
 od -An -N24 -tx1 /dev/urandom | tr -d ' \n' > "$scratch/password"
 [ "$(wc -c < "$scratch/password")" -eq 48 ]
@@ -48,14 +52,19 @@ case " $(cat /proc/cmdline) " in
     *' phantowd.state=rotated '*) phase=rotated ;;
     *' phantowd.state=nfs-server '*) phase=nfs-server ;;
     *' phantowd.state=nfs-client '*) phase=nfs-client ;;
+    *' phantowd.state=smb-server '*) phase=smb-server ;;
+    *' phantowd.state=smb-client '*) phase=smb-client ;;
+    *' phantowd.state=smb-legacy-server '*) phase=smb-legacy-server ;;
+    *' phantowd.state=smb-legacy-client '*) phase=smb-legacy-client ;;
     *) exit 1 ;;
 esac
 mount -t tmpfs -o mode=0755,size=64m tmpfs /run
 ifconfig lo 127.0.0.1 up
-if [ "$phase" = nfs-client ]; then
-    /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
-    exec reboot -f
-fi
+case "$phase" in
+    *-client)
+        /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+        exec reboot -f ;;
+esac
 if [ ! -r /proc/mdstat ]; then
     echo 'RC0 storage fixture requires the kernel MD census' >&2
     exit 1
@@ -93,6 +102,12 @@ if [ "$phase" = seed ]; then
     echo 'PHANTOWD_RC0_NFT_READY inet=verified json=1 table=removed scope=nicless-qemu'
 fi
 /rc0-fixture/runner "$phase" || echo PHANTOWD_RC0_SUPERVISOR_FAILED
+# The legacy test deliberately retains the service and its fence. The
+# emulator discards both disposable disks after the verified reboot.
+if [ "$phase" = smb-legacy-server ]; then
+    sync
+    exec reboot -f
+fi
 if [ "$phase" = nfs-server ]; then
     umount /proc/fs/nfsd
 fi
@@ -118,6 +133,24 @@ install_fixture runner 0100755
 install_fixture init 0100755
 install_fixture password 0100600
 chmod a-w "$image"
+
+run_pair() {
+    protocol=$1
+    state="$scratch/$protocol-state.ext4"
+    data="$scratch/$protocol-data.ext2"
+    truncate -s 32M "$state"
+    mkfs.ext4 -F -q "$state"
+    truncate -s 16M "$data"
+    mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$data"
+    (umask 022; : > "$log_prefix.$protocol-server.log"; : > "$log_prefix.$protocol-client.log")
+    python3 -B "$support/qemu-rc0-pair.py" "$qemu" "$images" "$image" "$state" "$data" "$log_prefix" "$protocol"
+}
+
+if [ "$mode" = smb-legacy ]; then
+    run_pair smb-legacy
+    sha256sum -c "$scratch/base.sha256"
+    exit
+fi
 
 for phase in seed verify rotated; do
     log="$log_prefix.$phase.log"
@@ -194,12 +227,6 @@ tr -d '\r' < "$log_prefix.seed.log" |
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_SAMBA_STATE_REFUSAL duplicate=refused interrupted=refused mount_alias=refused' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
-state="$scratch/nfs-state.ext4"
-data="$scratch/nfs-data.ext2"
-truncate -s 32M "$state"
-mkfs.ext4 -F -q "$state"
-truncate -s 16M "$data"
-mkfs.ext2 -F -q -U 11111111-2222-3333-4444-555555555555 "$data"
-(umask 022; : > "$log_prefix.nfs-server.log"; : > "$log_prefix.nfs-client.log")
-python3 -B "$support/qemu-rc0-pair.py" "$qemu" "$images" "$image" "$state" "$data" "$log_prefix"
+run_pair nfs
+run_pair smb
 sha256sum -c "$scratch/base.sha256"

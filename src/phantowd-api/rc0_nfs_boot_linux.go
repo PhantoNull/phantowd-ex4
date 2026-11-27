@@ -13,12 +13,14 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/nfsowner"
 )
 
-type rc0NFSApproval struct {
+type rc0NFSApproval = rc0ServiceEndpoint
+
+type rc0ServiceEndpoint struct {
 	Address      netip.Addr `json:"address"`
 	IngressIndex int        `json:"ingress_index"`
 }
 
-func (a rc0NFSApproval) valid() bool {
+func (a rc0ServiceEndpoint) valid() bool {
 	return a.Address.Is4() && a.Address.IsGlobalUnicast() && a.IngressIndex > 0
 }
 
@@ -26,6 +28,31 @@ func (a rc0NFSApproval) valid() bool {
 // Drain confirmation is volatile and accepted only together with that stop.
 type rc0BootStopAuthority struct {
 	nfs, ready, stopping atomic.Bool
+	// Assigned before ready is published and retained for the boot lifetime.
+	stopSamba func(context.Context) error
+}
+
+func (a *rc0BootStopAuthority) authorizeSamba(ctx context.Context) error {
+	if a.stopSamba == nil || !a.stopping.Load() {
+		return errRC0Review
+	}
+	return ctx.Err()
+}
+
+// Try the locally verifiable Samba drain before cancelling management.
+// A later authenticated request can continue draining the fenced service.
+func (a *rc0BootStopAuthority) drainSamba(ctx context.Context) error {
+	if !a.stopping.Load() {
+		return errRC0Review
+	}
+	if a.stopSamba == nil {
+		return nil
+	}
+	err := a.stopSamba(ctx)
+	if err != nil {
+		a.stopping.Store(false)
+	}
+	return err
 }
 
 func (a *rc0BootStopAuthority) accept(request byte) bool {

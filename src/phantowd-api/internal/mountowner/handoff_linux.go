@@ -70,6 +70,7 @@ type ServiceHandoff struct {
 	root             *os.File
 	rootPath         string
 	rootIdentity     handoffIdentity
+	privateParent    bool
 	serviceGroupID   uint32
 	set              *MountedVolumeSet
 	required         []ServiceShare
@@ -142,12 +143,22 @@ func (*ServicePaths) UnmarshalJSON([]byte) error {
 // in its process mount namespace and is not, by itself, an authorization
 // boundary.
 func NewServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32) (*ServiceHandoff, error) {
+	return newServiceHandoff(root, set, shares, serviceGroupID, false)
+}
+
+// NewDescriptorServiceHandoff stages roots beneath an immediate root-only
+// parent. The isolated daemon receives the share descriptors from its owner.
+func NewDescriptorServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32) (*ServiceHandoff, error) {
+	return newServiceHandoff(root, set, shares, serviceGroupID, true)
+}
+
+func newServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32, privateParent bool) (*ServiceHandoff, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || set == nil || !validHandoffRoot(root) ||
 		shares == nil || len(shares) == 0 || len(shares) > shareconfig.MaxShares ||
 		serviceGroupID < 1000 || serviceGroupID > 60000 {
 		return nil, ErrHandoffInvalid
 	}
-	if err := validateHandoffAncestors(root); err != nil {
+	if err := validateHandoffAncestors(root, privateParent); err != nil {
 		return nil, ErrHandoffInvalid
 	}
 	available := make(map[string]bool, len(set.members))
@@ -191,7 +202,7 @@ func NewServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare
 	if err != nil || !empty {
 		return nil, ErrHandoffReview
 	}
-	handoff := &ServiceHandoff{root: file, rootPath: root, rootIdentity: rootIdentity,
+	handoff := &ServiceHandoff{root: file, rootPath: root, rootIdentity: rootIdentity, privateParent: privateParent,
 		serviceGroupID: serviceGroupID, set: set, required: required,
 		state: ServiceHandoffPrepared}
 	failed = false
@@ -715,7 +726,7 @@ func (h *ServiceHandoff) rootPathStillPinnedLocked() bool {
 	if h.root == nil {
 		return false
 	}
-	if validateHandoffAncestors(h.rootPath) != nil {
+	if validateHandoffAncestors(h.rootPath, h.privateParent) != nil {
 		return false
 	}
 	fd, err := unix.Openat2(unix.AT_FDCWD, h.rootPath, &unix.OpenHow{
@@ -732,10 +743,13 @@ func (h *ServiceHandoff) rootPathStillPinnedLocked() bool {
 		st.Uid == 0 && st.Gid == h.serviceGroupID && st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0710
 }
 
-func validateHandoffAncestors(root string) error {
+func validateHandoffAncestors(root string, privateParent bool) error {
 	paths := make([]string, 0, 8)
 	for current := filepath.Dir(root); current != "/"; current = filepath.Dir(current) {
 		paths = append(paths, current)
+	}
+	if privateParent && len(paths) == 0 {
+		return ErrHandoffInvalid
 	}
 	for index := len(paths) - 1; index >= 0; index-- {
 		fd, err := unix.Openat2(unix.AT_FDCWD, paths[index], &unix.OpenHow{
@@ -748,8 +762,14 @@ func validateHandoffAncestors(root string) error {
 		var st unix.Stat_t
 		statErr := unix.Fstat(fd, &st)
 		closeErr := unix.Close(fd)
-		if statErr != nil || closeErr != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Uid != 0 ||
-			st.Mode&0022 != 0 || st.Mode&0001 == 0 {
+		if statErr != nil || closeErr != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Uid != 0 {
+			return ErrHandoffInvalid
+		}
+		if privateParent && index == 0 {
+			if st.Mode&07777 != 0700 || st.Gid != 0 {
+				return ErrHandoffInvalid
+			}
+		} else if st.Mode&0022 != 0 || st.Mode&0001 == 0 {
 			return ErrHandoffInvalid
 		}
 	}

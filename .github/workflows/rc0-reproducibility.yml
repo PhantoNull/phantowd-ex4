@@ -13,8 +13,8 @@ on:
       - 'support/compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
       - 'support/qemu-rc0-pair.py'
-      - 'support/fixtures/rc0-management.go'
-      - 'support/fixtures/rc0-management-nfs.go'
+      - 'src/phantowd-api/cmd/rc0-management-fixture/**'
+      - 'src/phantowd-api/registered_samba_linux.go'
       - 'src/phantowd-api/cmd/rc0-samba-child-fixture/**'
       - 'src/phantowd-api/rc0_samba_child_linux.go'
       - 'src/phantowd-api/rc0_samba_status_linux.go'
@@ -50,8 +50,6 @@ on:
       - 'support/test-compare-build-artifacts.sh'
       - 'support/qemu-rc0-*.sh'
       - 'support/qemu-rc0-pair.py'
-      - 'support/fixtures/rc0-management.go'
-      - 'support/fixtures/rc0-management-nfs.go'
       - 'tools/phantowd-lab/**'
   workflow_dispatch:
 
@@ -127,6 +125,8 @@ jobs:
             ${{ runner.temp }}/phantowd-rc0/rc0-management.rotated.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-server.log
             ${{ runner.temp }}/phantowd-rc0/rc0-management.nfs-client.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-server.log
+            ${{ runner.temp }}/phantowd-rc0/rc0-management.smb-client.log
           if-no-files-found: ignore
           retention-days: 1
 
