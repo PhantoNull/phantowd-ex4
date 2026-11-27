@@ -348,8 +348,8 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 	return state, nil
 }
 
-// Abort settles the original group after a supervisor failure. It always
-// requires review and cannot be reported as a protocol-confirmed shutdown.
+// Abort quarantines ingress after a supervisor failure. It requires review
+// and only attempts group teardown while the original leader is live.
 func (d *SambaDaemon) Abort() error {
 	if d == nil || d.self != d {
 		return ErrInvalid
@@ -371,6 +371,10 @@ func (d *SambaDaemon) abort() error {
 		if ingressErr == nil {
 			d.published = false
 		}
+	}
+	if !d.sambaProcessAlive() {
+		// The numeric process group is no longer a sufficient signal target.
+		return errors.Join(ErrReviewRequired, ingressErr)
 	}
 	_, err := d.owner.Stop(ctx)
 	return errors.Join(ErrReviewRequired, ingressErr, err)
