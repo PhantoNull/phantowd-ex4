@@ -68,8 +68,8 @@ sessions, tree connections and open files. The packaged Samba census marks
 a report complete after all three traversals succeed. A busy, partial or
 unmarked report leaves the fence in place. The production-profile fixture
 holds an authenticated file open while testing stop, then lets that read
-finish through the fence. The complete clean-image campaign must qualify
-the patched status binary.
+finish through the fence. Both clean builds qualified the patched binary
+against that fixture. [Guarded ARMv5 Samba runs](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45925896028)
 
 Normal RC0 startup can activate Samba from a boot storage grant that identifies
 the IPv4 address, ingress interface and backing volumes. The supervisor reopens
@@ -80,14 +80,21 @@ available. A pending drain keeps the ingress fence and allows a later stop
 request. The two-guest ARMv5 campaign checks authenticated file access, continued
 reads through the fence, refusal of new connections and a successful
 release after the packaged census can prove the service idle.
+On the verified ARMv5 research userspace with the patched census, the normal
+init hook drained Samba, removed its firewall and released storage. A separate
+pair terminated the original daemon during an authenticated session. The
+supervisor quarantined all SMB ingress before a stop request, kept HTTPS and
+the approved storage available, and refused a replacement or grant withdrawal.
 
 Two clean RC0 builds booted successfully and produced different root
 filesystem checksums. Their regular-file contents differed only in
 `libsamba-util`, its isolated copy and the manifest recording that copy.
 The six differing bytes in the library were a random host Python path
 suffix. The Samba build now defaults to target Python site paths when
-building without Python bindings. The independent comparison still checks
-the full root filesystem byte for byte.
+building without Python bindings. Both independent clean builds of
+`c3c0d52` booted and their full RC0 comparison passed, including the root
+filesystem and its checksum manifest.
+[Independent build and comparison](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45926395090)
 
 ## Explicit RC0 management supervisor
 
@@ -130,6 +137,13 @@ artifacts. The guest verified provider stop, authenticated HTTP 503 responses,
 zero reconnects and normal API exit.
 [PR #286](https://github.com/PhantoNull/phantowd-ex4/pull/286) ·
 [Independent build](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45556040130)
+
+PR #307 moved the retained NFS service lifetime into normal Linux builds.
+QEMU and the EX4 research DTB compiled on tree `419a720`, which is also the
+tree of `develop` merge `8177d12`. The QEMU run checks exclusive input
+transfer and both NFS service lifetimes.
+[PR #307](https://github.com/PhantoNull/phantowd-ex4/pull/307) ·
+[ARMv5 run](https://github.com/PhantoNull/phantowd-ex4/actions/runs/45924984513)
 
 ## Inherited HTTPS identity
 
