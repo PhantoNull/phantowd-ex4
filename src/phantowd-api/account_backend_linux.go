@@ -63,12 +63,22 @@ func provisionInheritedAdministrator(ctx context.Context, input io.Reader) error
 	return nil
 }
 
-func provisionAdministrator(ctx context.Context, input io.Reader, store *admincredentials.Store) error {
+const maxAdministratorProvisionInput = 8 * 1024
+
+func decodeAdministratorProvisioning(input io.Reader) (setupRequest, error) {
 	var request setupRequest
 	keys := map[string]bool{"username": true, "password": true}
-	if configjson.Decode(input, &request, 8*1024, 1, keys) != nil ||
+	if configjson.Decode(input, &request, maxAdministratorProvisionInput, 1, keys) != nil ||
 		!validUsername(request.Username) || !validSetupPassword(request.Password) {
-		return errAdministratorProvisioning
+		return setupRequest{}, errAdministratorProvisioning
+	}
+	return request, nil
+}
+
+func provisionAdministrator(ctx context.Context, input io.Reader, store *admincredentials.Store) error {
+	request, err := decodeAdministratorProvisioning(input)
+	if err != nil {
+		return err
 	}
 	password := []byte(request.Password)
 	defer clear(password)
