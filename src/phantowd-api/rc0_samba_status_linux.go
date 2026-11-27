@@ -70,10 +70,16 @@ func checkRC0SambaStatusCode(root *os.File) error {
 		if err != nil {
 			return err
 		}
-		mounted, err := openRC0Role(root, path, unix.O_PATH|unix.O_DIRECTORY)
+		// These two directories are the daemon's intentional bind mounts.
+		// Allow that crossing and verify the resulting inode against the image.
+		fd, err := unix.Openat2(int(root.Fd()), path, &unix.OpenHow{
+			Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
+			Resolve: rc0Confined &^ unix.RESOLVE_NO_XDEV,
+		})
 		if err != nil {
 			return errors.Join(err, source.Close())
 		}
+		mounted := os.NewFile(uintptr(fd), "isolated-samba-status-code")
 		var want, have unix.Stat_t
 		var wantFS, haveFS unix.Statfs_t
 		sourceFD, mountFD := int(source.Fd()), int(mounted.Fd())
