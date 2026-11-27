@@ -47,6 +47,7 @@ type SambaDaemon struct {
 	attempted bool
 	published bool
 	fenced    bool
+	settled   bool
 	closed    bool
 	review    bool
 	closeErr  error
@@ -241,7 +242,7 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, ErrReviewRequired
 	}
 	observed, err := d.owner.Observe(ctx)
-	if err == nil && d.attempted && observed.State == StateStopped {
+	if err == nil && d.settled && observed.State == StateStopped {
 		return observed, nil
 	}
 	if errors.Is(err, ErrReviewRequired) {
@@ -297,6 +298,7 @@ func (d *SambaDaemon) Stop(ctx context.Context) (Snapshot, error) {
 		state.State = StateReviewRequired
 		return state, errors.Join(ErrReviewRequired, err)
 	}
+	d.settled = true
 	return state, nil
 }
 
@@ -308,7 +310,7 @@ func (d *SambaDaemon) Abort() error {
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.closed {
+	if d.closed || d.settled {
 		return ErrUnavailable
 	}
 	return d.abort()
@@ -349,11 +351,11 @@ func (d *SambaDaemon) Close() error {
 	}
 	d.closed = true
 	for _, file := range d.files {
-		if err := file.Close(); err != nil {
-			d.closeErr = errors.Join(ErrReviewRequired, err)
-			return d.closeErr
-		}
+		d.closeErr = errors.Join(d.closeErr, file.Close())
 	}
 	d.files = nil
-	return nil
+	if d.closeErr != nil {
+		d.closeErr = errors.Join(ErrReviewRequired, d.closeErr)
+	}
+	return d.closeErr
 }
