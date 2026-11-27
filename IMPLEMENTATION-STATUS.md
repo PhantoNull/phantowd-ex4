@@ -32,8 +32,17 @@ The ARMv5 guest verifies disabled creation, password assignment while disabled,
 login refusal and explicit enable under the same Samba SID. The tests retain
 the resulting identity evidence through real authenticated SMB3 I/O on the
 original database directories. The offline backend refuses session revocation
-before it changes the journal. Product startup still needs persistent native
-lookup and a session-aware coordinator.
+before it changes the journal. The boot supervisor still needs to admit the
+Samba backend and coordinate live sessions.
+
+Newly provisioned RC0 identity authorities keep managed private groups and
+users in a separate revisioned state document. The owner builds its service
+lookup from those records and the image's reserved identities. It checks the
+record against the native operation journal before use. Earlier provisioned
+layouts retain their existing observation path. The ARMv5 fixture reopens the
+group after a kernel reboot, completes the user, and enrolls it in Samba while
+the image account database stays read-only. The fixture supplies its own
+external-ownership inventory for the disposable volume.
 
 ## Explicit RC0 management supervisor
 

@@ -90,6 +90,9 @@ func initializeIdentityStage(stage int, first, last uint32) error {
 	if err != nil {
 		return err
 	}
+	if err := initializeNativeIdentityRole(stage); err != nil {
+		return err
+	}
 	return unix.Fsync(stage)
 }
 
@@ -112,6 +115,7 @@ func OpenProvisionedWithSMBBackend(parent *os.File, inventory Inventory, backend
 }
 
 func openProvisioned(parent *os.File, deps dependencies) (*Owner, error) {
+	deps.provisioned = true
 	transferred := false
 	defer func() {
 		if !transferred {

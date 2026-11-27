@@ -33,6 +33,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 	"golang.org/x/sys/unix"
 )
 
@@ -98,6 +99,17 @@ func main() {
 	const safe = unix.MS_NOSUID | unix.MS_NODEV | unix.MS_NOEXEC
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
+	if len(os.Args) != 2 {
+		panic("fixture phase required")
+	}
+	switch os.Args[1] {
+	case "prepare":
+		prepareNativeGroup(ctx)
+		return
+	case "verify":
+	default:
+		panic("invalid fixture phase")
+	}
 	candidate := fixtureCandidate()
 	owner, err := runtimebundle.StageSambaServiceConfiguration(ctx, candidate, netip.MustParseAddr(address))
 	must(err)
@@ -316,33 +328,62 @@ func main() {
 	if _, err := owner.DuplicateRoot(ctx); err == nil {
 		panic("closed configuration still supplied an input")
 	}
-	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused")
+	fmt.Println("PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused")
+}
+
+func emptyInventory(context.Context) (serviceaccounts.Reservations, error) {
+	return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+}
+
+func prepareNativeGroup(ctx context.Context) {
+	identityRoot := open("/run/data/identities")
+	must(identityowner.ProvisionInitial(ctx, identityRoot, fixtureID, fixtureID+10))
+	owner, err := identityowner.OpenProvisioned(identityRoot, emptyInventory)
+	must(err)
+	account, err := owner.Reserve(ctx, 1, accountID, fixtureAccount)
+	must(err)
+	if account.UID != fixtureID || account.GID != fixtureID {
+		panic("unexpected identity allocation")
+	}
+	native := owner.Operation(accountID)
+	journal, err := native.Load(ctx)
+	must(err)
+	must(native.Step(ctx, journal.Revision))
+	journal, err = native.Load(ctx)
+	must(err)
+	if journal.Phase != identityprovision.GroupConfirmed {
+		panic("native fixture group not confirmed")
+	}
+	must(owner.Close())
+	must(identityRoot.Close())
+	fmt.Println("PHANTOWD_RC0_NATIVE_GROUP persistent=recorded phase=group-confirmed")
 }
 
 func enrollDisabled(ctx context.Context, private, state *os.File, password []byte) (*identityowner.Owner, *runtimebundle.SambaConfiguration, smbprovision.Journal) {
 	identityRoot := open("/run/data/identities")
 	defer identityRoot.Close()
-	emptyInventory := func(context.Context) (serviceaccounts.Reservations, error) {
-		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
-	}
-	must(identityowner.ProvisionInitial(ctx, identityRoot, fixtureID, fixtureID+10))
 	nativeOwner, err := identityowner.OpenProvisioned(identityRoot, emptyInventory)
 	must(err)
-	account, err := nativeOwner.Reserve(ctx, 1, accountID, fixtureAccount)
-	must(err)
-	if account.UID != fixtureID || account.GID != fixtureID {
-		panic("unexpected identity allocation")
-	}
 	native := nativeOwner.Operation(accountID)
-	for i := 0; i < 2; i++ {
-		journal, err := native.Load(ctx)
-		must(err)
-		must(native.Step(ctx, journal.Revision))
+	group, err := native.Load(ctx)
+	must(err)
+	if group.Phase != identityprovision.GroupConfirmed || group.Account.UID != fixtureID || group.Account.GID != fixtureID {
+		panic("reboot lost the original group and journal")
 	}
+	must(native.Step(ctx, group.Revision))
 	nativeJournal, err := native.Load(ctx)
 	must(err)
 	if nativeJournal.Phase != identityprovision.UnixConfirmed {
 		panic("native fixture identity not confirmed")
+	}
+	var filesystem unix.Statfs_t
+	must(unix.Statfs("/etc", &filesystem))
+	image, err := unixidentity.ReadLocal("/etc", 0)
+	must(err)
+	imageStatus, err := image.Assess(nativeJournal.Account)
+	must(err)
+	if filesystem.Flags&unix.ST_RDONLY == 0 || imageStatus != unixidentity.Absent {
+		panic("managed identities changed the image account database")
 	}
 	lookup, err := fileserviceplan.SambaEnrollmentLookupFromOwner(ctx, nativeOwner)
 	must(err)

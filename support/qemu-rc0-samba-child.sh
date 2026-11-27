@@ -43,17 +43,26 @@ mount -t tmpfs -o mode=0755,nosuid,nodev,size=32m tmpfs /run
 ifconfig lo 127.0.0.1 up
 ifconfig lo:1 192.0.2.21 netmask 255.255.255.255 up
 mkdir /run/data /run/rw /run/ro
-mkdir -m 0700 /run/native-etc
-cp -a /etc/. /run/native-etc/
-mount -o bind /run/native-etc /etc
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdb /run/data
-mkdir -m 0700 /run/data/private /run/data/state /run/data/identities
-mkdir -m 0755 /run/data/writable /run/data/readonly
-echo 'rw marker' > /run/data/writable/marker
-echo 'ro marker' > /run/data/readonly/marker
-if ! /rc0-samba-fixture/runner; then
+case " $(cat /proc/cmdline) " in
+    *' phantowd.samba=prepare '*)
+        phase=prepare
+        mkdir -m 0700 /run/data/private /run/data/state /run/data/identities
+        mkdir -m 0755 /run/data/writable /run/data/readonly
+        echo 'rw marker' > /run/data/writable/marker
+        echo 'ro marker' > /run/data/readonly/marker
+        ;;
+    *' phantowd.samba=verify '*) phase=verify ;;
+    *) exit 1 ;;
+esac
+if ! /rc0-samba-fixture/runner "$phase"; then
     echo PHANTOWD_RC0_SAMBA_LAUNCH_FAILED
 fi
+if [ "$phase" = verify ]; then
+    umount /run/ro
+    umount /run/rw
+fi
+umount /run/data
 sync
 exec reboot -f
 SH
@@ -68,7 +77,8 @@ for role in init runner; do
 done
 chmod a-w "$root_copy"
 (umask 022; : > "$log")
-if ! timeout --signal=TERM --kill-after=5 70 "$qemu" \
+for phase in prepare verify; do
+    if ! timeout --signal=TERM --kill-after=5 70 "$qemu" \
     -M versatilepb -cpu arm926 -m 256M -nic none -serial stdio -display none -monitor none -no-reboot \
     -kernel "$images/zImage" -dtb "$images/versatile-pb.dtb" \
     -drive "file=$root_copy,if=none,id=rootdisk,format=raw,readonly=on" \
@@ -76,15 +86,21 @@ if ! timeout --signal=TERM --kill-after=5 70 "$qemu" \
     -device lsi53c895a,id=scsi0 -device scsi-hd,bus=scsi0.0,drive=rootdisk,serial=RC0-SAMBA-ROOT \
     -device scsi-hd,bus=scsi0.0,drive=datadisk,serial=RC0-SAMBA-DISPOSABLE \
     -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0 \
-    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 init=/rc0-samba-fixture/init' > "$log" 2>&1; then
-    tail -n 25 "$log" >&2
-    exit 1
-fi
-expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused'
-if ! awk -v expected="$expected" '{sub(/\r$/, "")} $0 == expected { n++ } END { exit n != 1 }' "$log" ||
-    ! grep -F 'reboot: Restarting system' "$log" >/dev/null || grep -Eq 'PHANTOWD_RC0_SAMBA_LAUNCH_FAILED|Kernel panic' "$log"; then
-    tail -n 25 "$log" >&2
-    exit 1
-fi
-printf '%s\n' "$expected"
+    -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 init=/rc0-samba-fixture/init phantowd.samba=$phase" > "$scratch/serial" 2>&1; then
+        cat "$scratch/serial" >> "$log"
+        tail -n 25 "$scratch/serial" >&2
+        exit 1
+    fi
+    cat "$scratch/serial" >> "$log"
+    case "$phase" in
+        prepare) expected='PHANTOWD_RC0_NATIVE_GROUP persistent=recorded phase=group-confirmed' ;;
+        verify) expected='PHANTOWD_RC0_SAMBA_CHILD actual_smbd=true native_reboot=verified image_accounts=untouched enrollment=verified disabled_login=refused protected_configuration=verified original_mounts=verified capabilities=verified anonymous=refused authenticated_rw=verified read_only=verified databases=retained process_group=drained bad_handoffs=refused' ;;
+    esac
+    if ! awk -v expected="$expected" '{sub(/\r$/, "")} $0 == expected { n++ } END { exit n != 1 }' "$scratch/serial" ||
+        ! grep -F 'reboot: Restarting system' "$scratch/serial" >/dev/null || grep -Eq 'PHANTOWD_RC0_SAMBA_LAUNCH_FAILED|Kernel panic' "$scratch/serial"; then
+        tail -n 25 "$scratch/serial" >&2
+        exit 1
+    fi
+    printf '%s\n' "$expected"
+done
 sha256sum -c "$scratch/base.sha256"
