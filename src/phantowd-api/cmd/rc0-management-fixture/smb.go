@@ -189,16 +189,18 @@ func smbServer(ctx context.Context, credentials, secret []byte, legacy bool) err
 	if _, err := io.WriteString(peer, "ready\n"); err != nil {
 		return err
 	}
-	if err := readNFSTestMessage(peer, "held\n"); err != nil {
-		return err
-	}
-	data, err := os.ReadFile(dir + "/written")
-	if err != nil || string(data) != smbPayload {
-		return errors.Join(errors.New("SMB write missed original storage"), err)
+	if err := waitSMBContents(ctx, dir+"/written", smbPayload); err != nil {
+		return fmt.Errorf("SMB write missed original storage: %w", err)
 	}
 	var st unix.Stat_t
 	if err := unix.Stat(dir+"/written", &st); err != nil || st.Uid != 23000 || st.Gid != 23000 {
 		return errors.Join(errors.New("SMB write missed its Unix identity"), err)
+	}
+	if _, err := io.WriteString(peer, "written\n"); err != nil {
+		return err
+	}
+	if err := readNFSTestMessage(peer, "held\n"); err != nil {
+		return err
 	}
 	if err := smbDrainRefused(ctx); err != nil {
 		return err
@@ -305,10 +307,16 @@ func smbClient(ctx context.Context) error {
 		_ = client.Process.Kill()
 		_ = client.Wait()
 	}()
-	if _, err := io.WriteString(input, "put /run/rc0-smb-payload written\nget marker /run/rc0-smb-original\n"); err != nil {
+	if _, err := io.WriteString(input, "put /run/rc0-smb-payload written\n"); err != nil {
 		return err
 	}
-	if err := waitSMBRead(ctx, "/run/rc0-smb-original"); err != nil {
+	if err := readNFSTestMessage(peer, "written\n"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(input, "get marker /run/rc0-smb-original\n"); err != nil {
+		return err
+	}
+	if err := waitSMBContents(ctx, "/run/rc0-smb-original", smbMarker); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(peer, "held\n"); err != nil {
@@ -330,7 +338,7 @@ func smbClient(ctx context.Context) error {
 	if _, err := io.WriteString(input, "get marker /run/rc0-smb-fenced\n"); err != nil {
 		return err
 	}
-	if err := waitSMBRead(ctx, "/run/rc0-smb-fenced"); err != nil {
+	if err := waitSMBContents(ctx, "/run/rc0-smb-fenced", smbMarker); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(input, "quit\n"); err != nil {
@@ -349,17 +357,17 @@ func smbClient(ctx context.Context) error {
 	return nil
 }
 
-func waitSMBRead(ctx context.Context, path string) error {
+func waitSMBContents(ctx context.Context, path, contents string) error {
 	tick := time.NewTicker(100 * time.Millisecond)
 	defer tick.Stop()
 	for {
 		data, err := os.ReadFile(path)
-		if err == nil && string(data) == smbMarker {
+		if err == nil && string(data) == contents {
 			return nil
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("SMB read did not return the original content: %w", ctx.Err())
+			return fmt.Errorf("SMB did not reach the expected file contents: %w", ctx.Err())
 		case <-tick.C:
 		}
 	}
