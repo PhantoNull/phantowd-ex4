@@ -36,6 +36,7 @@ const (
 	proof    = "/run/rc0-confirmed-policy.json"
 	launch   = "/run/rc0-boot-v1.json"
 	bootDir  = "/run/phantowd-boot"
+	control  = "/run/phantowd-boot-control"
 	initHook = "/etc/init.d/S51phantowd-management"
 	address  = "127.0.0.1:18443"
 	origin   = "https://" + address
@@ -131,11 +132,15 @@ func check() error {
 	}
 	switch phase {
 	case "verify":
-		err = renewCertificate(ctx, credentials)
+		if err = runtimeAbsent(); err == nil {
+			err = renewCertificate(ctx, credentials)
+		}
 	case "rotated":
 		err = serveFromInit(ctx, credentials)
 	default:
-		err = serve(ctx, phase, credentials, nil)
+		if err = serve(ctx, phase, credentials, nil); err == nil {
+			err = proveInterruptedInitLifetime(ctx)
+		}
 	}
 	if err != nil {
 		return err
@@ -357,7 +362,7 @@ func expectRefusal(ctx context.Context, confirmation string, change func(*bootPl
 }
 
 func runtimeAbsent() error {
-	for _, path := range []string{"/run/phantowd-rc0", "/run/phantowd-boot-control"} {
+	for _, path := range []string{"/run/phantowd-rc0", control} {
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			return errors.New("RC0 runtime authority was retained")
 		}
@@ -451,6 +456,84 @@ func serveFromInit(ctx context.Context, credentials []byte) (result error) {
 	fmt.Println("PHANTOWD_RC0_INIT symlink=refused address_in_use=refused duplicate=refused immediate_stop=confirmed https=verified shutdown=confirmed")
 	fmt.Printf("PHANTOWD_RC0_TLS_CERTIFICATE phase=rotated sha256=%s\n", fingerprint)
 	return nil
+}
+
+func proveInterruptedInitLifetime(ctx context.Context) error {
+	if err := publishInitGrant(ctx, proof, nil); err != nil {
+		return err
+	}
+	if err := runInitHook(ctx, "start"); err != nil {
+		return err
+	}
+	if err := terminateInitSupervisor(ctx); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(control); err != nil || info.Mode() != os.ModeDir|0700 {
+		return errors.New("interrupted supervisor lost its protected review directory")
+	}
+	for _, path := range []string{control + "/stop", "/run/phantowd-rc0"} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			return errors.New("interrupted supervisor kept its live service channel")
+		}
+	}
+	if conn, err := net.DialTimeout("tcp", address, time.Second); err == nil {
+		conn.Close()
+		return errors.New("interrupted supervisor left a live HTTPS listener")
+	}
+	var exit *exec.ExitError
+	for _, action := range []string{"stop", "start"} {
+		if err := runInitHook(ctx, action); !errors.As(err, &exit) || ctx.Err() != nil {
+			return fmt.Errorf("init accepted %s after an interrupted lifetime", action)
+		}
+	}
+	if err := withdrawInitGrant(ctx); !errors.As(err, &exit) || ctx.Err() != nil {
+		return errors.New("withdraw accepted after an interrupted lifetime")
+	}
+	if _, err := os.Stat(bootDir + "/state/accounts/accounts.json"); err != nil {
+		return errors.New("interrupted supervisor lost its published grant")
+	}
+	fmt.Println("PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained")
+	return nil
+}
+
+func terminateInitSupervisor(ctx context.Context) error {
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: control + "/stop", Net: "unix"})
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	raw, err := conn.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var peer *unix.Ucred
+	var peerErr error
+	if err := raw.Control(func(fd uintptr) {
+		peer, peerErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+	}); err != nil || peerErr != nil || peer == nil || peer.Pid <= 1 || peer.Uid != 0 {
+		return errors.New("cannot identify the original RC0 init supervisor")
+	}
+	pidFD, err := unix.PidfdOpen(int(peer.Pid), 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(pidFD)
+	if err := conn.Close(); err != nil {
+		return err
+	}
+	if err := unix.PidfdSendSignal(pidFD, unix.SIGTERM, nil, 0); err != nil {
+		return err
+	}
+	exit := []unix.PollFd{{Fd: int32(pidFD), Events: unix.POLLIN}}
+	for ctx.Err() == nil {
+		if _, err := unix.Poll(exit, 100); err != nil && !errors.Is(err, unix.EINTR) {
+			return err
+		}
+		if exit[0].Revents&unix.POLLIN != 0 {
+			return nil
+		}
+	}
+	return ctx.Err()
 }
 
 func publishInitGrant(ctx context.Context, confirmation string, change func(*bootPlan)) error {

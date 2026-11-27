@@ -839,8 +839,11 @@ and refuses non-Versatile PB machines. See the
   after the original API child binds its HTTPS address and the supervisor
   admits that child to its policy channel.
   Stop waits for verified supervisor teardown through a private control
-  socket. The physical EX4 launcher that admits and mounts the medium
-  needs separate qualification.
+  socket. An admitted supervisor that exits without a verified stop leaves
+  its protected control directory in `/run`. Init refuses stop and restart,
+  and the publisher refuses to withdraw the grant for the rest of that boot.
+  The physical EX4 launcher that admits and mounts the medium needs separate
+  qualification.
 - A trusted root launcher can publish those roles using
   `--rc0-boot-service=publish` with the same three descriptors. In this mode
   the boot record describes the original admitted directory on FD 3. The

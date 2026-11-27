@@ -783,6 +783,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   is staged. The trusted launcher can publish and withdraw the volatile
   handoff from admitted descriptors, with an independent policy confirmation
   and a pinned certificate. Withdrawing releases only the mount clone.
+  An admitted supervisor exit outside verified init stop retains the protected
+  boot-local control directory. The init lifecycle refuses to confirm stop,
+  restart management or withdraw the grant after that exit.
   Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery
