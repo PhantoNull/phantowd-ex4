@@ -50,7 +50,7 @@ func nfsServer(ctx context.Context, credentials []byte) error {
 		rc0NFSExport, rc0NFSAllowed+"/32", uid, gid)
 	confirmed := strings.Replace(policy, `"volumes":[]`, volume, 1)
 	confirmed = strings.Replace(confirmed, `"exports":[]`, export, 1)
-	if err := seed(ctx, credentials, confirmed); err != nil {
+	if err := seed(ctx, credentials, confirmed, false); err != nil {
 		return fmt.Errorf("NFS state provisioning: %w", err)
 	}
 	if err := os.WriteFile(proof, []byte(confirmed), 0600); err != nil {

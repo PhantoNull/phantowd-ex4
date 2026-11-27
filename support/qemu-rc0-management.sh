@@ -229,6 +229,8 @@ tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_INIT_REVIEW supervisor_exit=unsolicited listener=closed stop=refused start=refused withdraw=refused grant=retained' >/dev/null
 tr -d '\r' < "$log_prefix.seed.log" |
     grep -Fx 'PHANTOWD_RC0_SAMBA_STATE_REFUSAL duplicate=refused interrupted=refused mount_alias=refused' >/dev/null
+tr -d '\r' < "$log_prefix.seed.log" |
+    grep -Fx 'PHANTOWD_RC0_STATE_PROVISION input_refusal=clean concurrent=refused orphan_stage=retained state=published replay=refused roles=admin,policy,tls' >/dev/null
 echo 'PHANTOWD_RC0_TLS_PERSISTENCE initial=verified replacement=verified'
 run_pair nfs
 run_pair smb

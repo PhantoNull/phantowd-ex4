@@ -106,7 +106,7 @@ func smbServer(ctx context.Context, credentials, secret []byte, phase string) er
 	shares := fmt.Sprintf(`"shares":[{"id":"rc0-documents","name":%q,"volume_id":"boot-data","relative_path":%q,"grants":[{"user_id":%q,"access":"rw"}]}]`,
 		smbShare, smbFolder, smbID)
 	confirmed := strings.NewReplacer(`"volumes":[]`, volumes, `"users":[]`, users, `"shares":[]`, shares).Replace(policy)
-	if err := seed(ctx, credentials, confirmed); err != nil {
+	if err := seed(ctx, credentials, confirmed, false); err != nil {
 		return fmt.Errorf("SMB state preparation: %w", err)
 	}
 	if err := seedSMBAccount(ctx, secret); err != nil {

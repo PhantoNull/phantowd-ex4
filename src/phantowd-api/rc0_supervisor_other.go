@@ -29,6 +29,10 @@ func provisionInheritedRC0TLS(io.Reader, string, string) error {
 	return errors.New("RC0 TLS provisioning requires Linux")
 }
 
+func provisionInheritedRC0State(context.Context, io.Reader, string, string) error {
+	return errors.New("RC0 state provisioning requires Linux")
+}
+
 func provisionInheritedRC0ServiceIdentities(context.Context, io.Reader) error {
 	return errors.New("RC0 service identity provisioning requires Linux")
 }

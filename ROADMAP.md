@@ -786,6 +786,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   An admitted supervisor exit outside verified init stop retains the protected
   boot-local control directory. The init lifecycle refuses to confirm stop,
   restart management or withdraw the grant after that exit.
+  Explicit RC0 management provisioning validates independent policy, TLS and
+  administrator inputs before staging on an already admitted local ext parent.
+  It publishes all three management roles together and retains interrupted
+  staging for review. The same entry point supplies the original management
+  state in the ARMv5 management, SMB and NFS boot fixtures.
   Physical placement, complete state-bundle admission and recovery remain open.
   Missing/mismatched evidence never authorizes replay or service startup. The
   complete state-bundle namespace, admission and durable-review recovery

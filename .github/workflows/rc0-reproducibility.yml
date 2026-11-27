@@ -18,6 +18,7 @@ on:
       - 'src/phantowd-api/rc0_*boot_linux.go'
       - 'src/phantowd-api/rc0_init_linux.go'
       - 'src/phantowd-api/rc0_service_identities_linux.go'
+      - 'src/phantowd-api/rc0_state_provision_linux.go'
       - 'src/phantowd-api/rc0_supervisor_linux.go'
       - 'src/phantowd-api/internal/fileserviceplan/samba_share_handoff_linux.go'
       - 'src/phantowd-api/internal/mountowner/handoff_linux.go'
