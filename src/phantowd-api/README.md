@@ -837,7 +837,7 @@ and refuses non-Versatile PB machines. See the
   With the grant directory absent, init reports that management is waiting.
   An incomplete or inconsistent handoff requires review. Start returns
   after the original API child binds its HTTPS address and the supervisor
-  admits that child to its policy channel.
+  admits that child to its policy channel and starts any approved file services.
   Stop waits for verified supervisor teardown through a private control
   socket. An admitted supervisor that exits without a verified stop leaves
   its protected control directory in `/run`. Init refuses stop and restart,
@@ -886,13 +886,25 @@ and refuses non-Versatile PB machines. See the
   It publishes the root-private samba-state directory and the private
   and state roles used for persistent Samba databases. A second initialization
   or an interrupted stage requires review. RC0 holds the committed directory
-  and its two roles until shutdown. The stock Samba tools stay dormant while
-  the isolated daemon and credential lifecycle are integrated.
+  and its two roles until shutdown.
   RC0 carries a separate code-only Samba root and its build-generated
   manifest. On a kernel read-only image, the root-only verifier
   --verify-rc0-samba-code checks the complete roster through its image
   directory descriptors. The boot test also runs the packaged smbd version
   command from that isolated root.
+- The digest-bound storage document can include an `smb` object with an
+  IPv4 `address` and `ingress_index`. The platform configures the approved
+  interface before init starts. The supervisor requires a nonempty confirmed
+  share policy, admitted Samba state and matching enabled accounts in the
+  persistent identity registry and passdb. It launches the isolated daemon
+  on TCP/445 with the original configuration, database and share references.
+  Leaving out the `smb` object leaves Samba dormant.
+  A stop request fences new SMB connections and checks current sessions,
+  share connections, open files and TCP activity while HTTPS stays available.
+  After clients have disconnected, root can retry a pending stop. A complete
+  idle report is required to release the service and its storage. When NFS
+  is also active, each attempt requires `stop-nfs-drained` after confirming
+  the NFS clients have flushed and unmounted.
 - Account checks reload validated state. Login rechecks its snapshot after KDF
   work; issuance performs a final account check under the adapter lock.
   Missing previously configured state, corruption, unsafe storage or uncertain
